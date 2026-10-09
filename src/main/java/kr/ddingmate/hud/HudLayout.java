@@ -263,6 +263,6 @@ public final class HudLayout {
         boolean dark = cfg.hudStyle != DdingMateConfig.HudStyle.LIGHT;
         ScheduleHud.panel(ctx, o[0], o[1], w, h, 200, dark);
         ScheduleHud.header(ctx, tr, o[0], o[1], w, title, icon, dark, 200);
-        Theme.text(ctx, tr, message, o[0] + 6, o[1] + ScheduleHud.HEAD_H + 3, dark ? 0xFF9AA3B2 : Theme.TEXT_SOFT);
+        Theme.textShadow(ctx, tr, message, o[0] + 6, o[1] + ScheduleHud.HEAD_H + 3, Theme.soft(dark), dark);
     }
 }

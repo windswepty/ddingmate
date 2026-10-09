@@ -178,8 +178,8 @@ public final class CounterHud {
                                    int x, int y, int boxW, int boxH, int alpha, boolean dark) {
         Widths w = widths(tr, cfg, views);
         ScheduleHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
-        int text = dark ? 0xFFE8ECF2 : Theme.TEXT;
-        int soft = dark ? 0xFF9AA3B2 : Theme.TEXT_SOFT;
+        int text = Theme.text(dark);
+        int soft = Theme.soft(dark);
         int cy = y;
         for (MaterialCounter.PinView v : views) {
             ItemStack headIcon = v.recipe().materials.isEmpty() ? CHEST : IconCache.forMaterial(v.recipe().materials.get(0).name);
@@ -188,7 +188,7 @@ public final class CounterHud {
             String p = progress(v);
             int chipW = chipWidth(tr, v);
             int chipX = x + boxW - 4 - chipW;
-            ctx.fill(chipX, cy + 2, chipX + chipW, cy + 12, v.done() ? Theme.GREEN : Theme.BLUE_MID);
+            ctx.fill(chipX, cy + 2, chipX + chipW, cy + 12, v.done() ? Theme.GREEN_DARK : Theme.BLUE_MID);
             ctx.fill(chipX, cy + 2, chipX + chipW, cy + 3, v.done() ? 0xFF7DD379 : Theme.BLUE);
             Theme.boldText(ctx, tr, p, chipX + 4, cy + 3, Theme.WHITE, false);
             cy += ScheduleHud.HEAD_H + 2;
@@ -205,21 +205,21 @@ public final class CounterHud {
                 ItemStack icon = IconCache.forMaterial(l.name());
                 if (icon != null) Theme.item(ctx, icon, rx, cy + 1, ICON);
                 else Theme.unknownIcon(ctx, tr, rx, cy + 1, ICON);
-                int color = l.done() ? (dark ? 0xFF8BE08A : Theme.GREEN_DARK) : l.have() == 0 ? soft : text;
+                int color = l.done() ? Theme.green(dark) : l.have() == 0 ? soft : text;
                 if (sh.sub() && !l.done()) color = soft;
-                Theme.text(ctx, tr, l.name(), rx + ICON + 4, cy + 1, color);
+                Theme.textShadow(ctx, tr, l.name(), rx + ICON + 4, cy + 1, color, dark);
                 String c = count(l);
                 int countRight = base + ICON + 4 + w.name() + GAP + w.count();
                 Theme.boldText(ctx, tr, c, countRight - Theme.boldWidth(tr, c), cy + 1, color, false);
                 String ex = extra(cfg, l);
-                if (!ex.isEmpty()) Theme.text(ctx, tr, ex, countRight + GAP, cy + 1, soft);
+                if (!ex.isEmpty()) Theme.textShadow(ctx, tr, ex, countRight + GAP, cy + 1, soft, dark);
                 int barX = rx + ICON + 4;
                 Theme.progress(ctx, barX, cy + 10, countRight - barX, 2, (double) l.have() / Math.max(1, l.need()), alpha, dark);
                 cy += ROW_H;
             }
             cy += 2;
         }
-        if (note != null) Theme.text(ctx, tr, note, x + 6, cy + 1, soft);
+        if (note != null) Theme.textShadow(ctx, tr, note, x + 6, cy + 1, soft, dark);
     }
 
     // ---------------------------------------------------------------- 예전 방식(반투명 검은 상자)
@@ -265,7 +265,7 @@ public final class CounterHud {
     // ---------------------------------------------------------------- 글자
 
     private static String title(MaterialCounter.PinView v) {
-        return v.recipe().displayName() + " ×" + v.pin().crafts;
+        return MaterialCounter.title(v.pin(), v.recipe());
     }
 
     private static String progress(MaterialCounter.PinView v) {

@@ -40,8 +40,8 @@ public final class Notifier {
                 new ItemStack(word == null ? Items.NAME_TAG : Items.BELL), KEYWORD_BLUE, false);
     }
 
-    public static void materialsReady(String recipe, int crafts, ItemStack icon) {
-        notify("재료", "재료 준비 완료: " + recipe + " ×" + crafts, "핀에 등록한 재료가 다 모였어요",
+    public static void materialsReady(String pinTitle, ItemStack icon) {
+        notify("재료", "재료 준비 완료: " + pinTitle, "핀에 등록한 재료가 다 모였어요",
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), icon == null ? new ItemStack(Items.CHEST) : icon,
                 Theme.GREEN, false);
     }

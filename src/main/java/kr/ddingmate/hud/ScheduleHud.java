@@ -76,7 +76,7 @@ public final class ScheduleHud {
             labelW = Math.max(labelW, Theme.width(tr, e.label()));
             leftW = Math.max(leftW, Theme.boldWidth(tr, e.left()));
         }
-        int rowH = 11;
+        int rowH = 12;
         int boxW = Math.max(12 + labelW + 10 + leftW, 18 + Theme.boldWidth(tr, header)) + 10;
         int boxH = HEAD_H + cached.size() * rowH + 5;
         int[] o = HudLayout.place(ctx, HudLayout.SCHEDULE, cfg.hudCorner, boxW, boxH);
@@ -85,13 +85,13 @@ public final class ScheduleHud {
         panel(ctx, x, y, boxW, boxH, alpha, dark);
         header(ctx, tr, x, y, boxW, header, CLOCK, dark, alpha);
         int ty = y + HEAD_H + 2;
-        int text = dark ? 0xFFE8ECF2 : Theme.TEXT;
+        int text = Theme.text(dark);
         for (int i = 0; i < cached.size(); i++) {
             Entry e = cached.get(i);
-            int color = e.color() != 0 ? e.color()
-                    : e.minutes() < 10 ? Theme.RED : e.minutes() < 60 ? Theme.GOLD : dark ? 0xFF9FB8D8 : Theme.BLUE_MID;
+            int color = e.color() != 0 ? Theme.gold(dark)
+                    : e.minutes() < 10 ? Theme.red(dark) : e.minutes() < 60 ? Theme.gold(dark) : Theme.blue(dark);
             ctx.fill(x + 6, ty + 3, x + 9, ty + 6, color);
-            Theme.text(ctx, tr, e.label(), x + 13, ty + 1, text);
+            Theme.textShadow(ctx, tr, e.label(), x + 13, ty + 1, text, dark);
             Theme.boldText(ctx, tr, e.left(), x + boxW - 6 - Theme.boldWidth(tr, e.left()), ty + 1, color, dark);
             ty += rowH;
         }

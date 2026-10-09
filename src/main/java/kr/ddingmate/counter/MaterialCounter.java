@@ -39,6 +39,22 @@ public final class MaterialCounter {
         }
     }
 
+    /**
+     * 실제로 몇 번 만들어야 하는지. 결과물 기준이면 원하는 개수를 한 번에 나오는 개수로 나눠 올림한다.
+     * 예: 깐 새우 x2 레시피에서 결과물 33개 → 17번.
+     */
+    public static int craftsOf(DdingMateConfig.Pin pin, RecipeBook.Recipe r) {
+        if (pin.byOutput && r.output > 1) return (pin.crafts + r.output - 1) / r.output;
+        return pin.crafts;
+    }
+
+    /** HUD·홈에 쓰는 핀 제목. 한 번에 여러 개 나오면 결과물 개수와 제작 횟수를 함께 보여 준다 */
+    public static String title(DdingMateConfig.Pin pin, RecipeBook.Recipe r) {
+        int n = craftsOf(pin, r);
+        if (r.output > 1) return r.name + " " + (n * r.output) + "개 · " + n + "번";
+        return r.name + " ×" + n;
+    }
+
     private static List<PinView> views = List.of();
     /** 핀별 "다 모였음" 상태. null 이면 아직 한 번도 계산 안 함(접속 직후 알림이 울리지 않게) */
     private static final Boolean[] wasDone = new Boolean[DdingMateConfig.PIN_COUNT];
@@ -63,7 +79,7 @@ public final class MaterialCounter {
         for (int i = 0; i < cfg.pins.size() && i < DdingMateConfig.PIN_COUNT; i++) {
             DdingMateConfig.Pin pin = cfg.pins.get(i);
             RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
-            String key = r == null ? null : r.id + "*" + pin.crafts;
+            String key = r == null ? null : r.id + "*" + craftsOf(pin, r);
             if (key == null || !key.equals(lastKey[i])) {
                 lastKey[i] = key;
                 wasDone[i] = null;
@@ -74,7 +90,7 @@ public final class MaterialCounter {
             boolean done = v.done();
             if (Boolean.FALSE.equals(wasDone[i]) && done && cfg.notifyComplete) {
                 ItemStack icon = r.materials.isEmpty() ? null : IconCache.forMaterial(r.materials.get(0).name);
-                Notifier.materialsReady(r.displayName(), pin.crafts, icon);
+                Notifier.materialsReady(title(pin, r), icon);
             }
             wasDone[i] = done;
         }
@@ -85,7 +101,7 @@ public final class MaterialCounter {
                         Map<String, Integer> bags, Map<String, Integer> storage, boolean expand) {
         List<Line> lines = new ArrayList<>();
         for (RecipeBook.Material m : r.materials) {
-            Line line = line(m.name, m.count * pin.crafts, inv, bags, storage, List.of());
+            Line line = line(m.name, m.count * craftsOf(pin, r), inv, bags, storage, List.of());
             if (expand && !line.done()) line = withSubs(line, r, inv, bags, storage);
             lines.add(line);
         }

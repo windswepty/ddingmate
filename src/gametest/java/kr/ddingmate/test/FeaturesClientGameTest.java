@@ -22,6 +22,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
+import net.minecraft.client.gui.widget.ElementListWidget;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.LoreComponent;
 import net.minecraft.inventory.SimpleInventory;
@@ -177,6 +178,52 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 pin.crafts = keepCrafts;
                 MaterialCounter.tick(c);
             });
+
+            // 만들 개수: 레시피 고르기에서 [+64]·[+10]·[−] 로 75 를 만든 뒤 하급 라이프스톤을 누르면 ×75 로 핀
+            ctx.runOnClient(c -> {
+                DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(1);
+                pin.recipe = "";
+                pin.crafts = 1;
+                pin.byOutput = false;
+                c.setScreen(new RecipePickerScreen(null, 1));
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                press(c, "+64");
+                press(c, "+10");
+                press(c, "+");
+                press(c, "−");
+                ElementListWidget<?> list = (ElementListWidget<?>) c.currentScreen.children().stream()
+                        .filter(e -> e instanceof ElementListWidget<?>).findFirst().orElseThrow();
+                c.currentScreen.children().stream().filter(e -> e instanceof net.minecraft.client.gui.widget.TextFieldWidget)
+                        .map(e -> (net.minecraft.client.gui.widget.TextFieldWidget) e)
+                        .filter(f -> f.getText().isEmpty() || !f.getText().matches("\\d+")).findFirst()
+                        .ifPresent(f -> f.setText("하급 라이프"));
+                check(list.children().size() == 1, "검색 결과가 하급 라이프스톤 하나가 아님: " + list.children().size());
+                ((net.minecraft.client.gui.ParentElement) list.children().get(0)).children().stream()
+                        .filter(e -> e instanceof net.minecraft.client.gui.widget.PressableWidget)
+                        .map(e -> (net.minecraft.client.gui.widget.PressableWidget) e).findFirst().orElseThrow().onPress();
+                DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(1);
+                check(pin.recipe.equals("강화 제작 시설/하급 라이프스톤") && pin.crafts == 75 && !pin.byOutput,
+                        "레시피 고르기에서 정한 개수로 핀되지 않음: " + pin.recipe + " ×" + pin.crafts);
+                MaterialCounter.tick(c);
+                MaterialCounter.Line copper = MaterialCounter.views().get(1).lines().stream()
+                        .filter(l -> l.name().equals("구리 블록")).findFirst().orElseThrow();
+                check(copper.need() == 8 * 75, "×75 인데 구리 블록이 600 이 아님: " + copper.need());
+                // 결과물 기준: 깐 새우 x2 레시피로 33개를 얻으려면 17번 → 새우 17개, 제목은 "깐 새우 34개 · 17번"
+                pin.recipe = "대형 제작대/깐 새우 x2";
+                pin.crafts = 33;
+                pin.byOutput = true;
+                MaterialCounter.tick(c);
+                MaterialCounter.PinView v = MaterialCounter.views().get(1);
+                check(v.lines().get(0).need() == 17, "결과물 33개 기준 필요 새우가 17 이 아님: " + v.lines().get(0).need());
+                check(MaterialCounter.title(pin, v.recipe()).equals("깐 새우 34개 · 17번"), "제목 오류: " + MaterialCounter.title(pin, v.recipe()));
+                pin.byOutput = false;
+                MaterialCounter.tick(c);
+                check(MaterialCounter.views().get(1).lines().get(0).need() == 33, "번 만들기 기준 필요 새우가 33 이 아님");
+                pin.recipe = "";
+            });
+            ctx.waitTicks(2);
 
             // 키워드 알림: 남이 내 닉네임을 부른 채팅만 언급으로 보고, 내 이름이 든 시스템 공지·내 채팅은 무시
             ctx.runOnClient(c -> {

@@ -61,15 +61,15 @@ public final class DurabilityHud {
         if (classic) ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);
         else ScheduleHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
         ScheduleHud.header(ctx, tr, x, y, boxW, title, ANVIL, dark, alpha);
-        int text = dark ? 0xFFE8ECF2 : Theme.TEXT;
-        int soft = dark ? 0xFF9AA3B2 : Theme.TEXT_SOFT;
+        int text = Theme.text(dark);
+        int soft = Theme.soft(dark);
         int cy = y + ScheduleHud.HEAD_H + 2;
         for (DurabilityTracker.Row r : rows) {
             int rx = x + 6;
             if (r.stack() != null) Theme.item(ctx, r.stack(), rx, cy, ICON);
             else Theme.unknownIcon(ctx, tr, rx, cy, ICON);
-            int color = r.durability() == null ? soft : colorOf(r.durability().ratio());
-            Theme.text(ctx, tr, r.item().name, rx + ICON + 4, cy + 1, r.durability() == null ? soft : text);
+            int color = r.durability() == null ? soft : colorOf(r.durability().ratio(), dark);
+            Theme.textShadow(ctx, tr, r.item().name, rx + ICON + 4, cy + 1, r.durability() == null ? soft : text, dark);
             String v = value(r);
             Theme.boldText(ctx, tr, v, x + boxW - 6 - Theme.boldWidth(tr, v), cy + 1, color, false);
             if (r.durability() != null) {
@@ -87,7 +87,7 @@ public final class DurabilityHud {
         return r.durability().left() + "/" + r.durability().max();
     }
 
-    static int colorOf(double ratio) {
-        return ratio > 0.5 ? Theme.GREEN : ratio > 0.2 ? Theme.GOLD : Theme.RED;
+    static int colorOf(double ratio, boolean dark) {
+        return ratio > 0.5 ? Theme.green(dark) : ratio > 0.2 ? Theme.gold(dark) : Theme.red(dark);
     }
 }

@@ -4,6 +4,7 @@ import kr.ddingmate.DdingMate;
 import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.counter.IconCache;
 import kr.ddingmate.counter.ItemKeys;
+import kr.ddingmate.counter.MaterialCounter;
 import kr.ddingmate.counter.RecipeBook;
 import kr.ddingmate.ui.Theme;
 import kr.ddingmate.ui.Widgets;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 public class RecipePickerScreen extends Screen {
 
     private static final String ALL = "전체 시설";
+    private static final int COUNT_LABEL_W = 62;
 
     private final Screen parent;
     private final int pinIndex;
@@ -35,6 +37,9 @@ public class RecipePickerScreen extends Screen {
     private RecipeList list;
     private String query = "";
     private String facility = ALL;
+    /** 고를 때 함께 정할 만들 개수와 입력 방식(처음엔 지금 핀 값) */
+    private int count = -1;
+    private boolean byOutput;
 
     private int px, py, pw, ph;
     private int cx, cy, cw, ch;
@@ -54,7 +59,11 @@ public class RecipePickerScreen extends Screen {
         cx = px + 6;
         cy = py + DdingMateScreen.HEADER_H + 30;
         cw = pw - 12;
-        ch = ph - (cy - py) - 32;
+        ch = ph - (cy - py) - 58;
+        if (count < 0) {
+            count = Math.max(1, pin().crafts);
+            byOutput = pin().byOutput;
+        }
 
         int fieldW = cw - 132;
         search = new Widgets.Field(fieldW, Text.literal("검색"));
@@ -85,6 +94,22 @@ public class RecipePickerScreen extends Screen {
         list.setX(cx + 2);
         refill();
         setInitialFocus(search);
+
+        // 만들 개수: 레시피를 누르면 이 개수로 핀한다
+        CountBar bar = new CountBar(count, byOutput, true, v -> count = v, v -> byOutput = v);
+        int bx = cx + COUNT_LABEL_W;
+        int by = py + ph - 52;
+        for (net.minecraft.client.gui.widget.ClickableWidget w : bar.widgets()) {
+            if (w instanceof Widgets.Field f) {
+                f.place(bx, by, CountBar.FIELD_W);
+                bx += CountBar.FIELD_W + 3;
+            } else {
+                w.setX(bx);
+                w.setY(by);
+                bx += w.getWidth() + 3;
+            }
+            addDrawableChild(w);
+        }
 
         Widgets.Button clear = new Widgets.Button(120, 20, Text.literal("핀 비우기"), false, b -> {
             pin().recipe = "";
@@ -126,8 +151,21 @@ public class RecipePickerScreen extends Screen {
     private void choose(RecipeBook.Recipe r) {
         DdingMateConfig.Pin p = pin();
         p.recipe = r.id;
-        if (p.crafts < 1) p.crafts = 1;
+        p.crafts = Math.max(1, count);
+        p.byOutput = byOutput;
         close();
+    }
+
+    /** 지금 정한 개수로 만들 때 필요한 재료 (마우스를 올리면 보여 줌) */
+    private Tooltip tooltipFor(RecipeBook.Recipe r) {
+        DdingMateConfig.Pin probe = new DdingMateConfig.Pin();
+        probe.crafts = Math.max(1, count);
+        probe.byOutput = byOutput;
+        int n = MaterialCounter.craftsOf(probe, r);
+        StringBuilder sb = new StringBuilder(r.facility).append(" · [").append(r.category).append("]\n")
+                .append(MaterialCounter.title(probe, r)).append(" 에 필요한 재료");
+        for (RecipeBook.Material m : r.materials) sb.append("\n").append(m.name).append("  ").append(m.count * n).append("개");
+        return Tooltip.of(Text.literal(sb.toString()));
     }
 
     @Override
@@ -135,7 +173,8 @@ public class RecipePickerScreen extends Screen {
         super.renderBackground(ctx, mouseX, mouseY, delta);
         DdingMateScreen.drawFrame(ctx, textRenderer, px, py, pw, ph, "레시피 고르기");
         Theme.inset(ctx, cx, cy, cw, ch);
-        String sub = "핀 " + (pinIndex + 1) + " · " + list.children().size() + "개";
+        Theme.boldText(ctx, textRenderer, "만들 개수", cx + 2, py + ph - 46, Theme.INK, false);
+        String sub = "핀 " + (pinIndex + 1) + " · " + list.children().size() + "개 · 누르면 이 개수로 핀해요";
         Theme.text(ctx, textRenderer, sub, px + (pw - Theme.width(textRenderer, sub)) / 2, py + ph - 20, Theme.TEXT_SOFT);
     }
 
@@ -152,9 +191,7 @@ public class RecipePickerScreen extends Screen {
         RecipeCard(RecipeBook.Recipe recipe, int w) {
             super(0, 0, w, 22, Text.literal(recipe.displayName()));
             this.recipe = recipe;
-            String mats = recipe.materials.stream().map(m -> m.name + " " + m.count + "개")
-                    .collect(Collectors.joining("\n"));
-            setTooltip(Tooltip.of(Text.literal(recipe.facility + "\n" + mats)));
+            setTooltip(tooltipFor(recipe));
         }
 
         @Override
@@ -164,6 +201,7 @@ public class RecipePickerScreen extends Screen {
 
         @Override
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+            if (isHovered()) setTooltip(tooltipFor(recipe)); // 개수를 바꾸면 필요한 재료도 바로 바뀐다
             boolean current = recipe.id.equals(pin().recipe);
             Theme.row(ctx, getX(), getY(), width, height, isSelected());
             if (current) ctx.fill(getX() + 1, getY() + 2, getX() + 3, getY() + height - 2, Theme.BLUE);

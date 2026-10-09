@@ -41,8 +41,10 @@ public final class DdingMateConfig {
     public static final class Pin {
         /** RecipeBook 의 레시피 id. 비어 있으면 핀이 없는 칸 */
         public String recipe = "";
-        /** 몇 번 만들지 */
+        /** 입력한 개수. byOutput 이 false 면 몇 번 만들지, true 면 결과물을 몇 개 얻을지 */
         public int crafts = 1;
+        /** 한 번에 여러 개 나오는 레시피(예: 깐 새우 x2)에서 개수를 결과물 기준으로 받을지 */
+        public boolean byOutput = false;
     }
 
     public static final class Counter {
@@ -133,6 +135,10 @@ public final class DdingMateConfig {
     }
 
     public boolean hudEnabled = true;
+    /** 홈 탭의 "처음 사용 안내"를 숨겼는지 */
+    public boolean guideSeen = false;
+    /** 월드에 들어갈 때 "/띵메이트 로 열 수 있어요" 안내를 채팅에 한 번 남길지 */
+    public boolean joinTip = true;
     /** HUD 이름(schedule·todo·counter·durability) → 옮긴 자리. 없으면 정해 둔 구석 */
     public Map<String, HudPos> hudPos = new LinkedHashMap<>();
     /** HUD 이름 → 편집 화면에서 정한 HUD 별 크기(%). 없으면 100 */

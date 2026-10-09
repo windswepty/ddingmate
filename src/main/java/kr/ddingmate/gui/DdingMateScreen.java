@@ -183,11 +183,13 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildNotify() {
+        list.guide("알림을 어떻게 받을지 정해요. HUD 는 화면 구석에 늘 떠 있는 작은 정보 판이에요.");
         list.header("알림을 받을 방법");
-        list.pair(toggle("일정 HUD", cfg.hudEnabled, v -> cfg.hudEnabled = v),
-                toggle("소리", cfg.soundEnabled, v -> cfg.soundEnabled = v));
-        list.pair(toggle("팝업 알림", cfg.toastEnabled, v -> cfg.toastEnabled = v),
-                toggle("채팅 알림 (내 화면만)", cfg.chatEnabled, v -> cfg.chatEnabled = v));
+        list.pair(tip(toggle("일정 HUD", cfg.hudEnabled, v -> cfg.hudEnabled = v), "다음 일정과 남은 시간을 화면 구석에 늘 보여 줘요"),
+                tip(toggle("소리", cfg.soundEnabled, v -> cfg.soundEnabled = v), "알림이 올 때 '띵' 소리를 내요"));
+        list.pair(tip(toggle("팝업 알림", cfg.toastEnabled, v -> cfg.toastEnabled = v), "화면 오른쪽 위에 잠깐 떴다 사라지는 알림 상자예요"),
+                tip(toggle("채팅 알림 (내 화면만)", cfg.chatEnabled, v -> cfg.chatEnabled = v),
+                        "채팅창에 [띵메이트] 로 시작하는 줄을 남겨요. 다른 사람에게는 보이지 않아요"));
         list.single(new Widgets.Slider(rowWidth(), cfg.soundVolume,
                 v -> "소리 크기  " + Math.round(v * 100) + "%", v -> cfg.soundVolume = (float) v));
 
@@ -217,11 +219,16 @@ public class DdingMateScreen extends Screen {
                 ? "게임 화면에서 HUD 를 끌어 옮기고, 휠이나 오른쪽 아래 모서리로 HUD 마다 크기를 바꿔요. 옮긴 HUD 는 위의 '위치' 설정 대신 그 자리에 보여요."
                 : "게임에 들어가 있을 때 쓸 수 있어요.")));
         list.single(move);
+        list.note("HUD 남은 시간 색: 빨강 = 10분 안, 노랑 = 1시간 안, 파랑 = 그보다 많이 남음");
         list.note("HUD 는 화면 구석에만 그려요. 화면 위 가운데(서버 HUD·NPC 말풍선 자리)는 비워 둬요.");
+        list.header("처음 쓰는 사람을 위한 안내");
+        list.pair(tip(toggle("접속할 때 사용법 안내", cfg.joinTip, v -> cfg.joinTip = v),
+                "게임을 켜고 처음 접속할 때 채팅에 '/띵메이트 로 열 수 있어요' 를 한 번 남겨요"), null);
     }
 
     private void buildEvents() {
-        list.header("일정별 알림 · 오른쪽 칸은 몇 분 전에 알릴지 (쉼표로 여러 개, 0 = 시작할 때)");
+        list.guide("띵타이쿤 서버 일정이에요. 끄면 HUD·알림에서 빠져요. 오른쪽 칸에 몇 분 전에 알릴지 적어요(예: 10,3).");
+        list.header("일정별 알림 · 0 = 시작할 때 알림");
         Map<String, EventRule> rules = ScheduleEngine.byId(
                 ScheduleEngine.buildRules(new ScheduleEngine.Channels(1, 1, 1, 1, 1)));
         for (Map.Entry<String, String> e : EVENT_NAMES.entrySet()) {
@@ -248,6 +255,18 @@ public class DdingMateScreen extends Screen {
 
     private void buildHome() {
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        if (!cfg.guideSeen) {
+            list.header("처음이세요? · 이것만 해 보세요");
+            list.single(new InfoRow(new ItemStack(Items.CHEST), "① 만들 레시피 핀하기", "재료 탭", Theme.BLUE_MID, Tab.COUNTER));
+            list.single(new InfoRow(new ItemStack(Items.WRITABLE_BOOK), "② 오늘 할 일 체크하기", "할 일 탭", Theme.BLUE_MID, Tab.TODO));
+            list.single(new InfoRow(new ItemStack(Items.ANVIL), "③ 도구 내구도 지켜보기", "장비 탭", Theme.BLUE_MID, Tab.GEAR));
+            list.single(new InfoRow(new ItemStack(Items.BELL), "④ HUD 자리·크기 바꾸기", "알림 방식 탭", Theme.BLUE_MID, Tab.NOTIFY));
+            list.note("일정 알림은 이미 켜져 있어요. 각 탭 맨 위에 그 탭에서 할 수 있는 일이 적혀 있어요.");
+            list.single(new Widgets.Button(rowWidth(), 20, Text.literal("알겠어요, 안내 숨기기"), true, b -> {
+                cfg.guideSeen = true;
+                rebuild();
+            }));
+        }
         list.header("다음 일정");
         for (ScheduleEngine.Occurrence o : ScheduleEngine.upcoming(DdingMate.rules(), cfg::isEnabled, now, 3)) {
             list.single(new InfoRow(new ItemStack(Items.CLOCK), o.rule().label(),
@@ -276,12 +295,12 @@ public class DdingMateScreen extends Screen {
         list.header("재료");
         List<MaterialCounter.PinView> pins = MaterialCounter.views();
         if (pins.isEmpty()) {
-            list.single(new InfoRow(new ItemStack(Items.CHEST), "재료 카운터", "핀이 비어 있어요", Theme.TEXT_SOFT, Tab.COUNTER));
+            list.single(new InfoRow(new ItemStack(Items.CHEST), "재료 카운터 · 핀이 비어 있어요", "레시피 고르기", Theme.BLUE_MID, Tab.COUNTER));
         }
         for (MaterialCounter.PinView v : pins) {
             ItemStack icon = v.recipe().materials.isEmpty() ? null : IconCache.forMaterial(v.recipe().materials.get(0).name);
             list.single(new InfoRow(icon == null ? new ItemStack(Items.CHEST) : icon,
-                    v.recipe().displayName() + " ×" + v.pin().crafts,
+                    MaterialCounter.title(v.pin(), v.recipe()),
                     v.done() ? "준비 완료" : "재료 " + v.doneCount() + "/" + v.lines().size(),
                     v.done() ? Theme.GREEN : Theme.TEXT_SOFT, Tab.COUNTER));
         }
@@ -289,7 +308,7 @@ public class DdingMateScreen extends Screen {
         list.header("장비");
         List<DurabilityTracker.Row> gear = DurabilityTracker.rows();
         if (gear.isEmpty()) {
-            list.single(new InfoRow(new ItemStack(Items.ANVIL), "장비 내구도", "추적 중인 장비가 없어요", Theme.TEXT_SOFT, Tab.GEAR));
+            list.single(new InfoRow(new ItemStack(Items.ANVIL), "장비 내구도 · 지켜보는 장비 없음", "장비 고르기", Theme.BLUE_MID, Tab.GEAR));
         }
         for (DurabilityTracker.Row r : gear) {
             DurabilityTracker.Durability d = r.durability();
@@ -309,7 +328,8 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildChannels() {
-        list.header("내가 주로 있는 채널 · 재시작 알림에 써요");
+        list.guide("자주 가는 채널 번호를 고르면, 그 채널이 재시작되기 전에 미리 알려 줘요.");
+        list.header("내가 주로 있는 채널");
         list.pair(channel("마을", 35, cfg.villageChannel, v -> cfg.villageChannel = v),
                 channel("노크틸라", 24, cfg.huntChannel, v -> cfg.huntChannel = v));
         list.pair(channel("야생", 16, cfg.wildChannel, v -> cfg.wildChannel = v),
@@ -319,9 +339,12 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildKeywords() {
-        list.header("키워드 알림 · 내 채팅창에 뜬 메시지에서 찾아요");
-        list.pair(toggle("키워드 알림", cfg.keywords.enabled, v -> cfg.keywords.enabled = v),
-                toggle("내 닉네임 언급", cfg.keywords.includeOwnName, v -> cfg.keywords.includeOwnName = v));
+        list.guide("채팅에 정해 둔 단어가 뜨거나 누가 내 닉네임을 부르면 소리와 팝업으로 알려 줘요.");
+        list.header("키워드 알림");
+        list.pair(tip(toggle("키워드 알림", cfg.keywords.enabled, v -> cfg.keywords.enabled = v),
+                        "아래 칸에 적은 단어가 채팅에 뜨면 알려 줘요"),
+                tip(toggle("내 닉네임 언급", cfg.keywords.includeOwnName, v -> cfg.keywords.includeOwnName = v),
+                        "다른 사람이 채팅에서 내 닉네임을 부르면 알려 줘요"));
         Widgets.Field words = new Widgets.Field(rowWidth(), Text.literal("키워드"));
         words.setMaxLength(500);
         words.setText(String.join(", ", cfg.keywords.words));
@@ -336,7 +359,8 @@ public class DdingMateScreen extends Screen {
 
     private void buildCounter() {
         DdingMateConfig.Counter cc = cfg.counter;
-        list.header("핀 레시피 · 재료를 인벤토리와 가방에서 자동으로 세요");
+        list.guide("만들 레시피를 고르고 개수를 정하면, 모은 재료를 HUD 에 계속 세어 보여 줘요.");
+        list.header("핀 레시피 · 최대 3개");
         for (int i = 0; i < cc.pins.size(); i++) {
             int index = i;
             DdingMateConfig.Pin pin = cc.pins.get(i);
@@ -344,11 +368,18 @@ public class DdingMateScreen extends Screen {
                 savedScroll = list.getScrollY();
                 client.setScreen(new RecipePickerScreen(this, index));
             });
-            list.withUnit(pick, craftsField(pin), "개");
+            list.single(pick);
+            RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
+            if (r != null) {
+                // 핀 아래 줄: 만들 개수 [−] 숫자 [+] [+10] [+64] (+ 번 만들기/개 얻기)
+                CountBar bar = new CountBar(pin.crafts, pin.byOutput, r.output > 1,
+                        v -> pin.crafts = v, v -> pin.byOutput = v);
+                list.labeledRow("만들 개수", bar.widgets());
+            }
         }
         list.header("표시와 알림");
-        list.pair(toggle("카운터 HUD", cc.enabled, v -> cc.enabled = v),
-                toggle("가방도 합산", cc.includeBags, v -> cc.includeBags = v));
+        list.pair(tip(toggle("카운터 HUD", cc.enabled, v -> cc.enabled = v), "핀한 레시피의 재료 현황을 화면 구석에 보여 줘요"),
+                tip(toggle("가방도 합산", cc.includeBags, v -> cc.includeBags = v), "한 번 열어 본 모험 가방 안의 재료도 함께 세요"));
         list.pair(new Widgets.Cycle<>(half(), "카운터 위치", List.of(DdingMateConfig.Corner.values()), cc.corner,
                         DdingMateScreen::cornerName, v -> cc.corner = v),
                 toggle("다 모이면 알림", cc.notifyComplete, v -> cc.notifyComplete = v));
@@ -400,7 +431,8 @@ public class DdingMateScreen extends Screen {
 
     private void buildGear() {
         DdingMateConfig.Durability dc = cfg.durability;
-        list.header("추적할 장비 고르기 · 지금 인벤토리에 있는 내구도 있는 아이템");
+        list.guide("도구·갑옷을 켜 두면 남은 내구도를 HUD 에 보여 주고, 얼마 안 남으면 알려 줘요.");
+        list.header("추적할 장비 고르기 · 지금 인벤토리에 있는 것");
         Map<String, ItemStack> found = client != null ? DurabilityTracker.candidates(client) : Map.of();
         if (client == null || client.player == null) {
             list.note("게임에 들어가 있을 때 인벤토리의 장비가 여기에 보여요.");
@@ -424,7 +456,7 @@ public class DdingMateScreen extends Screen {
             }
         }
         list.header("표시와 알림");
-        list.pair(toggle("내구도 HUD", dc.enabled, v -> dc.enabled = v),
+        list.pair(tip(toggle("내구도 HUD", dc.enabled, v -> dc.enabled = v), "켜 둔 장비의 남은 내구도를 화면 구석에 보여 줘요"),
                 new Widgets.Cycle<>(half(), "HUD 위치", List.of(DdingMateConfig.Corner.values()), dc.corner,
                         DdingMateScreen::cornerName, v -> dc.corner = v));
         list.pair(new Widgets.Cycle<>(half(), "부족 알림", List.of(0, 5, 10, 15, 20, 30),
@@ -436,7 +468,8 @@ public class DdingMateScreen extends Screen {
     private void buildTodo() {
         DdingMateConfig.Todo tc = cfg.todo;
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
-        list.header("오늘 할 일 · 체크는 정해진 초기화 시각에 알아서 풀려요");
+        list.guide("매일 할 일을 체크해 두세요. 초기화 시각(03시·목 03시·자정)이 지나면 체크가 알아서 풀려요.");
+        list.header("오늘 할 일");
         for (DdingMateConfig.TodoItem item : tc.items) {
             Widgets.Toggle t = new Widgets.Toggle(rowWidth(), item.name, TodoList.isDone(item, now),
                     v -> TodoList.setDone(item, v)).detail(TodoList.resetName(item.reset));
@@ -461,7 +494,7 @@ public class DdingMateScreen extends Screen {
         list.row(name, reset, add);
 
         list.header("표시와 알림");
-        list.pair(toggle("할 일 HUD", tc.hudEnabled, v -> tc.hudEnabled = v),
+        list.pair(tip(toggle("할 일 HUD", tc.hudEnabled, v -> tc.hudEnabled = v), "아직 안 한 할 일을 화면 구석에 보여 줘요"),
                 new Widgets.Cycle<>(half(), "HUD 위치", List.of(DdingMateConfig.Corner.values()), tc.corner,
                         DdingMateScreen::cornerName, v -> tc.corner = v));
         list.pair(new Widgets.Cycle<>(half(), "남은 할 일 알림", List.of(0, 30, 60, 120),
@@ -481,15 +514,16 @@ public class DdingMateScreen extends Screen {
                     + (next == 0 ? " · 오늘 보상 구간을 다 채웠어요"
                     : " · 다음 보상 " + next + "시간: " + PlaytimeTracker.REWARDS.get(next)));
         }
-        list.pair(toggle("보상 구간 알림", pc.enabled, v -> pc.enabled = v),
-                toggle("일정 HUD 에 표시", pc.showInHud, v -> pc.showInHud = v));
+        list.pair(tip(toggle("보상 구간 알림", pc.enabled, v -> pc.enabled = v), "접속 1·2·3·4·5·8시간을 넘길 때마다 채팅으로 알려 줘요"),
+                tip(toggle("일정 HUD 에 표시", pc.showInHud, v -> pc.showInHud = v), "일정 HUD 맨 위에 오늘 접속 시간을 보여 줘요"));
         list.pair(toggle("23:30 초기화 전 알림", pc.midnightReminder, v -> pc.midnightReminder = v), null);
         list.note("보상 구간을 넘기면 채팅으로 알려 줘요. /접속시간 창을 열면 서버 기록(초 단위)과 받은 보상을 읽어 맞춰요. 보상은 그 창에서 직접 받아야 하고, 자정에 초기화돼요.");
     }
 
     private void buildLog() {
         List<AlertLog.Entry> entries = AlertLog.entries();
-        list.header("최근 알림 " + entries.size() + "개 · 소리·팝업을 꺼 둬도 여기 남아요");
+        list.guide("놓친 알림을 여기서 다시 볼 수 있어요. 소리·팝업을 꺼 둬도 기록은 남아요.");
+        list.header("최근 알림 " + entries.size() + "개 · 최대 100개");
         if (entries.isEmpty()) list.note("아직 알림이 없어요.");
         for (AlertLog.Entry e : entries) list.log(e);
         if (!entries.isEmpty()) {
@@ -522,6 +556,12 @@ public class DdingMateScreen extends Screen {
 
     private int half() {
         return (rowWidth() - GAP) / 2;
+    }
+
+    /** 마우스를 올리면 뜨는 설명을 붙여서 돌려준다 */
+    private static <W extends ClickableWidget> W tip(W widget, String text) {
+        widget.setTooltip(Tooltip.of(Text.literal(text)));
+        return widget;
     }
 
     private Widgets.Toggle toggle(String name, boolean value, Consumer<Boolean> set) {
@@ -584,22 +624,6 @@ public class DdingMateScreen extends Screen {
                 }
             }
             s.leads = leads;
-        });
-        return f;
-    }
-
-    private Widgets.Field craftsField(DdingMateConfig.Pin pin) {
-        Widgets.Field f = new Widgets.Field(FIELD_W, Text.literal("만들 개수"));
-        f.setMaxLength(4);
-        f.setText(String.valueOf(pin.crafts));
-        f.setTooltip(Tooltip.of(Text.literal("몇 번 만들지 (1~9999). 필요한 재료 수가 이만큼 곱해져요.")));
-        f.setChangedListener(text -> {
-            try {
-                int v = Integer.parseInt(text.trim());
-                if (v >= 1 && v <= 9999) pin.crafts = v;
-            } catch (NumberFormatException ignored) {
-                // 입력 중인 값은 무시하고 마지막으로 올바른 값을 유지한다
-            }
         });
         return f;
     }
@@ -780,7 +804,7 @@ public class DdingMateScreen extends Screen {
                 shown++;
             }
             x += 4;
-            String name = Theme.ellipsize(textRenderer, r.displayName(), getX() + width - 6 - x, true);
+            String name = Theme.ellipsize(textRenderer, MaterialCounter.title(pin, r), getX() + width - 6 - x, true);
             Theme.boldText(ctx, textRenderer, name, x, getY() + 6, Theme.TEXT, false);
         }
 
@@ -842,6 +866,11 @@ public class DdingMateScreen extends Screen {
             addEntry(new Row(List.of(), text, RowKind.NOTE));
         }
 
+        /** 탭 맨 위 안내 상자: 이 탭에서 무엇을 하는지 한두 줄로 */
+        void guide(String text) {
+            addEntry(new Row(List.of(), text, RowKind.GUIDE));
+        }
+
         void single(ClickableWidget w) {
             w.setWidth(rowWidth());
             addEntry(new Row(List.of(w), null, RowKind.WIDGETS));
@@ -864,6 +893,11 @@ public class DdingMateScreen extends Screen {
         }
 
         /** 왼쪽에 이름 글자, 오른쪽에 입력 칸 */
+        /** 왼쪽에 이름 글자, 오른쪽에 정해 둔 너비의 위젯 여러 개 */
+        void labeledRow(String label, List<ClickableWidget> widgets) {
+            addEntry(new Row(List.copyOf(widgets), label, RowKind.LABELED));
+        }
+
         void labeled(String label, Widgets.Field field) {
             addEntry(new Row(List.of(field), label, RowKind.LABELED));
         }
@@ -884,7 +918,7 @@ public class DdingMateScreen extends Screen {
         }
     }
 
-    private enum RowKind { HEADER, NOTE, WIDGETS, UNIT, LABELED, LOG }
+    private enum RowKind { HEADER, NOTE, GUIDE, WIDGETS, UNIT, LABELED, LOG }
 
     private static final DateTimeFormatter LOG_TIME = DateTimeFormatter.ofPattern("M/d HH:mm");
 
@@ -912,10 +946,28 @@ public class DdingMateScreen extends Screen {
             switch (kind) {
                 case HEADER -> {
                     ctx.fill(x, y + 8, x + 3, y + 17, Theme.BLUE);
-                    String s = Theme.ellipsize(textRenderer, text, entryWidth - 10, true);
+                    int split = text.indexOf(" · ");
+                    String head = split < 0 ? text : text.substring(0, split);
+                    String desc = split < 0 ? "" : text.substring(split + 3);
+                    String s = Theme.ellipsize(textRenderer, head, entryWidth - 10, true);
                     Theme.boldText(ctx, textRenderer, s, x + 7, y + 9, Theme.INK, false);
+                    if (!desc.isEmpty()) {
+                        int dx = x + 7 + Theme.boldWidth(textRenderer, s) + 6;
+                        Theme.text(ctx, textRenderer, Theme.ellipsize(textRenderer, desc, x + entryWidth - dx), dx, y + 9, Theme.TEXT_SOFT);
+                    }
                     ctx.fill(x, y + 20, x + entryWidth, y + 21, Theme.ROW_SHADE);
                     ctx.fill(x, y + 21, x + entryWidth, y + 22, Theme.WINDOW_LIGHT);
+                    return;
+                }
+                case GUIDE -> {
+                    // 하늘색 안내 상자 + 왼쪽 i 표시
+                    Theme.outlineSmall(ctx, x, y + 1, entryWidth, 22, 0xFF8FB1E6);
+                    ctx.fill(x + 1, y + 2, x + entryWidth - 1, y + 22, 0xFFE3ECFB);
+                    ctx.fill(x + 1, y + 2, x + 4, y + 22, Theme.BLUE);
+                    Theme.tile(ctx, x + 8, y + 6, 12, 12, Theme.Tile.BLUE, false);
+                    Theme.boldText(ctx, textRenderer, "i", x + 13, y + 8, Theme.WHITE, false);
+                    ctx.drawWrappedText(textRenderer, Theme.body(text), x + 25, y + 4 + (Theme.width(textRenderer, text) > entryWidth - 30 ? 0 : 4),
+                            entryWidth - 30, Theme.INK, false);
                     return;
                 }
                 case NOTE -> {
@@ -947,7 +999,7 @@ public class DdingMateScreen extends Screen {
             }
             for (ClickableWidget w : widgets) {
                 if (w instanceof Widgets.Field f) {
-                    int fw = kind == RowKind.LABELED ? entryWidth - LABEL_W : f.outer();
+                    int fw = kind == RowKind.LABELED && widgets.size() == 1 ? entryWidth - LABEL_W : f.outer();
                     f.place(cxp, y, fw);
                     f.render(ctx, mouseX, mouseY, tickDelta);
                     cxp += fw + GAP;

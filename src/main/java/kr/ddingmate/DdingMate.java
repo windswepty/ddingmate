@@ -53,6 +53,7 @@ public final class DdingMate implements ClientModInitializer {
     private static KeyBinding toggleHudKey;
     private static KeyBinding openSettingsKey;
     private static int tickCounter;
+    private static boolean joinTipShown;
 
     @Override
     public void onInitializeClient() {
@@ -78,6 +79,13 @@ public final class DdingMate implements ClientModInitializer {
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
+        // 처음 쓰는 사람을 위해 게임을 켠 뒤 첫 접속 때 한 번 사용법을 알려 준다(설정에서 끌 수 있음)
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> client.execute(() -> {
+            if (config.joinTip && !joinTipShown) {
+                joinTipShown = true;
+                Notifier.chat("채팅에 /띵메이트 를 입력하면 일정·재료·장비·할 일을 한 창에서 보고 바꿀 수 있어요.");
+            }
+        }));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             BagTracker.save();
             PlaytimeTracker.save();

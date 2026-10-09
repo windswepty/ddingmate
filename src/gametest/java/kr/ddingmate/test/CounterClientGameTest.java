@@ -149,7 +149,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> c.setScreen(new RecipePickerScreen(c.currentScreen, 2)));
             ctx.waitTicks(5);
             ctx.runOnClient(c -> c.currentScreen.children().stream()
-                    .filter(e -> e instanceof TextFieldWidget)
+                    .filter(e -> e instanceof TextFieldWidget f && f.getWidth() > 100) // 검색 칸만
                     .forEach(e -> ((TextFieldWidget) e).setText("라이프")));
             ctx.waitTicks(5);
             ctx.takeScreenshot("counter-5-recipe-picker");

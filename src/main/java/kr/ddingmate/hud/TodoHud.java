@@ -63,19 +63,19 @@ public final class TodoHud {
         if (all.hudStyle == DdingMateConfig.HudStyle.CLASSIC) ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);
         else ScheduleHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
         ScheduleHud.header(ctx, tr, x, y, boxW, title, BOOK, dark, alpha);
-        int text = dark ? 0xFFE8ECF2 : Theme.TEXT;
+        int text = Theme.text(dark);
         int cy = y + ScheduleHud.HEAD_H + 3;
         if (left.isEmpty()) {
-            Theme.text(ctx, tr, "오늘 할 일 끝!", x + 6, cy, dark ? 0xFF8BE08A : Theme.GREEN_DARK);
+            Theme.textShadow(ctx, tr, "오늘 할 일 끝!", x + 6, cy, Theme.green(dark), dark);
         } else {
             for (DdingMateConfig.TodoItem t : shown) {
                 // 빈 체크 상자
                 ctx.fill(x + 6, cy + 1, x + 13, cy + 8, Theme.withAlpha(dark ? 0xFF9FB8D8 : Theme.SLATE, Math.max(alpha, 200)));
                 ctx.fill(x + 7, cy + 2, x + 12, cy + 7, Theme.withAlpha(dark ? 0xFF14171C : Theme.WINDOW_LIGHT, Math.max(alpha, 200)));
-                Theme.text(ctx, tr, t.name, x + 17, cy, text);
+                Theme.textShadow(ctx, tr, t.name, x + 17, cy, text, dark);
                 cy += ROW_H;
             }
-            if (left.size() > MAX_ROWS) Theme.text(ctx, tr, "외 " + (left.size() - MAX_ROWS) + "개", x + 17, cy, text);
+            if (left.size() > MAX_ROWS) Theme.textShadow(ctx, tr, "외 " + (left.size() - MAX_ROWS) + "개", x + 17, cy, text, dark);
         }
     }
 }
