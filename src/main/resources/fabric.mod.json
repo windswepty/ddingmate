@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "ddingmate",
+  "version": "${version}",
+  "name": "띵메이트",
+  "description": "띵타이쿤 온라인(비공식) 클라이언트 전용 모드. 위키에 공개된 서버 일정(초기화·점검·낚시 대회·채널 재시작 등)을 HUD로 보여 주고 미리 알려 주며, 핀으로 고른 레시피의 재료를 인벤토리와 열어 본 모험 가방에서 자동으로 셉니다. 서버로 아무것도 보내지 않고 게임 조작을 대신하지 않습니다.",
+  "authors": ["windswept"],
+  "contact": {
+    "homepage": "https://github.com/windswepty/ddingmate",
+    "sources": "https://github.com/windswepty/ddingmate",
+    "issues": "https://github.com/windswepty/ddingmate/issues"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["kr.ddingmate.DdingMate"],
+    "modmenu": ["kr.ddingmate.compat.ModMenuIntegration"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

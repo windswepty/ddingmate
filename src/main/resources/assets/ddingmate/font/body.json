@@ -1,0 +1,6 @@
+{
+  "providers": [
+    {"type": "ttf", "file": "ddingmate:galmuri9.ttf", "size": 7.4, "oversample": 8.0},
+    {"type": "reference", "id": "minecraft:default"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "ddingmate-test",
+  "version": "1.0.0",
+  "name": "띵메이트 테스트",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["kr.ddingmate.test.AlarmClientGameTest", "kr.ddingmate.test.CounterClientGameTest"]
+  }
+}

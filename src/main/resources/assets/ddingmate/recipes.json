@@ -1,0 +1,5549 @@
+{
+ "source": "https://wiki.ddingtycoon.kr/ko 제작 시설·가공 시설 문서 (2026-10-08 기준)",
+ "vanilla": {
+  "가문비나무 잎": "minecraft:spruce_leaves",
+  "가죽": "minecraft:leather",
+  "감자": "minecraft:potatoes",
+  "거미줄": "minecraft:cobweb",
+  "구리 블록": "minecraft:copper_block",
+  "구리 주괴": "minecraft:copper_ingot",
+  "금 검": "minecraft:golden_sword",
+  "금 곡괭이": "minecraft:golden_pickaxe",
+  "금 괭이": "minecraft:golden_hoe",
+  "금 블록": "minecraft:gold_block",
+  "금 주괴": "minecraft:gold_ingot",
+  "깃털": "minecraft:feather",
+  "나침반": "minecraft:compass",
+  "낚싯대": "minecraft:fishing_rod",
+  "네더 석영": "minecraft:quartz",
+  "네더라이트 곡괭이": "minecraft:netherite_pickaxe",
+  "네더라이트 블록": "minecraft:netherite_block",
+  "네더라이트 주괴": "minecraft:netherite_ingot",
+  "네더랙": "minecraft:netherrack",
+  "다이아몬드": "minecraft:diamond",
+  "다이아몬드 블록": "minecraft:diamond_block",
+  "달콤한 열매": "minecraft:sweet_berries",
+  "당근": "minecraft:carrots",
+  "대나무": "minecraft:bamboo",
+  "대장장이 작업대": "minecraft:smithing_table",
+  "뒤틀린 자루": "minecraft:warped_stem",
+  "레드스톤 블록": "minecraft:redstone_block",
+  "마그마 블록": "minecraft:magma_block",
+  "마법 부여대": "minecraft:enchanting_table",
+  "막대기": "minecraft:stick",
+  "망원경": "minecraft:spyglass",
+  "모닥불": "minecraft:campfire",
+  "모래": "minecraft:sand",
+  "모루": "minecraft:anvil",
+  "밀": "minecraft:wheat",
+  "발광 열매": "minecraft:glow_berries",
+  "발광 이끼": "minecraft:glow_lichen",
+  "발사기": "minecraft:dispenser",
+  "버섯불": "minecraft:shroomlight",
+  "벚나무 잎": "minecraft:cherry_leaves",
+  "부싯돌": "minecraft:flint",
+  "부싯돌과 부시": "minecraft:flint_and_steel",
+  "분홍 꽃잎": "minecraft:pink_petals",
+  "불우렁쉥이": "minecraft:sea_pickle",
+  "브리즈 막대기": "minecraft:breeze_rod",
+  "블레이즈 막대기": "minecraft:blaze_rod",
+  "비트": "minecraft:beetroots",
+  "뼈다귀": "minecraft:bone",
+  "뾰족한 점적석": "minecraft:pointed_dripstone",
+  "사과": "minecraft:apple",
+  "사탕수수": "minecraft:sugar_cane",
+  "석재 절단기": "minecraft:stonecutter",
+  "석탄 블록": "minecraft:coal_block",
+  "소리 블록": "minecraft:note_block",
+  "수박": "minecraft:melon",
+  "숫돌": "minecraft:grindstone",
+  "숯": "minecraft:charcoal",
+  "스테이크": "minecraft:cooked_beef",
+  "시계": "minecraft:clock",
+  "신호기": "minecraft:beacon",
+  "심층암 조약돌": "minecraft:cobbled_deepslate",
+  "썩은 살점": "minecraft:rotten_flesh",
+  "앵무조개 껍데기": "minecraft:nautilus_shell",
+  "양동이": "minecraft:bucket",
+  "에메랄드": "minecraft:emerald",
+  "에메랄드 블록": "minecraft:emerald_block",
+  "엔더 진주": "minecraft:ender_pearl",
+  "엔더의 눈": "minecraft:ender_eye",
+  "열대어": "minecraft:tropical_fish",
+  "영혼 랜턴": "minecraft:soul_lantern",
+  "영혼 흙": "minecraft:soul_soil",
+  "용암 양동이": "minecraft:lava_bucket",
+  "우는 흑요석": "minecraft:crying_obsidian",
+  "위더 장미": "minecraft:wither_rose",
+  "유리병": "minecraft:glass_bottle",
+  "유리판": "minecraft:glass_pane",
+  "응회암": "minecraft:tuff",
+  "익힌 닭고기": "minecraft:cooked_chicken",
+  "익힌 대구": "minecraft:cooked_cod",
+  "익힌 돼지고기": "minecraft:cooked_porkchop",
+  "익힌 양고기": "minecraft:cooked_mutton",
+  "익힌 연어": "minecraft:cooked_salmon",
+  "자갈": "minecraft:gravel",
+  "자수정 블록": "minecraft:amethyst_block",
+  "자수정 조각": "minecraft:amethyst_shard",
+  "자작나무 잎": "minecraft:birch_leaves",
+  "장식된 도자기": "minecraft:decorated_pot",
+  "점토": "minecraft:clay",
+  "제작대": "minecraft:crafting_table",
+  "조약돌": "minecraft:cobblestone",
+  "죽은 거품 산호 블록": "minecraft:dead_bubble_coral_block",
+  "죽은 관 산호 블록": "minecraft:dead_tube_coral_block",
+  "죽은 뇌 산호 블록": "minecraft:dead_brain_coral_block",
+  "죽은 불 산호 블록": "minecraft:dead_fire_coral_block",
+  "죽은 사방산호 블록": "minecraft:dead_horn_coral_block",
+  "진홍빛 자루": "minecraft:crimson_stem",
+  "짙은 참나무 잎": "minecraft:dark_oak_leaves",
+  "참나무 보트": "minecraft:oak_boat",
+  "참나무 잎": "minecraft:oak_leaves",
+  "참나무 판자": "minecraft:oak_planks",
+  "철 곡괭이": "minecraft:iron_pickaxe",
+  "철 블록": "minecraft:iron_block",
+  "철 주괴": "minecraft:iron_ingot",
+  "철사 덫 갈고리": "minecraft:tripwire_hook",
+  "청금석 블록": "minecraft:lapis_block",
+  "케이크": "minecraft:cake",
+  "코코아 콩": "minecraft:cocoa_beans",
+  "통": "minecraft:barrel",
+  "해초": "minecraft:seagrass",
+  "현무암": "minecraft:basalt",
+  "호박": "minecraft:pumpkin",
+  "화강암": "minecraft:granite",
+  "횃불": "minecraft:torch",
+  "훈연기": "minecraft:smoker",
+  "흑암": "minecraft:blackstone",
+  "흑요석": "minecraft:obsidian",
+  "흙": "minecraft:dirt"
+ },
+ "recipes": [
+  {
+   "id": "농작물 가공 시설/당근 묶음",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "당근 묶음",
+   "output": 1,
+   "materials": [
+    {
+     "name": "당근",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/감자 묶음",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "감자 묶음",
+   "output": 1,
+   "materials": [
+    {
+     "name": "감자",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/비트 묶음 x2",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "비트 묶음",
+   "output": 2,
+   "materials": [
+    {
+     "name": "비트",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/호박 묶음 x2",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "호박 묶음",
+   "output": 2,
+   "materials": [
+    {
+     "name": "호박",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/수박 묶음 x2",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "수박 묶음",
+   "output": 2,
+   "materials": [
+    {
+     "name": "수박",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/달콤한 열매 묶음",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "달콤한 열매 묶음",
+   "output": 1,
+   "materials": [
+    {
+     "name": "달콤한 열매",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/설탕 큐브",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "설탕 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "사탕수수",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/당근 묶음 x7",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "당근 묶음",
+   "output": 7,
+   "materials": [
+    {
+     "name": "당근",
+     "count": 448
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/감자 묶음 x7",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "감자 묶음",
+   "output": 7,
+   "materials": [
+    {
+     "name": "감자",
+     "count": 448
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/비트 묶음 x14",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "비트 묶음",
+   "output": 14,
+   "materials": [
+    {
+     "name": "비트",
+     "count": 448
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/호박 묶음 x14",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "호박 묶음",
+   "output": 14,
+   "materials": [
+    {
+     "name": "호박",
+     "count": 448
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/수박 묶음 x14",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "수박 묶음",
+   "output": 14,
+   "materials": [
+    {
+     "name": "수박",
+     "count": 448
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/달콤한 열매 묶음 x10",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "달콤한 열매 묶음",
+   "output": 10,
+   "materials": [
+    {
+     "name": "달콤한 열매",
+     "count": 448
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/설탕 큐브 x10",
+   "facility": "농작물 가공 시설",
+   "category": "묶음",
+   "name": "설탕 큐브",
+   "output": 10,
+   "materials": [
+    {
+     "name": "사탕수수",
+     "count": 448
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/토마토 베이스",
+   "facility": "농작물 가공 시설",
+   "category": "베이스",
+   "name": "토마토 베이스",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/양파 베이스",
+   "facility": "농작물 가공 시설",
+   "category": "베이스",
+   "name": "양파 베이스",
+   "output": 1,
+   "materials": [
+    {
+     "name": "양파",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/마늘 베이스",
+   "facility": "농작물 가공 시설",
+   "category": "베이스",
+   "name": "마늘 베이스",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마늘",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/치즈 조각",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "치즈 조각",
+   "output": 1,
+   "materials": [
+    {
+     "name": "요리용 우유",
+     "count": 8
+    },
+    {
+     "name": "소금",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/밀가루 반죽",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "밀가루 반죽",
+   "output": 1,
+   "materials": [
+    {
+     "name": "밀",
+     "count": 12
+    },
+    {
+     "name": "요리용 달걀",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/버터 조각",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "버터 조각",
+   "output": 1,
+   "materials": [
+    {
+     "name": "요리용 우유",
+     "count": 8
+    },
+    {
+     "name": "오일",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/요리용 소금",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "요리용 소금",
+   "output": 1,
+   "materials": [
+    {
+     "name": "소금",
+     "count": 16
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/치즈 조각 x24",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "치즈 조각",
+   "output": 24,
+   "materials": [
+    {
+     "name": "요리용 우유",
+     "count": 192
+    },
+    {
+     "name": "소금",
+     "count": 192
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/밀가루 반죽 x24",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "밀가루 반죽",
+   "output": 24,
+   "materials": [
+    {
+     "name": "밀",
+     "count": 288
+    },
+    {
+     "name": "요리용 달걀",
+     "count": 96
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/버터 조각 x24",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "버터 조각",
+   "output": 24,
+   "materials": [
+    {
+     "name": "요리용 우유",
+     "count": 192
+    },
+    {
+     "name": "오일",
+     "count": 144
+    }
+   ]
+  },
+  {
+   "id": "농작물 가공 시설/요리용 소금 x24",
+   "facility": "농작물 가공 시설",
+   "category": "가공 식재료",
+   "name": "요리용 소금",
+   "output": 24,
+   "materials": [
+    {
+     "name": "소금",
+     "count": 384
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/강화 횃불",
+   "facility": "채광물 가공 시설",
+   "category": "연료",
+   "name": "강화 횃불",
+   "output": 1,
+   "materials": [
+    {
+     "name": "횃불",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/기름통 x5",
+   "facility": "채광물 가공 시설",
+   "category": "연료",
+   "name": "기름통",
+   "output": 5,
+   "materials": [
+    {
+     "name": "석유",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/코룸 주괴",
+   "facility": "채광물 가공 시설",
+   "category": "주괴",
+   "name": "코룸 주괴",
+   "output": 1,
+   "materials": [
+    {
+     "name": "코룸",
+     "count": 16
+    },
+    {
+     "name": "강화 횃불",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/리프톤 주괴",
+   "facility": "채광물 가공 시설",
+   "category": "주괴",
+   "name": "리프톤 주괴",
+   "output": 1,
+   "materials": [
+    {
+     "name": "리프톤",
+     "count": 16
+    },
+    {
+     "name": "강화 횃불",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/세렌트 주괴",
+   "facility": "채광물 가공 시설",
+   "category": "주괴",
+   "name": "세렌트 주괴",
+   "output": 1,
+   "materials": [
+    {
+     "name": "세렌트",
+     "count": 16
+    },
+    {
+     "name": "강화 횃불",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Common) 키론 오르골",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Common) 키론 오르골",
+   "output": 1,
+   "materials": [
+    {
+     "name": "키론 (Common)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Normal) 키론 오르골",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Normal) 키론 오르골",
+   "output": 1,
+   "materials": [
+    {
+     "name": "키론 (Normal)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 2
+    },
+    {
+     "name": "구리 블록",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 키론 오르골",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Rare) 키론 오르골",
+   "output": 1,
+   "materials": [
+    {
+     "name": "키론 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 4
+    },
+    {
+     "name": "구리 블록",
+     "count": 6
+    },
+    {
+     "name": "다이아몬드",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 키론 오르골",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Mythic) 탁월한 키론 오르골",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 키론 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 32
+    },
+    {
+     "name": "구리 블록",
+     "count": 24
+    },
+    {
+     "name": "다이아몬드",
+     "count": 12
+    },
+    {
+     "name": "소리 블록",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Normal) 테라온 축음기",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Normal) 테라온 축음기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "테라온 (Normal)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 테라온 축음기",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Rare) 테라온 축음기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "테라온 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 2
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Epic) 테라온 축음기",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Epic) 테라온 축음기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "테라온 (Epic)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 4
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 6
+    },
+    {
+     "name": "금 주괴",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic)탁월한 테라온 축음기",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Mythic)탁월한 테라온 축음기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 테라온 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 32
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 24
+    },
+    {
+     "name": "금 주괴",
+     "count": 16
+    },
+    {
+     "name": "주크 박스",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 실바니움 만년필",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Rare) 실바니움 만년필",
+   "output": 1,
+   "materials": [
+    {
+     "name": "실바니움 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Epic) 실바니움 만년필",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Epic) 실바니움 만년필",
+   "output": 1,
+   "materials": [
+    {
+     "name": "실바니움 (Epic)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 2
+    },
+    {
+     "name": "석탄 블록",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Legendary) 실바니움 만년필",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Legendary) 실바니움 만년필",
+   "output": 1,
+   "materials": [
+    {
+     "name": "실바니움 (Legendary)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 4
+    },
+    {
+     "name": "석탄 블록",
+     "count": 2
+    },
+    {
+     "name": "에메랄드",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 실바니움 만년필",
+   "facility": "채광물 가공 시설",
+   "category": "코룸 귀중품",
+   "name": "(Mythic) 탁월한 실바니움 만년필",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 실바니움 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 32
+    },
+    {
+     "name": "석탄 블록",
+     "count": 8
+    },
+    {
+     "name": "에메랄드",
+     "count": 12
+    },
+    {
+     "name": "숯",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Common) 라온 만화경",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Common) 라온 만화경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "라온 (Common)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Normal) 라온 만화경",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Normal) 라온 만화경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "라온 (Normal)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 2
+    },
+    {
+     "name": "청금석 블록",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 라온 만화경",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Rare) 라온 만화경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "라온 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 4
+    },
+    {
+     "name": "청금석 블록",
+     "count": 6
+    },
+    {
+     "name": "에메랄드",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 라온 만화경",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Mythic) 탁월한 라온 만화경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 라온 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 32
+    },
+    {
+     "name": "청금석 블록",
+     "count": 24
+    },
+    {
+     "name": "에메랄드",
+     "count": 12
+    },
+    {
+     "name": "망원경",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Normal) 제피르 라이터",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Normal) 제피르 라이터",
+   "output": 1,
+   "materials": [
+    {
+     "name": "제피르 (Normal)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 제피르 라이터",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Rare) 제피르 라이터",
+   "output": 1,
+   "materials": [
+    {
+     "name": "제피르 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 2
+    },
+    {
+     "name": "석탄 블록",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Epic) 제피르 라이터",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Epic) 제피르 라이터",
+   "output": 1,
+   "materials": [
+    {
+     "name": "제피르 (Epic)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 4
+    },
+    {
+     "name": "석탄 블록",
+     "count": 2
+    },
+    {
+     "name": "다이아몬드",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 제피르 라이터",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Mythic) 탁월한 제피르 라이터",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 제피르 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 32
+    },
+    {
+     "name": "석탄 블록",
+     "count": 8
+    },
+    {
+     "name": "다이아몬드",
+     "count": 12
+    },
+    {
+     "name": "부싯돌과 부시",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 아스트랄 이어커프",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Rare) 아스트랄 이어커프",
+   "output": 1,
+   "materials": [
+    {
+     "name": "아스트랄 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Epic) 아스트랄 이어커프",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Epic) 아스트랄 이어커프",
+   "output": 1,
+   "materials": [
+    {
+     "name": "아스트랄 (Epic)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 2
+    },
+    {
+     "name": "철 블록",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Legendary) 아스트랄 이어커프",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Legendary) 아스트랄 이어커프",
+   "output": 1,
+   "materials": [
+    {
+     "name": "아스트랄 (Legendary)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 4
+    },
+    {
+     "name": "철 블록",
+     "count": 2
+    },
+    {
+     "name": "금 주괴",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 아스트랄 이어커프",
+   "facility": "채광물 가공 시설",
+   "category": "리프톤 귀중품",
+   "name": "(Mythic) 탁월한 아스트랄 이어커프",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 아스트랄 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 32
+    },
+    {
+     "name": "철 블록",
+     "count": 6
+    },
+    {
+     "name": "금 주괴",
+     "count": 16
+    },
+    {
+     "name": "에메랄드",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Common)넬트 천체관측기",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Common)넬트 천체관측기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "넬트 (Common)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Normal)넬트 천체관측기",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Normal)넬트 천체관측기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "넬트 (Normal)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 2
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 넬트 천체관측기",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Rare) 넬트 천체관측기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "넬트 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 4
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 6
+    },
+    {
+     "name": "금 주괴",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 넬트 천체관측기",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Mythic) 탁월한 넬트 천체관측기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 넬트 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "플래티늄 주괴",
+     "count": 32
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 24
+    },
+    {
+     "name": "금 주괴",
+     "count": 16
+    },
+    {
+     "name": "나침반",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Normal) 세피아 회중시계",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Normal) 세피아 회중시계",
+   "output": 1,
+   "materials": [
+    {
+     "name": "세피아 (Normal)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 세피아 회중시계",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Rare) 세피아 회중시계",
+   "output": 1,
+   "materials": [
+    {
+     "name": "세피아 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 2
+    },
+    {
+     "name": "철 블록",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Epic) 세피아 회중시계",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Epic) 세피아 회중시계",
+   "output": 1,
+   "materials": [
+    {
+     "name": "세피아 (Epic)",
+     "count": 1
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 4
+    },
+    {
+     "name": "철 블록",
+     "count": 2
+    },
+    {
+     "name": "에메랄드",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 세피아 회중시계",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Mythic) 탁월한 세피아 회중시계",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 세피아 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "토파즈 주괴",
+     "count": 32
+    },
+    {
+     "name": "철 블록",
+     "count": 6
+    },
+    {
+     "name": "에메랄드",
+     "count": 12
+    },
+    {
+     "name": "시계",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Rare) 피로시아 단안경",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Rare) 피로시아 단안경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "피로시아 (Rare)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Epic) 피로시아 단안경",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Epic) 피로시아 단안경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "피로시아 (Epic)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 2
+    },
+    {
+     "name": "청금석 블록",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Legendary) 피로시아 단안경",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Legendary) 피로시아 단안경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "피로시아 (Legendary)",
+     "count": 1
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 4
+    },
+    {
+     "name": "청금석 블록",
+     "count": 6
+    },
+    {
+     "name": "다이아몬드",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/(Mythic) 탁월한 피로시아 단안경",
+   "facility": "채광물 가공 시설",
+   "category": "세렌트 귀중품",
+   "name": "(Mythic) 탁월한 피로시아 단안경",
+   "output": 1,
+   "materials": [
+    {
+     "name": "탁월한 피로시아 (Mythic)",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "사파이어 주괴",
+     "count": 32
+    },
+    {
+     "name": "청금석 블록",
+     "count": 24
+    },
+    {
+     "name": "다이아몬드",
+     "count": 12
+    },
+    {
+     "name": "유리판",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/오르딘 큐브",
+   "facility": "채광물 가공 시설",
+   "category": "형광 큐브",
+   "name": "오르딘 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "오르딘",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/루미트 큐브",
+   "facility": "채광물 가공 시설",
+   "category": "형광 큐브",
+   "name": "루미트 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "루미트",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/크레온 큐브",
+   "facility": "채광물 가공 시설",
+   "category": "형광 큐브",
+   "name": "크레온 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "크레온",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/벨릭 큐브",
+   "facility": "채광물 가공 시설",
+   "category": "형광 큐브",
+   "name": "벨릭 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "벨릭",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "채광물 가공 시설/세르칸 큐브",
+   "facility": "채광물 가공 시설",
+   "category": "형광 큐브",
+   "name": "세르칸 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "세르칸",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/영혼 불꽃",
+   "facility": "영혼 가공 시설",
+   "category": "영혼 불꽃",
+   "name": "영혼 불꽃",
+   "output": 1,
+   "materials": [
+    {
+     "name": "좀비의 심장",
+     "count": 1
+    },
+    {
+     "name": "스켈레톤 심장",
+     "count": 1
+    },
+    {
+     "name": "거미의 심장",
+     "count": 1
+    },
+    {
+     "name": "크리퍼의 심장",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/사슴의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "사슴의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "사슴의 뿔",
+     "count": 15
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/미어캣의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "미어캣의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "미어캣의 꼬리",
+     "count": 45
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/기린의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "기린의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "기린의 가죽",
+     "count": 15
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/코끼리의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "코끼리의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "코끼리의 상아",
+     "count": 15
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/하마의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "하마의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "하마의 송곳니",
+     "count": 15
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/플라밍고의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "플라밍고의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "플라밍고의 부리",
+     "count": 15
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/칠면조의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "칠면조의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "칠면조의 깃털",
+     "count": 15
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/곰의 영혼",
+   "facility": "영혼 가공 시설",
+   "category": "영혼",
+   "name": "곰의 영혼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "곰의 발바닥",
+     "count": 15
+    },
+    {
+     "name": "영혼 불꽃",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/반짝 광택제",
+   "facility": "영혼 가공 시설",
+   "category": "영혼 가죽 가공재",
+   "name": "반짝 광택제",
+   "output": 1,
+   "materials": [
+    {
+     "name": "기린의 가죽",
+     "count": 8
+    },
+    {
+     "name": "코끼리의 상아",
+     "count": 8
+    },
+    {
+     "name": "하마의 송곳니",
+     "count": 8
+    },
+    {
+     "name": "플라밍고의 부리",
+     "count": 8
+    },
+    {
+     "name": "가죽",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "영혼 가공 시설/장인 인증 도장",
+   "facility": "영혼 가공 시설",
+   "category": "영혼 가죽 가공재",
+   "name": "장인 인증 도장",
+   "output": 1,
+   "materials": [
+    {
+     "name": "사슴의 뿔",
+     "count": 8
+    },
+    {
+     "name": "미어캣의 꼬리",
+     "count": 8
+    },
+    {
+     "name": "곰의 발바닥",
+     "count": 8
+    },
+    {
+     "name": "칠면조의 깃철",
+     "count": 8
+    },
+    {
+     "name": "부싯돌",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/홍옥의 팔찌 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "홍옥의 팔찌 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 홍옥의 팔찌",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/회복의 팔찌 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "회복의 팔찌 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 회복의 팔찌",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/도약의 원반 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "도약의 원반 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 도약의 원반",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/번개의 활 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "번개의 활 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 번개의 활",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/가벼운 바람깃 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "가벼운 바람깃 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 가벼운 바람깃",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/가벼운 도끼날 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "가벼운 도끼날 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 가벼운 도끼날",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/완충의 양산 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "완충의 양산 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 완충의 양산",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/심해의 결정 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "하급 뱃지",
+   "name": "심해의 결정 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 심해의 결정",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/맑은 생명의 조각 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "맑은 생명의 조각 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 맑은 생명의 조각",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/재생의 백합 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "재생의 백합 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 재생의 백합",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/경쾌한 새 친구 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "경쾌한 새 친구 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 경쾌한 새 친구",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/심해의 삼지창 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "심해의 삼지창 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 심해의 삼지창",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/속행의 묘약 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "속행의 묘약 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 속행의 묘약",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/영혼의 도끼 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "영혼의 도끼 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 영혼의 도끼",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/분홍 나비 날개 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "분홍 나비 날개 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 분홍 나비 날개",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/해류의 투구 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "중급 뱃지",
+   "name": "해류의 투구 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 해류의 투구",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/해풍의 나비 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "해풍의 나비 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 해풍의 나비",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/추락한 날개의 편린 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "추락한 날개의 편린 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 추락한 날개의 편린",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/설계자의 서신 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "설계자의 서신 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 설계자의 서신",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/건축용 톱날 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "건축용 톱날 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 건축용 톱날",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/은신자의 가면 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "은신자의 가면 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 은신자의 가면",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/밤의 반지 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "밤의 반지 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 밤의 반지",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/제사의 창 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "제사의 창 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 제사의 창",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/선조의 검 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "선조의 검 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 선조의 검",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/건축가의 가방 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "건축가의 가방 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 건축가의 가방",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/지혜의 고서 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "지혜의 고서 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 지혜의 고서",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/고대의 계단 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "고대의 계단 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 고대의 계단",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/천상의 성배 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "상급 뱃지",
+   "name": "천상의 성배 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 천상의 성배",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/활강의 영약 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "전문가 뱃지",
+   "name": "활강의 영약 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 활강의 영약",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 12
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/불가사의한 상자 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "전문가 뱃지",
+   "name": "불가사의한 상자 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 불가사의한 상자",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 12
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/거인의 여신상 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "장인 뱃지",
+   "name": "거인의 여신상 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 거인의 여신상",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 15
+    }
+   ]
+  },
+  {
+   "id": "뱃지 가공 시설/소중한 귀걸이 획득권",
+   "facility": "뱃지 가공 시설",
+   "category": "장인 뱃지",
+   "name": "소중한 귀걸이 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "봉인된 소중한 귀걸이",
+     "count": 1
+    },
+    {
+     "name": "분해된 뱃지",
+     "count": 15
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/세이지 괭이",
+   "facility": "도구 제작 시설",
+   "category": "세이지 도구",
+   "name": "세이지 괭이",
+   "output": 1,
+   "materials": [
+    {
+     "name": "금 괭이",
+     "count": 1
+    },
+    {
+     "name": "버섯불",
+     "count": 32
+    },
+    {
+     "name": "밀",
+     "count": 32
+    },
+    {
+     "name": "비트",
+     "count": 32
+    },
+    {
+     "name": "당근",
+     "count": 32
+    },
+    {
+     "name": "감자",
+     "count": 32
+    },
+    {
+     "name": "발광 열매",
+     "count": 32
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/세이지 곡괭이",
+   "facility": "도구 제작 시설",
+   "category": "세이지 도구",
+   "name": "세이지 곡괭이",
+   "output": 1,
+   "materials": [
+    {
+     "name": "금 곡괭이",
+     "count": 1
+    },
+    {
+     "name": "조약돌 뭉치",
+     "count": 4
+    },
+    {
+     "name": "심층암 조약돌 뭉치",
+     "count": 4
+    },
+    {
+     "name": "자수정 블록",
+     "count": 32
+    },
+    {
+     "name": "구리 주괴",
+     "count": 32
+    },
+    {
+     "name": "다이아몬드",
+     "count": 32
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/세이지 낚싯대",
+   "facility": "도구 제작 시설",
+   "category": "세이지 도구",
+   "name": "세이지 낚싯대",
+   "output": 1,
+   "materials": [
+    {
+     "name": "낚싯대",
+     "count": 1
+    },
+    {
+     "name": "익힌 새우",
+     "count": 32
+    },
+    {
+     "name": "익힌 도미",
+     "count": 32
+    },
+    {
+     "name": "익힌 청어",
+     "count": 32
+    },
+    {
+     "name": "금붕어",
+     "count": 32
+    },
+    {
+     "name": "농어",
+     "count": 32
+    },
+    {
+     "name": "열대어",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/세이지 대검",
+   "facility": "도구 제작 시설",
+   "category": "세이지 도구",
+   "name": "세이지 대검",
+   "output": 1,
+   "materials": [
+    {
+     "name": "금 검",
+     "count": 1
+    },
+    {
+     "name": "가죽",
+     "count": 32
+    },
+    {
+     "name": "깃털",
+     "count": 32
+    },
+    {
+     "name": "썩은 살점",
+     "count": 32
+    },
+    {
+     "name": "뼈다귀",
+     "count": 32
+    },
+    {
+     "name": "블레이즈 막대기",
+     "count": 16
+    },
+    {
+     "name": "엔더 진주",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/육식 동물 덫 x2",
+   "facility": "도구 제작 시설",
+   "category": "보조 도구",
+   "name": "육식 동물 덫",
+   "output": 2,
+   "materials": [
+    {
+     "name": "에메랄드",
+     "count": 10
+    },
+    {
+     "name": "철",
+     "count": 8
+    },
+    {
+     "name": "거미줄",
+     "count": 2
+    },
+    {
+     "name": "사과",
+     "count": 4
+    },
+    {
+     "name": "부싯돌",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/드릴",
+   "facility": "도구 제작 시설",
+   "category": "보조 도구",
+   "name": "드릴",
+   "output": 1,
+   "materials": [
+    {
+     "name": "철 곡괭이",
+     "count": 1
+    },
+    {
+     "name": "다이아몬드",
+     "count": 5
+    },
+    {
+     "name": "에메랄드",
+     "count": 2
+    },
+    {
+     "name": "응회암",
+     "count": 8
+    },
+    {
+     "name": "발광 이끼",
+     "count": 4
+    },
+    {
+     "name": "뾰족한 점적석",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/고급 드릴",
+   "facility": "도구 제작 시설",
+   "category": "보조 도구",
+   "name": "고급 드릴",
+   "output": 1,
+   "materials": [
+    {
+     "name": "드릴",
+     "count": 1
+    },
+    {
+     "name": "석영",
+     "count": 32
+    },
+    {
+     "name": "금 주괴",
+     "count": 10
+    },
+    {
+     "name": "흑암",
+     "count": 8
+    },
+    {
+     "name": "현무암",
+     "count": 8
+    },
+    {
+     "name": "용암 양동이",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/나무 어선 획득권",
+   "facility": "도구 제작 시설",
+   "category": "보조 도구",
+   "name": "나무 어선 획득권",
+   "output": 1,
+   "materials": [
+    {
+     "name": "참나무 보트",
+     "count": 1
+    },
+    {
+     "name": "어빌리티 스톤",
+     "count": 20
+    },
+    {
+     "name": "해초",
+     "count": 32
+    },
+    {
+     "name": "참나무 판자",
+     "count": 16
+    },
+    {
+     "name": "익힌 대구",
+     "count": 16
+    },
+    {
+     "name": "익힌 연어",
+     "count": 16
+    },
+    {
+     "name": "철사 덫 갈고리",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/어선 수리 키트 (조합 1)",
+   "facility": "도구 제작 시설",
+   "category": "보조 도구",
+   "name": "어선 수리 키트 (조합 1)",
+   "output": 1,
+   "materials": [
+    {
+     "name": "심해의 고철",
+     "count": 1
+    },
+    {
+     "name": "심연의 오로라 파편",
+     "count": 1
+    },
+    {
+     "name": "영롱한 티타늄 광석",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/어선 수리 키트 (조합 2)",
+   "facility": "도구 제작 시설",
+   "category": "보조 도구",
+   "name": "어선 수리 키트 (조합 2)",
+   "output": 1,
+   "materials": [
+    {
+     "name": "심연의 오로라 파편",
+     "count": 1
+    },
+    {
+     "name": "심해의 고철",
+     "count": 1
+    },
+    {
+     "name": "해구의 화석 연료",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/어선 수리 키트 (조합 3)",
+   "facility": "도구 제작 시설",
+   "category": "보조 도구",
+   "name": "어선 수리 키트 (조합 3)",
+   "output": 1,
+   "materials": [
+    {
+     "name": "영롱한 티타늄 광석",
+     "count": 1
+    },
+    {
+     "name": "해구의 화석 연료",
+     "count": 1
+    },
+    {
+     "name": "해저 열수구 코어",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/커피 그라인더 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "커피 그라인더 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "케이크",
+     "count": 1
+    },
+    {
+     "name": "코코아 콩",
+     "count": 30
+    },
+    {
+     "name": "숫돌",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/믹서기 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "믹서기 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "케이크",
+     "count": 1
+    },
+    {
+     "name": "코코아 콩",
+     "count": 30
+    },
+    {
+     "name": "석재 절단기",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/우유 스티머 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "우유 스티머 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "케이크",
+     "count": 1
+    },
+    {
+     "name": "코코아 콩",
+     "count": 30
+    },
+    {
+     "name": "훈연기",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/커피 머신 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "커피 머신 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "케이크",
+     "count": 1
+    },
+    {
+     "name": "코코아 콩",
+     "count": 30
+    },
+    {
+     "name": "제작대",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/하급 광채 생성기",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "하급 광채 생성기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "발사기",
+     "count": 1
+    },
+    {
+     "name": "어빌리티 스톤",
+     "count": 16
+    },
+    {
+     "name": "에메랄드 블록",
+     "count": 16
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 64
+    },
+    {
+     "name": "석탄 블록",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/중급 광채 생성기",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "중급 광채 생성기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "하급 광물 생성기",
+     "count": 1
+    },
+    {
+     "name": "어빌리티 스톤",
+     "count": 32
+    },
+    {
+     "name": "에메랄드 블록",
+     "count": 32
+    },
+    {
+     "name": "청금석 블록",
+     "count": 64
+    },
+    {
+     "name": "철 블록",
+     "count": 64
+    },
+    {
+     "name": "네더라이트 블록",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/상급 광채 생성기",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "상급 광채 생성기",
+   "output": 1,
+   "materials": [
+    {
+     "name": "중급 광물 생성기",
+     "count": 1
+    },
+    {
+     "name": "어빌리티 스톤",
+     "count": 64
+    },
+    {
+     "name": "에메랄드 블록",
+     "count": 64
+    },
+    {
+     "name": "금 블록",
+     "count": 64
+    },
+    {
+     "name": "다이아몬드 블록",
+     "count": 64
+    },
+    {
+     "name": "네더라이트 블록",
+     "count": 8
+    },
+    {
+     "name": "신호기",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/화석 제작대 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "화석 제작대 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "브리즈 막대기",
+     "count": 5
+    },
+    {
+     "name": "엔더의 눈",
+     "count": 16
+    },
+    {
+     "name": "대장장이 작업대",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/보석 세공대 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "보석 세공대 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 5
+    },
+    {
+     "name": "에메랄드",
+     "count": 16
+    },
+    {
+     "name": "마법 부여대",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/테라리움 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "테라리움 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "위더 장미",
+     "count": 1
+    },
+    {
+     "name": "발광 열매",
+     "count": 64
+    },
+    {
+     "name": "장식된 도자기",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/어항 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "어항 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "열대어",
+     "count": 10
+    },
+    {
+     "name": "앵무조개 껍데기",
+     "count": 1
+    },
+    {
+     "name": "통",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/﻿형광 광산 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "﻿형광 광산 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "영혼 랜턴",
+     "count": 4
+    },
+    {
+     "name": "우는 흑요석",
+     "count": 7
+    },
+    {
+     "name": "네더라이트 곡괭이",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/﻿형광 모루 모듈",
+   "facility": "도구 제작 시설",
+   "category": "모듈",
+   "name": "﻿형광 모루 모듈",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어빌리티 스톤",
+     "count": 30
+    },
+    {
+     "name": "모루",
+     "count": 3
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 10
+    },
+    {
+     "name": "경험치병",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/입문자의 체력 포션 x4",
+   "facility": "도구 제작 시설",
+   "category": "체력 포션",
+   "name": "입문자의 체력 포션",
+   "output": 4,
+   "materials": [
+    {
+     "name": "토마토 스파게티",
+     "count": 1
+    },
+    {
+     "name": "어니언 링",
+     "count": 1
+    },
+    {
+     "name": "갈릭 케이크",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/견습자의 체력 포션 x4",
+   "facility": "도구 제작 시설",
+   "category": "체력 포션",
+   "name": "견습자의 체력 포션",
+   "output": 4,
+   "materials": [
+    {
+     "name": "삼겹살 토마토 찌개",
+     "count": 2
+    },
+    {
+     "name": "달콤 시리얼",
+     "count": 1
+    },
+    {
+     "name": "로스트 치킨 파이",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/정예의 체력 포션 x3",
+   "facility": "도구 제작 시설",
+   "category": "체력 포션",
+   "name": "정예의 체력 포션",
+   "output": 3,
+   "materials": [
+    {
+     "name": "토마토 파인애플 피자",
+     "count": 3
+    },
+    {
+     "name": "양파 수프",
+     "count": 2
+    },
+    {
+     "name": "삼색 아이스크림",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/영웅의 체력 포션 x2",
+   "facility": "도구 제작 시설",
+   "category": "체력 포션",
+   "name": "영웅의 체력 포션",
+   "output": 2,
+   "materials": [
+    {
+     "name": "허브 삼겹살 찜",
+     "count": 4
+    },
+    {
+     "name": "딥 크림 빠네",
+     "count": 4
+    },
+    {
+     "name": "스윗 치킨 햄버거",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/머그컵 x3",
+   "facility": "도구 제작 시설",
+   "category": "커피 컵",
+   "name": "머그컵",
+   "output": 3,
+   "materials": [
+    {
+     "name": "네더 석영",
+     "count": 16
+    },
+    {
+     "name": "모닥불",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "도구 제작 시설/유리컵 x3",
+   "facility": "도구 제작 시설",
+   "category": "커피 컵",
+   "name": "유리컵",
+   "output": 3,
+   "materials": [
+    {
+     "name": "모래",
+     "count": 16
+    },
+    {
+     "name": "모닥불",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/토마토 스파게티",
+   "facility": "요리 제작 시설",
+   "category": "커먼 등급 요리",
+   "name": "토마토 스파게티",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 1
+    },
+    {
+     "name": "호박 묶음",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/어니언 링",
+   "facility": "요리 제작 시설",
+   "category": "커먼 등급 요리",
+   "name": "어니언 링",
+   "output": 1,
+   "materials": [
+    {
+     "name": "양파 베이스",
+     "count": 1
+    },
+    {
+     "name": "감자 묶음",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/갈릭 케이크",
+   "facility": "요리 제작 시설",
+   "category": "커먼 등급 요리",
+   "name": "갈릭 케이크",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마늘 베이스",
+     "count": 1
+    },
+    {
+     "name": "당근 묶음",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/삼겹살 토마토 찌개",
+   "facility": "요리 제작 시설",
+   "category": "노멀 등급 요리",
+   "name": "삼겹살 토마토 찌개",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 2
+    },
+    {
+     "name": "비트 묶음",
+     "count": 1
+    },
+    {
+     "name": "요리용 소금",
+     "count": 1
+    },
+    {
+     "name": "익힌 돼지고기",
+     "count": 1
+    },
+    {
+     "name": "익힌 돼지 삼겹살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/삼색 아이스크림",
+   "facility": "요리 제작 시설",
+   "category": "노멀 등급 요리",
+   "name": "삼색 아이스크림",
+   "output": 1,
+   "materials": [
+    {
+     "name": "양파 베이스",
+     "count": 2
+    },
+    {
+     "name": "수박 묶음",
+     "count": 1
+    },
+    {
+     "name": "코코넛",
+     "count": 1
+    },
+    {
+     "name": "설탕 큐브",
+     "count": 1
+    },
+    {
+     "name": "요리용 우유",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/마늘 양갈비 핫도그",
+   "facility": "요리 제작 시설",
+   "category": "노멀 등급 요리",
+   "name": "마늘 양갈비 핫도그",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마늘 베이스",
+     "count": 2
+    },
+    {
+     "name": "감자 묶음",
+     "count": 1
+    },
+    {
+     "name": "오일",
+     "count": 1
+    },
+    {
+     "name": "익힌 양고기",
+     "count": 1
+    },
+    {
+     "name": "익힌 양 갈비살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/달콤 시리얼",
+   "facility": "요리 제작 시설",
+   "category": "노멀 등급 요리",
+   "name": "달콤 시리얼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 2
+    },
+    {
+     "name": "달콤한 열매 묶음",
+     "count": 1
+    },
+    {
+     "name": "파인애플",
+     "count": 1
+    },
+    {
+     "name": "밀가루 반죽",
+     "count": 1
+    },
+    {
+     "name": "오일",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/로스트 치킨 파이",
+   "facility": "요리 제작 시설",
+   "category": "노멀 등급 요리",
+   "name": "로스트 치킨 파이",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마늘 베이스",
+     "count": 2
+    },
+    {
+     "name": "당근 묶음",
+     "count": 1
+    },
+    {
+     "name": "버터 조각",
+     "count": 1
+    },
+    {
+     "name": "익힌 닭고기",
+     "count": 1
+    },
+    {
+     "name": "익힌 닭 다리살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/스윗 치킨 햄버거",
+   "facility": "요리 제작 시설",
+   "category": "레어 등급 요리",
+   "name": "스윗 치킨 햄버거",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 1
+    },
+    {
+     "name": "양파 베이스",
+     "count": 1
+    },
+    {
+     "name": "비트 묶음",
+     "count": 1
+    },
+    {
+     "name": "달콤한 열매 묶음",
+     "count": 1
+    },
+    {
+     "name": "익힌 닭 가슴살",
+     "count": 1
+    },
+    {
+     "name": "익힌 닭 다리살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/토마토 파인애플 피자",
+   "facility": "요리 제작 시설",
+   "category": "레어 등급 요리",
+   "name": "토마토 파인애플 피자",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 2
+    },
+    {
+     "name": "마늘 베이스",
+     "count": 1
+    },
+    {
+     "name": "파인애플",
+     "count": 1
+    },
+    {
+     "name": "치즈 조각",
+     "count": 1
+    },
+    {
+     "name": "스테이크",
+     "count": 1
+    },
+    {
+     "name": "익힌 소 등심",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/양파 수프",
+   "facility": "요리 제작 시설",
+   "category": "레어 등급 요리",
+   "name": "양파 수프",
+   "output": 1,
+   "materials": [
+    {
+     "name": "양파 베이스",
+     "count": 2
+    },
+    {
+     "name": "마늘 베이스",
+     "count": 1
+    },
+    {
+     "name": "감자 묶음",
+     "count": 1
+    },
+    {
+     "name": "코코넛",
+     "count": 1
+    },
+    {
+     "name": "버터 조각",
+     "count": 1
+    },
+    {
+     "name": "익힌 돼지 앞다리살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/허브 삼겹살 찜",
+   "facility": "요리 제작 시설",
+   "category": "레어 등급 요리",
+   "name": "허브 삼겹살 찜",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마늘 베이스",
+     "count": 2
+    },
+    {
+     "name": "양파 베이스",
+     "count": 1
+    },
+    {
+     "name": "호박 묶음",
+     "count": 1
+    },
+    {
+     "name": "감자 묶음",
+     "count": 1
+    },
+    {
+     "name": "익힌 돼지고기",
+     "count": 1
+    },
+    {
+     "name": "익힌 돼지 삼겹살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/토마토 라자냐",
+   "facility": "요리 제작 시설",
+   "category": "에픽 등급 요리",
+   "name": "토마토 라자냐",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 1
+    },
+    {
+     "name": "양파 베이스",
+     "count": 1
+    },
+    {
+     "name": "마늘 베이스",
+     "count": 1
+    },
+    {
+     "name": "당근 묶음",
+     "count": 1
+    },
+    {
+     "name": "호박 묶음",
+     "count": 1
+    },
+    {
+     "name": "밀가루 반죽",
+     "count": 1
+    },
+    {
+     "name": "익힌 양 다리살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/딥 크림 빠네",
+   "facility": "요리 제작 시설",
+   "category": "에픽 등급 요리",
+   "name": "딥 크림 빠네",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 1
+    },
+    {
+     "name": "양파 베이스",
+     "count": 1
+    },
+    {
+     "name": "마늘 베이스",
+     "count": 1
+    },
+    {
+     "name": "수박 묶음",
+     "count": 1
+    },
+    {
+     "name": "감자 묶음",
+     "count": 1
+    },
+    {
+     "name": "치즈 조각",
+     "count": 1
+    },
+    {
+     "name": "요리용 우유",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "요리 제작 시설/트리플 소갈비 꼬치",
+   "facility": "요리 제작 시설",
+   "category": "에픽 등급 요리",
+   "name": "트리플 소갈비 꼬치",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 베이스",
+     "count": 1
+    },
+    {
+     "name": "양파 베이스",
+     "count": 1
+    },
+    {
+     "name": "마늘 베이스",
+     "count": 1
+    },
+    {
+     "name": "당근 묶음",
+     "count": 1
+    },
+    {
+     "name": "비트 묶음",
+     "count": 1
+    },
+    {
+     "name": "설탕 큐브",
+     "count": 1
+    },
+    {
+     "name": "익힌 소 갈비살",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 토마토 스파게티 x20",
+   "facility": "황금 요리 제작 시설",
+   "category": "레어 황금 요리",
+   "name": "황금 토마토 스파게티",
+   "output": 20,
+   "materials": [
+    {
+     "name": "토마토 스파게티",
+     "count": 20
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 어니언 링 x20",
+   "facility": "황금 요리 제작 시설",
+   "category": "레어 황금 요리",
+   "name": "황금 어니언 링",
+   "output": 20,
+   "materials": [
+    {
+     "name": "어니언 링",
+     "count": 20
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 갈릭 케이크 x20",
+   "facility": "황금 요리 제작 시설",
+   "category": "레어 황금 요리",
+   "name": "황금 갈릭 케이크",
+   "output": 20,
+   "materials": [
+    {
+     "name": "갈릭 케이크",
+     "count": 20
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 토마토 스파게티",
+   "facility": "황금 요리 제작 시설",
+   "category": "레어 황금 요리",
+   "name": "황금 토마토 스파게티",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 스파게티",
+     "count": 2
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 어니언 링",
+   "facility": "황금 요리 제작 시설",
+   "category": "레어 황금 요리",
+   "name": "황금 어니언 링",
+   "output": 1,
+   "materials": [
+    {
+     "name": "어니언 링",
+     "count": 2
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 갈릭 케이크",
+   "facility": "황금 요리 제작 시설",
+   "category": "레어 황금 요리",
+   "name": "황금 갈릭 케이크",
+   "output": 1,
+   "materials": [
+    {
+     "name": "갈릭 케이크",
+     "count": 2
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 삼겹살 토마토 찌개 x13",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 삼겹살 토마토 찌개",
+   "output": 13,
+   "materials": [
+    {
+     "name": "삼겹살 토마토 찌개",
+     "count": 13
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 삼색 아이스크림 x13",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 삼색 아이스크림",
+   "output": 13,
+   "materials": [
+    {
+     "name": "삼색 아이스크림",
+     "count": 13
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 마늘 양갈비 핫도그 x13",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 마늘 양갈비 핫도그",
+   "output": 13,
+   "materials": [
+    {
+     "name": "마늘 양갈비 핫도그",
+     "count": 13
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 달콤 시리얼 x13",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 달콤 시리얼",
+   "output": 13,
+   "materials": [
+    {
+     "name": "달콤 시리얼",
+     "count": 13
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 로스트 치킨 파이 x13",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 로스트 치킨 파이",
+   "output": 13,
+   "materials": [
+    {
+     "name": "로스트 치킨 파이",
+     "count": 13
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 삼겹살 토마토 찌개",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 삼겹살 토마토 찌개",
+   "output": 1,
+   "materials": [
+    {
+     "name": "삼겹살 토마토 찌개",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 삼색 아이스크림",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 삼색 아이스크림",
+   "output": 1,
+   "materials": [
+    {
+     "name": "삼색 아이스크림",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 마늘 양갈비 핫도그",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 마늘 양갈비 핫도그",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마늘 양갈비 핫도그",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 달콤 시리얼",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 달콤 시리얼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "달콤 시리얼",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 로스트 치킨 파이",
+   "facility": "황금 요리 제작 시설",
+   "category": "에픽 황금 요리",
+   "name": "황금 로스트 치킨 파이",
+   "output": 1,
+   "materials": [
+    {
+     "name": "로스트 치킨 파이",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 스윗 치킨 햄버거 x10",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 스윗 치킨 햄버거",
+   "output": 10,
+   "materials": [
+    {
+     "name": "스윗 치킨 햄버거",
+     "count": 10
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 토마토 파인애플 피자 x10",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 토마토 파인애플 피자",
+   "output": 10,
+   "materials": [
+    {
+     "name": "토마토 파인애플 피자",
+     "count": 10
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 양파 수프 x10",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 양파 수프",
+   "output": 10,
+   "materials": [
+    {
+     "name": "양파 수프",
+     "count": 10
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 허브 삼겹살 찜 x10",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 허브 삼겹살 찜",
+   "output": 10,
+   "materials": [
+    {
+     "name": "허브 삼겹살 찜",
+     "count": 10
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 스윗 치킨 햄버거",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 스윗 치킨 햄버거",
+   "output": 1,
+   "materials": [
+    {
+     "name": "스윗 치킨 햄버거",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 토마토 파인애플 피자",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 토마토 파인애플 피자",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 파인애플 피자",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 양파 수프",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 양파 수프",
+   "output": 1,
+   "materials": [
+    {
+     "name": "양파 수프",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 허브 삼겹살 찜",
+   "facility": "황금 요리 제작 시설",
+   "category": "전설 황금 요리",
+   "name": "황금 허브 삼겹살 찜",
+   "output": 1,
+   "materials": [
+    {
+     "name": "허브 삼겹살 찜",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 토마토 라자냐 x10",
+   "facility": "황금 요리 제작 시설",
+   "category": "신화 황금 요리",
+   "name": "황금 토마토 라자냐",
+   "output": 10,
+   "materials": [
+    {
+     "name": "토마토 라자냐",
+     "count": 10
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 딥 크림 빠네 x10",
+   "facility": "황금 요리 제작 시설",
+   "category": "신화 황금 요리",
+   "name": "황금 딥 크림 빠네",
+   "output": 10,
+   "materials": [
+    {
+     "name": "딥 크림 빠네",
+     "count": 10
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 트리플 소갈비 꼬치 x10",
+   "facility": "황금 요리 제작 시설",
+   "category": "신화 황금 요리",
+   "name": "황금 트리플 소갈비 꼬치",
+   "output": 10,
+   "materials": [
+    {
+     "name": "트리플 소갈비 꼬치",
+     "count": 10
+    },
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 토마토 라자냐",
+   "facility": "황금 요리 제작 시설",
+   "category": "신화 황금 요리",
+   "name": "황금 토마토 라자냐",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토마토 라자냐",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 딥 크림 빠네",
+   "facility": "황금 요리 제작 시설",
+   "category": "신화 황금 요리",
+   "name": "황금 딥 크림 빠네",
+   "output": 1,
+   "materials": [
+    {
+     "name": "딥 크림 빠네",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "황금 요리 제작 시설/황금 트리플 소갈비 꼬치",
+   "facility": "황금 요리 제작 시설",
+   "category": "신화 황금 요리",
+   "name": "황금 트리플 소갈비 꼬치",
+   "output": 1,
+   "materials": [
+    {
+     "name": "트리플 소갈비 꼬치",
+     "count": 1
+    },
+    {
+     "name": "식용 금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/조약돌 뭉치",
+   "facility": "강화 제작 시설",
+   "category": "뭉치",
+   "name": "조약돌 뭉치",
+   "output": 1,
+   "materials": [
+    {
+     "name": "조약돌",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/심층암 조약돌 뭉치",
+   "facility": "강화 제작 시설",
+   "category": "뭉치",
+   "name": "심층암 조약돌 뭉치",
+   "output": 1,
+   "materials": [
+    {
+     "name": "심층암 조약돌",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/어빌리티 스톤",
+   "facility": "강화 제작 시설",
+   "category": "강화석",
+   "name": "어빌리티 스톤",
+   "output": 1,
+   "materials": [
+    {
+     "name": "코룸 주괴",
+     "count": 1
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 1
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/하급 라이프스톤",
+   "facility": "강화 제작 시설",
+   "category": "강화석",
+   "name": "하급 라이프스톤",
+   "output": 1,
+   "materials": [
+    {
+     "name": "조약돌 뭉치",
+     "count": 2
+    },
+    {
+     "name": "구리 블록",
+     "count": 8
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 3
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/중급 라이프스톤",
+   "facility": "강화 제작 시설",
+   "category": "강화석",
+   "name": "중급 라이프스톤",
+   "output": 1,
+   "materials": [
+    {
+     "name": "심층암 조약돌 뭉치",
+     "count": 2
+    },
+    {
+     "name": "청금석 블록",
+     "count": 5
+    },
+    {
+     "name": "철 블록",
+     "count": 5
+    },
+    {
+     "name": "다이아몬드 블록",
+     "count": 3
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/상급 라이프스톤",
+   "facility": "강화 제작 시설",
+   "category": "강화석",
+   "name": "상급 라이프스톤",
+   "output": 1,
+   "materials": [
+    {
+     "name": "구리 블록",
+     "count": 30
+    },
+    {
+     "name": "자수정 블록",
+     "count": 20
+    },
+    {
+     "name": "철 블록",
+     "count": 7
+    },
+    {
+     "name": "금 블록",
+     "count": 7
+    },
+    {
+     "name": "다이아몬드 블록",
+     "count": 5
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/번영의 영혼 계약서",
+   "facility": "강화 제작 시설",
+   "category": "영혼 계약서",
+   "name": "번영의 영혼 계약서",
+   "output": 1,
+   "materials": [
+    {
+     "name": "사슴의 영혼",
+     "count": 1
+    },
+    {
+     "name": "미어캣의 영혼",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/파쇄의 영혼 계약서",
+   "facility": "강화 제작 시설",
+   "category": "영혼 계약서",
+   "name": "파쇄의 영혼 계약서",
+   "output": 1,
+   "materials": [
+    {
+     "name": "기린의 영혼",
+     "count": 1
+    },
+    {
+     "name": "코끼리의 영혼",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/만조의 영혼 계약서",
+   "facility": "강화 제작 시설",
+   "category": "영혼 계약서",
+   "name": "만조의 영혼 계약서",
+   "output": 1,
+   "materials": [
+    {
+     "name": "하마의 영혼",
+     "count": 1
+    },
+    {
+     "name": "플라밍고의 영혼",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/정복의 영혼 계약서",
+   "facility": "강화 제작 시설",
+   "category": "영혼 계약서",
+   "name": "정복의 영혼 계약서",
+   "output": 1,
+   "materials": [
+    {
+     "name": "칠면조의 영혼",
+     "count": 1
+    },
+    {
+     "name": "곰의 영혼",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "강화 제작 시설/수상한 각인석",
+   "facility": "강화 제작 시설",
+   "category": "수상한 각인석",
+   "name": "수상한 각인석",
+   "output": 1,
+   "materials": [
+    {
+     "name": "수상한 각인석 조각",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/루키 열쇠",
+   "facility": "해양 제작 시설",
+   "category": "열쇠",
+   "name": "루키 열쇠",
+   "output": 1,
+   "materials": [
+    {
+     "name": "루키 열쇠 조각",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/노멀 열쇠",
+   "facility": "해양 제작 시설",
+   "category": "열쇠",
+   "name": "노멀 열쇠",
+   "output": 1,
+   "materials": [
+    {
+     "name": "노멀 열쇠 조각",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/전설 열쇠",
+   "facility": "해양 제작 시설",
+   "category": "열쇠",
+   "name": "전설 열쇠",
+   "output": 1,
+   "materials": [
+    {
+     "name": "전설 열쇠 조각",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/신화 열쇠",
+   "facility": "해양 제작 시설",
+   "category": "열쇠",
+   "name": "신화 열쇠",
+   "output": 1,
+   "materials": [
+    {
+     "name": "신화 열쇠 조각",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/금속 재활용품 x3",
+   "facility": "해양 제작 시설",
+   "category": "재활용품",
+   "name": "금속 재활용품",
+   "output": 3,
+   "materials": [
+    {
+     "name": "캔",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/합금 재활용품 x3",
+   "facility": "해양 제작 시설",
+   "category": "재활용품",
+   "name": "합금 재활용품",
+   "output": 3,
+   "materials": [
+    {
+     "name": "통조림",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/합성수지 재활용품 x3",
+   "facility": "해양 제작 시설",
+   "category": "재활용품",
+   "name": "합성수지 재활용품",
+   "output": 3,
+   "materials": [
+    {
+     "name": "비닐봉지",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/플라스틱 재활용품 x3",
+   "facility": "해양 제작 시설",
+   "category": "재활용품",
+   "name": "플라스틱 재활용품",
+   "output": 3,
+   "materials": [
+    {
+     "name": "페트병",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/섬유 재활용품 x3",
+   "facility": "해양 제작 시설",
+   "category": "재활용품",
+   "name": "섬유 재활용품",
+   "output": 3,
+   "materials": [
+    {
+     "name": "신발",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/조개껍데기 브로치",
+   "facility": "해양 제작 시설",
+   "category": "공예품",
+   "name": "조개껍데기 브로치",
+   "output": 1,
+   "materials": [
+    {
+     "name": "깨진 조개껍데기",
+     "count": 1
+    },
+    {
+     "name": "노란빛 진주",
+     "count": 1
+    },
+    {
+     "name": "금속 재활용품",
+     "count": 1
+    },
+    {
+     "name": "거미줄",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/푸른 향수병",
+   "facility": "해양 제작 시설",
+   "category": "공예품",
+   "name": "푸른 향수병",
+   "output": 1,
+   "materials": [
+    {
+     "name": "깨진 조개껍데기",
+     "count": 2
+    },
+    {
+     "name": "푸른빛 진주",
+     "count": 1
+    },
+    {
+     "name": "합성수지 재활용품",
+     "count": 1
+    },
+    {
+     "name": "플라스틱 재활용품",
+     "count": 1
+    },
+    {
+     "name": "양동이",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/자개 손거울",
+   "facility": "해양 제작 시설",
+   "category": "공예품",
+   "name": "자개 손거울",
+   "output": 1,
+   "materials": [
+    {
+     "name": "깨진 조개껍데기",
+     "count": 3
+    },
+    {
+     "name": "청록빛 진주",
+     "count": 1
+    },
+    {
+     "name": "합금 재활용품",
+     "count": 2
+    },
+    {
+     "name": "플라스틱 재활용품",
+     "count": 2
+    },
+    {
+     "name": "유리판",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/분홍 헤어핀",
+   "facility": "해양 제작 시설",
+   "category": "공예품",
+   "name": "분홍 헤어핀",
+   "output": 1,
+   "materials": [
+    {
+     "name": "깨진 조개껍데기",
+     "count": 4
+    },
+    {
+     "name": "분홍빛 진주",
+     "count": 1
+    },
+    {
+     "name": "합성수지 재활용품",
+     "count": 3
+    },
+    {
+     "name": "섬유 재활용품",
+     "count": 3
+    },
+    {
+     "name": "대나무",
+     "count": 32
+    },
+    {
+     "name": "분홍 꽃잎",
+     "count": 16
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/자개 부채",
+   "facility": "해양 제작 시설",
+   "category": "공예품",
+   "name": "자개 부채",
+   "output": 1,
+   "materials": [
+    {
+     "name": "깨진 조개껍데기",
+     "count": 5
+    },
+    {
+     "name": "보라빛 진주",
+     "count": 1
+    },
+    {
+     "name": "합금 재활용품",
+     "count": 5
+    },
+    {
+     "name": "합성수지 재활용품",
+     "count": 5
+    },
+    {
+     "name": "막대기",
+     "count": 64
+    },
+    {
+     "name": "자수정 조각",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/흑진주 시계",
+   "facility": "해양 제작 시설",
+   "category": "공예품",
+   "name": "흑진주 시계",
+   "output": 1,
+   "materials": [
+    {
+     "name": "깨진 조개껍데기",
+     "count": 7
+    },
+    {
+     "name": "흑진주",
+     "count": 1
+    },
+    {
+     "name": "금속 재활용품",
+     "count": 7
+    },
+    {
+     "name": "합금 재활용품",
+     "count": 7
+    },
+    {
+     "name": "섬유 재활용품",
+     "count": 7
+    },
+    {
+     "name": "흑요석",
+     "count": 16
+    },
+    {
+     "name": "시계",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/스태미나 드링크 II",
+   "facility": "해양 제작 시설",
+   "category": "스태미나 드링크",
+   "name": "스태미나 드링크 II",
+   "output": 1,
+   "materials": [
+    {
+     "name": "스태미나 드링크 I",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/스태미나 드링크 III",
+   "facility": "해양 제작 시설",
+   "category": "스태미나 드링크",
+   "name": "스태미나 드링크 III",
+   "output": 1,
+   "materials": [
+    {
+     "name": "스태미나 드링크 II",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/스태미나 드링크 IV",
+   "facility": "해양 제작 시설",
+   "category": "스태미나 드링크",
+   "name": "스태미나 드링크 IV",
+   "output": 1,
+   "materials": [
+    {
+     "name": "스태미나 드링크 III",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/무거운 바다 상자",
+   "facility": "해양 제작 시설",
+   "category": "바다 상자",
+   "name": "무거운 바다 상자",
+   "output": 1,
+   "materials": [
+    {
+     "name": "녹슨 무거운 바다 상자",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "해양 제작 시설/가벼운 바다 상자",
+   "facility": "해양 제작 시설",
+   "category": "바다 상자",
+   "name": "가벼운 바다 상자",
+   "output": 1,
+   "materials": [
+    {
+     "name": "녹슨 가벼운 바다 상자",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/수호의 정수 ★ x2",
+   "facility": "연금 제작 시설",
+   "category": "정수",
+   "name": "수호의 정수 ★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "굴 ★",
+     "count": 2
+    },
+    {
+     "name": "점토",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/파동의 정수 ★ x2",
+   "facility": "연금 제작 시설",
+   "category": "정수",
+   "name": "파동의 정수 ★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "소라 ★",
+     "count": 2
+    },
+    {
+     "name": "모래",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/혼란의 정수 ★ x2",
+   "facility": "연금 제작 시설",
+   "category": "정수",
+   "name": "혼란의 정수 ★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "문어 ★",
+     "count": 2
+    },
+    {
+     "name": "흙",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/생명의 정수 ★ x2",
+   "facility": "연금 제작 시설",
+   "category": "정수",
+   "name": "생명의 정수 ★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "미역 ★",
+     "count": 2
+    },
+    {
+     "name": "자갈",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/부식의 정수 ★ x2",
+   "facility": "연금 제작 시설",
+   "category": "정수",
+   "name": "부식의 정수 ★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "성게 ★",
+     "count": 2
+    },
+    {
+     "name": "화강암",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/물결 수호의 핵 ★",
+   "facility": "연금 제작 시설",
+   "category": "핵",
+   "name": "물결 수호의 핵 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "수호의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "파동의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "깐 새우",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/파동 오염의 핵 ★",
+   "facility": "연금 제작 시설",
+   "category": "핵",
+   "name": "파동 오염의 핵 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "파동의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "혼란의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "도미 회",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/질서 파괴의 핵 ★",
+   "facility": "연금 제작 시설",
+   "category": "핵",
+   "name": "질서 파괴의 핵 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "혼란의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "생명의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "청어 회",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/활력 붕괴의 핵 ★",
+   "facility": "연금 제작 시설",
+   "category": "핵",
+   "name": "활력 붕괴의 핵 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "생명의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "부식의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "금붕어 회",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/침식 방어의 핵 ★",
+   "facility": "연금 제작 시설",
+   "category": "핵",
+   "name": "침식 방어의 핵 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "부식의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "수호의 정수 ★",
+     "count": 1
+    },
+    {
+     "name": "농어 회",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/수호 에센스 ★★ x2",
+   "facility": "연금 제작 시설",
+   "category": "에센스",
+   "name": "수호 에센스 ★★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "굴 ★★",
+     "count": 2
+    },
+    {
+     "name": "해초",
+     "count": 6
+    },
+    {
+     "name": "참나무 잎",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/파동 에센스 ★★ x2",
+   "facility": "연금 제작 시설",
+   "category": "에센스",
+   "name": "파동 에센스 ★★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "소라 ★★",
+     "count": 2
+    },
+    {
+     "name": "해초",
+     "count": 6
+    },
+    {
+     "name": "가문비나무 잎",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/혼란 에센스 ★★ x2",
+   "facility": "연금 제작 시설",
+   "category": "에센스",
+   "name": "혼란 에센스 ★★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "문어 ★★",
+     "count": 2
+    },
+    {
+     "name": "해초",
+     "count": 6
+    },
+    {
+     "name": "자작나무 잎",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/생명 에센스 ★★ x2",
+   "facility": "연금 제작 시설",
+   "category": "에센스",
+   "name": "생명 에센스 ★★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "미역 ★★",
+     "count": 2
+    },
+    {
+     "name": "해초",
+     "count": 6
+    },
+    {
+     "name": "벚나무 잎",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/부식 에센스 ★★ x2",
+   "facility": "연금 제작 시설",
+   "category": "에센스",
+   "name": "부식 에센스 ★★",
+   "output": 2,
+   "materials": [
+    {
+     "name": "성게 ★★",
+     "count": 2
+    },
+    {
+     "name": "해초",
+     "count": 6
+    },
+    {
+     "name": "짙은 참나무 잎",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/활기 보존의 결정 ★★",
+   "facility": "연금 제작 시설",
+   "category": "결정",
+   "name": "활기 보존의 결정 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "수호 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "생명 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 2
+    },
+    {
+     "name": "청금석 블록",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/파도 침식의 결정 ★★",
+   "facility": "연금 제작 시설",
+   "category": "결정",
+   "name": "파도 침식의 결정 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "파동 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "부식 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 2
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/방어 오염의 결정 ★★",
+   "facility": "연금 제작 시설",
+   "category": "결정",
+   "name": "방어 오염의 결정 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "혼란 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "수호 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 2
+    },
+    {
+     "name": "철 주괴",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/격류 재생의 결정 ★★",
+   "facility": "연금 제작 시설",
+   "category": "결정",
+   "name": "격류 재생의 결정 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "생명 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "파동 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 2
+    },
+    {
+     "name": "금 주괴",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/맹독 혼란의 결정 ★★",
+   "facility": "연금 제작 시설",
+   "category": "결정",
+   "name": "맹독 혼란의 결정 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "부식 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "혼란 에센스 ★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 2
+    },
+    {
+     "name": "다이아몬드",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/수호의 엘릭서 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "엘릭서",
+   "name": "수호의 엘릭서 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "굴 ★★★",
+     "count": 1
+    },
+    {
+     "name": "불우렁쉥이",
+     "count": 2
+    },
+    {
+     "name": "유리병",
+     "count": 3
+    },
+    {
+     "name": "네더랙",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/파동의 엘릭서 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "엘릭서",
+   "name": "파동의 엘릭서 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "소라 ★★★",
+     "count": 1
+    },
+    {
+     "name": "불우렁쉥이",
+     "count": 2
+    },
+    {
+     "name": "유리병",
+     "count": 3
+    },
+    {
+     "name": "마그마 블록",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/혼란의 엘릭서 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "엘릭서",
+   "name": "혼란의 엘릭서 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "문어 ★★★",
+     "count": 1
+    },
+    {
+     "name": "불우렁쉥이",
+     "count": 2
+    },
+    {
+     "name": "유리병",
+     "count": 3
+    },
+    {
+     "name": "영혼 흙",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/생명의 엘릭서 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "엘릭서",
+   "name": "생명의 엘릭서 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "미역 ★★★",
+     "count": 1
+    },
+    {
+     "name": "불우렁쉥이",
+     "count": 2
+    },
+    {
+     "name": "유리병",
+     "count": 3
+    },
+    {
+     "name": "진홍빛 자루",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/부식의 엘릭서 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "엘릭서",
+   "name": "부식의 엘릭서 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "성게 ★★★",
+     "count": 1
+    },
+    {
+     "name": "불우렁쉥이",
+     "count": 2
+    },
+    {
+     "name": "유리병",
+     "count": 3
+    },
+    {
+     "name": "뒤틀린 자루",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/불멸 재생의 영약 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "영약",
+   "name": "불멸 재생의 영약 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "수호의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "생명의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 3
+    },
+    {
+     "name": "발광 열매",
+     "count": 4
+    },
+    {
+     "name": "죽은 관 산호 블록",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/파동 장벽의 영약 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "영약",
+   "name": "파동 장벽의 영약 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "파동의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "수호의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 3
+    },
+    {
+     "name": "발광 열매",
+     "count": 4
+    },
+    {
+     "name": "죽은 사방산호 블록",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/타락 침식의 영약 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "영약",
+   "name": "타락 침식의 영약 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "혼란의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "부식의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 3
+    },
+    {
+     "name": "발광 열매",
+     "count": 4
+    },
+    {
+     "name": "죽은 거품 산호 블록",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/생명 광란의 영약 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "영약",
+   "name": "생명 광란의 영약 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "생명의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "혼란의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 3
+    },
+    {
+     "name": "발광 열매",
+     "count": 4
+    },
+    {
+     "name": "죽은 불 산호 블록",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "연금 제작 시설/맹독 파동의 영약 ★★★",
+   "facility": "연금 제작 시설",
+   "category": "영약",
+   "name": "맹독 파동의 영약 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "부식의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "파동의 엘릭서 ★★★",
+     "count": 1
+    },
+    {
+     "name": "켈프 더미",
+     "count": 3
+    },
+    {
+     "name": "발광 열매",
+     "count": 4
+    },
+    {
+     "name": "죽은 뇌 산호 블록",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/굴 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 어패류",
+   "name": "굴 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "굴 ★",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/소라 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 어패류",
+   "name": "소라 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "소라 ★",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/문어 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 어패류",
+   "name": "문어 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "문어 ★",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/미역 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 어패류",
+   "name": "미역 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "미역 ★",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/성게 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 어패류",
+   "name": "성게 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "성게 ★",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/영생의 아쿠티스 ★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "1성 연금품",
+   "name": "영생의 아쿠티스 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "물결 수호의 핵 ★",
+     "count": 1
+    },
+    {
+     "name": "질서 파괴의 핵 ★",
+     "count": 1
+    },
+    {
+     "name": "활력 붕괴의 핵 ★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/크라켄의 광란체 ★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "1성 연금품",
+   "name": "크라켄의 광란체 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "질서 파괴의 핵 ★",
+     "count": 1
+    },
+    {
+     "name": "활력 붕괴의 핵 ★",
+     "count": 1
+    },
+    {
+     "name": "파동 오염의 핵 ★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/리바이던의 깃털 ★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "1성 연금품",
+   "name": "리바이던의 깃털 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "침식 방어의 핵 ★",
+     "count": 1
+    },
+    {
+     "name": "파동 오염의 핵 ★",
+     "count": 1
+    },
+    {
+     "name": "물결 수호의 핵 ★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/해구 파동의 코어 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 연금품",
+   "name": "해구 파동의 코어 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "활기 보존의 결정 ★★",
+     "count": 1
+    },
+    {
+     "name": "파도 침식의 결정 ★★",
+     "count": 1
+    },
+    {
+     "name": "격류 재생의 결정 ★★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/침묵의 심해 비약 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 연금품",
+   "name": "침묵의 심해 비약 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "파도 침식의 결정 ★★",
+     "count": 1
+    },
+    {
+     "name": "격류 재생의 결정 ★★",
+     "count": 1
+    },
+    {
+     "name": "맹독 혼란의 결정 ★★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/청해룡의 날개 ★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "2성 연금품",
+   "name": "청해룡의 날개 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "방어 오염의 결정 ★★",
+     "count": 1
+    },
+    {
+     "name": "맹독 혼란의 결정 ★★",
+     "count": 1
+    },
+    {
+     "name": "활기 보존의 결정 ★★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/아쿠아 펄스 파편 ★★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "3성 연금품",
+   "name": "아쿠아 펄스 파편 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "불멸 재생의 영약 ★★★",
+     "count": 1
+    },
+    {
+     "name": "파동 장벽의 영약 ★★★",
+     "count": 1
+    },
+    {
+     "name": "맹독 파동의 영약 ★★★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/나우틸러스의 손 ★★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "3성 연금품",
+   "name": "나우틸러스의 손 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "파동 장벽의 영약 ★★★",
+     "count": 1
+    },
+    {
+     "name": "생명 광란의 영약 ★★★",
+     "count": 1
+    },
+    {
+     "name": "불멸 재생의 영약 ★★★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/무저의 척추 ★★★",
+   "facility": "정밀 연금 제작 시설",
+   "category": "3성 연금품",
+   "name": "무저의 척추 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "타락 침식의 영약 ★★★",
+     "count": 1
+    },
+    {
+     "name": "맹독 파동의 영약 ★★★",
+     "count": 1
+    },
+    {
+     "name": "생명 광란의 영약 ★★★",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "정밀 연금 제작 시설/추출된 희석액",
+   "facility": "정밀 연금 제작 시설",
+   "category": "0성 연금품",
+   "name": "추출된 희석액",
+   "output": 1,
+   "materials": [
+    {
+     "name": "침식 방어의 핵 ★",
+     "count": 3
+    },
+    {
+     "name": "방어 오염의 결정 ★★",
+     "count": 2
+    },
+    {
+     "name": "타락 침식의 영약 ★★★",
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

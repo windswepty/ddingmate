@@ -1,0 +1,62 @@
+plugins {
+	id 'fabric-loom' version "${loom_version}"
+	id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	maven { name = 'TerraformersMC'; url = 'https://maven.terraformersmc.com/releases/' }
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	// Mod Menu 설정 버튼 연동(컴파일용). 실제 실행에는 Mod Menu 가 있어도 되고 없어도 된다.
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	// 개발·테스트 실행 때만 Mod Menu 를 함께 띄운다(배포 jar 에는 포함되지 않음).
+	modLocalRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+}
+
+processResources {
+	inputs.property "version", project.version
+	filesMatching("fabric.mod.json") {
+		expand "version": inputs.properties.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	inputs.property "archivesName", project.base.archivesName
+	from("LICENSE") {
+		rename { "${it}_${inputs.properties.archivesName}" }
+	}
+}
+
+// 자동 클라이언트 테스트: ./gradlew runClientGameTest
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "ddingmate-test"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}
