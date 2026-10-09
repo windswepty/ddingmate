@@ -3,20 +3,24 @@
   "id": "ddingmate",
   "version": "${version}",
   "name": "띵메이트",
-  "description": "띵타이쿤 온라인 편의 모드(비공식). 서버 일정 알림, 재료 카운터, 장비 내구도, 오늘 할 일, 접속 시간 보상 알림.",
-  "authors": ["windswept"],
-  "contact": {
-    "homepage": "https://github.com/windswepty/ddingmate",
-    "sources": "https://github.com/windswepty/ddingmate",
-    "issues": "https://github.com/windswepty/ddingmate/issues"
-  },
+  "description": "띵타이쿤 온라인 편의 모드(비공식). 서버 일정 알림, 재료 카운터, 제작 완료 타이머, 장비 내구도, 오늘 할 일 자동 체크, 접속 시간 보상 알림.",
+  "authors": [
+    "windswept"
+  ],
   "license": "MIT",
+  "icon": "assets/ddingmate/icon.png",
   "environment": "client",
   "entrypoints": {
-    "client": ["kr.ddingmate.DdingMate"],
-    "modmenu": ["kr.ddingmate.compat.ModMenuIntegration"]
+    "client": [
+      "kr.ddingmate.DdingMate"
+    ],
+    "modmenu": [
+      "kr.ddingmate.compat.ModMenuIntegration"
+    ]
   },
-  "mixins": ["ddingmate.mixins.json"],
+  "mixins": [
+    "ddingmate.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "~1.21.4",
