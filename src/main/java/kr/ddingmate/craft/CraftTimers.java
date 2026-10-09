@@ -67,10 +67,22 @@ public final class CraftTimers {
         public boolean notified;
     }
 
-    /** 화면에 보일 묶음: 같은 아이템·개수를 여러 번 넣으면 한 줄로 "조약돌 뭉치 ×7 [4]" */
+    /**
+     * 화면에 보일 묶음: 같은 아이템을 여러 번 넣으면 한 줄로. 개수가 모두 같으면 "조약돌 뭉치 ×7 [5]",
+     * 개수가 다르면 합쳐서 "어빌리티 스톤 ×128". 시간은 마지막 것이 끝날 때까지(차례로 도니 합친 시간)
+     */
     public record Group(String name, int count, int times, long endsAt, boolean done, boolean estimated,
                         boolean unknown, List<Job> jobs) {
+        public boolean sameCount() {
+            return jobs.stream().allMatch(j -> j.count == count);
+        }
+
+        public int total() {
+            return jobs.stream().mapToInt(j -> j.count).sum();
+        }
+
         public String label() {
+            if (!sameCount()) return name + " ×" + total();
             return name + (count > 1 ? " ×" + count : "") + (times > 1 ? " [" + times + "]" : "");
         }
     }
@@ -213,10 +225,21 @@ public final class CraftTimers {
      * 배운 전문가 스킬만큼 줄인다(실제 로그: 20초 레시피가 채광 1레벨에서 18초에 끝남). 모르면 -1
      */
     public static long durationMs(String name) {
+        return durationMs(name, 1);
+    }
+
+    /**
+     * count 개를 한 번에 넣은 제작의 시간(ms). 시설에서 고른 개수만큼 시간이 늘어난다
+     * (실제: 어빌리티 스톤 2분 × 50개 × 채광 1레벨 0.9 = 1시간 30분 0초). 한 번에 여러 개 나오는 레시피는 횟수로 센다
+     */
+    public static long durationMs(String name, int count) {
         long base = secondsPerJob(name);
         if (base <= 0) return -1;
+        kr.ddingmate.counter.RecipeBook.Recipe r = kr.ddingmate.counter.RecipeBook.recipeFor(name);
+        int per = r == null ? 1 : Math.max(1, r.output);
+        long times = Math.max(1, (Math.max(1, count) + per - 1) / per);
         int pct = reductionPercent(kr.ddingmate.counter.RecipeBook.facilityOf(name));
-        return Math.round(base * 1000.0 * (100 - pct) / 100.0);
+        return Math.round(base * times * 1000.0 * (100 - pct) / 100.0);
     }
 
     /** 스킬 레벨을 바꾸면 아직 안 끝난 어림값 제작을 처음부터 다시 계산한다 */
@@ -232,7 +255,7 @@ public final class CraftTimers {
                 cursor = Math.max(cursor, j.endsAt);
                 continue;
             }
-            long dur = durationMs(j.name);
+            long dur = durationMs(j.name, j.count);
             if (unknown || dur <= 0) {
                 j.endsAt = 0;
                 unknown = true;
@@ -266,7 +289,7 @@ public final class CraftTimers {
                 continue;
             }
             if (j.startedAt == 0) continue; // 창에서만 본 제작은 늘 시각을 안다(여기 올 일 없음)
-            long dur = durationMs(j.name);
+            long dur = durationMs(j.name, j.count);
             if (dur <= 0) return;
             long begin = Math.max(j.startedAt, cursor);
             j.endsAt = begin + dur;
@@ -305,6 +328,10 @@ public final class CraftTimers {
         long now = System.currentTimeMillis();
         Set<Job> matched = Collections.newSetFromMap(new IdentityHashMap<>());
         boolean changed = false;
+        // 대기열 칸: 레시피 칸이 아닌데 시간이 보이는 칸. 실제 창은 "제작 시간 : 1시간 29분 33초" 처럼
+        // 그 제작의 남은 시간(스킬 적용 후, 맨 앞은 1초마다 줄어듦)을 보여 준다
+        record QueueSlot(String name, String key, int count, Reading r) {}
+        List<QueueSlot> queue = new ArrayList<>();
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory) continue;
             ItemStack s = slot.getStack();
@@ -317,8 +344,8 @@ public final class CraftTimers {
             String key = ItemKeys.normalize(name);
             if (key.isEmpty()) continue;
             logOnce(name, lore.lines());
-            if (r.recipe || r.totalSec > 0) {
-                // 레시피 칸: 제작 1번에 걸리는 시간만 배운다(제작 중인 것으로 등록하지 않는다)
+            if (r.recipe) {
+                // 레시피 칸: 1개 만드는 데 걸리는 시간(스킬 전)만 배운다(제작 중인 것으로 등록하지 않는다)
                 if (r.totalSec > 0 && !Objects.equals(store.secondsPerJob.get(key), r.totalSec)) {
                     store.secondsPerJob.put(key, r.totalSec);
                     fillUnknown(jobs);
@@ -326,26 +353,48 @@ public final class CraftTimers {
                 }
                 continue;
             }
-            // 대기열 칸: 같은 아이템 중 개수가 같은 것 → 먼저 넣은 것과 짝짓는다(한 제작은 한 칸과만)
+            int count = Math.max(1, s.getCount());
+            // 같은 제작이 두 칸(진행 칸·대기열 칸)에 보이면 하나로
+            boolean dup = queue.stream().anyMatch(q -> q.key().equals(key) && q.count() == count
+                    && q.r().done == r.done && Math.abs(q.r().remainingSec - r.remainingSec) <= 2);
+            if (!dup) queue.add(new QueueSlot(name, key, count, r));
+        }
+        // 남은 시간이 짧은 칸부터 → 같은 개수 중 먼저 넣은 제작과 짝짓는다(한 제작은 한 칸과만)
+        queue.sort(Comparator.comparingLong(q -> q.r().done ? -1 : q.r().remainingSec));
+        Map<Job, Reading> seen = new IdentityHashMap<>();
+        for (QueueSlot q : queue) {
             List<Job> same = queueOrder(jobs).stream()
-                    .filter(j -> !j.separate && !matched.contains(j) && ItemKeys.normalize(j.name).equals(key)).toList();
-            Job job = same.stream().filter(j -> j.count == s.getCount()).findFirst()
+                    .filter(x -> !x.separate && !matched.contains(x) && ItemKeys.normalize(x.name).equals(q.key())).toList();
+            Job job = same.stream().filter(x -> x.count == q.count()).findFirst()
                     .orElse(same.isEmpty() ? null : same.get(0));
             if (job == null) {
-                if (r.done || r.remainingSec <= 0) continue;
+                if (q.r().done || q.r().remainingSec <= 0) continue;
                 // 모드를 깔기 전에 넣었거나 시작 메시지를 놓친 제작
                 job = new Job();
-                job.name = name;
-                job.count = Math.max(1, s.getCount());
+                job.name = q.name();
+                job.count = q.count();
                 jobs.add(job);
                 changed = true;
             }
             matched.add(job);
-            long ends = r.done ? Math.min(job.endsAt == 0 ? now : job.endsAt, now) : now + r.remainingSec * 1000;
+            seen.put(job, q.r());
+        }
+        // 대기열 순서대로 완료 시각을 정한다. "남은 시간"은 지금부터, 칸의 "제작 시간"은 앞 제작이 끝난 뒤부터
+        long cursor = now;
+        for (Job job : queueOrder(jobs)) {
+            if (job.separate) continue;
+            Reading r = seen.get(job);
+            if (r == null) {
+                if (job.endsAt > 0) cursor = Math.max(cursor, job.endsAt);
+                continue;
+            }
+            long ends = r.done ? Math.min(job.endsAt == 0 ? now : job.endsAt, now)
+                    : (r.own ? Math.max(cursor, now) : now) + r.remainingSec * 1000;
             if (!job.synced || Math.abs(job.endsAt - ends) > 1500) {
                 sync(jobs, job, ends);
                 changed = true;
             }
+            cursor = Math.max(cursor, job.endsAt);
         }
         if (changed) {
             dirty = true;
@@ -370,12 +419,20 @@ public final class CraftTimers {
                 done = true;
             }
         }
+        // 레시피 칸이 아닌 칸의 "제작 시간"은 그 제작의 남은 시간(실제 대기열 칸, 1초마다 줄어듦)
+        boolean own = false;
+        if (!recipe && remaining < 0 && total > 0) {
+            remaining = total;
+            total = -1;
+            own = true;
+        }
         if (remaining == 0) done = true;
         if (remaining < 0 && total < 0 && !done) return null;
-        return new Reading(done ? 0 : remaining, total, done, recipe);
+        return new Reading(done ? 0 : remaining, total, done, recipe, own);
     }
 
-    public record Reading(long remainingSec, long totalSec, boolean done, boolean recipe) {}
+    /** own: 칸의 "제작 시간"(앞 제작이 끝난 뒤부터 세는 그 제작만의 시간) — "남은 시간"(지금부터)과 구분 */
+    public record Reading(long remainingSec, long totalSec, boolean done, boolean recipe, boolean own) {}
 
     /** 줄에서 시간(초)을 찾는다. 없으면 -1 */
     static long seconds(String t) {
@@ -429,8 +486,13 @@ public final class CraftTimers {
             String k = groupKey(j);
             boolean waiting = jobs.stream().anyMatch(o -> groupKey(o).equals(k) && !done(o, now));
             if (waiting) continue; // 같은 것이 아직 남았으면 다 끝날 때 한 번에
-            int times = (int) jobs.stream().filter(o -> groupKey(o).equals(k) && done(o, now)).count();
-            if (DdingMate.config().craft.notify) Notifier.craftDone(j.name, j.count, times);
+            List<Job> all = jobs.stream().filter(o -> groupKey(o).equals(k) && done(o, now)).toList();
+            boolean same = all.stream().allMatch(o -> o.count == j.count);
+            int sum = all.stream().mapToInt(o -> o.count).sum();
+            if (DdingMate.config().craft.notify) {
+                if (same) Notifier.craftDone(j.name, j.count, all.size());
+                else Notifier.craftDone(j.name, sum, 1);
+            }
         }
         // 다 되고 하루가 지나도 안 꺼낸 기록, 일주일 넘게 시간을 모르는 기록은 정리(서버에서 이미 꺼냈을 수 있다)
         changed |= jobs.removeIf(j -> j.endsAt > 0 && now - j.endsAt > 24L * 3600_000L)
@@ -439,7 +501,7 @@ public final class CraftTimers {
     }
 
     private static String groupKey(Job j) {
-        return (j.separate ? "s:" : "q:") + ItemKeys.normalize(j.name) + "*" + j.count;
+        return (j.separate ? "s:" : "q:") + ItemKeys.normalize(j.name);
     }
 
     // ---------------------------------------------------------------- 읽기

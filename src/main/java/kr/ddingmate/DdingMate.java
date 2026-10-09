@@ -115,10 +115,26 @@ public final class DdingMate implements ClientModInitializer {
     /** 같은 구석이면 이 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도 */
     private static void renderHuds(net.minecraft.client.gui.DrawContext ctx, net.minecraft.client.render.RenderTickCounter tick) {
         if (!config.opened || !ServerHud.inGame()) return;
+        boolean tab = playerListShown();
+        if (tab && config.hideOnTab) return;
         ScheduleHud.render(ctx, tick);
         TodoHud.render(ctx, tick);
         CounterHud.render(ctx, tick);
         DurabilityHud.render(ctx, tick);
+        // Tab 목록은 HUD 위에 그려진다. 가장자리로 삐져나온 HUD 가 목록과 섞여 보이지 않게 어둡게 덮어 흐리게 한다
+        if (tab && !kr.ddingmate.hud.HudLayout.editing) {
+            for (kr.ddingmate.hud.HudLayout.Rect r : kr.ddingmate.hud.HudLayout.bounds().values()) {
+                ctx.fill(r.x(), r.y(), r.x() + r.w(), r.y() + r.h(), 0xB0000000);
+            }
+        }
+    }
+
+    /** 지금 Tab(접속자 목록)이 화면에 떠 있는지 — 바닐라와 같은 조건 */
+    public static boolean playerListShown() {
+        MinecraftClient c = MinecraftClient.getInstance();
+        if (c.player == null || c.options == null || !c.options.playerListKey.isPressed()) return false;
+        return !c.isInSingleplayer() || c.player.networkHandler.getListedPlayerListEntries().size() > 1
+                || c.world.getScoreboard().getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.LIST) != null;
     }
 
     private static void onEnteredGame() {

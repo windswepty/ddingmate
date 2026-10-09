@@ -185,6 +185,8 @@ public final class DdingMateConfig {
     public int hudScale = 100;
     /** 서버 HUD(위쪽 재화 바·날짜/채널, 왼쪽 아래 채팅창)를 피해서 구석 HUD 를 놓음 */
     public boolean avoidServerHud = true;
+    /** Tab(접속자 목록)을 누르는 동안 HUD 를 숨긴다. 끄면 목록 뒤에 흐리게 둔다 */
+    public boolean hideOnTab = false;
     /** 설정 화면·HUD·팝업을 갈무리 글꼴(띵타이쿤과 같은 글꼴)로 그릴지 */
     public boolean galmuriFont = true;
     public Corner hudCorner = Corner.TOP_LEFT;

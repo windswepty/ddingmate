@@ -183,6 +183,22 @@ public final class HudLayout {
         if (p != null) {
             x = Math.round(p.x * Math.max(0, sw - rw));
             y = Math.round(p.y * Math.max(0, sh - rh));
+            // 직접 옮긴 자리라도 먼저 그린 HUD 와 겹치면(일정에 제작 줄이 늘어 길어졌을 때 등) 그 아래로, 안 되면 위로 비킨다
+            for (int guard = 0; guard < 8; guard++) {
+                Rect hit = null;
+                for (Rect r : BOUNDS.values()) {
+                    if (x < r.x() + r.w() && r.x() < x + rw && y < r.y() + r.h() && r.y() < y + rh) {
+                        hit = r;
+                        break;
+                    }
+                }
+                if (hit == null) break;
+                int below = hit.y() + hit.h() + 2;
+                int above = hit.y() - rh - 2;
+                if (below + rh <= sh) y = below;
+                else if (above >= 0) y = above;
+                else break;
+            }
         } else {
             Spot s = bestSpot(corner, sw, sh, rw, rh);
             if (s.newColumn()) HudStack.newColumn(s.corner());

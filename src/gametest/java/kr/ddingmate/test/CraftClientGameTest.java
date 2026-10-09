@@ -64,8 +64,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 CraftTimers.Reading recipe = CraftTimers.read(lines("다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 20초", "",
                         " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거"));
                 check(recipe != null && recipe.recipe() && recipe.totalSec() == 20, "실제 레시피 칸 설명을 읽지 못함: " + recipe);
-                check(CraftTimers.read(lines("  제작 시간 : 2분 0초")).totalSec() == 120, "'2분 0초'를 120초로 읽지 못함");
-                check(CraftTimers.read(lines("  제작 시간 : 1분 0초")).totalSec() == 60, "'1분 0초'를 60초로 읽지 못함");
+                // 레시피 칸이 아닌 칸(대기열)의 "제작 시간"은 그 제작의 남은 시간(실제: 1시간 30분 0초 → 1초 뒤 1시간 29분 59초)
+                CraftTimers.Reading q = CraftTimers.read(lines("신비로운 힘이 깃들어 있는 스톤입니다.", "", "  제작 시간 : 1시간 29분 33초", ""));
+                check(q != null && !q.recipe() && q.own() && q.remainingSec() == 5373, "대기열 칸의 제작 시간을 남은 시간으로 읽지 못함: " + q);
+                check(CraftTimers.read(lines("  제작 시간 : 1분 0초")).remainingSec() == 60, "'1분 0초'를 60초로 읽지 못함");
                 remain("남은 시간 : 2분 30초", 150);
                 remain("§7남은 시간: §e2분 30초", 150);
                 remain("제작 완료까지 1시간 2분 3초", 3723);
@@ -91,9 +93,9 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(CraftTimers.jobs().size() == 4, "제작 수가 4가 아님: " + CraftTimers.jobs().size());
                 List<CraftTimers.Group> g = CraftTimers.groups();
                 check(g.size() == 1 && g.get(0).label().equals("조약돌 뭉치 ×7 [4]"), "한 줄로 묶이지 않음: " + labels(g));
-                // 시설 창을 안 열었어도 모드에 넣어 둔 시간(조약돌 뭉치 20초 × 4번 = 약 80초)으로 바로 센다
+                // 시설 창을 안 열었어도 모드에 넣어 둔 시간으로 바로 센다: 1개 20초 × 7개 = 140초씩 4번 = 약 560초
                 String t0 = CraftTimers.remainingText(g.get(0), now());
-                check(t0.startsWith("약 1분 1") || t0.startsWith("약 1분 2"), "넣어 둔 시간으로 바로 세지 않음: " + t0);
+                check(t0.startsWith("약 9분 1") || t0.startsWith("약 9분 2"), "넣어 둔 시간 × 개수로 세지 않음: " + t0);
                 // 시간을 정말 모르는 아이템은 "시설 창 열면 표시"
                 CraftTimers.onChat(G + "시험용 미지 아이템 아이템 1개 제작을 시작했습니다.");
                 CraftTimers.Group unknown = CraftTimers.groups().stream().filter(x -> x.name().equals("시험용 미지 아이템")).findFirst().orElseThrow();
@@ -105,7 +107,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 for (int i = 0; i < 4; i++) CraftTimers.onChat(START);
             });
 
-            // 3) 시설 창의 레시피 칸(실제 설명)을 보면 1번 20초를 배우고, 넣은 순서대로 20·40·60·80초로 계산. 레시피 칸은 제작으로 등록하지 않음
+            // 3) 시설 창의 레시피 칸(실제 설명)을 보면 1개 20초를 배우고, 7개씩 넣은 순서대로 140·280·420·560초로 계산. 레시피 칸은 제작으로 등록하지 않음
             ctx.runOnClient(c -> c.setScreen(facility(c,
                     recipeItem("\uA002조약돌 뭉치", "20초"),
                     recipeItem("하급 라이프스톤", "1분 0초"),
@@ -118,13 +120,13 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(jobs.size() == 4, "레시피 칸을 제작으로 잘못 등록함: " + jobs.size());
                 long first = jobs.get(0).startedAt;
                 for (int i = 0; i < 4; i++) {
-                    long expect = first + 20_000L * (i + 1);
+                    long expect = first + 140_000L * (i + 1);
                     check(Math.abs(jobs.get(i).endsAt - expect) < 3000, (i + 1) + "번째가 차례대로 계산되지 않음: " + (jobs.get(i).endsAt - first));
                 }
                 CraftTimers.Group g = CraftTimers.groups().get(0);
                 check(g.label().equals("조약돌 뭉치 ×7 [4]"), "묶음 이름이 다름: " + g.label());
                 String t = CraftTimers.remainingText(g, now());
-                check(t.startsWith("약 1분 1") || t.startsWith("약 1분 2"), "4번 합친 시간(약 80초)이 아님: " + t);
+                check(t.startsWith("약 9분 1") || t.startsWith("약 9분 2"), "4번 합친 시간(약 560초)이 아님: " + t);
                 c.setScreen(null);
             });
 
@@ -139,8 +141,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 List<CraftTimers.Job> jobs = CraftTimers.jobs();
                 long first = jobs.get(0).startedAt;
                 for (int i = 0; i < 4; i++) {
-                    check(Math.abs(jobs.get(i).endsAt - (first + 18_000L * (i + 1))) < 3000,
-                            "채광 1레벨인데 " + (i + 1) + "번째가 18초 간격이 아님: " + (jobs.get(i).endsAt - first));
+                    check(Math.abs(jobs.get(i).endsAt - (first + 126_000L * (i + 1))) < 3000,
+                            "채광 1레벨인데 " + (i + 1) + "번째가 126초(7개×18초) 간격이 아님: " + (jobs.get(i).endsAt - first));
                 }
                 CraftTimers.debugLearn("강화 횃불", 2);
                 check(CraftTimers.durationMs("강화 횃불") == 1800, "강화 횃불 2초가 1.8초로 줄지 않음: " + CraftTimers.durationMs("강화 횃불"));
@@ -159,7 +161,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 cr.mining = cr.farming = cr.marine = cr.hunting = 0;
                 CraftTimers.recalculate();
                 jobs = CraftTimers.jobs();
-                check(Math.abs(jobs.get(3).endsAt - (first + 80_000)) < 3000, "스킬을 되돌렸는데 원래 시간으로 돌아오지 않음");
+                check(Math.abs(jobs.get(3).endsAt - (first + 560_000)) < 3000, "스킬을 되돌렸는데 원래 시간으로 돌아오지 않음");
             });
 
             // 4) 배운 뒤 하나 더 넣으면 맨 뒤에 붙는다(100초). 다른 아이템은 그 뒤에 이어서
@@ -168,8 +170,9 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 CraftTimers.onChat(G + "하급 라이프스톤 아이템 12개 제작을 시작했습니다.");
                 List<CraftTimers.Job> jobs = CraftTimers.jobs();
                 long first = jobs.get(0).startedAt;
-                check(Math.abs(jobs.get(4).endsAt - (first + 100_000)) < 3000, "다섯 번째가 맨 뒤에 붙지 않음: " + (jobs.get(4).endsAt - first));
-                check(Math.abs(jobs.get(5).endsAt - (first + 160_000)) < 3000, "다른 아이템이 앞 제작 뒤에 이어지지 않음: " + (jobs.get(5).endsAt - first));
+                check(Math.abs(jobs.get(4).endsAt - (first + 700_000)) < 3000, "다섯 번째가 맨 뒤에 붙지 않음: " + (jobs.get(4).endsAt - first));
+                // 하급 라이프스톤 1개 60초 × 12개 = 720초
+                check(Math.abs(jobs.get(5).endsAt - (first + 1_420_000)) < 3000, "다른 아이템이 앞 제작 뒤에 이어지지 않음: " + (jobs.get(5).endsAt - first));
                 List<String> order = labels(CraftTimers.groups());
                 check(order.equals(List.of("조약돌 뭉치 ×7 [5]", "하급 라이프스톤 ×12")), "묶음·순서가 다름: " + order);
             });
@@ -181,8 +184,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 long now = now();
                 List<CraftTimers.Job> jobs = CraftTimers.jobs();
                 check(Math.abs(jobs.get(0).endsAt - (now + 10_000)) < 2500 && jobs.get(0).synced, "맨 앞 제작을 창 값으로 맞추지 않음");
-                check(Math.abs(jobs.get(1).endsAt - (now + 30_000)) < 2500, "뒤 제작을 같이 옮기지 않음: " + (jobs.get(1).endsAt - now));
-                check(Math.abs(jobs.get(5).endsAt - (now + 150_000)) < 2500, "다른 아이템도 같이 옮기지 않음: " + (jobs.get(5).endsAt - now));
+                check(Math.abs(jobs.get(1).endsAt - (now + 150_000)) < 2500, "뒤 제작을 같이 옮기지 않음: " + (jobs.get(1).endsAt - now));
+                check(Math.abs(jobs.get(5).endsAt - (now + 1_290_000)) < 2500, "다른 아이템도 같이 옮기지 않음: " + (jobs.get(5).endsAt - now));
                 check(CraftTimers.jobs().size() == 6, "대기열 칸을 새 제작으로 또 등록함");
                 c.setScreen(null);
             });
@@ -240,6 +243,59 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(coroom.size() == 1 && coroom.get(0).count == 24 && coroom.get(0).synced
                         && Math.abs(coroom.get(0).endsAt - (now() + 120_000)) < 2500, "놓친 제작을 창에서 등록하지 못함: " + coroom.size());
                 c.setScreen(null);
+            });
+
+            // 9-1) 실제 2026-10-10 창: 어빌리티 스톤 50·50·28개. 개수가 섞이면 "어빌리티 스톤 ×128" 한 줄, 시간은 합쳐서.
+            //      대기열 칸의 "제작 시간"은 그 제작의 남은 시간 → 맨 앞 1시간 29분 33초 + 1시간 30분 + 50분 24초
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 1;
+                CraftTimers.onChat(G + "어빌리티 스톤 아이템 50개 제작을 시작했습니다.");
+                CraftTimers.onChat(G + "어빌리티 스톤 아이템 50개 제작을 시작했습니다.");
+                CraftTimers.onChat(G + "어빌리티 스톤 아이템 28개 제작을 시작했습니다.");
+                List<String> g = labels(CraftTimers.groups());
+                check(g.equals(List.of("어빌리티 스톤 ×128")), "개수가 다른 같은 아이템을 합쳐 한 줄로 안 보임: " + g);
+                // 시설 창을 안 열었어도: 2분 × 개수 × 0.9 → 50개 1시간 30분
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                check(Math.abs(jobs.get(0).endsAt - jobs.get(0).startedAt - 5_400_000) < 3000, "50개 제작 시간이 1시간 30분이 아님: " + (jobs.get(0).endsAt - jobs.get(0).startedAt));
+                // 대기열 칸 순서가 섞여 있어도(기다리는 칸이 앞) 남은 시간이 짧은 칸이 맨 앞 제작
+                c.setScreen(facility(c,
+                        queueItem("어빌리티 스톤", 50, "신비로운 힘이 깃들어 있는 스톤입니다.", "  제작 시간 : 1시간 30분 0초"),
+                        queueItem("어빌리티 스톤", 28, "  제작 시간 : 50분 24초"),
+                        queueItem("어빌리티 스톤", 50, "  제작 시간 : 1시간 29분 33초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                long now = now();
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                check(jobs.size() == 3, "대기열 칸을 새 제작으로 또 등록함: " + jobs.size());
+                check(Math.abs(jobs.get(0).endsAt - (now + 5_373_000)) < 2500, "맨 앞을 남은 시간으로 맞추지 않음: " + (jobs.get(0).endsAt - now));
+                check(Math.abs(jobs.get(1).endsAt - (now + 5_373_000 + 5_400_000)) < 2500, "두 번째를 앞 제작 뒤부터 세지 않음: " + (jobs.get(1).endsAt - now));
+                check(Math.abs(jobs.get(2).endsAt - (now + 5_373_000 + 5_400_000 + 3_024_000)) < 2500, "세 번째 시간이 다름: " + (jobs.get(2).endsAt - now));
+                CraftTimers.Group g = CraftTimers.groups().get(0);
+                check(g.label().equals("어빌리티 스톤 ×128") && !g.estimated(), "합친 줄이 다르거나 어림값으로 표시: " + g.label());
+                check(CraftTimers.remainingText(g, now).startsWith("3시간 49분"), "합친 시간(5373+5400+3024초)이 3시간 49분이 아님: " + CraftTimers.remainingText(g, now));
+                c.setScreen(null);
+                DdingMate.config().craft.mining = 0;
+                // 9-2) 일정·재료 HUD 를 둘 다 직접 옮겨 두었는데 일정에 제작 줄이 늘어 길어져도 서로 겹치지 않는다(실제 화면에서 겹쳤음)
+                DdingMateConfig.HudPos a = new DdingMateConfig.HudPos();
+                a.x = 0.01f;
+                a.y = 0.05f;
+                DdingMateConfig.HudPos b = new DdingMateConfig.HudPos();
+                b.x = 0.01f;
+                b.y = 0.12f;
+                DdingMate.config().hudPos.put(kr.ddingmate.hud.HudLayout.SCHEDULE, a);
+                DdingMate.config().hudPos.put(kr.ddingmate.hud.HudLayout.COUNTER, b);
+            });
+            ctx.waitTicks(30);
+            ctx.runOnClient(c -> {
+                var bounds = kr.ddingmate.hud.HudLayout.bounds();
+                var s1 = bounds.get(kr.ddingmate.hud.HudLayout.SCHEDULE);
+                var s2 = bounds.get(kr.ddingmate.hud.HudLayout.COUNTER);
+                check(s1 != null && s2 != null, "HUD 가 그려지지 않음: " + bounds.keySet());
+                boolean overlap = s1.x() < s2.x() + s2.w() && s2.x() < s1.x() + s1.w() && s1.y() < s2.y() + s2.h() && s2.y() < s1.y() + s1.h();
+                check(!overlap, "직접 옮긴 HUD 끼리 겹침: " + s1 + " / " + s2);
+                DdingMate.config().hudPos.clear();
             });
 
             // 10) 설정 화면: 재료 탭 목록, 홈 '제작 중'
