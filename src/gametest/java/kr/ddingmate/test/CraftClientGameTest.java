@@ -315,6 +315,37 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(cfg.durability.tracked.get(0).name.equals("네더라이트 곡괭이"), "이름에 그림 글자가 남음: " + cfg.durability.tracked.get(0).name);
             });
 
+            // 14-1) 의뢰 창(실제 창 모양): 진행도를 다 채운 의뢰 수로 일일·주간 의뢰를 맞추고, 어느 창인지 기억한다
+            ctx.runOnClient(c -> {
+                DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
+                c.setScreen(facility(c,
+                        quest("코끼리 사냥하기 일일 의뢰", "매일의 의뢰 도전으로 성장해보세요.", "- 코끼리를 사냥하세요.", "- 의뢰 진행도 : 30 / 30", "- 보상 : 3루비"),
+                        quest("감자 심기 일일 의뢰", "- 감자를 심어주세요.", "- 의뢰 진행도 : 64 / 64", "- 보상 : 3루비"),
+                        quest("감자 수확하기 일일 의뢰", "- 감자를 수확해주세요.", "- 의뢰 진행도 : 10 / 32", "의뢰를 먼저 완료해주세요."),
+                        quest("당근 심기 일일 의뢰", "- 당근을 심어주세요.", "- 의뢰 진행도 : 0 / 32", "의뢰를 먼저 완료해주세요."),
+                        quest("거미 사냥하기 일일 의뢰", "- 거미를 사냥해주세요.", "- 의뢰 진행도 : 0 / 10", "의뢰를 먼저 완료해주세요.")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+                DdingMateConfig.TodoItem daily = DdingMate.config().todo.items.stream().filter(t -> t.preset.equals("daily_quest")).findFirst().orElseThrow();
+                check(kr.ddingmate.todo.TodoList.progress(daily, now) == 2, "의뢰 창에서 다 채운 일일 의뢰 2개를 세지 않음: " + kr.ddingmate.todo.TodoList.progress(daily, now));
+                c.setScreen(facility(c,
+                        quest("양파 씨앗 채집하기 주간 의뢰", "매주 새로운 목표에 도전해보세요.", "- 의뢰 진행도 : 30 / 30"),
+                        quest("성게 채집하기 주간 의뢰", "- 의뢰 진행도 : 0 / 210", "의뢰를 먼저 완료해주세요."),
+                        quest("미어캣 사냥하기 주간 의뢰", "- 의뢰 진행도 : 0 / 30", "의뢰를 먼저 완료해주세요.")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+                DdingMateConfig.TodoItem weekly = DdingMate.config().todo.items.stream().filter(t -> t.preset.equals("weekly_quest")).findFirst().orElseThrow();
+                check(kr.ddingmate.todo.TodoList.progress(weekly, now) == 1, "주간 의뢰 창의 다 채운 의뢰를 세지 않음");
+                // 주간 의뢰 창을 보고 있을 때 온 완료 메시지는 주간으로
+                kr.ddingmate.todo.TodoList.onChat(G + "의뢰를 완료하였습니다.");
+                check(kr.ddingmate.todo.TodoList.progress(weekly, now) == 2, "주간 의뢰 창에서 완료한 것을 주간으로 세지 않음");
+                c.setScreen(null);
+            });
+
             // 15) 본 적 없는 재료도 그림: 모드에 넣은 표가 실제 게임에서 기억한 모양(아이템·모델 번호)과 같은지
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.counter.IconCache.bundledSize() >= 280, "아이콘 표가 비었거나 잘못 읽힘: " + kr.ddingmate.counter.IconCache.bundledSize());
@@ -384,6 +415,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(stored("보관 중: 1,234개") == 1234, "보관 중 줄을 못 읽음");
                 check(stored(" 현재 4,096개", "좌클릭: 64개 꺼내기", "쉬프트 클릭: 전부 꺼내기") == 4096, "N개 줄을 못 읽거나 꺼내기 안내를 읽음");
                 check(stored("우클릭: 꺼내기") == -1, "숫자 없는 설명을 수로 읽음");
+                // 실제 아이템 저장소 설명(2026-10-09): 재고 앞 수만, 최대치(5,000)·세트·꺼내기 안내는 무시
+                check(stored("아이템을 저장하는 저장소입니다.", "다양한 아이템을 보관해 보세요.", "- 재고: 2,868 / 5,000개", "- 세트: 44세트 52개",
+                        "우클릭 시 1개를 꺼냅니다.", "쉬프트 우클릭 시 64개를 꺼냅니다.", "Q키 입력 시 모두 꺼냅니다.") == 2868, "재고 2,868 을 못 읽음");
+                check(stored("아이템을 저장하는 저장소입니다.", "- 재고: 0 / 5,000개", "- 세트: 0개", "물품을 들고 클릭 시 변경합니다.") == 0,
+                        "재고 0 을 최대치 5,000 으로 읽음");
                 ItemStack quartz = kr.ddingmate.counter.IconCache.forMaterial("석영");
                 check(quartz != null && quartz.isOf(Items.QUARTZ), "바닐라 재료(석영) 그림이 아님");
                 // 레시피의 모든 재료 중 표나 바닐라로 그림이 나오는 비율
@@ -403,6 +439,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
         check(s != null && s.isOf(item), name + " 의 아이템이 다름: " + s);
         var data = s.get(DataComponentTypes.CUSTOM_MODEL_DATA);
         check(data != null && !data.floats().isEmpty() && data.floats().get(0) == cmd, name + " 의 모델 번호가 다름: " + data);
+    }
+
+    /** 실제 의뢰 창 칸과 같은 모양: "[ 감자 심기 일일 의뢰 ]" + 설명 */
+    private static ItemStack quest(String title, String... lore) {
+        return item("[ " + title + " ]", 1, lore);
     }
 
     private static int stored(String... lore) {

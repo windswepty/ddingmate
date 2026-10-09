@@ -99,35 +99,45 @@ public final class ItemKeys {
         IconCache.remember(stack);
     }
 
+    /**
+     * 보관 개수 줄. 띵타이쿤 아이템 저장소는 "- 재고: 2,868 / 5,000개"(앞 = 재고, 뒤 = 칸의 최대치) 이다(2026-10 실제 창).
+     * 낱말 뒤 첫 숫자만 읽어서 최대치(5,000)를 재고로 착각하지 않는다.
+     */
     private static final java.util.regex.Pattern STORED = java.util.regex.Pattern.compile(
-            "(보관|저장|적재|수량|보유|개수|잔여|남은)[^\\d]*([\\d,]+)");
-    /** 줄에 있는 "1,234개" */
+            "(재고|보관|저장량|적재|수량|보유|잔여)[^\\d]*([\\d,]+)");
+    /** 낱말이 없을 때: "1,234 / 5,000개" 면 앞 수, 아니면 "1,234개" */
+    private static final java.util.regex.Pattern RATIO = java.util.regex.Pattern.compile("([\\d,]+)\\s*/\\s*[\\d,]+");
     private static final java.util.regex.Pattern COUNT = java.util.regex.Pattern.compile("([\\d,]+)\\s*개");
-    /** 조작 안내 줄(꺼낼 개수 등)은 보관 개수가 아니다 */
-    private static final java.util.regex.Pattern ACTION = java.util.regex.Pattern.compile("꺼내|넣기|넣어|클릭|판매|구매|이동|쉬프트|Shift|\\(좌\\)|\\(우\\)");
+    /** 조작 안내 줄(꺼낼 개수 등)·세트 수·구매 비용 줄은 보관 개수가 아니다 */
+    private static final java.util.regex.Pattern NOT_STOCK = java.util.regex.Pattern.compile(
+            "꺼내|넣기|넣어|클릭|판매|구매|비용|이동|쉬프트|Shift|\\(좌\\)|\\(우\\)|세트");
 
     /**
-     * 설명 문구에 적힌 보관 개수. "보관 중: 1,234개", "저장된 수량 1234" 같은 줄에서 숫자를 읽고,
-     * 그런 낱말이 없으면 조작 안내가 아닌 줄의 "N개" 중 가장 큰 수를 쓴다. 없으면 -1.
+     * 설명 문구에 적힌 보관 개수. "재고: 2,868 / 5,000개" → 2868. 낱말이 없으면 "A / B" 의 A, 그다음 "N개".
+     * 조작 안내·세트·비용 줄은 건너뛴다. 못 찾으면 -1.
      */
     public static int storedAmount(ItemStack stack) {
         net.minecraft.component.type.LoreComponent lore = stack.get(DataComponentTypes.LORE);
         if (lore == null) return -1;
-        long best = -1;
+        long fallback = -1;
         for (net.minecraft.text.Text line : lore.lines()) {
             String t = Formatting.strip(line.getString());
             if (t == null) continue;
             t = stripGlyphs(t);
-            if (ACTION.matcher(t).find()) continue;
+            if (NOT_STOCK.matcher(t).find()) continue;
             java.util.regex.Matcher m = STORED.matcher(t);
             if (m.find()) {
                 long v = parse(m.group(2));
                 if (v >= 0) return (int) Math.min(Integer.MAX_VALUE, v);
             }
-            java.util.regex.Matcher c = COUNT.matcher(t);
-            while (c.find()) best = Math.max(best, parse(c.group(1)));
+            if (fallback < 0) {
+                java.util.regex.Matcher r = RATIO.matcher(t);
+                java.util.regex.Matcher c = COUNT.matcher(t);
+                if (r.find()) fallback = parse(r.group(1));
+                else if (c.find()) fallback = parse(c.group(1));
+            }
         }
-        return (int) Math.min(Integer.MAX_VALUE, best);
+        return (int) Math.min(Integer.MAX_VALUE, fallback);
     }
 
     private static long parse(String s) {

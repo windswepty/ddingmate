@@ -80,12 +80,15 @@ public final class DdingMate implements ClientModInitializer {
         // 설치만 하고 아직 /띵메이트 를 열어 보지 않았으면 화면에 아무것도 띄우지 않는다
         // 띵타이쿤 대기 서버(접속 직후 스폰으로 옮겨지기 전)에서도 띄우지 않는다
         HudRenderCallback.EVENT.register((ctx, tick) -> {
-            if (!config.opened || !ServerHud.inGame()) return;
-            ScheduleHud.render(ctx, tick);
-            TodoHud.render(ctx, tick);
-            CounterHud.render(ctx, tick);
-            DurabilityHud.render(ctx, tick);
+            if (!playerListShown()) renderHuds(ctx, tick);
         });
+        // Tab(접속자 목록)을 누르고 있으면 목록이 HUD 를 덮지 않게, 목록 위 층에 그린다
+        net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback.EVENT.register(layers -> layers.attachLayerAfter(
+                net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer.PLAYER_LIST,
+                net.minecraft.util.Identifier.of(MOD_ID, "hud_over_player_list"),
+                (ctx, tick) -> {
+                    if (playerListShown()) renderHuds(ctx, tick);
+                }));
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
@@ -115,6 +118,22 @@ public final class DdingMate implements ClientModInitializer {
     /**
      * 스폰으로 들어온 순간(대기 서버 다음). 처음 쓰는 사람에게는 게임을 켠 뒤 한 번 사용법을 알려 준다(설정에서 끌 수 있음).
      */
+    /** 같은 구석이면 이 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도 */
+    private static void renderHuds(net.minecraft.client.gui.DrawContext ctx, net.minecraft.client.render.RenderTickCounter tick) {
+        if (!config.opened || !ServerHud.inGame()) return;
+        ScheduleHud.render(ctx, tick);
+        TodoHud.render(ctx, tick);
+        CounterHud.render(ctx, tick);
+        DurabilityHud.render(ctx, tick);
+    }
+
+    /** 지금 Tab 접속자 목록이 떠 있는지(Tab 을 누르고 있고, 혼자 있는 싱글플레이가 아님) */
+    private static boolean playerListShown() {
+        MinecraftClient c = MinecraftClient.getInstance();
+        if (c.options == null || !c.options.playerListKey.isPressed() || c.getNetworkHandler() == null) return false;
+        return !c.isInSingleplayer() || c.getNetworkHandler().getPlayerList().size() > 1;
+    }
+
     private static void onEnteredGame() {
         if (joinTipShown) return;
         if (!config.opened) {

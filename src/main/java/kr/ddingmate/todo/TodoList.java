@@ -133,23 +133,58 @@ public final class TodoList {
 
         private QuestContext() {}
 
-        /** 10틱마다 */
+        /** "- 의뢰 진행도 : 12 / 30" */
+        private static final java.util.regex.Pattern PROGRESS = java.util.regex.Pattern.compile("의뢰\\s*진행도\\s*[:：]\\s*([\\d,]+)\\s*/\\s*([\\d,]+)");
+        /** 아직 못 끝낸 의뢰의 안내(실제 창: "의뢰를 먼저 완료해주세요.") */
+        private static final java.util.regex.Pattern NOT_DONE = java.util.regex.Pattern.compile("먼저\\s*완료");
+        /** 끝내고 보상까지 받은 의뢰로 보이는 안내 */
+        private static final java.util.regex.Pattern CLAIMED = java.util.regex.Pattern.compile("완료한\\s*의뢰|이미\\s*완료|보상을\\s*(받았|수령)|수령\\s*완료|완료됨");
+
+        /**
+         * 10틱마다. 의뢰 창(실제 창: "[ 감자 심기 일일 의뢰 ]" 칸마다 "- 의뢰 진행도 : 0 / 64")을 읽어
+         * 일일·주간 중 어느 창인지 기억하고, 끝낸 의뢰 수로 할 일을 맞춘다(줄이지는 않음).
+         * 끝낸 의뢰: 진행도를 다 채운 칸, 또는 완료·수령 안내가 있는 칸.
+         */
         public static void scan(net.minecraft.client.MinecraftClient client) {
             if (!(client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?> screen)) return;
-            StringBuilder sb = new StringBuilder(kr.ddingmate.counter.ItemKeys.stripGlyphs(screen.getTitle().getString()));
+            int daily = 0, weeklyCount = 0, dailyDone = 0, weeklyDone = 0;
             for (net.minecraft.screen.slot.Slot slot : screen.getScreenHandler().slots) {
                 if (slot.inventory instanceof net.minecraft.entity.player.PlayerInventory || !slot.hasStack()) continue;
                 net.minecraft.item.ItemStack st = slot.getStack();
-                sb.append('\n').append(st.getName().getString());
+                String name = kr.ddingmate.counter.ItemKeys.stripGlyphs(st.getName().getString());
+                boolean isWeekly = name.contains("주간 의뢰") || name.contains("주간의뢰");
+                boolean isDaily = name.contains("일일 의뢰") || name.contains("일간 의뢰") || name.contains("일일의뢰");
+                if (!isWeekly && !isDaily) continue;
+                boolean done = false;
                 var lore = st.get(net.minecraft.component.DataComponentTypes.LORE);
-                if (lore != null) for (net.minecraft.text.Text l : lore.lines()) sb.append('\n').append(l.getString());
+                if (lore != null) {
+                    boolean notDone = false, claimed = false;
+                    long have = -1, need = -1;
+                    for (net.minecraft.text.Text l : lore.lines()) {
+                        String t = kr.ddingmate.counter.ItemKeys.stripGlyphs(l.getString());
+                        java.util.regex.Matcher m = PROGRESS.matcher(t);
+                        if (m.find()) {
+                            have = Long.parseLong(m.group(1).replace(",", ""));
+                            need = Long.parseLong(m.group(2).replace(",", ""));
+                        }
+                        if (NOT_DONE.matcher(t).find()) notDone = true;
+                        if (CLAIMED.matcher(t).find()) claimed = true;
+                    }
+                    done = claimed || (!notDone && need > 0 && have >= need);
+                }
+                if (isWeekly) {
+                    weeklyCount++;
+                    if (done) weeklyDone++;
+                } else {
+                    daily++;
+                    if (done) dailyDone++;
+                }
             }
-            String all = kr.ddingmate.counter.ItemKeys.stripGlyphs(sb.toString());
-            boolean w = all.contains("주간 의뢰") || all.contains("주간의뢰");
-            boolean d = all.contains("일간 의뢰") || all.contains("일일 의뢰") || all.contains("일간의뢰");
-            if (!w && !d) return;
-            weekly = w && !d;
+            if (daily == 0 && weeklyCount == 0) return;
+            weekly = weeklyCount > 0 && daily == 0;
             seenAt = System.currentTimeMillis();
+            if (daily > 0) sync(TodoPreset.DAILY_QUEST, dailyDone);
+            if (weeklyCount > 0) sync(TodoPreset.WEEKLY_QUEST, weeklyDone);
         }
 
         static boolean weekly() {
