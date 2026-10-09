@@ -45,6 +45,8 @@ public final class RecipeBook {
     }
 
     private static Map<String, Recipe> byId = Map.of();
+    /** 결과물 이름 → 그 결과물을 만드는 첫 레시피 (조합이 여럿인 것은 빼고, 묶음 크기가 가장 작은 것) */
+    private static Map<String, Recipe> byOutput = Map.of();
     private static List<Recipe> all = List.of();
     private static Map<String, String> vanilla = Map.of();
 
@@ -58,6 +60,13 @@ public final class RecipeBook {
                 Map<String, Recipe> map = new LinkedHashMap<>();
                 for (Recipe rec : d.recipes) map.put(rec.id, rec);
                 byId = map;
+                Map<String, Recipe> out = new LinkedHashMap<>();
+                for (Recipe rec : d.recipes) {
+                    if (rec.name.contains("(조합 ")) continue;
+                    Recipe prev = out.get(rec.name);
+                    if (prev == null || rec.output < prev.output) out.put(rec.name, rec);
+                }
+                byOutput = out;
                 all = List.copyOf(d.recipes);
                 vanilla = Map.copyOf(d.vanilla);
             }
@@ -72,6 +81,11 @@ public final class RecipeBook {
 
     public static Recipe get(String id) {
         return id == null ? null : byId.get(id);
+    }
+
+    /** 이 이름의 아이템을 만드는 레시피. 없으면 null */
+    public static Recipe recipeFor(String outputName) {
+        return byOutput.get(outputName);
     }
 
     /** 재료 이름에 해당하는 아이템 키들. 이름이 같은 서버 아이템과, 이름 없는 바닐라 아이템을 모두 센다. */

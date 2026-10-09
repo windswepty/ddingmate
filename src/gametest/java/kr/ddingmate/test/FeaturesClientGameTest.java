@@ -1,0 +1,173 @@
+package kr.ddingmate.test;
+
+import kr.ddingmate.DdingMate;
+import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.counter.BagTracker;
+import kr.ddingmate.counter.MaterialCounter;
+import kr.ddingmate.gear.DurabilityTracker;
+import kr.ddingmate.gui.AlarmConfigScreen;
+import kr.ddingmate.notify.AlertLog;
+import kr.ddingmate.playtime.PlaytimeTracker;
+import kr.ddingmate.schedule.ScheduleEngine;
+import kr.ddingmate.todo.TodoList;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.LoreComponent;
+import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.screen.GenericContainerScreenHandler;
+import net.minecraft.text.Text;
+
+import java.time.ZonedDateTime;
+import java.util.List;
+
+/**
+ * 장비 내구도·오늘 할 일·원재료 펼치기·알림 기록함·아이템 저장소·접속 시간 보상을 싱글 월드에서 확인한다.
+ */
+public class FeaturesClientGameTest implements FabricClientGameTest {
+
+    @Override
+    public void runTest(ClientGameTestContext ctx) {
+        // 초기화 시각 계산(게임 밖에서도 확인 가능한 순수 계산)
+        ZonedDateTime fri2am = ZonedDateTime.of(2026, 10, 9, 2, 0, 0, 0, ScheduleEngine.KST);
+        check(TodoList.lastReset(AlarmConfig.Reset.DAILY, fri2am).equals(fri2am.minusDays(1).withHour(3)),
+                "매일 03시 초기화 계산 오류");
+        check(TodoList.lastReset(AlarmConfig.Reset.WEEKLY, fri2am).equals(ZonedDateTime.of(2026, 10, 8, 3, 0, 0, 0, ScheduleEngine.KST)),
+                "목요일 03시 초기화 계산 오류");
+        check(TodoList.lastReset(AlarmConfig.Reset.WEEKLY, fri2am.minusDays(1).withHour(2))
+                        .equals(ZonedDateTime.of(2026, 10, 1, 3, 0, 0, 0, ScheduleEngine.KST)),
+                "목요일 03시 직전 주간 초기화 계산 오류");
+        check(TodoList.lastReset(AlarmConfig.Reset.MIDNIGHT, fri2am).equals(fri2am.withHour(0)), "자정 초기화 계산 오류");
+
+        try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
+            sp.getClientWorld().waitForChunksRender();
+            ctx.runOnClient(c -> {
+                BagTracker.clearCurrent();
+                AlertLog.clear();
+                AlarmConfig cfg = DdingMate.config();
+                cfg.counter.pins.get(0).recipe = "강화 제작 시설/하급 라이프스톤";
+                cfg.counter.pins.get(0).crafts = 2;
+                cfg.counter.pins.get(1).recipe = "";
+                cfg.counter.pins.get(2).recipe = "";
+                cfg.counter.expandSubMaterials = true;
+                cfg.counter.includeStorage = true;
+                cfg.durability.enabled = true;
+                cfg.durability.warnPercent = 10;
+                cfg.durability.tracked.clear();
+                cfg.todo.hudEnabled = true;
+                for (AlarmConfig.TodoItem t : cfg.todo.items) t.doneAt = 0;
+                cfg.playtime.enabled = true;
+                cfg.playtime.showInHud = true;
+            });
+
+            // 2) 장비 내구도: 다이아 곡괭이 최대 1561, 1500 닳음 → 61 남음(4%) → 부족 알림
+            sp.getServer().runCommand("give @a minecraft:diamond_pickaxe[minecraft:damage=1500]");
+            sp.getServer().runCommand("give @a minecraft:iron_sword[minecraft:damage=50]");
+            sp.getServer().runCommand("give @a minecraft:cobblestone 100");
+            ctx.waitTicks(20);
+            ctx.runOnClient(c -> {
+                check(DurabilityTracker.candidates(c).size() == 2, "내구도 장비 후보가 2개가 아님");
+                DurabilityTracker.setTracked("v:minecraft:diamond_pickaxe", "다이아몬드 곡괭이", true);
+                DurabilityTracker.setTracked("v:minecraft:iron_sword", "철 검", true);
+            });
+            ctx.waitTicks(20);
+            ctx.runOnClient(c -> {
+                List<DurabilityTracker.Row> rows = DurabilityTracker.rows();
+                check(rows.size() == 2, "내구도 HUD 줄 수가 2가 아님");
+                check(rows.get(0).durability().left() == 61 && rows.get(0).durability().max() == 1561,
+                        "곡괭이 내구도가 61/1561 이 아님: " + rows.get(0).durability());
+                check(hasLog("내구도", "다이아몬드 곡괭이"), "내구도 부족 알림이 기록되지 않음");
+                check(!hasLog("내구도", "철 검"), "멀쩡한 철 검에 내구도 알림이 울림");
+            });
+
+            // 3) 오늘 할 일: 하나 체크하면 남은 개수가 하나 줄어든다
+            ctx.runOnClient(c -> {
+                ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+                int before = TodoList.remaining(now).size();
+                TodoList.setDone(DdingMate.config().todo.items.get(0), true);
+                check(TodoList.remaining(now).size() == before - 1, "할 일 체크가 반영되지 않음");
+            });
+
+            // 8) 원재료 펼치기: 조약돌 뭉치 4개 필요(0개) → 조약돌 256개 필요, 인벤토리 100개
+            ctx.waitTicks(15);
+            ctx.runOnClient(c -> {
+                MaterialCounter.Line bundle = line("조약돌 뭉치");
+                check(bundle.need() == 4 && bundle.subs().size() == 1, "조약돌 뭉치 아래 원재료가 없음: " + bundle);
+                MaterialCounter.Line raw = bundle.subs().get(0);
+                check(raw.name().equals("조약돌") && raw.need() == 256 && raw.inventory() == 100,
+                        "원재료 조약돌 계산 오류: " + raw);
+            });
+            ctx.takeScreenshot("features-1-hud-all");
+
+            // 11) 아이템 저장소: 설명 문구의 보관 개수(1,234)를 읽어 합산
+            ctx.runOnClient(c -> c.setScreen(storageScreen(c)));
+            ctx.waitTicks(20);
+            ctx.runOnClient(c -> check(BagTracker.storageOpen(), "아이템 저장소 창을 알아보지 못함"));
+            ctx.runOnClient(c -> c.setScreen(null));
+            ctx.waitTicks(15);
+            ctx.runOnClient(c -> {
+                MaterialCounter.Line copper = line("구리 블록");
+                check(copper.storage() == 1234, "저장소 구리 블록이 1234 가 아님: " + copper);
+                check(copper.done(), "저장소까지 합쳐 구리 블록 16개가 채워져야 함");
+            });
+
+            // 12) 접속 시간: 59분 58초에서 시작 → 1시간을 넘기면 채팅·기록에 보상 알림
+            ctx.runOnClient(c -> PlaytimeTracker.debugSetSeconds(3598));
+            ctx.waitTicks(80);
+            ctx.runOnClient(c -> {
+                check(PlaytimeTracker.seconds() >= 3600, "접속 시간이 늘지 않음: " + PlaytimeTracker.seconds());
+                check(hasLog("접속", "접속 1시간"), "접속 1시간 보상 알림이 기록되지 않음");
+            });
+            ctx.takeScreenshot("features-2-playtime-alert");
+
+            // 10) 알림 기록함과 새 탭 화면
+            ctx.runOnClient(c -> check(AlertLog.entries().size() >= 2, "알림 기록이 쌓이지 않음"));
+            String[] names = {"gear", "todo", "log"};
+            for (int i = 0; i < names.length; i++) {
+                int tab = 5 + i;
+                ctx.runOnClient(c -> {
+                    AlarmConfigScreen s = new AlarmConfigScreen(null);
+                    c.setScreen(s);
+                    s.openTab(tab);
+                });
+                ctx.waitTicks(5);
+                ctx.takeScreenshot("features-3-settings-" + names[i]);
+            }
+            ctx.runOnClient(c -> {
+                check(AlertLog.unread() == 0, "기록 탭을 열었는데 새 알림 표시가 남음");
+                c.currentScreen.close();
+                DdingMate.config().todo.hudEnabled = false;
+            });
+            ctx.waitTicks(5);
+        }
+    }
+
+    private static GenericContainerScreen storageScreen(MinecraftClient c) {
+        SimpleInventory inv = new SimpleInventory(54);
+        ItemStack copper = new ItemStack(Items.COPPER_BLOCK);
+        copper.set(DataComponentTypes.LORE, new LoreComponent(List.of(
+                Text.literal("우클릭: 꺼내기"), Text.literal("보관 중: 1,234개"))));
+        inv.setStack(0, copper);
+        inv.setStack(1, new ItemStack(Items.GRAY_STAINED_GLASS_PANE));
+        GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(78, c.player.getInventory(), inv);
+        return new GenericContainerScreen(h, c.player.getInventory(), Text.literal("아이템 저장소"));
+    }
+
+    private static MaterialCounter.Line line(String name) {
+        return MaterialCounter.views().get(0).lines().stream().filter(l -> l.name().equals(name)).findFirst()
+                .orElseThrow(() -> new AssertionError("재료 줄 없음: " + name));
+    }
+
+    private static boolean hasLog(String kind, String titlePart) {
+        return AlertLog.entries().stream().anyMatch(e -> e.kind.equals(kind) && e.title.contains(titlePart));
+    }
+
+    private static void check(boolean ok, String message) {
+        if (!ok) throw new AssertionError(message);
+    }
+}

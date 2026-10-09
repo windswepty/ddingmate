@@ -46,6 +46,30 @@ public final class ItemKeys {
         IconCache.remember(stack);
     }
 
+    private static final java.util.regex.Pattern STORED = java.util.regex.Pattern.compile(
+            "(보관|저장|적재|수량|보유|개수)[^\\d]*([\\d,]+)");
+
+    /**
+     * 설명 문구에 적힌 보관 개수. "보관 중: 1,234개", "저장된 수량 1234" 같은 줄에서 첫 숫자를 읽는다. 없으면 -1.
+     */
+    public static int storedAmount(ItemStack stack) {
+        net.minecraft.component.type.LoreComponent lore = stack.get(DataComponentTypes.LORE);
+        if (lore == null) return -1;
+        for (net.minecraft.text.Text line : lore.lines()) {
+            String t = Formatting.strip(line.getString());
+            if (t == null) continue;
+            java.util.regex.Matcher m = STORED.matcher(t);
+            if (m.find()) {
+                try {
+                    return Integer.parseInt(m.group(2).replace(",", ""));
+                } catch (NumberFormatException ignored) {
+                    // 너무 큰 숫자는 무시
+                }
+            }
+        }
+        return -1;
+    }
+
     private static boolean renamed(ItemStack stack) {
         ComponentChanges ch = stack.getComponentChanges();
         return present(ch.get(DataComponentTypes.CUSTOM_NAME)) || present(ch.get(DataComponentTypes.ITEM_NAME));

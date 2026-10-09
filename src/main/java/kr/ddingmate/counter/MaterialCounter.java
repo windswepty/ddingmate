@@ -13,12 +13,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** 핀으로 고른 레시피의 재료를 인벤토리(+ 기록된 가방)에서 세어 HUD 용으로 정리한다. */
+/** 핀으로 고른 레시피의 재료를 인벤토리(+ 기록된 가방·아이템 저장소)에서 세어 HUD 용으로 정리한다. */
 public final class MaterialCounter {
 
-    public record Line(String name, int inventory, int bags, int need) {
+    /**
+     * 재료 한 줄. subs 는 이 재료가 다른 레시피로 만드는 중간 재료일 때, 모자란 만큼 만들려면 필요한 원재료(한 단계만).
+     */
+    public record Line(String name, int inventory, int bags, int storage, int need, List<Line> subs) {
         public int have() {
-            return inventory + bags;
+            return inventory + bags + storage;
         }
 
         public boolean done() {
@@ -55,6 +58,7 @@ public final class MaterialCounter {
         }
         Map<String, Integer> inv = inventoryCounts(client);
         Map<String, Integer> bags = cfg.includeBags ? BagTracker.totals() : Map.of();
+        Map<String, Integer> storage = cfg.includeStorage ? BagTracker.storageTotals() : Map.of();
         List<PinView> out = new ArrayList<>();
         for (int i = 0; i < cfg.pins.size() && i < AlarmConfig.PIN_COUNT; i++) {
             AlarmConfig.Pin pin = cfg.pins.get(i);
@@ -65,7 +69,7 @@ public final class MaterialCounter {
                 wasDone[i] = null;
             }
             if (r == null) continue;
-            PinView v = view(i, pin, r, inv, bags);
+            PinView v = view(i, pin, r, inv, bags, storage, cfg.expandSubMaterials);
             out.add(v);
             boolean done = v.done();
             if (Boolean.FALSE.equals(wasDone[i]) && done && cfg.notifyComplete) {
@@ -77,14 +81,39 @@ public final class MaterialCounter {
         views = out;
     }
 
-    static PinView view(int index, AlarmConfig.Pin pin, RecipeBook.Recipe r,
-                        Map<String, Integer> inv, Map<String, Integer> bags) {
+    static PinView view(int index, AlarmConfig.Pin pin, RecipeBook.Recipe r, Map<String, Integer> inv,
+                        Map<String, Integer> bags, Map<String, Integer> storage, boolean expand) {
         List<Line> lines = new ArrayList<>();
         for (RecipeBook.Material m : r.materials) {
-            Set<String> keys = RecipeBook.keysFor(m.name);
-            lines.add(new Line(m.name, sum(inv, keys), sum(bags, keys), m.count * pin.crafts));
+            Line line = line(m.name, m.count * pin.crafts, inv, bags, storage, List.of());
+            if (expand && !line.done()) line = withSubs(line, r, inv, bags, storage);
+            lines.add(line);
         }
         return new PinView(index, pin, r, lines);
+    }
+
+    private static Line line(String name, int need, Map<String, Integer> inv, Map<String, Integer> bags,
+                             Map<String, Integer> storage, List<Line> subs) {
+        Set<String> keys = RecipeBook.keysFor(name);
+        return new Line(name, sum(inv, keys), sum(bags, keys), sum(storage, keys), need, subs);
+    }
+
+    /**
+     * 모자란 재료가 레시피로 만들 수 있는 것이면(예: 조약돌 뭉치 = 조약돌 64개), 모자란 만큼 만들 때 필요한 원재료를 붙인다.
+     * 한 단계만 펼치고, 자기 자신을 다시 만드는 레시피는 건너뛴다.
+     */
+    private static Line withSubs(Line line, RecipeBook.Recipe parent, Map<String, Integer> inv,
+                                 Map<String, Integer> bags, Map<String, Integer> storage) {
+        RecipeBook.Recipe sub = RecipeBook.recipeFor(line.name());
+        if (sub == null || sub.id.equals(parent.id) || sub.materials.isEmpty()) return line;
+        int shortage = line.need() - line.have();
+        int crafts = (shortage + sub.output - 1) / sub.output;
+        List<Line> subs = new ArrayList<>();
+        for (RecipeBook.Material m : sub.materials) {
+            if (m.name.equals(line.name())) return line;
+            subs.add(line(m.name, m.count * crafts, inv, bags, storage, List.of()));
+        }
+        return new Line(line.name(), line.inventory(), line.bags(), line.storage(), line.need(), List.copyOf(subs));
     }
 
     /** 인벤토리 36칸 + 왼손 + 지금 마우스로 집고 있는 아이템 (옮기는 도중에 숫자가 튀지 않게) */

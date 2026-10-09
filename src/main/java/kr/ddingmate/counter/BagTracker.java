@@ -63,6 +63,8 @@ public final class BagTracker {
     static final class Account {
         List<String> titles = new ArrayList<>();
         Map<String, Bag> bags = new TreeMap<>();
+        /** 아이템 저장소. 슬롯마다 보관 개수를 설명 문구에서 읽는다 */
+        Bag storage;
     }
 
     private static final class Store {
@@ -80,6 +82,7 @@ public final class BagTracker {
     private static int openTicks;
     private static boolean openIsBag;
     private static int openBag;
+    private static boolean openIsStorage;
     private static int ticks;
 
     private BagTracker() {}
@@ -125,10 +128,12 @@ public final class BagTracker {
             openTicks = 0;
             openIsBag = false;
             openBag = 0;
+            openIsStorage = false;
         }
         openTicks++;
         if (openTicks == SETTLE_TICKS) decide(screen);
         if (openTicks >= SETTLE_TICKS && openBag > 0 && ticks % 5 == 0) record(screen, openBag);
+        if (openTicks >= SETTLE_TICKS && openIsStorage && ticks % 5 == 0) recordStorage(screen);
     }
 
     // ---------------------------------------------------------------- 창 제목 글리프
@@ -188,6 +193,11 @@ public final class BagTracker {
         }
         // 2) 글리프가 없으면(리소스팩을 끈 경우 등) 단축어·기억한 제목·칸 비교로 판단
         String title = screen.getTitle().getString();
+        if (title.contains("저장소")) {
+            openIsStorage = true;
+            pendingBag = 0;
+            return;
+        }
         if (pending) {
             // 이미 가방 제목을 알고 있는데 다른 제목의 창이 열렸다면 가방이 아닌 창(구매 안내 등)으로 본다.
             if (acc.titles.isEmpty() || acc.titles.contains(title)) {
@@ -220,11 +230,35 @@ public final class BagTracker {
         dirty = true;
     }
 
+    /**
+     * 아이템 저장소: 한 슬롯에 수천 개가 들어가서 아이템 묶음 개수가 아니라 설명 문구의 보관 개수를 읽는다.
+     * 문구에서 못 찾으면 묶음 개수를 쓴다. (실제 문구 형식은 서버에서 확인 필요)
+     */
+    private static void recordStorage(GenericContainerScreen screen) {
+        Account acc = account();
+        if (acc == null) return;
+        Bag bag = new Bag();
+        bag.seenAt = System.currentTimeMillis();
+        bag.slots = slotsOf(screen);
+        Inventory inv = screen.getScreenHandler().getInventory();
+        int size = containerSize(screen);
+        for (int i = 0; i < size; i++) {
+            ItemStack s = inv.getStack(i);
+            if (s.isEmpty()) continue;
+            int stored = ItemKeys.storedAmount(s);
+            bag.counts.merge(ItemKeys.keyOf(s), stored >= 0 ? stored : s.getCount(), Integer::sum);
+            IconCache.remember(s);
+        }
+        acc.storage = bag;
+        dirty = true;
+    }
+
     private static void closeOpen() {
         if (openScreen != null) {
             openScreen = null;
             openIsBag = false;
             openBag = 0;
+            openIsStorage = false;
             save();
         }
     }
@@ -238,6 +272,22 @@ public final class BagTracker {
         if (acc == null) return sum;
         for (Bag b : acc.bags.values()) b.counts.forEach((k, v) -> sum.merge(k, v, Integer::sum));
         return sum;
+    }
+
+    /** 기록된 아이템 저장소의 아이템 합계 */
+    public static Map<String, Integer> storageTotals() {
+        Account acc = account();
+        return acc == null || acc.storage == null ? Map.of() : Map.copyOf(acc.storage.counts);
+    }
+
+    /** 아이템 저장소를 마지막으로 본 시각(ms). 기록이 없으면 0 */
+    public static long storageSeenAt() {
+        Account acc = account();
+        return acc == null || acc.storage == null ? 0 : acc.storage.seenAt;
+    }
+
+    public static boolean storageOpen() {
+        return openScreen != null && openIsStorage;
     }
 
     public static int recordedCount() {
@@ -362,6 +412,7 @@ public final class BagTracker {
                     if (a.titles == null) a.titles = new ArrayList<>();
                     if (a.bags == null) a.bags = new TreeMap<>();
                     a.bags.values().removeIf(b -> b == null || b.counts == null || b.slots == null);
+                    if (a.storage != null && (a.storage.counts == null || a.storage.slots == null)) a.storage = null;
                 }
                 store = s;
             }

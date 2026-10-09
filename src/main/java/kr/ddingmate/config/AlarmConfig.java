@@ -55,6 +55,72 @@ public final class AlarmConfig {
         /** 가방을 여는 단축어. 뒤에 붙은 번호로 몇 번 가방인지 안다. 예: ㄱ1, /가방 1 */
         public List<String> bagAliases = new ArrayList<>(List.of("ㄱ", "가방"));
         public List<Pin> pins = new ArrayList<>();
+        /** 모자란 재료가 다른 레시피로 만드는 재료면 원재료까지 한 단계 펼쳐 보여 줌 */
+        public boolean expandSubMaterials = true;
+        /** 열어 본 아이템 저장소 내용도 합산 */
+        public boolean includeStorage = true;
+    }
+
+    /** 추적하는 장비 하나. key 는 ItemKeys 키, name 은 화면에 보일 이름 */
+    public static final class TrackedItem {
+        public String key = "";
+        public String name = "";
+
+        public TrackedItem() {}
+
+        public TrackedItem(String key, String name) {
+            this.key = key;
+            this.name = name;
+        }
+    }
+
+    public static final class Durability {
+        public boolean enabled = true;
+        public Corner corner = Corner.BOTTOM_RIGHT;
+        /** 남은 내구도가 이 % 이하로 떨어지면 한 번 알림 (0 = 알리지 않음) */
+        public int warnPercent = 10;
+        public List<TrackedItem> tracked = new ArrayList<>();
+    }
+
+    /** 할 일 초기화 시점: 매일 03시, 매주 목요일 03시, 매일 자정 */
+    public enum Reset { DAILY, WEEKLY, MIDNIGHT }
+
+    public static final class TodoItem {
+        public String name = "";
+        public Reset reset = Reset.DAILY;
+        /** 마지막으로 체크한 시각(ms). 초기화 시점보다 이전이면 안 한 것 */
+        public long doneAt;
+
+        public TodoItem() {}
+
+        public TodoItem(String name, Reset reset) {
+            this.name = name;
+            this.reset = reset;
+        }
+    }
+
+    public static final class Todo {
+        public boolean hudEnabled = false;
+        public Corner corner = Corner.TOP_RIGHT;
+        /** 일일 초기화 몇 분 전에 남은 할 일을 알려 줄지 (0 = 알리지 않음) */
+        public int remindMinutes = 60;
+        public List<TodoItem> items = new ArrayList<>(List.of(
+                new TodoItem("일일 의뢰", Reset.DAILY),
+                new TodoItem("오션오더", Reset.DAILY),
+                new TodoItem("미니보스", Reset.DAILY),
+                new TodoItem("바리스타", Reset.DAILY),
+                new TodoItem("인피니티 타워", Reset.DAILY),
+                new TodoItem("주간 의뢰", Reset.WEEKLY),
+                new TodoItem("접속 시간 보상 받기", Reset.MIDNIGHT)));
+    }
+
+    public static final class Playtime {
+        /** 접속 1·2·3·4·5·8시간을 넘길 때마다 보상을 받으라고 알림 */
+        public boolean enabled = true;
+        /** 일정 HUD 맨 위에 오늘 접속 시간과 다음 보상까지 남은 시간 표시 */
+        public boolean showInHud = true;
+        /** 23:30 에 "자정에 초기화돼요" 알림 */
+        public boolean midnightReminder = true;
     }
 
     /** DARK=서버 HUD 처럼 어두운 판, LIGHT=서버 창처럼 밝은 판, CLASSIC=예전 반투명 검은 상자 */
@@ -80,6 +146,9 @@ public final class AlarmConfig {
     public Map<String, EventSetting> events = new LinkedHashMap<>();
     public Keywords keywords = new Keywords();
     public Counter counter = new Counter();
+    public Durability durability = new Durability();
+    public Todo todo = new Todo();
+    public Playtime playtime = new Playtime();
 
     // ---------------------------------------------------------------- 저장·불러오기
 
@@ -139,6 +208,18 @@ public final class AlarmConfig {
             if (p.recipe == null) p.recipe = "";
             p.crafts = Math.max(1, Math.min(9999, p.crafts));
         }
+        if (durability == null) durability = new Durability();
+        if (durability.corner == null) durability.corner = Corner.BOTTOM_RIGHT;
+        if (durability.tracked == null) durability.tracked = new ArrayList<>();
+        durability.tracked.removeIf(t -> t == null || t.key == null || t.key.isBlank());
+        durability.warnPercent = Math.max(0, Math.min(90, durability.warnPercent));
+        if (todo == null) todo = new Todo();
+        if (todo.corner == null) todo.corner = Corner.TOP_RIGHT;
+        if (todo.items == null) todo.items = new ArrayList<>();
+        todo.items.removeIf(t -> t == null || t.name == null || t.name.isBlank());
+        for (TodoItem t : todo.items) if (t.reset == null) t.reset = Reset.DAILY;
+        todo.remindMinutes = Math.max(0, Math.min(600, todo.remindMinutes));
+        if (playtime == null) playtime = new Playtime();
         // 채널 재시작 규칙까지 모두 만들 수 있도록 임의 채널로 전체 규칙을 받아 기본 설정을 채운다.
         for (EventRule r : ScheduleEngine.buildRules(new ScheduleEngine.Channels(1, 1, 1, 1, 1))) {
             EventSetting s = events.get(r.id());

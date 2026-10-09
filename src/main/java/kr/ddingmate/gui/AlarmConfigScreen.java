@@ -5,7 +5,11 @@ import kr.ddingmate.config.AlarmConfig;
 import kr.ddingmate.counter.BagTracker;
 import kr.ddingmate.counter.IconCache;
 import kr.ddingmate.counter.RecipeBook;
+import kr.ddingmate.gear.DurabilityTracker;
+import kr.ddingmate.notify.AlertLog;
 import kr.ddingmate.notify.Notifier;
+import kr.ddingmate.playtime.PlaytimeTracker;
+import kr.ddingmate.todo.TodoList;
 import kr.ddingmate.schedule.EventRule;
 import kr.ddingmate.schedule.ScheduleEngine;
 import kr.ddingmate.ui.Theme;
@@ -25,6 +29,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,10 +50,12 @@ public class AlarmConfigScreen extends Screen {
     private static final int UNIT_W = 30;
     private static final int FIELD_W = 64;
     static final int HEADER_H = 26;
+    private static final int TAB_ROWS = 2;
 
     private enum Tab {
         NOTIFY("알림 방식", Items.BELL), EVENTS("일정", Items.CLOCK), CHANNELS("내 채널", Items.COMPASS),
-        KEYWORDS("키워드", Items.NAME_TAG), COUNTER("재료", Items.CHEST);
+        KEYWORDS("키워드", Items.NAME_TAG), COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
+        TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK);
 
         final String title;
         final ItemStack icon;
@@ -85,6 +94,7 @@ public class AlarmConfigScreen extends Screen {
     /** 레시피 고르기 화면에 다녀와도 보던 위치를 유지한다. */
     private double savedScroll;
     private boolean confirmClearBags;
+    private boolean confirmClearLog;
 
     private int px, py, pw, ph;
     private int cx, cy, cw, ch;
@@ -101,18 +111,21 @@ public class AlarmConfigScreen extends Screen {
         px = (width - pw) / 2;
         py = 6;
         cx = px + 6;
-        cy = py + HEADER_H + 30;
+        cy = py + HEADER_H + 5 + TAB_ROWS * 23 + 2;
         cw = pw - 12;
         ch = ph - (cy - py) - 32;
 
+        // 탭은 4개씩 두 줄
         Tab[] tabs = Tab.values();
-        int tabW = (cw - (tabs.length - 1) * 3) / tabs.length;
+        int perRow = (tabs.length + TAB_ROWS - 1) / TAB_ROWS;
+        int tabW = (cw - (perRow - 1) * 3) / perRow;
         for (int i = 0; i < tabs.length; i++) {
             TabButton b = new TabButton(tabs[i], tabW);
-            b.setX(cx + i * (tabW + 3));
-            b.setY(py + HEADER_H + 6);
+            b.setX(cx + (i % perRow) * (tabW + 3));
+            b.setY(py + HEADER_H + 5 + (i / perRow) * 23);
             addDrawableChild(b);
         }
+        if (tab == Tab.LOG) AlertLog.markRead();
 
         list = addDrawableChild(new ConfigList(client, cw - 4, ch - 4, cy + 2, 24));
         list.setX(cx + 2);
@@ -158,6 +171,9 @@ public class AlarmConfigScreen extends Screen {
             case CHANNELS -> buildChannels();
             case KEYWORDS -> buildKeywords();
             case COUNTER -> buildCounter();
+            case GEAR -> buildGear();
+            case TODO -> buildTodo();
+            case LOG -> buildLog();
         }
     }
 
@@ -238,6 +254,11 @@ public class AlarmConfigScreen extends Screen {
         list.pair(new Widgets.Cycle<>(half(), "카운터 위치", List.of(AlarmConfig.Corner.values()), cc.corner,
                         AlarmConfigScreen::cornerName, v -> cc.corner = v),
                 toggle("다 모이면 알림", cc.notifyComplete, v -> cc.notifyComplete = v));
+        Widgets.Toggle expand = toggle("원재료까지 펼치기", cc.expandSubMaterials, v -> cc.expandSubMaterials = v);
+        expand.setTooltip(Tooltip.of(Text.literal("모자란 재료가 다른 레시피로 만드는 것이면(예: 조약돌 뭉치 = 조약돌 64개) 모자란 만큼 필요한 원재료를 아래에 보여 줘요.")));
+        Widgets.Toggle storage = toggle("아이템 저장소도 합산", cc.includeStorage, v -> cc.includeStorage = v);
+        storage.setTooltip(Tooltip.of(Text.literal("아이템 저장소를 열었을 때 슬롯별 보관 개수를 기억해 합산해요. 주운 아이템이 저장소로 바로 들어가면 다음에 열 때까지 반영되지 않아요.")));
+        list.pair(expand, storage);
 
         list.header("모험 가방");
         Widgets.Field aliases = new Widgets.Field(rowWidth(), Text.literal("가방 단축어"));
@@ -262,6 +283,122 @@ public class AlarmConfigScreen extends Screen {
         clear.active = client != null && client.player != null && BagTracker.recordedCount() > 0;
         list.single(clear);
         list.note("가방은 열었을 때만 내용을 알 수 있어서, 한 번씩 열어 둔 가방만 합산돼요. 대신 열어 주지는 않아요.");
+    }
+
+    private void buildGear() {
+        AlarmConfig.Durability dc = cfg.durability;
+        list.header("추적할 장비 고르기 · 지금 인벤토리에 있는 내구도 있는 아이템");
+        Map<String, ItemStack> found = client != null ? DurabilityTracker.candidates(client) : Map.of();
+        if (client == null || client.player == null) {
+            list.note("게임에 들어가 있을 때 인벤토리의 장비가 여기에 보여요.");
+        } else if (found.isEmpty()) {
+            list.note("인벤토리에 내구도가 있는 장비가 없어요.");
+        }
+        for (Map.Entry<String, ItemStack> e : found.entrySet()) {
+            ItemStack s = e.getValue();
+            String name = s.getName().getString();
+            DurabilityTracker.Durability d = DurabilityTracker.read(s);
+            list.single(new Widgets.Toggle(rowWidth(), name, DurabilityTracker.isTracked(e.getKey()),
+                    v -> DurabilityTracker.setTracked(e.getKey(), name, v))
+                    .icon(s.copyWithCount(1)).detail(d.left() + "/" + d.max()));
+        }
+        List<AlarmConfig.TrackedItem> missing = dc.tracked.stream().filter(t -> !found.containsKey(t.key)).toList();
+        if (!missing.isEmpty()) {
+            list.header("추적 중이지만 지금 인벤토리에 없는 장비");
+            for (AlarmConfig.TrackedItem t : missing) {
+                list.single(new Widgets.Toggle(rowWidth(), t.name, true,
+                        v -> DurabilityTracker.setTracked(t.key, t.name, v)).detail("인벤토리에 없음"));
+            }
+        }
+        list.header("표시와 알림");
+        list.pair(toggle("내구도 HUD", dc.enabled, v -> dc.enabled = v),
+                new Widgets.Cycle<>(half(), "HUD 위치", List.of(AlarmConfig.Corner.values()), dc.corner,
+                        AlarmConfigScreen::cornerName, v -> dc.corner = v));
+        list.pair(new Widgets.Cycle<>(half(), "부족 알림", List.of(0, 5, 10, 15, 20, 30),
+                nearestOf(dc.warnPercent, 0, 5, 10, 15, 20, 30),
+                v -> v == 0 ? "끔" : v + "% 이하", v -> dc.warnPercent = v), null);
+        list.note("같은 장비가 여러 개면 손에 든 것 → 왼손 → 입은 것 → 단축바 → 나머지 칸 순서로 먼저 찾은 것을 보여 줘요.");
+    }
+
+    private void buildTodo() {
+        AlarmConfig.Todo tc = cfg.todo;
+        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        list.header("오늘 할 일 · 체크는 정해진 초기화 시각에 알아서 풀려요");
+        for (AlarmConfig.TodoItem item : tc.items) {
+            Widgets.Toggle t = new Widgets.Toggle(rowWidth(), item.name, TodoList.isDone(item, now),
+                    v -> TodoList.setDone(item, v)).detail(TodoList.resetName(item.reset));
+            Widgets.Button del = new Widgets.Button(44, 20, Text.literal("삭제"), false, b -> {
+                tc.items.remove(item);
+                rebuild();
+            });
+            list.withButton(t, del);
+        }
+        Widgets.Field name = new Widgets.Field(rowWidth() - 120 - 44 - GAP * 2, Text.literal("새 할 일"));
+        name.setMaxLength(30);
+        name.setPlaceholder(Text.literal("새 할 일 이름"));
+        AlarmConfig.Reset[] chosen = {AlarmConfig.Reset.DAILY};
+        Widgets.Cycle<AlarmConfig.Reset> reset = new Widgets.Cycle<>(120, "", List.of(AlarmConfig.Reset.values()),
+                chosen[0], TodoList::resetName, v -> chosen[0] = v);
+        Widgets.Button add = new Widgets.Button(44, 20, Text.literal("추가"), true, b -> {
+            String n = name.getText().trim();
+            if (n.isEmpty()) return;
+            tc.items.add(new AlarmConfig.TodoItem(n, chosen[0]));
+            rebuild();
+        });
+        list.row(name, reset, add);
+
+        list.header("표시와 알림");
+        list.pair(toggle("할 일 HUD", tc.hudEnabled, v -> tc.hudEnabled = v),
+                new Widgets.Cycle<>(half(), "HUD 위치", List.of(AlarmConfig.Corner.values()), tc.corner,
+                        AlarmConfigScreen::cornerName, v -> tc.corner = v));
+        list.pair(new Widgets.Cycle<>(half(), "남은 할 일 알림", List.of(0, 30, 60, 120),
+                nearestOf(tc.remindMinutes, 0, 30, 60, 120),
+                v -> v == 0 ? "끔" : "03시 " + v + "분 전", v -> tc.remindMinutes = v), null);
+
+        AlarmConfig.Playtime pc = cfg.playtime;
+        list.header("접속 시간 보상 · 위키 기준 1·2·3·4·5·8시간");
+        long sec = PlaytimeTracker.seconds();
+        if (sec >= 0) {
+            int next = PlaytimeTracker.nextRewardHour(sec);
+            list.note("오늘 접속 " + (sec / 3600) + "시간 " + (sec % 3600 / 60) + "분 (내 게임에서 센 추정값)"
+                    + (next == 0 ? " · 오늘 보상 구간을 다 채웠어요"
+                    : " · 다음 보상 " + next + "시간: " + PlaytimeTracker.REWARDS.get(next)));
+        }
+        list.pair(toggle("보상 구간 알림", pc.enabled, v -> pc.enabled = v),
+                toggle("일정 HUD 에 표시", pc.showInHud, v -> pc.showInHud = v));
+        list.pair(toggle("23:30 초기화 전 알림", pc.midnightReminder, v -> pc.midnightReminder = v), null);
+        list.note("보상 구간을 넘기면 채팅으로 알려 줘요. 보상은 /접속시간 에서 직접 받아야 하고, 자정에 초기화돼요.");
+    }
+
+    private void buildLog() {
+        List<AlertLog.Entry> entries = AlertLog.entries();
+        list.header("최근 알림 " + entries.size() + "개 · 소리·팝업을 꺼 둬도 여기 남아요");
+        if (entries.isEmpty()) list.note("아직 알림이 없어요.");
+        for (AlertLog.Entry e : entries) list.log(e);
+        if (!entries.isEmpty()) {
+            list.single(new Widgets.Button(rowWidth(), 20, Text.literal("기록 모두 지우기"), false, b -> {
+                if (!confirmClearLog) {
+                    confirmClearLog = true;
+                    b.setMessage(Text.literal("한 번 더 누르면 지워요"));
+                    return;
+                }
+                AlertLog.clear();
+                confirmClearLog = false;
+                rebuild();
+            }));
+        }
+    }
+
+    /** 목록을 다시 만들되 보던 위치는 유지 */
+    private void rebuild() {
+        savedScroll = list.getScrollY();
+        clearAndInit();
+    }
+
+    private static int nearestOf(int v, int... options) {
+        int best = options[0];
+        for (int o : options) if (Math.abs(o - v) < Math.abs(best - v)) best = o;
+        return best;
     }
 
     // ---------------------------------------------------------------- 위젯 만들기
@@ -415,7 +552,9 @@ public class AlarmConfigScreen extends Screen {
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
             boolean on = tab == target;
             Theme.tile(ctx, getX(), getY(), width, height, on ? Theme.Tile.BLUE_PRESSED : Theme.Tile.BLUE, isSelected() && !on);
-            String s = Theme.ellipsize(textRenderer, target.title, width - 24, true);
+            String label = target == Tab.LOG && tab != Tab.LOG && AlertLog.unread() > 0
+                    ? target.title + " " + Math.min(99, AlertLog.unread()) : target.title;
+            String s = Theme.ellipsize(textRenderer, label, width - 24, true);
             int tw = 14 + Theme.boldWidth(textRenderer, s);
             int x = getX() + (width - tw) / 2;
             int dy = on ? 1 : 0;
@@ -565,20 +704,43 @@ public class AlarmConfigScreen extends Screen {
         void labeled(String label, Widgets.Field field) {
             addEntry(new Row(List.of(field), label, RowKind.LABELED));
         }
+
+        /** 넓은 위젯 + 오른쪽 작은 단추 */
+        void withButton(ClickableWidget main, ClickableWidget button) {
+            main.setWidth(rowWidth() - button.getWidth() - GAP);
+            addEntry(new Row(List.of(main, button), null, RowKind.WIDGETS));
+        }
+
+        /** 위젯 여러 개를 정해 둔 너비 그대로 한 줄에 */
+        void row(ClickableWidget... widgets) {
+            addEntry(new Row(List.of(widgets), null, RowKind.WIDGETS));
+        }
+
+        void log(AlertLog.Entry e) {
+            addEntry(new Row(List.of(), null, RowKind.LOG, e));
+        }
     }
 
-    private enum RowKind { HEADER, NOTE, WIDGETS, UNIT, LABELED }
+    private enum RowKind { HEADER, NOTE, WIDGETS, UNIT, LABELED, LOG }
+
+    private static final DateTimeFormatter LOG_TIME = DateTimeFormatter.ofPattern("M/d HH:mm");
 
     private class Row extends ElementListWidget.Entry<Row> {
         private static final int LABEL_W = 70;
         private final List<ClickableWidget> widgets;
         private final String text;
         private final RowKind kind;
+        private final AlertLog.Entry entry;
 
         Row(List<ClickableWidget> widgets, String text, RowKind kind) {
+            this(widgets, text, kind, null);
+        }
+
+        Row(List<ClickableWidget> widgets, String text, RowKind kind, AlertLog.Entry entry) {
             this.widgets = widgets;
             this.text = text;
             this.kind = kind;
+            this.entry = entry;
         }
 
         @Override
@@ -597,6 +759,21 @@ public class AlarmConfigScreen extends Screen {
                     ctx.drawWrappedText(textRenderer, Theme.body(text), x + 2, y + 4, entryWidth - 4, Theme.TEXT_SOFT, false);
                     return;
                 }
+                case LOG -> {
+                    Theme.row(ctx, x, y, entryWidth, 22, false);
+                    String time = Instant.ofEpochMilli(entry.at).atZone(ScheduleEngine.KST).format(LOG_TIME);
+                    int chipW = Theme.width(textRenderer, entry.kind) + 8;
+                    Theme.tile(ctx, x + 4, y + 4, chipW, 14, Theme.Tile.BLUE, false);
+                    Theme.text(ctx, textRenderer, entry.kind, x + 8, y + 7, Theme.WHITE);
+                    int tx = x + 8 + chipW;
+                    int tw = Theme.width(textRenderer, time);
+                    Theme.text(ctx, textRenderer, time, x + entryWidth - 6 - tw, y + 3, Theme.TEXT_SOFT);
+                    int avail = x + entryWidth - 10 - tw - tx;
+                    Theme.boldText(ctx, textRenderer, Theme.ellipsize(textRenderer, entry.title, avail, true), tx, y + 3, Theme.TEXT, false);
+                    String body = entry.body == null ? "" : entry.body;
+                    Theme.text(ctx, textRenderer, Theme.ellipsize(textRenderer, body, x + entryWidth - 6 - tx), tx, y + 13, Theme.TEXT_SOFT);
+                    return;
+                }
                 default -> {
                 }
             }
@@ -607,7 +784,7 @@ public class AlarmConfigScreen extends Screen {
             }
             for (ClickableWidget w : widgets) {
                 if (w instanceof Widgets.Field f) {
-                    int fw = kind == RowKind.LABELED ? entryWidth - LABEL_W : FIELD_W;
+                    int fw = kind == RowKind.LABELED ? entryWidth - LABEL_W : f.outer();
                     f.place(cxp, y, fw);
                     f.render(ctx, mouseX, mouseY, tickDelta);
                     cxp += fw + GAP;

@@ -2,6 +2,7 @@ package kr.ddingmate.hud;
 
 import kr.ddingmate.DdingMate;
 import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.playtime.PlaytimeTracker;
 import kr.ddingmate.schedule.ScheduleEngine;
 import kr.ddingmate.ui.Theme;
 import net.minecraft.client.MinecraftClient;
@@ -27,13 +28,10 @@ public final class AlarmHud {
     static final int BOTTOM_GAP = 60;
     static final int HEAD_H = 14;
 
-    /** 이번 프레임에 일정 HUD 가 그린 구석과 높이(여백 포함). 같은 구석의 카운터 HUD 가 그 아래에 붙는다. */
-    public static AlarmConfig.Corner drawnCorner;
-    public static int drawnHeight;
-
     private static final ItemStack CLOCK = new ItemStack(Items.CLOCK);
 
-    private record Entry(String label, String left, long minutes) {}
+    /** color 가 0 이 아니면 남은 시간 색 대신 그 색으로 그린다(접속 시간 줄) */
+    private record Entry(String label, String left, long minutes, int color) {}
 
     private static long lastBuildMs;
     private static List<Entry> cached = List.of();
@@ -43,8 +41,7 @@ public final class AlarmHud {
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
         AlarmConfig cfg = DdingMate.config();
-        drawnCorner = null;
-        drawnHeight = 0;
+        HudStack.reset(); // 프레임마다 가장 먼저 그리는 HUD
         if (!cfg.hudEnabled || hidden(client)) return;
         long nowMs = System.currentTimeMillis();
         if (nowMs - lastBuildMs >= 1000) {
@@ -55,8 +52,7 @@ public final class AlarmHud {
         int h = cfg.hudStyle == AlarmConfig.HudStyle.CLASSIC
                 ? drawClassic(ctx, client.textRenderer, cfg)
                 : drawPanel(ctx, client.textRenderer, cfg, cfg.hudStyle == AlarmConfig.HudStyle.DARK);
-        drawnCorner = cfg.hudCorner;
-        drawnHeight = h + MARGIN;
+        HudStack.push(cfg.hudCorner, h);
     }
 
     private static int drawPanel(DrawContext ctx, TextRenderer tr, AlarmConfig cfg, boolean dark) {
@@ -79,7 +75,8 @@ public final class AlarmHud {
         int text = dark ? 0xFFE8ECF2 : Theme.TEXT;
         for (int i = 0; i < cached.size(); i++) {
             Entry e = cached.get(i);
-            int color = e.minutes() < 10 ? Theme.RED : e.minutes() < 60 ? Theme.GOLD : dark ? 0xFF9FB8D8 : Theme.BLUE_MID;
+            int color = e.color() != 0 ? e.color()
+                    : e.minutes() < 10 ? Theme.RED : e.minutes() < 60 ? Theme.GOLD : dark ? 0xFF9FB8D8 : Theme.BLUE_MID;
             ctx.fill(x + 6, ty + 3, x + 9, ty + 6, color);
             Theme.text(ctx, tr, e.label(), x + 13, ty + 1, text);
             Theme.boldText(ctx, tr, e.left(), x + boxW - 6 - Theme.boldWidth(tr, e.left()), ty + 1, color, dark);
@@ -118,7 +115,7 @@ public final class AlarmHud {
         ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);
         for (int i = 0; i < lines.size(); i++) {
             long m = cached.get(i).minutes();
-            int color = m < 10 ? 0xFFFF6B6B : m < 60 ? 0xFFFFE066 : 0xFFFFFFFF;
+            int color = cached.get(i).color() != 0 ? 0xFFFFD27A : m < 10 ? 0xFFFF6B6B : m < 60 ? 0xFFFFE066 : 0xFFFFFFFF;
             ctx.drawTextWithShadow(tr, lines.get(i), x + pad, y + pad + i * lineH, color);
         }
         return boxH;
@@ -141,11 +138,23 @@ public final class AlarmHud {
     private static List<Entry> build(AlarmConfig cfg) {
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
         List<Entry> out = new ArrayList<>();
+        long played = cfg.playtime.showInHud ? PlaytimeTracker.seconds() : -1;
+        if (played >= 0) {
+            int next = PlaytimeTracker.nextRewardHour(played);
+            String left = next == 0 ? "보상 다 채움" : "다음 보상 " + hm(next * 3600L - played);
+            out.add(new Entry("오늘 접속 " + hm(played), left, Long.MAX_VALUE, Theme.GOLD));
+        }
         for (ScheduleEngine.Occurrence o : ScheduleEngine.upcoming(DdingMate.rules(), cfg::isEnabled, now, cfg.hudLines)) {
             Duration left = Duration.between(now, o.time());
-            out.add(new Entry(o.rule().label(), ScheduleEngine.formatRemaining(left), left.toMinutes()));
+            out.add(new Entry(o.rule().label(), ScheduleEngine.formatRemaining(left), left.toMinutes(), 0));
         }
         return out;
+    }
+
+    /** "1시간 5분", "42분" */
+    static String hm(long seconds) {
+        long h = seconds / 3600, m = (seconds % 3600) / 60;
+        return h > 0 ? h + "시간 " + m + "분" : Math.max(m, seconds > 0 ? 1 : 0) + "분";
     }
 
     /** F1(HUD 숨기기)·F3 화면이거나 월드 밖이면 그리지 않는다. */

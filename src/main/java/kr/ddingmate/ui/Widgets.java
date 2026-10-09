@@ -81,12 +81,26 @@ public final class Widgets {
         private final String label;
         private final Consumer<Boolean> setter;
         private boolean value;
+        private ItemStack icon;
+        private String detail;
 
         public Toggle(int w, String label, boolean value, Consumer<Boolean> setter) {
             super(0, 0, w, 20, Text.literal(label));
             this.label = label;
             this.value = value;
             this.setter = setter;
+        }
+
+        /** 이름 앞에 아이템 아이콘 */
+        public Toggle icon(ItemStack icon) {
+            this.icon = icon;
+            return this;
+        }
+
+        /** 스위치 왼쪽에 붙는 작은 회색 글자(예: 내구도 236/1938) */
+        public Toggle detail(String detail) {
+            this.detail = detail;
+            return this;
         }
 
         @Override
@@ -98,8 +112,18 @@ public final class Widgets {
         @Override
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
             Theme.row(ctx, getX(), getY(), width, height, isSelected());
-            String s = Theme.ellipsize(tr(), label, width - 48);
-            Theme.text(ctx, tr(), s, getX() + 7, getY() + 6, Theme.TEXT);
+            int x = getX() + 7;
+            if (icon != null) {
+                Theme.item(ctx, icon, getX() + 4, getY() + 2, 16);
+                x = getX() + 23;
+            }
+            int right = getX() + width - 44;
+            if (detail != null) {
+                int dw = Theme.width(tr(), detail);
+                Theme.text(ctx, tr(), detail, right - dw, getY() + 6, Theme.TEXT_SOFT);
+                right -= dw + 6;
+            }
+            Theme.text(ctx, tr(), Theme.ellipsize(tr(), label, right - x), x, getY() + 6, Theme.TEXT);
             Theme.onOff(ctx, tr(), getX() + width - 39, getY() + 3, value, isSelected());
         }
 
@@ -216,12 +240,19 @@ public final class Widgets {
      */
     public static class Field extends TextFieldWidget {
         public static final int H = 20;
+        private final int outer;
 
         public Field(int w, Text name) {
             super(tr(), 0, 0, w, 10, name);
+            this.outer = w;
             setDrawsBackground(false);
             setEditableColor(Theme.TEXT);
             setUneditableColor(Theme.TEXT_DISABLED);
+        }
+
+        /** 만들 때 정한 바깥 칸 너비 */
+        public int outer() {
+            return outer;
         }
 
         /** 바깥 칸(x, y, w, 20)에 맞춰 글자 영역을 놓는다 */

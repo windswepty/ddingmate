@@ -8,6 +8,12 @@ import kr.ddingmate.counter.RecipeBook;
 import kr.ddingmate.gui.AlarmConfigScreen;
 import kr.ddingmate.hud.AlarmHud;
 import kr.ddingmate.hud.CounterHud;
+import kr.ddingmate.hud.DurabilityHud;
+import kr.ddingmate.hud.TodoHud;
+import kr.ddingmate.gear.DurabilityTracker;
+import kr.ddingmate.notify.AlertLog;
+import kr.ddingmate.playtime.PlaytimeTracker;
+import kr.ddingmate.todo.TodoList;
 import kr.ddingmate.notify.KeywordWatcher;
 import kr.ddingmate.notify.Notifier;
 import kr.ddingmate.schedule.EventRule;
@@ -54,6 +60,8 @@ public final class DdingMate implements ClientModInitializer {
         rebuildRules();
         RecipeBook.load();
         BagTracker.load();
+        AlertLog.load();
+        PlaytimeTracker.load();
 
         // 기본 키는 비워 둔다. 서버 조작(F·Q·숫자키·Shift 조합)과 겹치지 않게 사용자가 직접 지정한다.
         toggleHudKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -62,12 +70,18 @@ public final class DdingMate implements ClientModInitializer {
                 "key.ddingmate.open_settings", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, "category.ddingmate"));
 
         ClientTickEvents.END_CLIENT_TICK.register(DdingMate::onTick);
+        // 같은 구석이면 등록한 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도
         HudRenderCallback.EVENT.register(AlarmHud::render);
-        HudRenderCallback.EVENT.register(CounterHud::render); // 일정 HUD 다음에 그려야 같은 구석에서 아래로 붙는다
+        HudRenderCallback.EVENT.register(TodoHud::render);
+        HudRenderCallback.EVENT.register(CounterHud::render);
+        HudRenderCallback.EVENT.register(DurabilityHud::render);
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BagTracker.save());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            BagTracker.save();
+            PlaytimeTracker.save();
+        });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) KeywordWatcher.onMessage(message, null);
         });
@@ -88,14 +102,19 @@ public final class DdingMate implements ClientModInitializer {
             client.setScreen(new AlarmConfigScreen(client.currentScreen));
         }
         BagTracker.tick(client);
+        PlaytimeTracker.tick(client);
         tickCounter++;
-        if (tickCounter % 10 == 0) MaterialCounter.tick(client);
+        if (tickCounter % 10 == 0) {
+            MaterialCounter.tick(client);
+            DurabilityTracker.tick(client);
+        }
         // 알림 판정은 1초에 한 번. 월드(서버)에 들어가 있을 때만 울린다.
         if (tickCounter % 20 != 0 || client.world == null || client.player == null) return;
-        for (ScheduleEngine.Alert a : ScheduleEngine.dueAlerts(rules, config::isEnabled, config::leadsOf,
-                ZonedDateTime.now(ScheduleEngine.KST), FIRED)) {
+        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        for (ScheduleEngine.Alert a : ScheduleEngine.dueAlerts(rules, config::isEnabled, config::leadsOf, now, FIRED)) {
             Notifier.schedule(a);
         }
+        TodoList.tick(now);
     }
 
     public static AlarmConfig config() {

@@ -9,6 +9,9 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import kr.ddingmate.DdingMate;
 import kr.ddingmate.config.AlarmConfig;
 import kr.ddingmate.counter.BagTracker;
+import kr.ddingmate.notify.AlertLog;
+import kr.ddingmate.playtime.PlaytimeTracker;
+import kr.ddingmate.todo.TodoList;
 import kr.ddingmate.gui.AlarmConfigScreen;
 import net.minecraft.client.MinecraftClient;
 import kr.ddingmate.notify.Notifier;
@@ -101,6 +104,9 @@ public final class AlarmCommands {
                         .then(literal("켜기").executes(c -> { DdingMate.config().keywords.enabled = true; return saved(c, "키워드 알림을 켰어요."); }))
                         .then(literal("끄기").executes(c -> { DdingMate.config().keywords.enabled = false; return saved(c, "키워드 알림을 껐어요."); })))
                 .then(literal("가방").executes(AlarmCommands::bags))
+                .then(literal("할일").executes(AlarmCommands::todo))
+                .then(literal("기록").executes(AlarmCommands::log))
+                .then(literal("접속").executes(AlarmCommands::playtime))
                 .then(literal("테스트").executes(c -> { Notifier.test(); return 1; }))
                 .then(literal("다시읽기").executes(c -> { DdingMate.reloadConfig(); return feedback(c, "설정 파일을 다시 읽었어요."); }));
     }
@@ -118,6 +124,7 @@ public final class AlarmCommands {
                 "/띵메이트 위치 <좌상|우상|좌하|우하>, /띵메이트 줄수 <1~10>",
                 "/띵메이트 키워드 목록|추가|삭제|켜기|끄기",
                 "/띵메이트 가방 — 재료 카운터에 기록된 가방 목록",
+                "/띵메이트 할일 · 기록 · 접속 — 오늘 할 일, 최근 알림, 오늘 접속 시간",
                 "/띵메이트 테스트, /띵메이트 다시읽기",
         };
         feedback(c, "띵메이트 명령어 (/알리미 로 줄여 써도 돼요)");
@@ -147,6 +154,40 @@ public final class AlarmCommands {
         bags.forEach((n, at) -> c.getSource().sendFeedback(Text.literal("  " + n + "번 가방 · "
                 + WHEN.format(Instant.ofEpochMilli(at).atZone(ScheduleEngine.KST)) + " 확인").formatted(Formatting.GRAY)));
         return 1;
+    }
+
+    private static int todo(CommandContext<FabricClientCommandSource> c) {
+        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        List<AlarmConfig.TodoItem> items = DdingMate.config().todo.items;
+        long done = items.stream().filter(t -> TodoList.isDone(t, now)).count();
+        feedback(c, "오늘 할 일 " + done + "/" + items.size() + " (체크는 설정 → 할 일 탭에서)");
+        for (AlarmConfig.TodoItem t : items) {
+            boolean ok = TodoList.isDone(t, now);
+            c.getSource().sendFeedback(Text.literal((ok ? "  ✔ " : "  ☐ ") + t.name + " · " + TodoList.resetName(t.reset))
+                    .formatted(ok ? Formatting.DARK_GRAY : Formatting.WHITE));
+        }
+        return 1;
+    }
+
+    private static int log(CommandContext<FabricClientCommandSource> c) {
+        List<AlertLog.Entry> entries = AlertLog.entries();
+        if (entries.isEmpty()) return feedback(c, "아직 알림 기록이 없어요.");
+        feedback(c, "최근 알림 (전체는 설정 → 기록 탭)");
+        for (AlertLog.Entry e : entries.subList(0, Math.min(10, entries.size()))) {
+            c.getSource().sendFeedback(Text.literal("  " + WHEN.format(Instant.ofEpochMilli(e.at).atZone(ScheduleEngine.KST))
+                    + " [" + e.kind + "] ").formatted(Formatting.GRAY).append(Text.literal(e.title).formatted(Formatting.WHITE)));
+        }
+        AlertLog.markRead();
+        return 1;
+    }
+
+    private static int playtime(CommandContext<FabricClientCommandSource> c) {
+        long s = PlaytimeTracker.seconds();
+        if (s < 0) return feedback(c, "월드에 들어가 있을 때 확인할 수 있어요.");
+        int next = PlaytimeTracker.nextRewardHour(s);
+        return feedback(c, "오늘 접속 " + (s / 3600) + "시간 " + (s % 3600 / 60) + "분 (추정) · "
+                + (next == 0 ? "보상 구간을 다 채웠어요" : "다음 보상 " + next + "시간: " + PlaytimeTracker.REWARDS.get(next))
+                + " · 서버 기준은 /접속시간");
     }
 
     private static int setEvent(CommandContext<FabricClientCommandSource> c, boolean on) {
