@@ -64,11 +64,20 @@ public final class ExpertSkills {
         int level = levelOf(name, lines, skill.marine);
         if (level < 0) return false;
         DdingMateConfig.Craft c = DdingMate.config().craft;
-        if (skill.get.applyAsInt(c) == level) return false;
+        int pct = (skill.marine ? MARINE : NORMAL)[level];
+        if (skill.get.applyAsInt(c) == level) {
+            // 이미 같은 값이어도 이번 접속에서 처음 읽었으면 확인했다고 한 번 알려 준다
+            if (CONFIRMED.add(skill.name)) {
+                Notifier.chat(level == 0
+                        ? "전문가 스킬 '" + skill.name + "'을 아직 안 배운 것으로 확인했어요."
+                        : "전문가 스킬 '" + skill.name + "' " + pct + "% 감소를 확인했어요(이미 반영됨).");
+            }
+            return false;
+        }
+        CONFIRMED.add(skill.name);
         skill.set.accept(c, level);
         DdingMate.config().save();
         CraftTimers.recalculate();
-        int pct = (skill.marine ? MARINE : NORMAL)[level];
         DdingMate.LOG.info("전문가 스킬 {} → {}레벨({}%)", skill.name, level, pct);
         Notifier.chat(level == 0
                 ? "전문가 스킬 '" + skill.name + "'을 아직 안 배운 것으로 확인했어요."
@@ -76,19 +85,25 @@ public final class ExpertSkills {
         return true;
     }
 
+    /** 이번 접속에서 이미 읽고 알려 준 스킬 */
+    private static final java.util.Set<String> CONFIRMED = new java.util.HashSet<>();
+
     private static final int[] NORMAL = {0, 10, 30, 40, 60, 80};
     private static final int[] MARINE = {0, 10, 20, 30, 50, 70};
 
     /** 지금 레벨(0~5). 알 수 없으면 -1 */
     static int levelOf(String name, List<String> lore, boolean marine) {
         if (NOT_LEARNED.matcher(name).find()) return 0;
+        // 구분선 위(지금 효과)만 한 줄로 이어 읽는다. 스킬마다 줄 바꿈 위치가 달라
+        // "영혼 가공 시설의 제작 시간이 / 10% 감소합니다."처럼 숫자가 다음 줄로 넘어가기도 한다
+        StringBuilder now = new StringBuilder();
         for (String l : lore) {
             if (PREVIEW.matcher(l).find()) break;
-            if (NOT_LEARNED.matcher(l).find()) return 0;
-            Matcher m = REDUCE.matcher(l);
-            if (m.find()) return levelForPercent(Integer.parseInt(m.group(1)), marine);
+            now.append(' ').append(l.replaceFirst("^[.\\s]+", ""));
         }
-        return -1;
+        if (NOT_LEARNED.matcher(now).find()) return 0;
+        Matcher m = REDUCE.matcher(now);
+        return m.find() ? levelForPercent(Integer.parseInt(m.group(1)), marine) : -1;
     }
 
     /** 감소율 → 레벨. 표에 없는 값이면 그 값을 넘지 않는 가장 높은 레벨 */

@@ -514,6 +514,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 물 흐르듯 술술 (+3)",
                         java.util.List.of(". 제작 시간이 30% 감소합니다.", "────", ". 제작 시간이 50% 감소합니다.")) == 3, "해양 표(30%=3레벨)로 안 읽음");
                 check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 초고속 용광로 (+0)", furnace) == 0, "안 배운 스킬을 배운 것으로 읽음");
+                // 실제 사냥 칸은 숫자가 다음 줄로 넘어간다: "영혼 가공 시설의 제작 시간이 / 10% 감소합니다."
+                check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 고속 영혼 가공기 (+1)",
+                        java.util.List.of("전문가 스킬 정보", ". 영혼 가공 시설의 제작 시간이", ". 10% 감소합니다.", "──────────────────",
+                                ". [강화 시 스킬 정보]", ". 영혼 가공 시설의 제작 시간이", ". 30% 감소합니다.")) == 1, "줄이 나뉜 사냥 스킬(10%)을 못 읽음");
                 DdingMate.config().craft.mining = 0;
                 ItemStack skill = item("[세레니티] 초고속 용광로 (+2)", 1, "전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의",
                         ". 제작 시간이 30% 감소합니다.", "──────────────────", ". [강화 시 스킬 정보]", ". 제작 시간이 40% 감소합니다.");
