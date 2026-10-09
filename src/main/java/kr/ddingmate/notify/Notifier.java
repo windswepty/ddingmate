@@ -53,6 +53,11 @@ public final class Notifier {
     }
 
     /** 제작·가공 시설에서 만들던 아이템이 다 됐을 때 */
+    public static void voyageDone(String island) {
+        notify("제작", "항해 완료: " + island, "항해선이 돌아왔어요 · 항해 창에서 보상을 받으세요",
+                SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);
+    }
+
     public static void craftDone(String name, int count, int times) {
         ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(name);
         notify("제작", "제작 완료: " + name + (count > 1 ? " ×" + count : "") + (times > 1 ? " [" + times + "]" : ""),

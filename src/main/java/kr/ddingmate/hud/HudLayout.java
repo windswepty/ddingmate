@@ -46,6 +46,14 @@ public final class HudLayout {
      * 1920×1080·GUI 자동(4배) 실측: 위 17~52, 왼쪽 5~136 → 왼쪽 위 HUD 는 그 아래부터
      */
     static final int ISLAND_PROFILE_TOP = 55;
+    static final int ISLAND_PROFILE_RIGHT = 138;
+
+    /** 서버가 그리는 HUD 중 피해야 할 자리(화면 GUI 좌표). 아일랜드 왼쪽 위 프로필 */
+    private static List<Rect> serverAreas() {
+        if (!DdingMate.config().avoidServerHud
+                || kr.ddingmate.game.ServerHud.area() != kr.ddingmate.game.ServerHud.Area.ISLAND) return List.of();
+        return List.of(new Rect(0, 0, ISLAND_PROFILE_RIGHT, ISLAND_PROFILE_TOP));
+    }
     static final int CHAT_ZONE = 135;
     static final int HOTBAR_GAP = 34;
     /** 서버 HUD 피하기를 끈 경우의 예전 여백 */
@@ -184,9 +192,11 @@ public final class HudLayout {
             x = Math.round(p.x * Math.max(0, sw - rw));
             y = Math.round(p.y * Math.max(0, sh - rh));
             // 직접 옮긴 자리라도 먼저 그린 HUD 와 겹치면(일정에 제작 줄이 늘어 길어졌을 때 등) 그 아래로, 안 되면 위로 비킨다
+            List<Rect> avoid = new ArrayList<>(serverAreas());
+            avoid.addAll(BOUNDS.values());
             for (int guard = 0; guard < 8; guard++) {
                 Rect hit = null;
-                for (Rect r : BOUNDS.values()) {
+                for (Rect r : avoid) {
                     if (x < r.x() + r.w() && r.x() < x + rw && y < r.y() + r.h() && r.y() < y + rh) {
                         hit = r;
                         break;
@@ -243,7 +253,9 @@ public final class HudLayout {
         for (Spot s : spots) {
             int cost = s.cost();
             if (s.x() < 0 || s.y() < 0 || s.x() + rw > sw || s.y() + rh > sh) cost += 500;
-            for (Rect r : BOUNDS.values()) {
+            List<Rect> avoid = new ArrayList<>(serverAreas());
+            avoid.addAll(BOUNDS.values());
+            for (Rect r : avoid) {
                 if (s.x() < r.x() + r.w() && r.x() < s.x() + rw && s.y() < r.y() + r.h() && r.y() < s.y() + rh) {
                     cost += 1000;
                     break;

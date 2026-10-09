@@ -338,6 +338,11 @@ public final class CraftTimers {
             if (s.isEmpty()) continue;
             LoreComponent lore = s.get(DataComponentTypes.LORE);
             if (lore == null || lore.lines().isEmpty()) continue;
+            if (voyage(jobs, s, lore.lines(), now)) {
+                changed = true;
+                continue;
+            }
+            if (isVoyage(lore.lines())) continue;
             Reading r = read(lore.lines());
             if (r == null) continue;
             String name = cleanName(ItemKeys.stripGlyphs(s.getName().getString()));
@@ -353,6 +358,8 @@ public final class CraftTimers {
                 }
                 continue;
             }
+            if (kr.ddingmate.counter.RecipeBook.recipeFor(name) == null
+                    && jobs.stream().noneMatch(x -> !x.separate && ItemKeys.normalize(x.name).equals(key))) continue;
             int count = Math.max(1, s.getCount());
             // 같은 제작이 두 칸(진행 칸·대기열 칸)에 보이면 하나로
             boolean dup = queue.stream().anyMatch(q -> q.key().equals(key) && q.count() == count
@@ -465,6 +472,95 @@ public final class CraftTimers {
         return (n == null ? name : n).replaceFirst("(\\s*\\[\\+\\d+\\])+\\s*$", "").trim();
     }
 
+    // ---------------------------------------------------------------- 항해
+
+    /** 항해 타이머 이름 끝: "유실라 항해" */
+    public static final String VOYAGE = "항해";
+    private static final Pattern VOYAGE_HINT = Pattern.compile("항해");
+    /**
+     * 돌아와 보상을 받을 수 있는 칸(2026-10-10 실제 "[ 유실라 보상 수령 ]": "클릭 시 항해 보상을 수령합니다.").
+     * "항해선이 돌아와 보상을 수령할 수 있습니다!"는 모든 섬 칸에 붙는 안내 문구일 수 있어 쓰지 않는다
+     */
+    private static final Pattern VOYAGE_READY = Pattern.compile("항해\\s*보상을\\s*수령합니다");
+    /** 칸 이름에서 섬 이름만: "[ 유실라 보상 수령 ]" → 유실라 */
+    private static final Pattern VOYAGE_NAME = Pattern.compile("^\\[?\\s*(.+?)\\s*(?:보상\\s*수령|항해.*|출항.*|보내기.*)?\\s*]?$");
+
+    private static boolean isVoyage(List<Text> lines) {
+        for (Text l : lines) if (VOYAGE_HINT.matcher(ItemKeys.stripGlyphs(l.getString())).find()) return true;
+        return false;
+    }
+
+    /**
+     * 항해 창의 섬 칸을 읽는다. 돌아온 칸("보상 수령")이면 완료로, 남은 시간이 보이는 칸이면 그 시각으로 맞춘다.
+     * "항해 소요 시간"은 걸리는 시간일 뿐 남은 시간이 아니라 쓰지 않는다. 바꾼 게 있으면 true
+     */
+    static boolean voyage(List<Job> jobs, ItemStack stack, List<Text> lines, long now) {
+        if (!isVoyage(lines)) return false;
+        boolean ready = false;
+        long remaining = -1;
+        StringBuilder all = new StringBuilder();
+        for (Text l : lines) {
+            String t = ItemKeys.stripGlyphs(l.getString());
+            all.append(" | ").append(t);
+            if (VOYAGE_READY.matcher(t).find()) ready = true;
+            if (REMAIN_HINT.matcher(t).find()) {
+                long sec = seconds(t);
+                if (sec >= 0) remaining = sec;
+            }
+        }
+        String rawName = ItemKeys.stripGlyphs(stack.getName().getString()).trim();
+        if (rawName.matches(".*보상\\s*수령.*")) ready = true;
+        Matcher m = VOYAGE_NAME.matcher(rawName);
+        String island = m.matches() ? m.group(1).trim() : "";
+        if (island.isEmpty()) return false;
+        String sig = "voyage:" + island + all.toString().replaceAll("\\d", "#");
+        if (LOGGED.size() < 60 && LOGGED.add(sig)) DdingMate.LOG.info("항해 칸 읽음: {}{}", island, all);
+        String name = island + " " + VOYAGE;
+        Job job = jobs.stream().filter(j -> j.separate && j.name.equals(name)).findFirst().orElse(null);
+        if (!ready && remaining < 0) {
+            // 돌아온 항해가 보상 수령 칸에서 다른 칸으로 바뀌었으면 받아 간 것 → 목록에서 뺀다
+            if (job != null && job.endsAt > 0 && job.endsAt <= now) {
+                jobs.remove(job);
+                return true;
+            }
+            return false;
+        }
+        if (ready) {
+            if (job == null || job.endsAt == 0 || job.endsAt > now) {
+                if (job == null) {
+                    job = new Job();
+                    job.name = name;
+                    job.separate = true;
+                    job.notified = true; // 이미 돌아온 걸 창에서 본 것이라 알리지 않는다
+                    jobs.add(job);
+                }
+                job.endsAt = now;
+                job.synced = true;
+                return true;
+            }
+            return false;
+        }
+        long ends = now + remaining * 1000;
+        if (job == null) {
+            job = new Job();
+            job.name = name;
+            job.separate = true;
+            jobs.add(job);
+        } else if (job.synced && Math.abs(job.endsAt - ends) <= 1500) {
+            return false;
+        }
+        job.endsAt = ends;
+        job.synced = true;
+        job.notified = false;
+        return true;
+    }
+
+    /** 시험용 */
+    public static boolean debugVoyage(ItemStack stack, List<Text> lines) {
+        List<Job> jobs = jobsForWrite();
+        return jobs != null && voyage(jobs, stack, lines, System.currentTimeMillis());
+    }
+
     // ---------------------------------------------------------------- 알림
 
     /** 1초마다: 같은 아이템·개수로 넣은 제작이 모두 끝나면 한 번 알린다(조약돌 뭉치 ×7 [4]) */
@@ -489,7 +585,9 @@ public final class CraftTimers {
             List<Job> all = jobs.stream().filter(o -> groupKey(o).equals(k) && done(o, now)).toList();
             boolean same = all.stream().allMatch(o -> o.count == j.count);
             int sum = all.stream().mapToInt(o -> o.count).sum();
-            if (DdingMate.config().craft.notify) {
+            if (DdingMate.config().craft.notify && j.name.endsWith(VOYAGE)) {
+                Notifier.voyageDone(j.name.substring(0, j.name.length() - VOYAGE.length()).trim());
+            } else if (DdingMate.config().craft.notify) {
                 if (same) Notifier.craftDone(j.name, j.count, all.size());
                 else Notifier.craftDone(j.name, sum, 1);
             }

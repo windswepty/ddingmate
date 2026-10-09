@@ -295,7 +295,43 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(s1 != null && s2 != null, "HUD 가 그려지지 않음: " + bounds.keySet());
                 boolean overlap = s1.x() < s2.x() + s2.w() && s2.x() < s1.x() + s1.w() && s1.y() < s2.y() + s2.h() && s2.y() < s1.y() + s1.h();
                 check(!overlap, "직접 옮긴 HUD 끼리 겹침: " + s1 + " / " + s2);
+                // 9-3) 아일랜드: 왼쪽 위로 직접 옮긴 HUD 도 서버 프로필(얼굴·체력) 아래로 비킨다(실제 화면에서 깔렸음)
+                DdingMate.config().hudPos.get(kr.ddingmate.hud.HudLayout.SCHEDULE).y = 0f;
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.ISLAND, 6);
+            });
+            ctx.waitTicks(30);
+            ctx.runOnClient(c -> {
+                var s1 = kr.ddingmate.hud.HudLayout.bounds().get(kr.ddingmate.hud.HudLayout.SCHEDULE);
+                check(s1 != null && s1.y() >= 55, "아일랜드에서 직접 옮긴 일정 HUD 가 프로필 밑에 깔림: " + s1);
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.VILLAGE, 30);
                 DdingMate.config().hudPos.clear();
+                CraftTimers.debugClear();
+                // 9-4) 항해: 실제 2026-10-10 칸 "[ 유실라 보상 수령 ]"은 돌아온 항해. "항해 소요 시간"을 제작으로 착각하지 않는다
+                c.setScreen(facility(c, item("[ 유실라 보상 수령 ]", 1, "", "  항해를 통해 다양한 아이템을 획득해보세요.",
+                        "  항해선이 돌아와 보상을 수령할 수 있습니다!", "", "  - 항해 소요 시간 : 4시간 5분 0초", "", "클릭 시 항해 보상을 수령합니다.")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                check(jobs.size() == 1 && jobs.get(0).name.equals("유실라 항해") && jobs.get(0).separate,
+                        "돌아온 항해를 항해 타이머로 읽지 못하거나 제작으로 착각함: " + jobs.stream().map(j -> j.name).toList());
+                check(CraftTimers.groups().get(0).done(), "돌아온 항해가 완료로 보이지 않음");
+                // 항해 중인 칸에 남은 시간이 보이면 그 시각으로
+                c.setScreen(facility(c, item("[ 큐로아 항해 중 ]", 1, "  항해를 통해 다양한 아이템을 획득해보세요.", "  - 남은 시간 : 1시간 2분 3초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                CraftTimers.Job j = CraftTimers.jobs().stream().filter(x -> x.name.equals("큐로아 항해")).findFirst().orElse(null);
+                check(j != null && Math.abs(j.endsAt - (now() + 3_723_000)) < 2500, "항해 남은 시간을 읽지 못함: " + j);
+                // 보상을 받아 칸이 바뀌면(보상 수령 → 보내기) 목록에서 빠진다
+                c.setScreen(facility(c, item("[ 유실라 ]", 1, "  항해를 통해 다양한 아이템을 획득해보세요.", "  - 항해 소요 시간 : 4시간 5분 0초", "클릭 시 항해를 보냅니다.")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.jobs().stream().noneMatch(x -> x.name.equals("유실라 항해")), "보상을 받은 항해가 남음");
+                check(CraftTimers.jobs().stream().noneMatch(x -> !x.separate), "항해 칸을 제작으로 등록함");
+                c.setScreen(null);
+                CraftTimers.debugClear();
             });
 
             // 10) 설정 화면: 재료 탭 목록, 홈 '제작 중'
