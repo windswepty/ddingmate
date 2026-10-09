@@ -51,9 +51,6 @@ public final class ScheduleEngine {
         rules.add(new EventRule("midnight_reset", "자정 초기화",
                 "접속 시간 보상 초기화(자정 전에 수령!)·마을 은행 한도·광채 생성기 용량",
                 daily, 0, List.of(t(0, 0)), List.of(15)));
-        rules.add(new EventRule("serenity_reset", "세레니티 엔티티 초기화",
-                "설치한 덫·육식 동물·공룡 등 세레니티 엔티티가 모두 사라져요",
-                daily, 0, List.of(t(2, 0), t(14, 0)), List.of(10, 3)));
         rules.add(new EventRule("fishing_contest", "파라다이스 낚시 대회",
                 "10분 전 종목 공개 — 인어의 축복을 미리 맞춰 두세요",
                 daily, 0, List.of(t(10, 0), t(22, 0)), List.of(10, 1)));
@@ -80,13 +77,8 @@ public final class ScheduleEngine {
                     "마을 채널이 재시작돼요",
                     daily, 0, hoursToTimes(hours[g], 0), List.of(5, 1)));
         }
-        if (ch.hunt() > 0) {
-            int g = (ch.hunt() - 1) % 4;
-            rules.add(new EventRule("hunt_reboot", "노크틸라 " + ch.hunt() + "채널 재시작",
-                    "인피니티 타워 도전 중 재시작되면 실패(개인 과실) 처리돼요",
-                    daily, 0, hoursToTimes(new int[]{g, g + 4, g + 8, g + 12, g + 16, g + 20}, 0), List.of(10, 3)));
-        }
-        // 야생·아일랜드·스폰은 위키에 정해진 재시작 시각이 없어 일정을 만들지 않는다(채널 번호는 표시용으로만 기억).
+        // 노크틸라·야생·아일랜드·스폰 재시작은 일정으로 만들지 않는다(사용자 요청·정해진 시각 없음).
+        // 지금 채널 재부팅은 서버 예고 "[서버 리붓] N분 뒤 현재 채널이 재부팅됩니다." 로 따로 보여 준다(ServerHud).
         return rules;
     }
 

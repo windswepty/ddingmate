@@ -75,7 +75,6 @@ public class DdingMateScreen extends Screen {
     static {
         EVENT_NAMES.put("daily_reset", "일일 초기화 (매일 03:00)");
         EVENT_NAMES.put("midnight_reset", "자정 초기화 (매일 00:00)");
-        EVENT_NAMES.put("serenity_reset", "세레니티 초기화 (02·14시)");
         EVENT_NAMES.put("fishing_contest", "낚시 대회 (10·22시)");
         EVENT_NAMES.put("invest_deadline", "마을 투자 마감 (수 02:59)");
         EVENT_NAMES.put("maintenance_start", "정기 점검 시작 (수 09:00)");
@@ -83,7 +82,6 @@ public class DdingMateScreen extends Screen {
         EVENT_NAMES.put("weekly_reset", "주간 초기화 (목 03:00)");
         EVENT_NAMES.put("hunter_affinity", "수렵꾼 호감도 (매월 1일)");
         EVENT_NAMES.put("village_reboot", "마을 채널 재시작");
-        EVENT_NAMES.put("hunt_reboot", "노크틸라 채널 재시작");
     }
 
     private static Tab lastTab = Tab.HOME;
@@ -311,8 +309,8 @@ public class DdingMateScreen extends Screen {
         Widgets.Toggle avoid = toggle("서버 HUD 피하기", cfg.avoidServerHud, v -> cfg.avoidServerHud = v);
         avoid.setTooltip(Tooltip.of(Text.literal("구석 HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.")));
         list.pair(size, avoid);
-        Widgets.Toggle tab = toggle("Tab 누르면 HUD 숨기기", cfg.hideOnTab, v -> cfg.hideOnTab = v);
-        tab.setTooltip(Tooltip.of(Text.literal("켜면 Tab(접속자 목록)을 누르는 동안 HUD 를 숨겨요. 끄면 목록 뒤에 흐리게 보여요.")));
+        Widgets.Toggle tab = toggle("Tab 때 HUD 흐리게 남기기", cfg.dimOnTab, v -> cfg.dimOnTab = v);
+        tab.setTooltip(Tooltip.of(Text.literal("끄면(기본) Tab(접속자 목록)을 누르는 동안 HUD 를 숨겨요. 켜면 목록 뒤에 흐리게 남지만 목록 칸 사이로 잘려 보여요.")));
         list.pair(toggle("띵타이쿤 글꼴(갈무리)", cfg.galmuriFont, v -> cfg.galmuriFont = v), tab);
         Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 설정"), true, b -> {
             savedScroll = list.getScrollY();
@@ -466,8 +464,7 @@ public class DdingMateScreen extends Screen {
                 : "지금 있는 곳: " + here.label + " " + kr.ddingmate.game.ServerHud.channel() + "채널"
                         + (cfg.autoChannel ? " · 이 지역의 내 채널로 맞췄어요" : ""));
         list.header(cfg.autoChannel ? "지역별 내 채널 · 마지막으로 있던 채널" : "지역별 내 채널");
-        list.pair(channel("마을", 35, cfg.villageChannel, v -> cfg.villageChannel = v),
-                channel("노크틸라", 24, cfg.huntChannel, v -> cfg.huntChannel = v));
+        list.pair(channel("마을", 35, cfg.villageChannel, v -> cfg.villageChannel = v), null);
         list.note(cfg.autoChannel
                 ? "가 본 지역은 알아서 채워져요. 직접 바꿔도 되고, '끔'이면 그 지역 재시작은 알리지 않아요(그 지역에 다시 가면 다시 켜져요)."
                 : "'끔'이면 그 채널 재시작은 알리지 않아요. 클릭하면 다음 번호, 오른쪽 클릭이나 Shift+클릭은 이전 번호예요.");

@@ -185,8 +185,11 @@ public final class DdingMateConfig {
     public int hudScale = 100;
     /** 서버 HUD(위쪽 재화 바·날짜/채널, 왼쪽 아래 채팅창)를 피해서 구석 HUD 를 놓음 */
     public boolean avoidServerHud = true;
-    /** Tab(접속자 목록)을 누르는 동안 HUD 를 숨긴다. 끄면 목록 뒤에 흐리게 둔다 */
-    public boolean hideOnTab = false;
+    /**
+     * Tab(접속자 목록)을 누르는 동안 HUD 를 목록 뒤에 흐리게 남긴다. 기본은 숨김 —
+     * 서버 Tab 목록은 칸 사이가 비어 있어 뒤에 남기면 HUD 가 잘린 조각처럼 보인다
+     */
+    public boolean dimOnTab = false;
     /** 설정 화면·HUD·팝업을 갈무리 글꼴(띵타이쿤과 같은 글꼴)로 그릴지 */
     public boolean galmuriFont = true;
     public Corner hudCorner = Corner.TOP_LEFT;
@@ -332,7 +335,7 @@ public final class DdingMateConfig {
         craft.marine = Math.max(0, Math.min(5, craft.marine));
         craft.hunting = Math.max(0, Math.min(5, craft.hunting));
         // 0.3.0 까지 있던 근거 없는 야생·아일랜드·스폰 재시작 일정 설정은 지운다
-        events.keySet().removeAll(List.of("wild_reboot", "island_reboot", "spawn_reboot"));
+        events.keySet().removeAll(List.of("wild_reboot", "island_reboot", "spawn_reboot", "serenity_reset", "hunt_reboot"));
         // 채널 재시작 규칙까지 모두 만들 수 있도록 임의 채널로 전체 규칙을 받아 기본 설정을 채운다.
         for (EventRule r : ScheduleEngine.buildRules(new ScheduleEngine.Channels(1, 1, 1, 1, 1))) {
             EventSetting s = events.get(r.id());

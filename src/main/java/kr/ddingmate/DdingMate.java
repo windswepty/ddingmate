@@ -116,13 +116,13 @@ public final class DdingMate implements ClientModInitializer {
     private static void renderHuds(net.minecraft.client.gui.DrawContext ctx, net.minecraft.client.render.RenderTickCounter tick) {
         if (!config.opened || !ServerHud.inGame()) return;
         boolean tab = playerListShown();
-        if (tab && config.hideOnTab) return;
+        if (tab && !config.dimOnTab) return;
         ScheduleHud.render(ctx, tick);
         TodoHud.render(ctx, tick);
         CounterHud.render(ctx, tick);
         DurabilityHud.render(ctx, tick);
         // Tab 목록은 HUD 위에 그려진다. 가장자리로 삐져나온 HUD 가 목록과 섞여 보이지 않게 어둡게 덮어 흐리게 한다
-        if (tab && !kr.ddingmate.hud.HudLayout.editing) {
+        if (tab && config.dimOnTab && !kr.ddingmate.hud.HudLayout.editing) {
             for (kr.ddingmate.hud.HudLayout.Rect r : kr.ddingmate.hud.HudLayout.bounds().values()) {
                 ctx.fill(r.x(), r.y(), r.x() + r.w(), r.y() + r.h(), 0xB0000000);
             }

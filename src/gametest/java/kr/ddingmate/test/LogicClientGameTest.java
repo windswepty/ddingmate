@@ -56,8 +56,6 @@ public class LogicClientGameTest implements FabricClientGameTest {
         expectNext(r, "daily_reset", at(10, 9, 2, 59), at(10, 9, 3, 0));
         expectNext(r, "daily_reset", at(10, 9, 3, 0), at(10, 10, 3, 0)); // 같은 시각은 다음 날
         expectNext(r, "midnight_reset", NOON, at(10, 10, 0, 0));
-        expectNext(r, "serenity_reset", NOON, at(10, 9, 14, 0));
-        expectNext(r, "serenity_reset", at(10, 9, 14, 30), at(10, 10, 2, 0));
         expectNext(r, "fishing_contest", NOON, at(10, 9, 22, 0));
         expectNext(r, "invest_deadline", NOON, at(10, 14, 2, 59));       // 다음 수요일
         expectNext(r, "maintenance_start", NOON, at(10, 14, 9, 0));
@@ -66,13 +64,13 @@ public class LogicClientGameTest implements FabricClientGameTest {
         expectNext(r, "weekly_reset", at(10, 8, 2, 0), at(10, 8, 3, 0));
         expectNext(r, "hunter_affinity", NOON, at(11, 1, 3, 0));         // 다음 달 1일
         expectNext(r, "village_reboot", NOON, at(10, 9, 13, 0));         // 마을 7채널: 1·7·13·19시
-        expectNext(r, "hunt_reboot", NOON, at(10, 9, 13, 0));            // 노크틸라 2채널: 1시부터 4시간마다
+        check(!r.containsKey("serenity_reset") && !r.containsKey("hunt_reboot"), "지운 세레니티·노크틸라 일정이 남음");
         // 야생·아일랜드·스폰은 정해진 재시작 시각이 없어 일정을 만들지 않는다
         check(!r.containsKey("wild_reboot") && !r.containsKey("island_reboot") && !r.containsKey("spawn_reboot"),
                 "근거 없는 야생·아일랜드·스폰 재시작 일정이 있음");
         // 채널 0 이면 재시작 일정이 없다
         List<EventRule> none = ScheduleEngine.buildRules(new ScheduleEngine.Channels(0, 0, 0, 0, 0));
-        check(none.size() == 9 && none.stream().noneMatch(e -> e.id().endsWith("_reboot")), "채널 끔인데 재시작 일정이 있음");
+        check(none.size() == 8 && none.stream().noneMatch(e -> e.id().endsWith("_reboot")), "채널 끔인데 재시작 일정이 있음");
         // 모든 채널 번호에서 규칙이 만들어지고 다음 시각이 있다
         for (int ch = 1; ch <= 35; ch++) {
             for (EventRule e : ScheduleEngine.buildRules(new ScheduleEngine.Channels(ch, ch, ch, ch, ch))) {
