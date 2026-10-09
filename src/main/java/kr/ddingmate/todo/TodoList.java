@@ -181,14 +181,17 @@ public final class TodoList {
                 open = false;
                 return;
             }
-            int daily = 0, weeklyCount = 0, dailyDone = 0, weeklyDone = 0;
+            // 의뢰 이름으로 센다: 같은 의뢰가 다른 칸에 한 번 더 보여도(장식·숨은 칸) 하나로 친다
+            java.util.Set<String> daily = new java.util.LinkedHashSet<>(), weeklySet = new java.util.LinkedHashSet<>();
+            java.util.Set<String> dailyDone = new java.util.LinkedHashSet<>(), weeklyDone = new java.util.LinkedHashSet<>();
             for (net.minecraft.screen.slot.Slot slot : screen.getScreenHandler().slots) {
                 if (slot.inventory instanceof net.minecraft.entity.player.PlayerInventory || !slot.hasStack()) continue;
                 net.minecraft.item.ItemStack st = slot.getStack();
-                String name = kr.ddingmate.counter.ItemKeys.stripGlyphs(st.getName().getString());
-                boolean isWeekly = name.contains("주간 의뢰") || name.contains("주간의뢰");
-                boolean isDaily = name.contains("일일 의뢰") || name.contains("일간 의뢰") || name.contains("일일의뢰");
-                if (!isWeekly && !isDaily) continue;
+                java.util.regex.Matcher m = QUEST_NAME.matcher(kr.ddingmate.counter.ItemKeys.stripGlyphs(st.getName().getString()).trim()
+                        .replaceAll("^\\[\\s*|\\s*]$", ""));
+                if (!m.matches()) continue;
+                String quest = m.group(1).replaceAll("\\s+", " ");
+                boolean isWeekly = m.group(2).equals("주간");
                 boolean done = false;
                 var lore = st.get(net.minecraft.component.DataComponentTypes.LORE);
                 if (lore != null) {
@@ -196,21 +199,35 @@ public final class TodoList {
                         if (CLAIMED.matcher(kr.ddingmate.counter.ItemKeys.stripGlyphs(l.getString())).find()) done = true;
                     }
                 }
-                if (isWeekly) {
-                    weeklyCount++;
-                    if (done) weeklyDone++;
-                } else {
-                    daily++;
-                    if (done) dailyDone++;
-                }
+                (isWeekly ? weeklySet : daily).add(quest);
+                if (done) (isWeekly ? weeklyDone : dailyDone).add(quest);
             }
-            open = daily > 0 || weeklyCount > 0;
+            open = !daily.isEmpty() || !weeklySet.isEmpty();
             if (!open) return;
-            weekly = weeklyCount > 0 && daily == 0;
+            weekly = !weeklySet.isEmpty() && daily.isEmpty();
             seenAt = System.currentTimeMillis();
-            if (daily > 0) setExact(TodoPreset.DAILY_QUEST, dailyDone);
-            if (weeklyCount > 0) setExact(TodoPreset.WEEKLY_QUEST, weeklyDone);
+            if (!daily.isEmpty()) report(TodoPreset.DAILY_QUEST, daily, dailyDone);
+            if (!weeklySet.isEmpty()) report(TodoPreset.WEEKLY_QUEST, weeklySet, weeklyDone);
         }
+
+        /**
+         * 괄호를 뗀 의뢰 칸 이름 "감자 심기 일일 의뢰". 앞에 할 일 내용이 있어야 한다 —
+         * 탭 단추 같은 다른 칸("[ 일일 의뢰 ]")은 내용이 없어 걸러진다
+         */
+        private static final java.util.regex.Pattern QUEST_NAME =
+                java.util.regex.Pattern.compile("^([^\\[\\]\\s].*?)\\s+(일일|일간|주간)\\s*의뢰$");
+
+        private static void report(TodoPreset preset, java.util.Set<String> all, java.util.Set<String> done) {
+            int count = Math.min(done.size(), preset.target);
+            String sig = preset.id + done;
+            if (!sig.equals(lastLogged)) {
+                lastLogged = sig;
+                DdingMate.LOG.info("의뢰 창 {}: 받은 의뢰 {}/{} {}", preset.id, count, all.size(), done);
+            }
+            setExact(preset, count);
+        }
+
+        private static String lastLogged = "";
 
         static boolean windowOpen() {
             return open;

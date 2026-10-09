@@ -327,7 +327,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         quest("코끼리 사냥하기 일일 의뢰", "- 코끼리를 사냥하세요.", "- 보상 : 3루비", "이미 완료한 의뢰입니다."),
                         quest("감자 수확하기 일일 의뢰", "- 감자를 수확해주세요.", "- 의뢰 진행도 : 32 / 32", "- 보상 : 2루비"),
                         quest("당근 심기 일일 의뢰", "- 당근을 심어주세요.", "- 의뢰 진행도 : 0 / 32", "의뢰를 먼저 완료해주세요."),
-                        quest("거미 사냥하기 일일 의뢰", "- 거미를 사냥해주세요.", "- 의뢰 진행도 : 0 / 10", "의뢰를 먼저 완료해주세요.")));
+                        quest("거미 사냥하기 일일 의뢰", "- 거미를 사냥해주세요.", "- 의뢰 진행도 : 0 / 10", "의뢰를 먼저 완료해주세요."),
+                        // 같은 의뢰가 다른 칸에 한 번 더 보여도, 탭 단추에 비슷한 글이 있어도 더 세지 않는다(실제 서버에서 2개를 3개로 셈)
+                        quest("감자 심기 일일 의뢰", "매일의 의뢰 도전으로 성장해보세요.", "- 감자를 심어주세요.", "- 보상 : 3루비", "이미 완료한 의뢰입니다."),
+                        quest("일일 의뢰", "이미 완료한 의뢰입니다.")));
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
@@ -495,6 +498,29 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 코룸 3개 수납! (40/5,000)");
                 check(kr.ddingmate.counter.BagTracker.storageTotals().getOrDefault(kr.ddingmate.counter.ItemKeys.nameKey("코룸"), -1) == 40,
                         "서버 아이템 수납 알림을 이름으로 기록하지 않음");
+                // 21-1) 액션바로 온 수납 알림(채팅 이벤트를 안 거침)도 저장소 재고에 반영
+                c.inGameHud.setOverlayMessage(Text.literal("[아이템 저장소] 조약돌 1개 수납! (77/5,000)"), false);
+                check(kr.ddingmate.counter.BagTracker.storageTotals().get("v:minecraft:cobblestone") == 77,
+                        "액션바 수납 알림을 반영하지 않음: " + kr.ddingmate.counter.BagTracker.storageTotals());
+                c.inGameHud.setSubtitle(Text.literal("[아이템 저장소] 조약돌 1개 수납! (78/5,000)"));
+                check(kr.ddingmate.counter.BagTracker.storageTotals().get("v:minecraft:cobblestone") == 78, "부제목 수납 알림을 반영하지 않음");
+                // 21-2) 전문가 스킬 창(2026-10-09 실제 칸)에서 제작 시간 감소 스킬 레벨을 자동으로 읽는다
+                java.util.List<String> furnace = java.util.List.of("전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의", ". 제작 시간이 10% 감소합니다.",
+                        "──────────────────", ". [강화 시 스킬 정보]", ". 채광물 가공과 강화 제작 시설의", ". 제작 시간이 30% 감소합니다.",
+                        "──────────────────", ". - 보유 스킬 포인트 : 118포인트");
+                check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 초고속 용광로 (+1)", furnace) == 1, "1레벨(10%)을 못 읽음(미리보기 30%를 읽었나?)");
+                check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 초고속 용광로 (MAX)",
+                        java.util.List.of("전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의", ". 제작 시간이 80% 감소합니다.", ". 최대 스킬 레벨에 도달하였습니다.")) == 5, "MAX(80%)를 못 읽음");
+                check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 물 흐르듯 술술 (+3)",
+                        java.util.List.of(". 제작 시간이 30% 감소합니다.", "────", ". 제작 시간이 50% 감소합니다.")) == 3, "해양 표(30%=3레벨)로 안 읽음");
+                check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 초고속 용광로 (+0)", furnace) == 0, "안 배운 스킬을 배운 것으로 읽음");
+                DdingMate.config().craft.mining = 0;
+                ItemStack skill = item("[세레니티] 초고속 용광로 (+2)", 1, "전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의",
+                        ". 제작 시간이 30% 감소합니다.", "──────────────────", ". [강화 시 스킬 정보]", ". 제작 시간이 40% 감소합니다.");
+                check(kr.ddingmate.craft.ExpertSkills.read(skill) && DdingMate.config().craft.mining == 2, "스킬 칸으로 채광 레벨을 설정하지 않음: " + DdingMate.config().craft.mining);
+                check(kr.ddingmate.craft.CraftTimers.reductionPercent("채광물 가공 시설") == 30, "자동으로 읽은 레벨이 제작 시간에 안 들어감");
+                check(!kr.ddingmate.craft.ExpertSkills.read(item("[세레니티] 코비 타임 (+1)", 1, ". 제작 시간이 10% 감소합니다.")), "다른 스킬을 제작 시간 스킬로 읽음");
+                DdingMate.config().craft.mining = 0;
                 // 22) 마인리스트 추천 정보 "└ 오늘 추천 여부 : 추천 완료" → 체크, 남이 흉내 낸 채팅은 무시
                 DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
                 java.time.ZonedDateTime now2 = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);

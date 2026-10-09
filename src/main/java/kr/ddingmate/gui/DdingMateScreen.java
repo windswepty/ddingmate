@@ -748,7 +748,7 @@ public class DdingMateScreen extends Screen {
                     set.accept(v);
                     kr.ddingmate.craft.CraftTimers.recalculate();
                 });
-        c.setTooltip(Tooltip.of(Text.literal(facilities + "의 제작 시간을 줄여 주는 스킬이에요. 배운 레벨을 고르면 남은 시간을 그만큼 줄여 계산해요.")));
+        c.setTooltip(Tooltip.of(Text.literal(facilities + "의 제작 시간을 줄여 주는 스킬이에요. /전문가 에서 해당 스킬보기 창을 한 번 열면 레벨을 자동으로 읽어 맞춰요(직접 골라도 돼요).")));
         return c;
     }
 

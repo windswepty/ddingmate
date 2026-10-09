@@ -152,6 +152,7 @@ public final class DdingMate implements ClientModInitializer {
             DurabilityTracker.tick(client);
             PlaytimeTracker.scanScreen(client); // 내가 연 /접속시간 창이면 서버 기록에 맞춘다
             CraftTimers.scanScreen(client); // 내가 연 시설 창의 남은 제작 시간
+            kr.ddingmate.craft.ExpertSkills.scan(client); // 전문가 스킬 창의 "제작 시간이 N% 감소" → 스킬 레벨 자동 설정
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
             if (client.world != null) kr.ddingmate.counter.IconCache.tick(client); // 열어 본 창의 아이템 모양을 기억
