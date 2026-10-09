@@ -304,6 +304,19 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.WILD, 3);
                 check(DdingMate.config().wildChannel != 3, "자동 인식을 껐는데 채널이 바뀜");
                 DdingMate.config().autoChannel = true;
+                // 서버 재부팅 예고(실제 로그 문구) → 지금 채널 남은 시간, 유저 채팅 흉내는 무시, 채널을 옮기면 지움
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.ISLAND, 7);
+                kr.ddingmate.game.ServerHud.onChat("[칭호] 누군가 : [서버 리붓] 3분 뒤 현재 채널이 재부팅됩니다.");
+                check(kr.ddingmate.game.ServerHud.rebootAt() == 0, "유저 채팅으로 재부팅 예고를 받음");
+                kr.ddingmate.game.ServerHud.onChat("ꀂꀁ[서버 리붓] 3분 뒤 현재 채널이 재부팅됩니다.");
+                long left = kr.ddingmate.game.ServerHud.rebootAt() - System.currentTimeMillis();
+                check(left > 170_000 && left <= 180_000, "재부팅 예고를 3분으로 읽지 못함: " + left);
+                // 아일랜드 왼쪽 위는 서버 프로필(얼굴·체력) 아래부터, 다른 구석·다른 지역은 그대로
+                check(kr.ddingmate.hud.HudLayout.debugTop(DdingMateConfig.Corner.TOP_LEFT) >= 55, "아일랜드에서 서버 프로필을 피하지 않음");
+                check(kr.ddingmate.hud.HudLayout.debugTop(DdingMateConfig.Corner.TOP_RIGHT) == 16, "아일랜드 오른쪽 위 여백이 바뀜");
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.VILLAGE, 30);
+                check(kr.ddingmate.game.ServerHud.rebootAt() == 0, "채널을 옮겼는데 이전 채널 재부팅 예고가 남음");
+                check(kr.ddingmate.hud.HudLayout.debugTop(DdingMateConfig.Corner.TOP_LEFT) == 16, "마을에서도 프로필 여백을 둠");
             });
             ctx.runOnClient(c -> {
                 c.setScreen(new DdingMateScreen(null));

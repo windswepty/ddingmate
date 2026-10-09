@@ -67,9 +67,9 @@ public class LogicClientGameTest implements FabricClientGameTest {
         expectNext(r, "hunter_affinity", NOON, at(11, 1, 3, 0));         // 다음 달 1일
         expectNext(r, "village_reboot", NOON, at(10, 9, 13, 0));         // 마을 7채널: 1·7·13·19시
         expectNext(r, "hunt_reboot", NOON, at(10, 9, 13, 0));            // 노크틸라 2채널: 1시부터 4시간마다
-        expectNext(r, "wild_reboot", NOON, at(10, 10, 6, 30));           // 야생 3채널: 06:30
-        expectNext(r, "island_reboot", NOON, at(10, 10, 5, 20));         // 아일랜드 2채널: 05:20
-        expectNext(r, "spawn_reboot", NOON, at(10, 10, 7, 0));           // 스폰 3채널: 07:00
+        // 야생·아일랜드·스폰은 정해진 재시작 시각이 없어 일정을 만들지 않는다
+        check(!r.containsKey("wild_reboot") && !r.containsKey("island_reboot") && !r.containsKey("spawn_reboot"),
+                "근거 없는 야생·아일랜드·스폰 재시작 일정이 있음");
         // 채널 0 이면 재시작 일정이 없다
         List<EventRule> none = ScheduleEngine.buildRules(new ScheduleEngine.Channels(0, 0, 0, 0, 0));
         check(none.size() == 9 && none.stream().noneMatch(e -> e.id().endsWith("_reboot")), "채널 끔인데 재시작 일정이 있음");

@@ -84,9 +84,6 @@ public class DdingMateScreen extends Screen {
         EVENT_NAMES.put("hunter_affinity", "수렵꾼 호감도 (매월 1일)");
         EVENT_NAMES.put("village_reboot", "마을 채널 재시작");
         EVENT_NAMES.put("hunt_reboot", "노크틸라 채널 재시작");
-        EVENT_NAMES.put("wild_reboot", "야생 채널 재시작");
-        EVENT_NAMES.put("island_reboot", "아일랜드 채널 재시작");
-        EVENT_NAMES.put("spawn_reboot", "스폰 채널 재시작");
     }
 
     private static Tab lastTab = Tab.HOME;
@@ -469,9 +466,6 @@ public class DdingMateScreen extends Screen {
         list.header(cfg.autoChannel ? "지역별 내 채널 · 마지막으로 있던 채널" : "지역별 내 채널");
         list.pair(channel("마을", 35, cfg.villageChannel, v -> cfg.villageChannel = v),
                 channel("노크틸라", 24, cfg.huntChannel, v -> cfg.huntChannel = v));
-        list.pair(channel("야생", 16, cfg.wildChannel, v -> cfg.wildChannel = v),
-                channel("아일랜드", 15, cfg.islandChannel, v -> cfg.islandChannel = v));
-        list.pair(channel("스폰", 4, cfg.spawnChannel, v -> cfg.spawnChannel = v), null);
         list.note(cfg.autoChannel
                 ? "가 본 지역은 알아서 채워져요. 직접 바꿔도 되고, '끔'이면 그 지역 재시작은 알리지 않아요(그 지역에 다시 가면 다시 켜져요)."
                 : "'끔'이면 그 채널 재시작은 알리지 않아요. 클릭하면 다음 번호, 오른쪽 클릭이나 Shift+클릭은 이전 번호예요.");

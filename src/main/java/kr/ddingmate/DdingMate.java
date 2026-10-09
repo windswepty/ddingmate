@@ -97,6 +97,7 @@ public final class DdingMate implements ClientModInitializer {
             if (!overlay) {
                 KeywordWatcher.onMessage(message, null);
                 TodoList.onChat(message.getString()); // 할 일 "자동으로 세기 문구"
+                kr.ddingmate.game.ServerHud.onChat(message.getString()); // "[서버 리붓] 3분 뒤 현재 채널이 재부팅됩니다."
                 PlaytimeTracker.onChat(message.getString()); // 서버가 알려 주는 일일 접속 시간·받은 보상
                 CraftTimers.onChat(message.getString()); // 제작 시작·회수 메시지
             }

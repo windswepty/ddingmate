@@ -77,7 +77,7 @@ public final class ScheduleEngine {
             int g = (ch.village() - 1) % 5;
             int[][] hours = {{0, 6, 12, 18}, {1, 7, 13, 19}, {3, 9, 15, 21}, {4, 10, 16, 22}, {5, 11, 17, 23}};
             rules.add(new EventRule("village_reboot", "마을 " + ch.village() + "채널 재시작",
-                    "마을 채널이 재시작돼요. 마을에 소환한 육식 동물은 사라질 수 있어요",
+                    "마을 채널이 재시작돼요",
                     daily, 0, hoursToTimes(hours[g], 0), List.of(5, 1)));
         }
         if (ch.hunt() > 0) {
@@ -86,21 +86,7 @@ public final class ScheduleEngine {
                     "인피니티 타워 도전 중 재시작되면 실패(개인 과실) 처리돼요",
                     daily, 0, hoursToTimes(new int[]{g, g + 4, g + 8, g + 12, g + 16, g + 20}, 0), List.of(10, 3)));
         }
-        if (ch.wild() > 0) {
-            LocalTime[] slots = {t(6, 10), t(6, 20), t(6, 30), t(6, 40), t(6, 50), t(7, 10), t(7, 20)};
-            rules.add(new EventRule("wild_reboot", "야생 " + ch.wild() + "채널 재시작",
-                    "야생 채널이 재시작돼요", daily, 0, List.of(slots[(ch.wild() - 1) % 7]), List.of(5)));
-        }
-        if (ch.island() > 0) {
-            rules.add(new EventRule("island_reboot", "아일랜드 " + ch.island() + "채널 재시작",
-                    "세레니티·파라다이스 채널이 재시작돼요",
-                    daily, 0, List.of(t(5, 10 + ((ch.island() - 1) % 5) * 10)), List.of(5)));
-        }
-        if (ch.spawn() > 0) {
-            rules.add(new EventRule("spawn_reboot", "스폰 " + ch.spawn() + "채널 재시작",
-                    "스폰 채널이 재시작돼요",
-                    daily, 0, List.of(t(4 + ((ch.spawn() - 1) % 4) + 1, 0)), List.of(5)));
-        }
+        // 야생·아일랜드·스폰은 위키에 정해진 재시작 시각이 없어 일정을 만들지 않는다(채널 번호는 표시용으로만 기억).
         return rules;
     }
 

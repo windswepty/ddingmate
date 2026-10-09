@@ -50,6 +50,7 @@ public final class ServerHud {
             int ch = Integer.parseInt(m.group(2));
             if (a == null || ch <= 0) continue;
             boolean changed = a != area || ch != channel;
+            if (changed) rebootAt = 0; // 채널을 옮기면 이전 채널의 재부팅 예고는 더 이상 내 일이 아니다
             area = a;
             channel = ch;
             seen = true;
@@ -123,8 +124,30 @@ public final class ServerHud {
         return info != null && info.address != null && info.address.toLowerCase(Locale.ROOT).contains("ddingtycoon");
     }
 
+    /**
+     * 서버 공지 "[서버 리붓] 3분 뒤 현재 채널이 재부팅됩니다." (2026-05~10 실제 로그: 30·20·10·5·3·1분 전).
+     * 야생·아일랜드처럼 정해진 시각이 없는 채널도 이 공지로 남은 시간을 보여 준다.
+     * 앞에 칭호·닉네임이 붙은 유저 채팅은 받지 않는다.
+     */
+    private static final Pattern REBOOT = Pattern.compile("^\\s*\\[\\s*서버\\s*리붓\\s*]\\s*(\\d+)\\s*(분|초)\\s*뒤\\s*현재\\s*채널");
+    private static long rebootAt;
+
+    public static void onChat(String message) {
+        if (message == null || !message.contains("리붓")) return;
+        Matcher m = REBOOT.matcher(ItemKeys.stripGlyphs(message));
+        if (!m.find()) return;
+        long n = Long.parseLong(m.group(1));
+        rebootAt = System.currentTimeMillis() + (m.group(2).equals("분") ? n * 60_000 : n * 1000);
+    }
+
+    /** 지금 채널이 재부팅될 시각(ms). 예고가 없거나 지났으면 0 */
+    public static long rebootAt() {
+        return rebootAt > System.currentTimeMillis() ? rebootAt : 0;
+    }
+
     /** 접속이 끊기면 처음부터 다시 */
     public static void reset() {
+        rebootAt = 0;
         area = null;
         channel = 0;
         seen = false;
@@ -132,6 +155,7 @@ public final class ServerHud {
 
     /** 시험용 */
     public static void debugSet(Area a, int ch) {
+        if (a != area || ch != channel) rebootAt = 0;
         area = a;
         channel = ch;
         seen = true;

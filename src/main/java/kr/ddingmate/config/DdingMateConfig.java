@@ -329,6 +329,8 @@ public final class DdingMateConfig {
         craft.farming = Math.max(0, Math.min(5, craft.farming));
         craft.marine = Math.max(0, Math.min(5, craft.marine));
         craft.hunting = Math.max(0, Math.min(5, craft.hunting));
+        // 0.3.0 까지 있던 근거 없는 야생·아일랜드·스폰 재시작 일정 설정은 지운다
+        events.keySet().removeAll(List.of("wild_reboot", "island_reboot", "spawn_reboot"));
         // 채널 재시작 규칙까지 모두 만들 수 있도록 임의 채널로 전체 규칙을 받아 기본 설정을 채운다.
         for (EventRule r : ScheduleEngine.buildRules(new ScheduleEngine.Channels(1, 1, 1, 1, 1))) {
             EventSetting s = events.get(r.id());

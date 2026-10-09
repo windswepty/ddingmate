@@ -41,6 +41,11 @@ public final class HudLayout {
 
     /** 서버 HUD 를 피하는 여백(화면 GUI 픽셀). 위: 재화 바·날짜/채널 줄, 왼쪽 아래: 채팅창, 오른쪽 아래: 핫바 높이 */
     static final int SERVER_TOP = 16;
+    /**
+     * 아일랜드(세레니티·파라다이스)에서는 서버가 왼쪽 위에 프로필(얼굴·이름·체력·레벨)을 그린다.
+     * 1920×1080·GUI 자동(4배) 실측: 위 17~52, 왼쪽 5~136 → 왼쪽 위 HUD 는 그 아래부터
+     */
+    static final int ISLAND_PROFILE_TOP = 55;
     static final int CHAT_ZONE = 135;
     static final int HOTBAR_GAP = 34;
     /** 서버 HUD 피하기를 끈 경우의 예전 여백 */
@@ -105,13 +110,31 @@ public final class HudLayout {
         return DdingMate.config().avoidServerHud ? SERVER_TOP : PLAIN_TOP;
     }
 
+    /** 구석별 위쪽 여백. 아일랜드의 왼쪽 위는 서버 프로필을 피한다 */
+    private static int topReal(DdingMateConfig.Corner corner) {
+        if (corner == DdingMateConfig.Corner.TOP_LEFT && DdingMate.config().avoidServerHud
+                && kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND) {
+            return ISLAND_PROFILE_TOP;
+        }
+        return topReal();
+    }
+
     private static int bottomReal(DdingMateConfig.Corner corner) {
         if (!DdingMate.config().avoidServerHud) return PLAIN_BOTTOM;
         return corner == DdingMateConfig.Corner.BOTTOM_LEFT ? CHAT_ZONE : HOTBAR_GAP;
     }
 
+    /** 시험용: 그 구석의 위쪽 여백(화면 GUI 픽셀) */
+    public static int debugTop(DdingMateConfig.Corner corner) {
+        return topReal(corner);
+    }
+
     static int topGap() {
         return gap(topReal());
+    }
+
+    static int topGap(DdingMateConfig.Corner corner) {
+        return gap(topReal(corner));
     }
 
     static int bottomGap(DdingMateConfig.Corner corner) {
@@ -225,7 +248,7 @@ public final class HudLayout {
 
     private static int cornerY(int sh, DdingMateConfig.Corner corner, int rh, int stack) {
         boolean top = corner == DdingMateConfig.Corner.TOP_LEFT || corner == DdingMateConfig.Corner.TOP_RIGHT;
-        return top ? topReal() + stack : sh - rh - bottomReal(corner) - stack;
+        return top ? topReal(corner) + stack : sh - rh - bottomReal(corner) - stack;
     }
 
     /** 위쪽 구석이면 아래쪽 안전선(채팅창·핫바)을, 아래쪽 구석이면 위쪽 안전선(서버 재화 바)을 넘는가 */

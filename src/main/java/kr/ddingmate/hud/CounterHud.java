@@ -74,7 +74,7 @@ public final class CounterHud {
             limit = sh - customY - 4; // 옮긴 자리 아래로 남은 높이
         } else {
             int safe = top ? sh - HudLayout.bottomGap(left ? DdingMateConfig.Corner.BOTTOM_LEFT : DdingMateConfig.Corner.BOTTOM_RIGHT)
-                    - HudLayout.topGap() : sh - HudLayout.bottomGap(cfg.corner) - HudLayout.topGap();
+                    - HudLayout.topGap(cfg.corner) : sh - HudLayout.bottomGap(cfg.corner) - HudLayout.topGap();
             limit = safe - stack;
             // 첫 핀도 안 들어가면 어차피 옆 줄로 넘어가므로 화면 높이 전체를 쓴다
             if (stack > 0 && pinHeight(views.get(0)) + 4 > limit) limit = safe;

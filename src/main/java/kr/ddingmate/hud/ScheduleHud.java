@@ -154,6 +154,14 @@ public final class ScheduleHud {
             if (synced) out.add(new Entry("오늘 접속 " + hm(played), left, Long.MAX_VALUE, Theme.GOLD));
             else out.add(new Entry("오늘 접속 시간", "/접속시간 열면 표시", Long.MAX_VALUE, Theme.GOLD));
         }
+        // 서버가 예고한 지금 채널 재부팅: 가장 급하니 맨 위에
+        long reboot = kr.ddingmate.game.ServerHud.rebootAt();
+        if (reboot > 0) {
+            long sec = Math.max(0, (reboot - System.currentTimeMillis()) / 1000);
+            kr.ddingmate.game.ServerHud.Area a = kr.ddingmate.game.ServerHud.area();
+            String where = a == null ? "지금 채널" : a.label + " " + kr.ddingmate.game.ServerHud.channel() + "채널";
+            out.add(0, new Entry(where + " 재부팅", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초", sec / 60, 0));
+        }
         // 제작 중인 아이템: 완료가 가까운 순서로
         if (cfg.craft.enabled && cfg.craft.showInHud) {
             long nowMs = System.currentTimeMillis();
