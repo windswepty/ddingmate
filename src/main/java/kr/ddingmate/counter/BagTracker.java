@@ -116,8 +116,11 @@ public final class BagTracker {
         ticks++;
         if (client.player == null) {
             closeOpen();
+            INV_HISTORY.clear();
+            pendingWithdraw = 0;
             return;
         }
+        trackWithdraw(client);
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) {
             closeOpen();
             return;
@@ -287,6 +290,101 @@ public final class BagTracker {
     public static Map<String, Integer> storageTotals() {
         Account acc = account();
         return acc == null || acc.storage == null ? Map.of() : Map.copyOf(acc.storage.counts);
+    }
+
+    /**
+     * 자동 수납 알림: 아이템을 주우면 서버가 화면 아래에 "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" 을 띄운다
+     * (2026-10 실제 화면). 괄호 앞 수가 지금 재고라서, 저장소 창을 다시 열지 않아도 그 값으로 맞춘다.
+     */
+    private static final Pattern STORED_MSG = Pattern.compile(
+            "\\[\\s*아이템\\s*저장소\\s*]\\s*(.+?)\\s*[\\d,]+\\s*개\\s*수납.*?\\(\\s*([\\d,]+)\\s*/\\s*[\\d,]+\\s*\\)");
+
+    /** 꺼낼 때 서버 채팅: "[아이템 저장소] 6개를 인출했습니다." (아이템 이름은 없다, 2026-10 실제 채팅) */
+    private static final Pattern WITHDRAW_MSG = Pattern.compile("\\[\\s*아이템\\s*저장소\\s*]\\s*([\\d,]+)\\s*개를\\s*인출");
+    /** 최근 1초(20틱) 동안의 인벤토리 아이템 수(오래된 것부터) */
+    private static final java.util.ArrayDeque<Map<String, Integer>> INV_HISTORY = new java.util.ArrayDeque<>();
+    private static int pendingWithdraw;
+    private static int pendingTicks;
+
+    /**
+     * 저장소에서 꺼낸 만큼 저장소 기록에서 뺀다(안 빼면 인벤토리 + 저장소로 두 번 센다).
+     * 꺼냄 메시지에는 아이템 이름이 없어서, 그 무렵 인벤토리에서 N개 이상 늘어난 아이템(저장소 기록에 있는 것)을 꺼낸 것으로 본다.
+     */
+    private static void trackWithdraw(MinecraftClient client) {
+        Map<String, Integer> now = new HashMap<>();
+        var inv = client.player.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (!s.isEmpty()) now.merge(ItemKeys.keyOf(s), s.getCount(), Integer::sum);
+        }
+        if (pendingWithdraw > 0 && !INV_HISTORY.isEmpty()) {
+            Account acc = account();
+            Map<String, Integer> before = INV_HISTORY.peekFirst();
+            String best = null;
+            int bestGain = 0;
+            if (acc != null && acc.storage != null) {
+                for (Map.Entry<String, Integer> e : now.entrySet()) {
+                    int gain = e.getValue() - before.getOrDefault(e.getKey(), 0);
+                    if (gain >= pendingWithdraw && acc.storage.counts.containsKey(e.getKey()) && gain > bestGain) {
+                        best = e.getKey();
+                        bestGain = gain;
+                    }
+                }
+            }
+            if (best != null) {
+                acc.storage.counts.put(best, Math.max(0, acc.storage.counts.get(best) - pendingWithdraw));
+                dirty = true;
+                pendingWithdraw = 0;
+            } else if (++pendingTicks > 40) {
+                pendingWithdraw = 0; // 2초 안에 못 찾으면 포기(저장소 창을 다시 열면 맞춰진다)
+            }
+        }
+        INV_HISTORY.addLast(now);
+        while (INV_HISTORY.size() > 20) INV_HISTORY.removeFirst();
+    }
+
+    public static void onOverlay(String message) {
+        if (message == null || !message.contains("저장소")) return;
+        Matcher w = WITHDRAW_MSG.matcher(ItemKeys.stripGlyphs(message));
+        if (w.find()) {
+            try {
+                pendingWithdraw = Integer.parseInt(w.group(1).replace(",", ""));
+                pendingTicks = 0;
+            } catch (NumberFormatException ignored) {
+                // 무시
+            }
+            return;
+        }
+        Matcher m = STORED_MSG.matcher(ItemKeys.stripGlyphs(message));
+        if (!m.find()) return;
+        Account acc = account();
+        if (acc == null) return;
+        String name = m.group(1).trim();
+        int total;
+        try {
+            total = Integer.parseInt(m.group(2).replace(",", ""));
+        } catch (NumberFormatException e) {
+            return;
+        }
+        if (acc.storage == null) {
+            acc.storage = new Bag();
+            acc.storage.slots = new ArrayList<>();
+        }
+        // 저장소 창에서 본 키(바닐라 아이템이면 v:id)가 있으면 그 키로, 없으면 레시피 이름표로 정한다
+        String key = null;
+        for (String k : RecipeBook.keysFor(name)) {
+            if (acc.storage.counts.containsKey(k)) {
+                key = k;
+                break;
+            }
+        }
+        if (key == null) {
+            for (String k : RecipeBook.keysFor(name)) if (k.startsWith("v:")) key = k;
+            if (key == null) key = ItemKeys.nameKey(name);
+        }
+        acc.storage.counts.put(key, total);
+        acc.storage.seenAt = System.currentTimeMillis();
+        dirty = true;
     }
 
     /** 아이템 저장소를 마지막으로 본 시각(ms). 기록이 없으면 0 */

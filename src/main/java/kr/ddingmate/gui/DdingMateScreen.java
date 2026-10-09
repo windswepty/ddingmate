@@ -986,7 +986,13 @@ public class DdingMateScreen extends Screen {
             boolean done = TodoList.isDone(item, now);
             Theme.row(ctx, getX(), getY(), width, height, isSelected());
             int right = getX() + width - 6;
-            if (item.target > 1) {
+            if (TodoList.needsWindow(item, now)) {
+                // 이번 초기화 뒤로 의뢰 창을 안 열었으면 개수 대신 안내
+                String hint = TodoList.OPEN_WINDOW;
+                int hw = Theme.boldWidth(textRenderer, hint);
+                Theme.boldText(ctx, textRenderer, hint, right - hw, getY() + 5, Theme.GOLD_ON_LIGHT, false);
+                right -= hw + 6;
+            } else if (item.target > 1) {
                 int p = TodoList.progress(item, now);
                 String cnt = p + "/" + item.target;
                 int cw = Theme.boldWidth(textRenderer, cnt);

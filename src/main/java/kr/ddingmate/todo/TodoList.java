@@ -71,11 +71,24 @@ public final class TodoList {
 
     /** 목록에 보일 글: "접속 시간 보상 받기 [2/6]", 목표가 1이면 이름만 */
     public static String label(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        if (needsWindow(item, now)) return item.name + " · " + OPEN_WINDOW;
         return item.target > 1 ? item.name + " [" + progress(item, now) + "/" + item.target + "]" : item.name;
     }
 
+    public static final String OPEN_WINDOW = "의뢰 창을 열어 주세요!";
+
+    /**
+     * 의뢰는 창에 보이는 것이 정답이라, 이번 초기화 뒤로 의뢰 창을 한 번도 안 열었으면 개수를 모른다고 본다
+     * (서버 안내: "의뢰는 창을 열어 확인 시 활성화됩니다").
+     */
+    public static boolean needsWindow(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        boolean quest = TodoPreset.DAILY_QUEST.id.equals(item.preset) || TodoPreset.WEEKLY_QUEST.id.equals(item.preset);
+        return quest && item.windowSeenAt < lastReset(item.reset, now).toInstant().toEpochMilli();
+    }
+
     /** "의뢰를 완료하였습니다." (실제 서버 메시지). "의뢰를 완료하지 않았습니다." 는 아님 */
-    private static final java.util.regex.Pattern QUEST_DONE = java.util.regex.Pattern.compile("^의뢰를\\s*완료하였습니다");
+    private static final java.util.regex.Pattern RECOMMEND_DONE = java.util.regex.Pattern.compile("^[├└]?\\s*오늘\\s*추천\\s*여부\\s*[:：]\\s*추천\\s*완료");
+    private static final java.util.regex.Pattern QUEST_DONE =java.util.regex.Pattern.compile("^의뢰를\\s*완료하였습니다");
 
     /**
      * 서버 메시지를 보고 할 일을 센다. 다 채운 할 일은 더 세지 않는다. 메시지를 읽기만 하고 아무것도 보내지 않는다.
@@ -86,10 +99,16 @@ public final class TodoList {
         String text = net.minecraft.util.Formatting.strip(message);
         if (text == null) return;
         text = kr.ddingmate.counter.ItemKeys.stripGlyphs(text).trim();
+        // 마인리스트 추천 정보(실제 채팅: "└ 오늘 추천 여부 : 추천 완료")는 이미 한 것이므로 그대로 체크(줄 맨 앞이 "오늘 추천 여부"여야 해서 남이 흉내 낸 채팅은 아님)
+        if (RECOMMEND_DONE.matcher(text).find()) {
+            sync(TodoPreset.RECOMMEND, 1);
+            return;
+        }
         // 사람이 쓴 채팅 줄("[칭호] 닉네임 : ...")은 세지 않는다. 서버 공지만 센다
         if (text.contains(" : ")) return;
         if (QUEST_DONE.matcher(text).find()) {
-            count(QuestContext.weekly() ? TodoPreset.WEEKLY_QUEST : TodoPreset.DAILY_QUEST);
+            // 의뢰 창이 열려 있으면 창에 보이는 "이미 완료한 의뢰" 수로 맞추므로 메시지로는 세지 않는다(두 번 세지 않게)
+            if (!QuestContext.windowOpen()) count(QuestContext.weekly() ? TodoPreset.WEEKLY_QUEST : TodoPreset.DAILY_QUEST);
             return;
         }
         for (TodoPreset p : TodoPreset.values()) {
@@ -111,14 +130,26 @@ public final class TodoList {
 
     /** 서버 기록에서 알게 된 횟수로 맞춘다(예: /접속시간 창의 받은 보상 수). 줄이지는 않는다 */
     public static void sync(TodoPreset preset, int done) {
+        set(preset, done, false);
+    }
+
+    /** 서버 창에 보이는 그대로 맞춘다(의뢰 창처럼 창이 정답일 때). 많게 센 것도 바로잡는다 */
+    public static void setExact(TodoPreset preset, int done) {
+        set(preset, done, true);
+    }
+
+    private static void set(TodoPreset preset, int done, boolean exact) {
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
         for (DdingMateConfig.TodoItem item : DdingMate.config().todo.items) {
             if (!preset.id.equals(item.preset)) continue;
             int target = Math.min(item.target, Math.max(0, done));
-            if (target > progress(item, now)) {
+            int before = progress(item, now);
+            if (exact) item.windowSeenAt = System.currentTimeMillis();
+            if (target > before || (exact && target != before)) {
                 item.progress = target;
                 item.doneAt = System.currentTimeMillis();
                 DdingMate.config().save();
+                if (target > before) Notifier.todoProgress(item.name, target, item.target);
             }
         }
     }
@@ -133,20 +164,23 @@ public final class TodoList {
 
         private QuestContext() {}
 
-        /** "- 의뢰 진행도 : 12 / 30" */
-        private static final java.util.regex.Pattern PROGRESS = java.util.regex.Pattern.compile("의뢰\\s*진행도\\s*[:：]\\s*([\\d,]+)\\s*/\\s*([\\d,]+)");
-        /** 아직 못 끝낸 의뢰의 안내(실제 창: "의뢰를 먼저 완료해주세요.") */
-        private static final java.util.regex.Pattern NOT_DONE = java.util.regex.Pattern.compile("먼저\\s*완료");
-        /** 끝내고 보상까지 받은 의뢰로 보이는 안내 */
-        private static final java.util.regex.Pattern CLAIMED = java.util.regex.Pattern.compile("완료한\\s*의뢰|이미\\s*완료|보상을\\s*(받았|수령)|수령\\s*완료|완료됨");
+        /** 지금 의뢰 창(일일·주간 의뢰 칸이 보이는 창)이 열려 있는지 */
+        private static boolean open;
+        /**
+         * 끝내고 보상까지 받은 의뢰(실제 창: "이미 완료한 의뢰입니다.").
+         * 진행도를 다 채웠어도 아직 보상을 안 받은 칸은 세지 않는다 — 보상을 받으며 오는 완료 메시지와 두 번 세지 않게.
+         */
+        private static final java.util.regex.Pattern CLAIMED = java.util.regex.Pattern.compile("이미\\s*완료한\\s*의뢰|완료한\\s*의뢰입니다");
 
         /**
-         * 10틱마다. 의뢰 창(실제 창: "[ 감자 심기 일일 의뢰 ]" 칸마다 "- 의뢰 진행도 : 0 / 64")을 읽어
-         * 일일·주간 중 어느 창인지 기억하고, 끝낸 의뢰 수로 할 일을 맞춘다(줄이지는 않음).
-         * 끝낸 의뢰: 진행도를 다 채운 칸, 또는 완료·수령 안내가 있는 칸.
+         * 10틱마다. 의뢰 창(실제 창: "[ 감자 심기 일일 의뢰 ]" 칸들)을 읽어 일일·주간 중 어느 창인지 기억하고,
+         * "이미 완료한 의뢰입니다." 칸 수로 할 일을 그대로 맞춘다(창이 정답이라 많게 센 것도 바로잡음).
          */
         public static void scan(net.minecraft.client.MinecraftClient client) {
-            if (!(client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?> screen)) return;
+            if (!(client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?> screen)) {
+                open = false;
+                return;
+            }
             int daily = 0, weeklyCount = 0, dailyDone = 0, weeklyDone = 0;
             for (net.minecraft.screen.slot.Slot slot : screen.getScreenHandler().slots) {
                 if (slot.inventory instanceof net.minecraft.entity.player.PlayerInventory || !slot.hasStack()) continue;
@@ -158,19 +192,9 @@ public final class TodoList {
                 boolean done = false;
                 var lore = st.get(net.minecraft.component.DataComponentTypes.LORE);
                 if (lore != null) {
-                    boolean notDone = false, claimed = false;
-                    long have = -1, need = -1;
                     for (net.minecraft.text.Text l : lore.lines()) {
-                        String t = kr.ddingmate.counter.ItemKeys.stripGlyphs(l.getString());
-                        java.util.regex.Matcher m = PROGRESS.matcher(t);
-                        if (m.find()) {
-                            have = Long.parseLong(m.group(1).replace(",", ""));
-                            need = Long.parseLong(m.group(2).replace(",", ""));
-                        }
-                        if (NOT_DONE.matcher(t).find()) notDone = true;
-                        if (CLAIMED.matcher(t).find()) claimed = true;
+                        if (CLAIMED.matcher(kr.ddingmate.counter.ItemKeys.stripGlyphs(l.getString())).find()) done = true;
                     }
-                    done = claimed || (!notDone && need > 0 && have >= need);
                 }
                 if (isWeekly) {
                     weeklyCount++;
@@ -180,11 +204,16 @@ public final class TodoList {
                     if (done) dailyDone++;
                 }
             }
-            if (daily == 0 && weeklyCount == 0) return;
+            open = daily > 0 || weeklyCount > 0;
+            if (!open) return;
             weekly = weeklyCount > 0 && daily == 0;
             seenAt = System.currentTimeMillis();
-            if (daily > 0) sync(TodoPreset.DAILY_QUEST, dailyDone);
-            if (weeklyCount > 0) sync(TodoPreset.WEEKLY_QUEST, weeklyDone);
+            if (daily > 0) setExact(TodoPreset.DAILY_QUEST, dailyDone);
+            if (weeklyCount > 0) setExact(TodoPreset.WEEKLY_QUEST, weeklyDone);
+        }
+
+        static boolean windowOpen() {
+            return open;
         }
 
         static boolean weekly() {

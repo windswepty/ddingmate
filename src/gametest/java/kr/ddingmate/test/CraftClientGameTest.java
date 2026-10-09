@@ -315,35 +315,86 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(cfg.durability.tracked.get(0).name.equals("네더라이트 곡괭이"), "이름에 그림 글자가 남음: " + cfg.durability.tracked.get(0).name);
             });
 
-            // 14-1) 의뢰 창(실제 창 모양): 진행도를 다 채운 의뢰 수로 일일·주간 의뢰를 맞추고, 어느 창인지 기억한다
+            // 14-1) 의뢰 창(2026-10-09 실제 창 모양): 보상까지 받은 칸("이미 완료한 의뢰입니다.")만 센다.
+            //       진행도만 채우고 아직 안 받은 칸은 세지 않고, 많게 센 값(예전 버전에서 5/5)도 창에 맞춰 바로잡는다
             ctx.runOnClient(c -> {
                 DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
+                DdingMateConfig.TodoItem daily = todo("daily_quest");
+                daily.progress = 5; // 두 번 세던 예전 버전이 남긴 값
+                daily.doneAt = System.currentTimeMillis();
                 c.setScreen(facility(c,
-                        quest("코끼리 사냥하기 일일 의뢰", "매일의 의뢰 도전으로 성장해보세요.", "- 코끼리를 사냥하세요.", "- 의뢰 진행도 : 30 / 30", "- 보상 : 3루비"),
-                        quest("감자 심기 일일 의뢰", "- 감자를 심어주세요.", "- 의뢰 진행도 : 64 / 64", "- 보상 : 3루비"),
-                        quest("감자 수확하기 일일 의뢰", "- 감자를 수확해주세요.", "- 의뢰 진행도 : 10 / 32", "의뢰를 먼저 완료해주세요."),
+                        quest("감자 심기 일일 의뢰", "매일의 의뢰 도전으로 성장해보세요.", "- 감자를 심어주세요.", "- 보상 : 3루비", "이미 완료한 의뢰입니다."),
+                        quest("코끼리 사냥하기 일일 의뢰", "- 코끼리를 사냥하세요.", "- 보상 : 3루비", "이미 완료한 의뢰입니다."),
+                        quest("감자 수확하기 일일 의뢰", "- 감자를 수확해주세요.", "- 의뢰 진행도 : 32 / 32", "- 보상 : 2루비"),
                         quest("당근 심기 일일 의뢰", "- 당근을 심어주세요.", "- 의뢰 진행도 : 0 / 32", "의뢰를 먼저 완료해주세요."),
                         quest("거미 사냥하기 일일 의뢰", "- 거미를 사냥해주세요.", "- 의뢰 진행도 : 0 / 10", "의뢰를 먼저 완료해주세요.")));
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
-                DdingMateConfig.TodoItem daily = DdingMate.config().todo.items.stream().filter(t -> t.preset.equals("daily_quest")).findFirst().orElseThrow();
-                check(kr.ddingmate.todo.TodoList.progress(daily, now) == 2, "의뢰 창에서 다 채운 일일 의뢰 2개를 세지 않음: " + kr.ddingmate.todo.TodoList.progress(daily, now));
+                DdingMateConfig.TodoItem daily = todo("daily_quest");
+                check(kr.ddingmate.todo.TodoList.progress(daily, now) == 2,
+                        "창의 '이미 완료한 의뢰' 2개로 맞추지 않음(많게 센 값을 안 고치거나 안 받은 칸까지 셈): " + kr.ddingmate.todo.TodoList.progress(daily, now));
+                // 창이 열린 채 보상을 받으면 완료 메시지가 오지만, 창이 정답이라 메시지로는 더 세지 않는다
+                kr.ddingmate.todo.TodoList.onChat(G + "의뢰를 완료하였습니다.");
+                check(kr.ddingmate.todo.TodoList.progress(daily, now) == 2, "창이 열린 채 온 완료 메시지로 두 번 셈");
                 c.setScreen(facility(c,
-                        quest("양파 씨앗 채집하기 주간 의뢰", "매주 새로운 목표에 도전해보세요.", "- 의뢰 진행도 : 30 / 30"),
+                        quest("양파 씨앗 채집하기 주간 의뢰", "매주 새로운 목표에 도전해보세요.", "- 보상 : 5루비", "이미 완료한 의뢰입니다."),
                         quest("성게 채집하기 주간 의뢰", "- 의뢰 진행도 : 0 / 210", "의뢰를 먼저 완료해주세요."),
-                        quest("미어캣 사냥하기 주간 의뢰", "- 의뢰 진행도 : 0 / 30", "의뢰를 먼저 완료해주세요.")));
+                        quest("미어캣 사냥하기 주간 의뢰", "- 의뢰 진행도 : 30 / 30", "- 보상 : 5루비")));
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
-                DdingMateConfig.TodoItem weekly = DdingMate.config().todo.items.stream().filter(t -> t.preset.equals("weekly_quest")).findFirst().orElseThrow();
-                check(kr.ddingmate.todo.TodoList.progress(weekly, now) == 1, "주간 의뢰 창의 다 채운 의뢰를 세지 않음");
-                // 주간 의뢰 창을 보고 있을 때 온 완료 메시지는 주간으로
-                kr.ddingmate.todo.TodoList.onChat(G + "의뢰를 완료하였습니다.");
-                check(kr.ddingmate.todo.TodoList.progress(weekly, now) == 2, "주간 의뢰 창에서 완료한 것을 주간으로 세지 않음");
+                DdingMateConfig.TodoItem weekly = todo("weekly_quest");
+                check(kr.ddingmate.todo.TodoList.progress(weekly, now) == 1, "주간 의뢰 창의 '이미 완료한 의뢰'를 세지 않음");
                 c.setScreen(null);
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                // 주간 창을 닫은 직후(30초 안) 온 완료 메시지는 주간으로 +1
+                java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+                kr.ddingmate.todo.TodoList.onChat(G + "의뢰를 완료하였습니다.");
+                check(kr.ddingmate.todo.TodoList.progress(todo("weekly_quest"), now) == 2, "창을 닫은 직후 메시지를 주간으로 세지 않음");
+                check(kr.ddingmate.todo.TodoList.progress(todo("daily_quest"), now) == 2, "주간 완료를 일일로도 셈");
+            });
+
+            // 14-2) 저장소에서 꺼내면("[아이템 저장소] 6개를 인출했습니다.") 그 무렵 인벤토리에 늘어난 아이템만큼 저장소 기록에서 뺀다
+            //       (안 빼면 인벤토리 6 + 저장소 6 = 12 로 두 번 셈). 메시지가 먼저 와도, 아이템이 먼저 들어와도
+            ctx.runOnClient(c -> {
+                kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 조약돌 1개 수납! (6/5,000)");
+                kr.ddingmate.counter.BagTracker.onOverlay(" [아이템 저장소] 6개를 인출했습니다.");
+            });
+            sp.getServer().runCommand("give @a minecraft:cobblestone 6");
+            ctx.waitTicks(10);
+            ctx.runOnClient(c -> check(kr.ddingmate.counter.BagTracker.storageTotals().get("v:minecraft:cobblestone") == 0,
+                    "꺼낸 6개를 저장소에서 빼지 않음(메시지 먼저): " + kr.ddingmate.counter.BagTracker.storageTotals()));
+            ctx.runOnClient(c -> kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 조약돌 1개 수납! (10/5,000)"));
+            sp.getServer().runCommand("give @a minecraft:cobblestone 4");
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 4개를 인출했습니다."));
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.counter.BagTracker.storageTotals().get("v:minecraft:cobblestone") == 6,
+                        "꺼낸 4개를 저장소에서 빼지 않음(아이템 먼저): " + kr.ddingmate.counter.BagTracker.storageTotals());
+                check(kr.ddingmate.counter.BagTracker.storageTotals().get("v:minecraft:raw_copper") == null
+                        || kr.ddingmate.counter.BagTracker.storageTotals().get("v:minecraft:raw_copper") >= 0, "다른 아이템 기록이 망가짐");
+            });
+            sp.getServer().runCommand("clear @a minecraft:cobblestone");
+            ctx.waitTicks(3);
+
+            // 14-3) 이번 초기화 뒤로 의뢰 창을 안 열었으면 [0/5] 대신 "의뢰 창을 열어 주세요!"
+            ctx.runOnClient(c -> {
+                DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
+                java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+                check(kr.ddingmate.todo.TodoList.label(todo("daily_quest"), now).equals("일일 의뢰 · 의뢰 창을 열어 주세요!"),
+                        "창을 안 열었는데 안내가 아님: " + kr.ddingmate.todo.TodoList.label(todo("daily_quest"), now));
+                check(kr.ddingmate.todo.TodoList.label(todo("weekly_quest"), now).equals("주간 의뢰 · 의뢰 창을 열어 주세요!"), "주간 의뢰 안내가 아님");
+                kr.ddingmate.todo.TodoList.setExact(kr.ddingmate.todo.TodoPreset.DAILY_QUEST, 1);
+                check(kr.ddingmate.todo.TodoList.label(todo("daily_quest"), now).equals("일일 의뢰 [1/5]"), "창을 본 뒤에도 개수가 안 나옴");
+                check(kr.ddingmate.todo.TodoList.label(todo("weekly_quest"), now).equals("주간 의뢰 · 의뢰 창을 열어 주세요!"), "일일 창을 봤는데 주간까지 개수 표시");
+                todo("daily_quest").windowSeenAt = kr.ddingmate.todo.TodoList.lastReset(DdingMateConfig.Reset.DAILY, now).minusMinutes(1).toInstant().toEpochMilli();
+                check(kr.ddingmate.todo.TodoList.needsWindow(todo("daily_quest"), now), "지난 초기화 전에 본 창으로 개수를 믿음");
             });
 
             // 15) 본 적 없는 재료도 그림: 모드에 넣은 표가 실제 게임에서 기억한 모양(아이템·모델 번호)과 같은지
@@ -420,6 +471,37 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         "우클릭 시 1개를 꺼냅니다.", "쉬프트 우클릭 시 64개를 꺼냅니다.", "Q키 입력 시 모두 꺼냅니다.") == 2868, "재고 2,868 을 못 읽음");
                 check(stored("아이템을 저장하는 저장소입니다.", "- 재고: 0 / 5,000개", "- 세트: 0개", "물품을 들고 클릭 시 변경합니다.") == 0,
                         "재고 0 을 최대치 5,000 으로 읽음");
+                // 20) 정밀 검사: 레시피 373개의 결과물·재료 이름 전부에 그림이 있다(서버 표 또는 바닐라)
+                java.util.List<String> noIcon = new java.util.ArrayList<>();
+                java.util.Set<String> every = new java.util.TreeSet<>();
+                for (kr.ddingmate.counter.RecipeBook.Recipe r : kr.ddingmate.counter.RecipeBook.all()) {
+                    every.add(r.name);
+                    for (kr.ddingmate.counter.RecipeBook.Material m : r.materials) every.add(m.name);
+                }
+                for (String n : every) if (kr.ddingmate.counter.IconCache.forMaterial(n) == null) noIcon.add(n);
+                DdingMate.LOG.info("그림 없는 이름 {}/{}: {}", noIcon.size(), every.size(), noIcon);
+                check(noIcon.isEmpty(), "그림이 없는 이름: " + noIcon);
+                check(every.stream().allMatch(n -> kr.ddingmate.counter.IconCache.forRecipe(kr.ddingmate.counter.RecipeBook.recipeFor(n)) != null
+                        || kr.ddingmate.counter.RecipeBook.recipeFor(n) == null), "대표 그림이 없는 레시피가 있음");
+                ItemStack lantern = kr.ddingmate.counter.IconCache.forMaterial("영혼 램프");
+                check(lantern != null && lantern.isOf(Items.SOUL_LANTERN), "영혼 램프가 영혼 랜턴 그림이 아님: " + lantern);
+                look("활기찬 가죽 지갑", Items.PAPER, 2059103f);
+                // 21) 자동 수납 알림 "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" → 저장소 재고 2
+                kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 조약돌 1개 수납! (2/5,000)");
+                check(kr.ddingmate.counter.BagTracker.storageTotals().getOrDefault("v:minecraft:cobblestone", -1) == 2,
+                        "수납 알림으로 저장소 재고를 맞추지 않음: " + kr.ddingmate.counter.BagTracker.storageTotals());
+                kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 조약돌 64개 수납! (1,066/5,000)");
+                check(kr.ddingmate.counter.BagTracker.storageTotals().get("v:minecraft:cobblestone") == 1066, "쉼표가 든 재고를 못 읽음");
+                kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 코룸 3개 수납! (40/5,000)");
+                check(kr.ddingmate.counter.BagTracker.storageTotals().getOrDefault(kr.ddingmate.counter.ItemKeys.nameKey("코룸"), -1) == 40,
+                        "서버 아이템 수납 알림을 이름으로 기록하지 않음");
+                // 22) 마인리스트 추천 정보 "└ 오늘 추천 여부 : 추천 완료" → 체크, 남이 흉내 낸 채팅은 무시
+                DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
+                java.time.ZonedDateTime now2 = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+                kr.ddingmate.todo.TodoList.onChat("[칭호] 누군가 : └ 오늘 추천 여부 : 추천 완료");
+                check(!kr.ddingmate.todo.TodoList.isDone(todo("recommend"), now2), "남이 쓴 채팅으로 추천이 체크됨");
+                kr.ddingmate.todo.TodoList.onChat("ꀂ └ 오늘 추천 여부 : 추천 완료");
+                check(kr.ddingmate.todo.TodoList.isDone(todo("recommend"), now2), "추천 정보로 체크되지 않음");
                 ItemStack quartz = kr.ddingmate.counter.IconCache.forMaterial("석영");
                 check(quartz != null && quartz.isOf(Items.QUARTZ), "바닐라 재료(석영) 그림이 아님");
                 // 레시피의 모든 재료 중 표나 바닐라로 그림이 나오는 비율
@@ -444,6 +526,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
     /** 실제 의뢰 창 칸과 같은 모양: "[ 감자 심기 일일 의뢰 ]" + 설명 */
     private static ItemStack quest(String title, String... lore) {
         return item("[ " + title + " ]", 1, lore);
+    }
+
+    private static DdingMateConfig.TodoItem todo(String preset) {
+        return DdingMate.config().todo.items.stream().filter(t -> preset.equals(t.preset)).findFirst().orElseThrow();
     }
 
     private static int stored(String... lore) {

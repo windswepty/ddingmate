@@ -104,6 +104,9 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(tc.items.stream().noneMatch(t -> t.name.contains("출석")), "출석 체크가 남아 있음");
                 DdingMateConfig.TodoItem daily = item("daily_quest"), weekly = item("weekly_quest"), trade = item("trade");
                 check(daily.target == 5 && weekly.target == 3, "의뢰 목표가 일일 5·주간 3 이 아님: " + daily.target + "/" + weekly.target);
+                check(TodoList.label(daily, now).equals("일일 의뢰 · 의뢰 창을 열어 주세요!"), "창을 안 열었는데 안내가 아님: " + TodoList.label(daily, now));
+                TodoList.setExact(kr.ddingmate.todo.TodoPreset.DAILY_QUEST, 0);
+                TodoList.setExact(kr.ddingmate.todo.TodoPreset.WEEKLY_QUEST, 0);
                 check(TodoList.label(daily, now).equals("일일 의뢰 [0/5]"), "표시가 [0/5] 가 아님: " + TodoList.label(daily, now));
                 int before = TodoList.remaining(now).size();
                 TodoList.onChat("ꀂ 무역 아이템을 12,345골드에 판매하였습니다.");

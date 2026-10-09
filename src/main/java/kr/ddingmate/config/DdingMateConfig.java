@@ -100,6 +100,8 @@ public final class DdingMateConfig {
         public String autoPhrase = "";
         /** 어떤 할 일인지(TodoPreset.id) */
         public String preset = "";
+        /** 의뢰: 마지막으로 의뢰 창을 보고 맞춘 시각(ms). 이번 초기화 뒤로 안 봤으면 개수를 모른다 */
+        public long windowSeenAt;
 
         public TodoItem() {}
 
