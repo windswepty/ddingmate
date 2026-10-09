@@ -346,6 +346,28 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 CraftTimers.debugClear();
             });
 
+            // 9-5) Tab 목록: 기본은 HUD 가 목록 뒤로 흐릿하게 비쳐 보이고, "Tab 창에서 HUD 가리기"를 켜면 안 보인다
+            sp.getServer().runCommand("scoreboard objectives add tabtest dummy");
+            sp.getServer().runCommand("scoreboard objectives setdisplay list tabtest");
+            ctx.runOnClient(c -> CraftTimers.onChat(START));
+            ctx.waitTicks(5);
+            ctx.getInput().holdKey(o -> o.playerListKey);
+            ctx.waitTicks(30);
+            ctx.runOnClient(c -> {
+                check(DdingMate.playerListShown(), "Tab 목록이 떠 있는 걸 알아보지 못함");
+                check(kr.ddingmate.hud.HudLayout.bounds().containsKey(kr.ddingmate.hud.HudLayout.SCHEDULE), "Tab 중에 HUD 를 비쳐 그리지 않음");
+            });
+            ctx.takeScreenshot("craft-5-tab-ghost");
+            ctx.runOnClient(c -> DdingMate.config().hideOnTab = true);
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("craft-6-tab-hidden");
+            ctx.getInput().releaseKey(o -> o.playerListKey);
+            ctx.runOnClient(c -> {
+                DdingMate.config().hideOnTab = false;
+                CraftTimers.debugClear();
+            });
+            sp.getServer().runCommand("scoreboard objectives remove tabtest");
+
             // 10) 설정 화면: 재료 탭 목록, 홈 '제작 중'
             ctx.runOnClient(c -> {
                 c.setScreen(new DdingMateScreen(null));
