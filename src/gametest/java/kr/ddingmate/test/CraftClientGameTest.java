@@ -346,24 +346,24 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 CraftTimers.debugClear();
             });
 
-            // 9-5) Tab 목록: 기본은 HUD 가 목록 뒤로 흐릿하게 비쳐 보이고, "Tab 창에서 HUD 가리기"를 켜면 안 보인다
+            // 9-5) Tab 목록이 떠 있는 동안은 HUD 를 그리지 않는다(서버 Tab 판과 겹쳐 이질적으로 보임)
             sp.getServer().runCommand("scoreboard objectives add tabtest dummy");
             sp.getServer().runCommand("scoreboard objectives setdisplay list tabtest");
             ctx.runOnClient(c -> CraftTimers.onChat(START));
             ctx.waitTicks(5);
             ctx.getInput().holdKey(o -> o.playerListKey);
-            ctx.waitTicks(30);
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> kr.ddingmate.hud.HudLayout.bounds().clear());
+            ctx.waitTicks(10);
             ctx.runOnClient(c -> {
                 check(DdingMate.playerListShown(), "Tab 목록이 떠 있는 걸 알아보지 못함");
-                check(kr.ddingmate.hud.HudLayout.bounds().containsKey(kr.ddingmate.hud.HudLayout.SCHEDULE), "Tab 중에 HUD 를 비쳐 그리지 않음");
+                check(kr.ddingmate.hud.HudLayout.bounds().isEmpty(), "Tab 중에 HUD 를 그림: " + kr.ddingmate.hud.HudLayout.bounds().keySet());
             });
-            ctx.takeScreenshot("craft-5-tab-ghost");
-            ctx.runOnClient(c -> DdingMate.config().hideOnTab = true);
-            ctx.waitTicks(5);
-            ctx.takeScreenshot("craft-6-tab-hidden");
+            ctx.takeScreenshot("craft-5-tab-hidden");
             ctx.getInput().releaseKey(o -> o.playerListKey);
+            ctx.waitTicks(10);
             ctx.runOnClient(c -> {
-                DdingMate.config().hideOnTab = false;
+                check(kr.ddingmate.hud.HudLayout.bounds().containsKey(kr.ddingmate.hud.HudLayout.SCHEDULE), "Tab 을 뗐는데 HUD 가 돌아오지 않음");
                 CraftTimers.debugClear();
             });
             sp.getServer().runCommand("scoreboard objectives remove tabtest");

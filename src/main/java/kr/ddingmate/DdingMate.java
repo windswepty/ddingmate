@@ -81,10 +81,6 @@ public final class DdingMate implements ClientModInitializer {
         // 띵타이쿤 대기 서버(접속 직후 스폰으로 옮겨지기 전)에서도 띄우지 않는다
         // Tab 접속자 목록은 늘 HUD 위에 온다(미니맵처럼 HUD 는 목록 뒤에 비쳐 보임)
         HudRenderCallback.EVENT.register(DdingMate::renderHuds);
-        // Tab 목록이 떠 있으면 목록 바로 뒤 층에서 HUD 를 비쳐 보이게 그린다(Xaero 미니맵처럼 살짝 보이게)
-        net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback.EVENT.register(layers -> layers.attachLayerAfter(
-                net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer.PLAYER_LIST,
-                net.minecraft.util.Identifier.of(MOD_ID, "hud_behind_tab"), DdingMate::renderHudsWithTab));
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
@@ -119,27 +115,9 @@ public final class DdingMate implements ClientModInitializer {
     /** 같은 구석이면 이 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도 */
     private static void renderHuds(net.minecraft.client.gui.DrawContext ctx, net.minecraft.client.render.RenderTickCounter tick) {
         if (!config.opened || !ServerHud.inGame()) return;
-        if (playerListShown()) return; // Tab 목록이 떠 있으면 renderHudsWithTab 이 그린다
+        // Tab(접속자 목록)이 떠 있는 동안은 그리지 않는다: 서버 Tab 판 밑으로 잘려 보이거나 겹쳐 보이면 이질적이다
+        if (playerListShown()) return;
         drawAll(ctx, tick);
-    }
-
-    /** Tab 목록이 비치는 정도: 목록 글자는 또렷하게, 뒤의 HUD 는 흐릿하게 */
-    static final float TAB_ALPHA = 0.35f;
-
-    /**
-     * Tab 목록이 떠 있을 때. 서버 Tab 목록은 판이 거의 불투명해 HUD 를 그 밑에 그리면 가장자리 조각만 보인다.
-     * 그래서 목록 위에 옅게 겹쳐 그려 "목록 뒤로 비쳐 보이는" 모양을 낸다. 설정에서 가리기를 켜면 그리지 않는다
-     */
-    private static void renderHudsWithTab(net.minecraft.client.gui.DrawContext ctx, net.minecraft.client.render.RenderTickCounter tick) {
-        if (!config.opened || !ServerHud.inGame() || !playerListShown() || config.hideOnTab) return;
-        ctx.draw();
-        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, TAB_ALPHA);
-        try {
-            drawAll(ctx, tick);
-            ctx.draw();
-        } finally {
-            com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        }
     }
 
     private static void drawAll(net.minecraft.client.gui.DrawContext ctx, net.minecraft.client.render.RenderTickCounter tick) {
