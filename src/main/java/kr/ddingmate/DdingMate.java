@@ -107,6 +107,7 @@ public final class DdingMate implements ClientModInitializer {
         if (tickCounter % 10 == 0) {
             MaterialCounter.tick(client);
             DurabilityTracker.tick(client);
+            PlaytimeTracker.scanScreen(client); // 내가 연 /접속시간 창이면 서버 기록에 맞춘다
         }
         // 알림 판정은 1초에 한 번. 월드(서버)에 들어가 있을 때만 울린다.
         if (tickCounter % 20 != 0 || client.world == null || client.player == null) return;

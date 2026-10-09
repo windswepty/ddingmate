@@ -8,7 +8,16 @@ import kr.ddingmate.notify.Notifier;
 import kr.ddingmate.schedule.ScheduleEngine;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
 import net.minecraft.client.network.ServerInfo;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.LoreComponent;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -52,7 +61,18 @@ public final class PlaytimeTracker {
         long seconds;
         List<Integer> notified = new ArrayList<>();
         boolean reminded;
+        /** 서버 기록(/접속시간 창)에 마지막으로 맞춘 시각(ms). 0 이면 오늘은 아직 안 맞춤(추정값) */
+        long syncedAt;
+        /** /접속시간 창에서 확인한 이미 받은 보상 구간. syncedAt 이 0 이면 모름 */
+        List<Integer> claimed = new ArrayList<>();
     }
+
+    /** /접속시간 창의 보상 아이템 이름: "[ 1시간 접속 보상 ]" */
+    private static final Pattern REWARD_NAME = Pattern.compile("\\[\\s*(\\d+)\\s*시간\\s*접속\\s*보상\\s*]");
+    /** 보상 아이템 설명: "- 오늘 접속 시간 : 11시간 49분 33초" (시간·분은 없을 수 있음) */
+    private static final Pattern TODAY = Pattern.compile(
+            "오늘\\s*접속\\s*시간\\s*[:：]?\\s*(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+)\\s*초)?");
+    private static final String CLAIMED = "이미 수령";
 
     private static final class Store {
         Map<String, Day> accounts = new LinkedHashMap<>();
@@ -102,10 +122,96 @@ public final class PlaytimeTracker {
             ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
             if (!now.toLocalTime().isBefore(MIDNIGHT_REMIND)) {
                 d.reminded = true;
-                Notifier.playtimeMidnight((int) (d.seconds / 3600));
+                // 받은 보상을 알고 있으면 안 받은 것만, 모르면 채운 시간만 알린다. 다 받았으면 알리지 않는다.
+                List<Integer> left = unclaimed(d);
+                if (d.syncedAt == 0) Notifier.playtimeMidnight("오늘 " + (d.seconds / 3600) + "시간 채웠어요");
+                else if (!left.isEmpty()) Notifier.playtimeMidnight("안 받은 보상: " + hours(left));
                 save();
             }
         }
+    }
+
+    // ---------------------------------------------------------------- 서버 기록 맞추기
+
+    /**
+     * 내가 직접 연 /접속시간 창에서 보상 아이템 설명을 읽어 서버 기록에 맞춘다.
+     * 설명의 "오늘 접속 시간 : 11시간 49분 33초" 로 시간을, "이미 수령한 보상입니다." 로 받은 보상을 안다.
+     * 창을 대신 열거나 명령어를 보내지 않는다.
+     */
+    public static void scanScreen(MinecraftClient client) {
+        if (!(client.currentScreen instanceof GenericContainerScreen screen) || client.player == null) return;
+        Inventory inv = screen.getScreenHandler().getInventory();
+        long serverSeconds = -1;
+        List<Integer> claimed = new ArrayList<>();
+        boolean sawReward = false;
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (s.isEmpty()) continue;
+            Matcher name = REWARD_NAME.matcher(plain(s.getName()));
+            if (!name.find()) continue;
+            sawReward = true;
+            int hour = Integer.parseInt(name.group(1));
+            LoreComponent lore = s.get(DataComponentTypes.LORE);
+            if (lore == null) continue;
+            for (Text line : lore.lines()) {
+                String t = plain(line);
+                if (t.contains(CLAIMED) && !claimed.contains(hour)) claimed.add(hour);
+                Matcher m = TODAY.matcher(t);
+                if (m.find() && (m.group(1) != null || m.group(2) != null || m.group(3) != null)) {
+                    serverSeconds = num(m.group(1)) * 3600L + num(m.group(2)) * 60L + num(m.group(3));
+                }
+            }
+        }
+        if (!sawReward) return;
+        Day d = today();
+        if (d == null) return;
+        if (serverSeconds >= 0) {
+            d.seconds = serverSeconds;
+            lastMs = System.currentTimeMillis();
+        }
+        d.syncedAt = System.currentTimeMillis();
+        d.claimed = claimed;
+        // 이미 넘긴 구간은 알림이 한꺼번에 울리지 않게 알린 것으로 친다(창을 보고 있으니 따로 알릴 필요 없음).
+        for (int h : REWARDS.keySet()) if (d.seconds >= h * 3600L && !d.notified.contains(h)) d.notified.add(h);
+        if (System.currentTimeMillis() - lastSaveMs > 5000) save();
+    }
+
+    private static String plain(Text t) {
+        String s = Formatting.strip(t.getString());
+        return s == null ? "" : s;
+    }
+
+    private static int num(String s) {
+        return s == null ? 0 : Integer.parseInt(s);
+    }
+
+    /** 채웠지만 아직 안 받은 보상 구간(받은 보상을 모르면 채운 구간 전부) */
+    private static List<Integer> unclaimed(Day d) {
+        List<Integer> out = new ArrayList<>();
+        for (int h : REWARDS.keySet()) if (d.seconds >= h * 3600L && !d.claimed.contains(h)) out.add(h);
+        return out;
+    }
+
+    private static String hours(List<Integer> hs) {
+        StringBuilder sb = new StringBuilder();
+        for (int h : hs) {
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append(h).append("시간");
+        }
+        return sb.toString();
+    }
+
+    /** 오늘 서버 기록에 맞춘 적이 있으면 그 시각(ms), 아니면 0 */
+    public static long syncedAt() {
+        Day d = MinecraftClient.getInstance().player == null ? null : today();
+        return d == null ? 0 : d.syncedAt;
+    }
+
+    /** 채웠지만 안 받은 보상 구간. 오늘 서버 기록을 본 적이 없으면 null(모름) */
+    public static List<Integer> unclaimedRewards() {
+        Day d = MinecraftClient.getInstance().player == null ? null : today();
+        if (d == null || d.syncedAt == 0) return null;
+        return unclaimed(d);
     }
 
     /** 오늘(한국 날짜) 접속 기록. 날짜가 바뀌었으면 새로 시작 */
@@ -163,7 +269,10 @@ public final class PlaytimeTracker {
             Store s = GSON.fromJson(r, Store.class);
             if (s != null && s.accounts != null) {
                 s.accounts.values().removeIf(d -> d == null || d.date == null);
-                for (Day d : s.accounts.values()) if (d.notified == null) d.notified = new ArrayList<>();
+                for (Day d : s.accounts.values()) {
+                    if (d.notified == null) d.notified = new ArrayList<>();
+                    if (d.claimed == null) d.claimed = new ArrayList<>();
+                }
                 store = s;
             }
         } catch (IOException | RuntimeException e) {

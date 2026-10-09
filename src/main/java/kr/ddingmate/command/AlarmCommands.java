@@ -185,9 +185,12 @@ public final class AlarmCommands {
         long s = PlaytimeTracker.seconds();
         if (s < 0) return feedback(c, "월드에 들어가 있을 때 확인할 수 있어요.");
         int next = PlaytimeTracker.nextRewardHour(s);
-        return feedback(c, "오늘 접속 " + (s / 3600) + "시간 " + (s % 3600 / 60) + "분 (추정) · "
+        List<Integer> unclaimed = PlaytimeTracker.unclaimedRewards();
+        String basis = PlaytimeTracker.syncedAt() > 0 ? "서버 기준" : "추정 · /접속시간 창을 열면 맞춰요";
+        String state = unclaimed == null ? "" : unclaimed.isEmpty() ? " · 받을 보상 없음" : " · 안 받은 보상 " + unclaimed + "시간";
+        return feedback(c, "오늘 접속 " + (s / 3600) + "시간 " + (s % 3600 / 60) + "분 (" + basis + ") · "
                 + (next == 0 ? "보상 구간을 다 채웠어요" : "다음 보상 " + next + "시간: " + PlaytimeTracker.REWARDS.get(next))
-                + " · 서버 기준은 /접속시간");
+                + state);
     }
 
     private static int setEvent(CommandContext<FabricClientCommandSource> c, boolean on) {

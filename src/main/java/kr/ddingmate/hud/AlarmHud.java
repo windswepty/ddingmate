@@ -141,8 +141,14 @@ public final class AlarmHud {
         long played = cfg.playtime.showInHud ? PlaytimeTracker.seconds() : -1;
         if (played >= 0) {
             int next = PlaytimeTracker.nextRewardHour(played);
-            String left = next == 0 ? "보상 다 채움" : "다음 보상 " + hm(next * 3600L - played);
-            out.add(new Entry("오늘 접속 " + hm(played), left, Long.MAX_VALUE, Theme.GOLD));
+            // 서버 기록(/접속시간 창)에 맞춘 적이 없으면 추정값이라 "약"을 붙인다
+            boolean synced = PlaytimeTracker.syncedAt() > 0;
+            List<Integer> unclaimed = PlaytimeTracker.unclaimedRewards();
+            String left;
+            if (unclaimed != null && !unclaimed.isEmpty()) left = "받을 보상 " + unclaimed.size() + "개";
+            else if (next == 0) left = unclaimed != null ? "보상 다 받음" : "보상 다 채움";
+            else left = "다음 보상 " + hm(next * 3600L - played);
+            out.add(new Entry("오늘 접속 " + (synced ? "" : "약 ") + hm(played), left, Long.MAX_VALUE, Theme.GOLD));
         }
         for (ScheduleEngine.Occurrence o : ScheduleEngine.upcoming(DdingMate.rules(), cfg::isEnabled, now, cfg.hudLines)) {
             Duration left = Duration.between(now, o.time());

@@ -125,6 +125,26 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.takeScreenshot("features-2-playtime-alert");
 
+            // 12-1) /접속시간 창을 열면 서버 기록(11시간 49분 33초)과 받은 보상(1시간)에 맞추고, 지난 구간 알림은 한꺼번에 울리지 않는다
+            int[] before = new int[1];
+            ctx.runOnClient(c -> {
+                before[0] = (int) AlertLog.entries().stream().filter(e -> e.kind.equals("접속")).count();
+                c.setScreen(playtimeScreen(c));
+            });
+            ctx.waitTicks(25);
+            ctx.runOnClient(c -> c.setScreen(null));
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> {
+                long s = PlaytimeTracker.seconds();
+                check(s >= 42573 && s <= 42573 + 5, "서버 기록에 맞추지 못함: " + s);
+                check(PlaytimeTracker.syncedAt() > 0, "서버 기록에 맞춘 시각이 없음");
+                check(List.of(2, 3, 4, 5, 8).equals(PlaytimeTracker.unclaimedRewards()),
+                        "안 받은 보상 계산 오류: " + PlaytimeTracker.unclaimedRewards());
+                long after = AlertLog.entries().stream().filter(e -> e.kind.equals("접속")).count();
+                check(after == before[0], "맞춘 뒤 지난 구간 알림이 한꺼번에 울림");
+            });
+            ctx.takeScreenshot("features-2b-playtime-synced");
+
             // 10) 알림 기록함과 새 탭 화면
             ctx.runOnClient(c -> check(AlertLog.entries().size() >= 2, "알림 기록이 쌓이지 않음"));
             String[] names = {"gear", "todo", "log"};
@@ -156,6 +176,32 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
         inv.setStack(1, new ItemStack(Items.GRAY_STAINED_GLASS_PANE));
         GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(78, c.player.getInventory(), inv);
         return new GenericContainerScreen(h, c.player.getInventory(), Text.literal("아이템 저장소"));
+    }
+
+    /** 서버 /접속시간 창처럼 보상 별 아이템에 이름·설명을 붙인다(1시간은 받음, 2시간은 안 받음) */
+    private static GenericContainerScreen playtimeScreen(MinecraftClient c) {
+        SimpleInventory inv = new SimpleInventory(54);
+        inv.setStack(10, reward(1, true));
+        inv.setStack(12, reward(2, false));
+        GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(79, c.player.getInventory(), inv);
+        return new GenericContainerScreen(h, c.player.getInventory(), Text.literal(""));
+    }
+
+    private static ItemStack reward(int hour, boolean claimed) {
+        ItemStack s = new ItemStack(Items.PAPER);
+        s.set(DataComponentTypes.CUSTOM_NAME, Text.literal("[ " + hour + "시간 접속 보상 ]"));
+        List<Text> lore = new java.util.ArrayList<>(List.of(
+                Text.literal(""),
+                Text.literal("  현재 접속 시간을 확인할 수 있습니다."),
+                Text.literal("  접속을 유지해서 보상을 받아보세요."),
+                Text.literal(""),
+                Text.literal("   - 오늘 접속 시간 : ").append(Text.literal("11시간 49분 33초"))));
+        if (claimed) {
+            lore.add(Text.literal(""));
+            lore.add(Text.literal("  ! 이미 수령한 보상입니다."));
+        }
+        s.set(DataComponentTypes.LORE, new LoreComponent(lore));
+        return s;
     }
 
     private static MaterialCounter.Line line(String name) {

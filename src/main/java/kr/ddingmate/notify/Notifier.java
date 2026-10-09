@@ -61,8 +61,8 @@ public final class Notifier {
                 SoundEvents.ENTITY_PLAYER_LEVELUP, new ItemStack(Items.NETHER_STAR), Theme.GOLD, true);
     }
 
-    public static void playtimeMidnight(int hours) {
-        notify("접속", "자정에 접속 시간이 초기화돼요", "오늘 " + hours + "시간 채웠어요 · /접속시간 에서 보상을 받으세요",
+    public static void playtimeMidnight(String detail) {
+        notify("접속", "자정에 접속 시간이 초기화돼요", detail + " · /접속시간 에서 보상을 받으세요",
                 SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), new ItemStack(Items.CLOCK), Theme.GOLD, true);
     }
 

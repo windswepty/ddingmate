@@ -360,14 +360,18 @@ public class AlarmConfigScreen extends Screen {
         long sec = PlaytimeTracker.seconds();
         if (sec >= 0) {
             int next = PlaytimeTracker.nextRewardHour(sec);
-            list.note("오늘 접속 " + (sec / 3600) + "시간 " + (sec % 3600 / 60) + "분 (내 게임에서 센 추정값)"
+            long synced = PlaytimeTracker.syncedAt();
+            String basis = synced > 0
+                    ? "서버 기준 " + Instant.ofEpochMilli(synced).atZone(ScheduleEngine.KST).format(DateTimeFormatter.ofPattern("HH:mm")) + "에 맞춤"
+                    : "추정값 · /접속시간 창을 한 번 열면 서버 기록에 맞춰요";
+            list.note("오늘 접속 " + (sec / 3600) + "시간 " + (sec % 3600 / 60) + "분 (" + basis + ")"
                     + (next == 0 ? " · 오늘 보상 구간을 다 채웠어요"
                     : " · 다음 보상 " + next + "시간: " + PlaytimeTracker.REWARDS.get(next)));
         }
         list.pair(toggle("보상 구간 알림", pc.enabled, v -> pc.enabled = v),
                 toggle("일정 HUD 에 표시", pc.showInHud, v -> pc.showInHud = v));
         list.pair(toggle("23:30 초기화 전 알림", pc.midnightReminder, v -> pc.midnightReminder = v), null);
-        list.note("보상 구간을 넘기면 채팅으로 알려 줘요. 보상은 /접속시간 에서 직접 받아야 하고, 자정에 초기화돼요.");
+        list.note("보상 구간을 넘기면 채팅으로 알려 줘요. /접속시간 창을 열면 서버 기록(초 단위)과 받은 보상을 읽어 맞춰요. 보상은 그 창에서 직접 받아야 하고, 자정에 초기화돼요.");
     }
 
     private void buildLog() {
