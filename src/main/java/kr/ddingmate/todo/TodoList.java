@@ -1,7 +1,7 @@
 package kr.ddingmate.todo;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.notify.Notifier;
 import kr.ddingmate.schedule.ScheduleEngine;
 
@@ -24,7 +24,7 @@ public final class TodoList {
     private TodoList() {}
 
     /** now 이전의 가장 최근 초기화 시각 */
-    public static ZonedDateTime lastReset(AlarmConfig.Reset reset, ZonedDateTime now) {
+    public static ZonedDateTime lastReset(DdingMateConfig.Reset reset, ZonedDateTime now) {
         ZonedDateTime n = now.withZoneSameInstant(ScheduleEngine.KST);
         return switch (reset) {
             case MIDNIGHT -> n.toLocalDate().atStartOfDay(ScheduleEngine.KST);
@@ -41,24 +41,24 @@ public final class TodoList {
     }
 
     /** 다음 초기화 시각 */
-    public static ZonedDateTime nextReset(AlarmConfig.Reset reset, ZonedDateTime now) {
+    public static ZonedDateTime nextReset(DdingMateConfig.Reset reset, ZonedDateTime now) {
         ZonedDateTime last = lastReset(reset, now);
-        return reset == AlarmConfig.Reset.WEEKLY ? last.plusWeeks(1) : last.plusDays(1);
+        return reset == DdingMateConfig.Reset.WEEKLY ? last.plusWeeks(1) : last.plusDays(1);
     }
 
-    public static boolean isDone(AlarmConfig.TodoItem item, ZonedDateTime now) {
+    public static boolean isDone(DdingMateConfig.TodoItem item, ZonedDateTime now) {
         return item.doneAt > 0 && item.doneAt >= lastReset(item.reset, now).toInstant().toEpochMilli();
     }
 
-    public static void setDone(AlarmConfig.TodoItem item, boolean done) {
+    public static void setDone(DdingMateConfig.TodoItem item, boolean done) {
         item.doneAt = done ? System.currentTimeMillis() : 0;
     }
 
-    public static List<AlarmConfig.TodoItem> remaining(ZonedDateTime now) {
+    public static List<DdingMateConfig.TodoItem> remaining(ZonedDateTime now) {
         return DdingMate.config().todo.items.stream().filter(t -> !isDone(t, now)).toList();
     }
 
-    public static String resetName(AlarmConfig.Reset r) {
+    public static String resetName(DdingMateConfig.Reset r) {
         return switch (r) {
             case DAILY -> "매일 03시";
             case WEEKLY -> "매주 목 03시";
@@ -68,16 +68,16 @@ public final class TodoList {
 
     /** 1초에 한 번. 일일 초기화 remindMinutes 분 전에 남은 '매일 03시' 할 일이 있으면 하루에 한 번 알린다. */
     public static void tick(ZonedDateTime now) {
-        AlarmConfig.Todo cfg = DdingMate.config().todo;
+        DdingMateConfig.Todo cfg = DdingMate.config().todo;
         if (cfg.remindMinutes <= 0) return;
-        ZonedDateTime next = nextReset(AlarmConfig.Reset.DAILY, now);
+        ZonedDateTime next = nextReset(DdingMateConfig.Reset.DAILY, now);
         ZonedDateTime at = next.minusMinutes(cfg.remindMinutes);
         if (now.isBefore(at) || !now.isBefore(next)) return;
         String key = next.toLocalDate().toString();
         if (key.equals(remindedFor)) return;
         remindedFor = key;
-        List<AlarmConfig.TodoItem> left = remaining(now).stream()
-                .filter(t -> t.reset == AlarmConfig.Reset.DAILY).toList();
+        List<DdingMateConfig.TodoItem> left = remaining(now).stream()
+                .filter(t -> t.reset == DdingMateConfig.Reset.DAILY).toList();
         if (left.isEmpty()) return;
         String names = left.stream().map(t -> t.name).limit(4).collect(Collectors.joining(", "))
                 + (left.size() > 4 ? " 외 " + (left.size() - 4) + "개" : "");

@@ -1,7 +1,7 @@
 package kr.ddingmate.notify;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
@@ -21,7 +21,7 @@ public final class KeywordWatcher {
 
     /** @param senderName 플레이어 채팅이면 보낸 사람 이름, 시스템 메시지면 null */
     public static void onMessage(Text message, String senderName) {
-        AlarmConfig.Keywords kw = DdingMate.config().keywords;
+        DdingMateConfig.Keywords kw = DdingMate.config().keywords;
         if (!kw.enabled || message == null) return;
         String text = message.getString();
         if (text.isBlank()) return;

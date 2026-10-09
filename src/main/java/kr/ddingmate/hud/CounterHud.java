@@ -1,7 +1,7 @@
 package kr.ddingmate.hud;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.counter.BagTracker;
 import kr.ddingmate.counter.IconCache;
 import kr.ddingmate.counter.MaterialCounter;
@@ -34,30 +34,37 @@ public final class CounterHud {
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
-        AlarmConfig all = DdingMate.config();
-        AlarmConfig.Counter cfg = all.counter;
+        DdingMateConfig all = DdingMate.config();
+        DdingMateConfig.Counter cfg = all.counter;
         List<MaterialCounter.PinView> views = MaterialCounter.views();
-        if (!cfg.enabled || views.isEmpty() || AlarmHud.hidden(client)) return;
+        if (ScheduleHud.hidden(client)) return;
+        if (!cfg.enabled || views.isEmpty()) {
+            HudLayout.placeholder(ctx, HudLayout.COUNTER, cfg.corner, CHEST, cfg.enabled ? "핀한 레시피가 없어요" : "꺼져 있어요");
+            return;
+        }
         String note = cfg.includeBags || cfg.includeStorage ? bagNote(cfg) : null;
         int stack = HudStack.offset(cfg.corner);
-        if (all.hudStyle == AlarmConfig.HudStyle.CLASSIC) {
+        if (all.hudStyle == DdingMateConfig.HudStyle.CLASSIC) {
             drawClassic(ctx, client.textRenderer, cfg, views, note, stack);
         } else {
             drawPanels(ctx, client.textRenderer, cfg, views, note, stack, all.hudOpacity * 255 / 100,
-                    all.hudStyle == AlarmConfig.HudStyle.DARK);
+                    all.hudStyle == DdingMateConfig.HudStyle.DARK);
         }
     }
 
     // ---------------------------------------------------------------- 띵타이쿤풍 판
 
-    private static void drawPanels(DrawContext ctx, TextRenderer tr, AlarmConfig.Counter cfg,
+    private static void drawPanels(DrawContext ctx, TextRenderer tr, DdingMateConfig.Counter cfg,
                                    List<MaterialCounter.PinView> views, String note, int stack, int alpha, boolean dark) {
         int sh = ctx.getScaledWindowHeight();
-        boolean top = cfg.corner == AlarmConfig.Corner.TOP_LEFT || cfg.corner == AlarmConfig.Corner.TOP_RIGHT;
-        boolean left = cfg.corner == AlarmConfig.Corner.TOP_LEFT || cfg.corner == AlarmConfig.Corner.BOTTOM_LEFT;
-        int limit = top
-                ? (left ? sh - CHAT_ZONE : sh - 30) - (AlarmHud.MARGIN + stack)
-                : sh - AlarmHud.BOTTOM_GAP - stack - AlarmHud.MARGIN;
+        boolean top = cfg.corner == DdingMateConfig.Corner.TOP_LEFT || cfg.corner == DdingMateConfig.Corner.TOP_RIGHT;
+        boolean left = cfg.corner == DdingMateConfig.Corner.TOP_LEFT || cfg.corner == DdingMateConfig.Corner.BOTTOM_LEFT;
+        int limit;
+        int customY = HudLayout.customTop(ctx, HudLayout.COUNTER, 60);
+        if (customY >= 0) limit = sh - customY - 4; // 옮긴 자리 아래로 남은 높이
+        else limit = top
+                ? (left ? sh - CHAT_ZONE : sh - 30) - (ScheduleHud.MARGIN + stack)
+                : sh - ScheduleHud.BOTTOM_GAP - stack - ScheduleHud.MARGIN;
         limit = Math.max(limit, 60);
 
         List<List<MaterialCounter.PinView>> columns = new ArrayList<>();
@@ -75,20 +82,26 @@ public final class CounterHud {
         }
         columns.add(col);
 
-        int offset = 0;
-        int tallest = 0;
-        for (int i = 0; i < columns.size(); i++) {
-            String colNote = i == columns.size() - 1 ? note : null;
-            List<MaterialCounter.PinView> pins = columns.get(i);
-            int boxW = columnWidth(tr, cfg, pins, colNote);
-            int boxH = columnHeight(pins, colNote);
-            int x = left ? AlarmHud.MARGIN + offset : ctx.getScaledWindowWidth() - AlarmHud.MARGIN - offset - boxW;
-            int y = AlarmHud.cornerY(ctx, cfg.corner, boxH, stack);
-            drawColumn(ctx, tr, cfg, pins, colNote, x, y, boxW, boxH, alpha, dark);
-            offset += boxW + COLUMN_GAP;
-            tallest = Math.max(tallest, boxH);
+        // 칸 여러 개를 하나의 묶음으로 보고 자리를 정한 뒤, 왼쪽부터 나란히 그린다
+        int n = columns.size();
+        int[] ws = new int[n];
+        int[] hs = new int[n];
+        int totalW = 0, tallest = 0;
+        for (int i = 0; i < n; i++) {
+            String colNote = i == n - 1 ? note : null;
+            ws[i] = columnWidth(tr, cfg, columns.get(i), colNote);
+            hs[i] = columnHeight(columns.get(i), colNote);
+            totalW += ws[i] + (i > 0 ? COLUMN_GAP : 0);
+            tallest = Math.max(tallest, hs[i]);
         }
-        HudStack.push(cfg.corner, tallest);
+        int[] o = HudLayout.place(ctx, HudLayout.COUNTER, cfg.corner, totalW, tallest);
+        boolean bottomAlign = !top && !HudLayout.custom(HudLayout.COUNTER);
+        int x = o[0];
+        for (int i = 0; i < n; i++) {
+            int y = bottomAlign ? o[1] + tallest - hs[i] : o[1];
+            drawColumn(ctx, tr, cfg, columns.get(i), i == n - 1 ? note : null, x, y, ws[i], hs[i], alpha, dark);
+            x += ws[i] + COLUMN_GAP;
+        }
     }
 
     /** HUD 한 줄: 재료 또는 그 아래 펼친 원재료(sub) */
@@ -106,7 +119,7 @@ public final class CounterHud {
     private static final int SUB_INDENT = 9;
 
     private static int pinHeight(MaterialCounter.PinView v) {
-        return AlarmHud.HEAD_H + 2 + shown(v).size() * ROW_H + 2;
+        return ScheduleHud.HEAD_H + 2 + shown(v).size() * ROW_H + 2;
     }
 
     private static int columnHeight(List<MaterialCounter.PinView> pins, String note) {
@@ -117,7 +130,7 @@ public final class CounterHud {
 
     private record Widths(int name, int count, int extra) {}
 
-    private static Widths widths(TextRenderer tr, AlarmConfig.Counter cfg, List<MaterialCounter.PinView> pins) {
+    private static Widths widths(TextRenderer tr, DdingMateConfig.Counter cfg, List<MaterialCounter.PinView> pins) {
         int nameW = 0, countW = 0, extraW = 0;
         for (MaterialCounter.PinView v : pins) {
             for (Shown sh : shown(v)) {
@@ -130,7 +143,7 @@ public final class CounterHud {
         return new Widths(nameW, countW, extraW);
     }
 
-    private static int columnWidth(TextRenderer tr, AlarmConfig.Counter cfg, List<MaterialCounter.PinView> pins, String note) {
+    private static int columnWidth(TextRenderer tr, DdingMateConfig.Counter cfg, List<MaterialCounter.PinView> pins, String note) {
         Widths w = widths(tr, cfg, pins);
         int headW = 0;
         for (MaterialCounter.PinView v : pins) {
@@ -146,17 +159,17 @@ public final class CounterHud {
         return Theme.boldWidth(tr, progress(v)) + 8;
     }
 
-    private static void drawColumn(DrawContext ctx, TextRenderer tr, AlarmConfig.Counter cfg,
+    private static void drawColumn(DrawContext ctx, TextRenderer tr, DdingMateConfig.Counter cfg,
                                    List<MaterialCounter.PinView> views, String note,
                                    int x, int y, int boxW, int boxH, int alpha, boolean dark) {
         Widths w = widths(tr, cfg, views);
-        AlarmHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
+        ScheduleHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
         int text = dark ? 0xFFE8ECF2 : Theme.TEXT;
         int soft = dark ? 0xFF9AA3B2 : Theme.TEXT_SOFT;
         int cy = y;
         for (MaterialCounter.PinView v : views) {
             ItemStack headIcon = v.recipe().materials.isEmpty() ? CHEST : IconCache.forMaterial(v.recipe().materials.get(0).name);
-            AlarmHud.header(ctx, tr, x, cy, boxW, title(v), headIcon == null ? CHEST : headIcon, dark, alpha);
+            ScheduleHud.header(ctx, tr, x, cy, boxW, title(v), headIcon == null ? CHEST : headIcon, dark, alpha);
             // 진행 꼬리표
             String p = progress(v);
             int chipW = chipWidth(tr, v);
@@ -164,7 +177,7 @@ public final class CounterHud {
             ctx.fill(chipX, cy + 2, chipX + chipW, cy + 12, v.done() ? Theme.GREEN : Theme.BLUE_MID);
             ctx.fill(chipX, cy + 2, chipX + chipW, cy + 3, v.done() ? 0xFF7DD379 : Theme.BLUE);
             Theme.boldText(ctx, tr, p, chipX + 4, cy + 3, Theme.WHITE, false);
-            cy += AlarmHud.HEAD_H + 2;
+            cy += ScheduleHud.HEAD_H + 2;
             for (Shown sh : shown(v)) {
                 MaterialCounter.Line l = sh.line();
                 int base = x + 6;
@@ -199,7 +212,7 @@ public final class CounterHud {
 
     private record Cell(String left, String right, String extra, int color) {}
 
-    private static void drawClassic(DrawContext ctx, TextRenderer tr, AlarmConfig.Counter cfg,
+    private static void drawClassic(DrawContext ctx, TextRenderer tr, DdingMateConfig.Counter cfg,
                                     List<MaterialCounter.PinView> views, String note, int stack) {
         int pad = 3, lineH = 10;
         List<Cell> rows = new ArrayList<>();
@@ -222,8 +235,8 @@ public final class CounterHud {
         int lines = rows.size() + (note != null ? 1 : 0);
         int boxW = contentW + pad * 2;
         int boxH = lines * lineH + pad * 2 - 1;
-        int x = AlarmHud.cornerX(ctx, cfg.corner, boxW);
-        int y = AlarmHud.cornerY(ctx, cfg.corner, boxH, stack);
+        int[] o = HudLayout.place(ctx, HudLayout.COUNTER, cfg.corner, boxW, boxH);
+        int x = o[0], y = o[1];
         ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);
         int ty = y + pad;
         for (Cell c : rows) {
@@ -233,7 +246,6 @@ public final class CounterHud {
             ty += lineH;
         }
         if (note != null) ctx.drawTextWithShadow(tr, note, x + pad, ty, 0xFF9A9A9A);
-        HudStack.push(cfg.corner, boxH);
     }
 
     // ---------------------------------------------------------------- 글자
@@ -247,7 +259,7 @@ public final class CounterHud {
     }
 
     /** 가방·저장소에서 온 개수 표시: "가방 28 · 저장 1200" */
-    private static String extra(AlarmConfig.Counter cfg, MaterialCounter.Line l) {
+    private static String extra(DdingMateConfig.Counter cfg, MaterialCounter.Line l) {
         String bags = cfg.includeBags && l.bags() > 0 ? "가방 " + l.bags() : "";
         String store = cfg.includeStorage && l.storage() > 0 ? "저장 " + l.storage() : "";
         if (bags.isEmpty()) return store;
@@ -258,7 +270,7 @@ public final class CounterHud {
         return l.have() + "/" + l.need();
     }
 
-    private static String bagNote(AlarmConfig.Counter cfg) {
+    private static String bagNote(DdingMateConfig.Counter cfg) {
         if (cfg.includeBags && BagTracker.openState() == BagTracker.OpenState.UNKNOWN_BAG) {
             return "열린 가방 번호를 몰라 기록하지 않아요";
         }
@@ -274,7 +286,7 @@ public final class CounterHud {
         return parts.isEmpty() ? null : String.join(" · ", parts);
     }
 
-    static String ago(long ms) {
+    public static String ago(long ms) {
         long min = Math.max(0, (System.currentTimeMillis() - ms) / 60000);
         if (min < 1) return "방금";
         if (min < 60) return min + "분 전";

@@ -1,7 +1,7 @@
 package kr.ddingmate.hud;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.playtime.PlaytimeTracker;
 import kr.ddingmate.schedule.ScheduleEngine;
 import kr.ddingmate.ui.Theme;
@@ -21,7 +21,7 @@ import java.util.List;
  * 다음 일정 몇 개를 화면 구석에 표시한다. 서버 HUD·NPC 말풍선은 화면 위 가운데(보스바 영역)를 쓰므로
  * 구석에만 그린다. 기본 위치는 왼쪽 위.
  */
-public final class AlarmHud {
+public final class ScheduleHud {
 
     static final int MARGIN = 4;
     /** 아래쪽 구석은 채팅창·핫바와 겹치지 않도록 띄운다 */
@@ -36,26 +36,32 @@ public final class AlarmHud {
     private static long lastBuildMs;
     private static List<Entry> cached = List.of();
 
-    private AlarmHud() {}
+    private ScheduleHud() {}
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
-        AlarmConfig cfg = DdingMate.config();
-        HudStack.reset(); // 프레임마다 가장 먼저 그리는 HUD
-        if (!cfg.hudEnabled || hidden(client)) return;
+        DdingMateConfig cfg = DdingMate.config();
+        HudLayout.beginFrame(); // 프레임마다 가장 먼저 그리는 HUD
+        if (hidden(client)) return;
+        if (!cfg.hudEnabled) {
+            HudLayout.placeholder(ctx, HudLayout.SCHEDULE, cfg.hudCorner, CLOCK, "꺼져 있어요");
+            return;
+        }
         long nowMs = System.currentTimeMillis();
         if (nowMs - lastBuildMs >= 1000) {
             cached = build(cfg);
             lastBuildMs = nowMs;
         }
-        if (cached.isEmpty()) return;
-        int h = cfg.hudStyle == AlarmConfig.HudStyle.CLASSIC
-                ? drawClassic(ctx, client.textRenderer, cfg)
-                : drawPanel(ctx, client.textRenderer, cfg, cfg.hudStyle == AlarmConfig.HudStyle.DARK);
-        HudStack.push(cfg.hudCorner, h);
+        if (cached.isEmpty()) {
+            HudLayout.placeholder(ctx, HudLayout.SCHEDULE, cfg.hudCorner, CLOCK, "표시할 일정이 없어요");
+            return;
+        }
+        if (cfg.hudStyle == DdingMateConfig.HudStyle.CLASSIC) drawClassic(ctx, client.textRenderer, cfg);
+        else drawPanel(ctx, client.textRenderer, cfg, cfg.hudStyle == DdingMateConfig.HudStyle.DARK);
+
     }
 
-    private static int drawPanel(DrawContext ctx, TextRenderer tr, AlarmConfig cfg, boolean dark) {
+    private static int drawPanel(DrawContext ctx, TextRenderer tr, DdingMateConfig cfg, boolean dark) {
         int alpha = cfg.hudOpacity * 255 / 100;
         String header = "다음 일정";
         int labelW = 0, leftW = 0;
@@ -66,8 +72,8 @@ public final class AlarmHud {
         int rowH = 11;
         int boxW = Math.max(12 + labelW + 10 + leftW, 18 + Theme.boldWidth(tr, header)) + 10;
         int boxH = HEAD_H + cached.size() * rowH + 5;
-        int x = cornerX(ctx, cfg.hudCorner, boxW);
-        int y = cornerY(ctx, cfg.hudCorner, boxH, 0);
+        int[] o = HudLayout.place(ctx, HudLayout.SCHEDULE, cfg.hudCorner, boxW, boxH);
+        int x = o[0], y = o[1];
 
         panel(ctx, x, y, boxW, boxH, alpha, dark);
         header(ctx, tr, x, y, boxW, header, CLOCK, dark, alpha);
@@ -99,7 +105,7 @@ public final class AlarmHud {
         if (dark) ctx.fill(x + 3, y + HEAD_H - 1, x + boxW - 3, y + HEAD_H, Theme.withAlpha(Theme.BLUE, Math.max(alpha, 200)));
     }
 
-    private static int drawClassic(DrawContext ctx, TextRenderer tr, AlarmConfig cfg) {
+    private static int drawClassic(DrawContext ctx, TextRenderer tr, DdingMateConfig cfg) {
         int pad = 3, lineH = 10;
         int w = 0;
         List<String> lines = new ArrayList<>();
@@ -110,8 +116,8 @@ public final class AlarmHud {
         }
         int boxW = w + pad * 2;
         int boxH = lines.size() * lineH + pad * 2 - 1;
-        int x = cornerX(ctx, cfg.hudCorner, boxW);
-        int y = cornerY(ctx, cfg.hudCorner, boxH, 0);
+        int[] o = HudLayout.place(ctx, HudLayout.SCHEDULE, cfg.hudCorner, boxW, boxH);
+        int x = o[0], y = o[1];
         ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);
         for (int i = 0; i < lines.size(); i++) {
             long m = cached.get(i).minutes();
@@ -121,21 +127,21 @@ public final class AlarmHud {
         return boxH;
     }
 
-    static int cornerX(DrawContext ctx, AlarmConfig.Corner corner, int boxW) {
+    static int cornerX(DrawContext ctx, DdingMateConfig.Corner corner, int boxW) {
         return switch (corner) {
             case TOP_LEFT, BOTTOM_LEFT -> MARGIN;
             case TOP_RIGHT, BOTTOM_RIGHT -> ctx.getScaledWindowWidth() - boxW - MARGIN;
         };
     }
 
-    static int cornerY(DrawContext ctx, AlarmConfig.Corner corner, int boxH, int stack) {
+    static int cornerY(DrawContext ctx, DdingMateConfig.Corner corner, int boxH, int stack) {
         return switch (corner) {
             case TOP_LEFT, TOP_RIGHT -> MARGIN + stack;
             case BOTTOM_LEFT, BOTTOM_RIGHT -> ctx.getScaledWindowHeight() - boxH - BOTTOM_GAP - stack;
         };
     }
 
-    private static List<Entry> build(AlarmConfig cfg) {
+    private static List<Entry> build(DdingMateConfig cfg) {
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
         List<Entry> out = new ArrayList<>();
         long played = cfg.playtime.showInHud ? PlaytimeTracker.seconds() : -1;
@@ -158,7 +164,7 @@ public final class AlarmHud {
     }
 
     /** "1시간 5분", "42분" */
-    static String hm(long seconds) {
+    public static String hm(long seconds) {
         long h = seconds / 3600, m = (seconds % 3600) / 60;
         return h > 0 ? h + "시간 " + m + "분" : Math.max(m, seconds > 0 ? 1 : 0) + "분";
     }

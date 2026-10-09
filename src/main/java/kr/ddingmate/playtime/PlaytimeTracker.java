@@ -3,7 +3,7 @@ package kr.ddingmate.playtime;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.notify.Notifier;
 import kr.ddingmate.schedule.ScheduleEngine;
 import net.fabricmc.loader.api.FabricLoader;
@@ -108,7 +108,7 @@ public final class PlaytimeTracker {
     }
 
     private static void check(Day d) {
-        AlarmConfig.Playtime cfg = DdingMate.config().playtime;
+        DdingMateConfig.Playtime cfg = DdingMate.config().playtime;
         if (!cfg.enabled) return;
         for (Map.Entry<Integer, String> e : REWARDS.entrySet()) {
             int h = e.getKey();

@@ -1,12 +1,12 @@
 package kr.ddingmate;
 
-import kr.ddingmate.command.AlarmCommands;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.command.DdingMateCommands;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.counter.BagTracker;
 import kr.ddingmate.counter.MaterialCounter;
 import kr.ddingmate.counter.RecipeBook;
-import kr.ddingmate.gui.AlarmConfigScreen;
-import kr.ddingmate.hud.AlarmHud;
+import kr.ddingmate.gui.DdingMateScreen;
+import kr.ddingmate.hud.ScheduleHud;
 import kr.ddingmate.hud.CounterHud;
 import kr.ddingmate.hud.DurabilityHud;
 import kr.ddingmate.hud.TodoHud;
@@ -47,7 +47,7 @@ public final class DdingMate implements ClientModInitializer {
     public static final String MOD_ID = "ddingmate";
     public static final Logger LOG = LoggerFactory.getLogger(MOD_ID);
 
-    private static AlarmConfig config;
+    private static DdingMateConfig config;
     private static List<EventRule> rules = List.of();
     private static final Map<String, Long> FIRED = new HashMap<>();
     private static KeyBinding toggleHudKey;
@@ -56,7 +56,7 @@ public final class DdingMate implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        config = AlarmConfig.load();
+        config = DdingMateConfig.load();
         rebuildRules();
         RecipeBook.load();
         BagTracker.load();
@@ -71,7 +71,7 @@ public final class DdingMate implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(DdingMate::onTick);
         // 같은 구석이면 등록한 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도
-        HudRenderCallback.EVENT.register(AlarmHud::render);
+        HudRenderCallback.EVENT.register(ScheduleHud::render);
         HudRenderCallback.EVENT.register(TodoHud::render);
         HudRenderCallback.EVENT.register(CounterHud::render);
         HudRenderCallback.EVENT.register(DurabilityHud::render);
@@ -87,7 +87,7 @@ public final class DdingMate implements ClientModInitializer {
         });
         ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, ts) ->
                 KeywordWatcher.onMessage(message, sender == null ? null : sender.getName()));
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) -> AlarmCommands.register(dispatcher));
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) -> DdingMateCommands.register(dispatcher));
 
         LOG.info("띵메이트 로드됨 (일정 {}개)", rules.size());
     }
@@ -99,7 +99,7 @@ public final class DdingMate implements ClientModInitializer {
             Notifier.chat(config.hudEnabled ? "HUD 를 켰어요." : "HUD 를 껐어요.");
         }
         while (openSettingsKey.wasPressed()) {
-            client.setScreen(new AlarmConfigScreen(client.currentScreen));
+            client.setScreen(new DdingMateScreen(client.currentScreen));
         }
         BagTracker.tick(client);
         PlaytimeTracker.tick(client);
@@ -118,7 +118,7 @@ public final class DdingMate implements ClientModInitializer {
         TodoList.tick(now);
     }
 
-    public static AlarmConfig config() {
+    public static DdingMateConfig config() {
         return config;
     }
 
@@ -132,7 +132,7 @@ public final class DdingMate implements ClientModInitializer {
     }
 
     public static void reloadConfig() {
-        config = AlarmConfig.load();
+        config = DdingMateConfig.load();
         rebuildRules();
     }
 }

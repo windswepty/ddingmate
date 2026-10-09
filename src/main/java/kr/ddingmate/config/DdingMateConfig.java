@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /** config/ddingmate.json 에 저장되는 사용자 설정. */
-public final class AlarmConfig {
+public final class DdingMateConfig {
 
     public enum Corner { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT }
 
@@ -126,7 +126,15 @@ public final class AlarmConfig {
     /** DARK=서버 HUD 처럼 어두운 판, LIGHT=서버 창처럼 밝은 판, CLASSIC=예전 반투명 검은 상자 */
     public enum HudStyle { DARK, LIGHT, CLASSIC }
 
+    /** 편집 화면에서 직접 옮긴 HUD 자리. 화면에서 남는 공간에 대한 비율(0~1) */
+    public static final class HudPos {
+        public float x;
+        public float y;
+    }
+
     public boolean hudEnabled = true;
+    /** HUD 이름(schedule·todo·counter·durability) → 옮긴 자리. 없으면 정해 둔 구석 */
+    public Map<String, HudPos> hudPos = new LinkedHashMap<>();
     public HudStyle hudStyle = HudStyle.DARK;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
@@ -158,17 +166,17 @@ public final class AlarmConfig {
         return FabricLoader.getInstance().getConfigDir().resolve("ddingmate.json");
     }
 
-    public static AlarmConfig load() {
+    public static DdingMateConfig load() {
         Path p = path();
-        AlarmConfig cfg = null;
+        DdingMateConfig cfg = null;
         if (Files.exists(p)) {
             try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
-                cfg = GSON.fromJson(r, AlarmConfig.class);
+                cfg = GSON.fromJson(r, DdingMateConfig.class);
             } catch (IOException | RuntimeException e) {
                 DdingMate.LOG.warn("설정 파일을 읽지 못해 기본값을 씁니다: {}", p, e);
             }
         }
-        if (cfg == null) cfg = new AlarmConfig();
+        if (cfg == null) cfg = new DdingMateConfig();
         cfg.sanitize();
         cfg.save();
         return cfg;
@@ -191,6 +199,12 @@ public final class AlarmConfig {
         hudLines = Math.max(1, Math.min(10, hudLines));
         hudOpacity = Math.max(30, Math.min(100, hudOpacity));
         if (hudStyle == null) hudStyle = HudStyle.DARK;
+        if (hudPos == null) hudPos = new LinkedHashMap<>();
+        hudPos.values().removeIf(java.util.Objects::isNull);
+        for (HudPos p : hudPos.values()) {
+            p.x = Math.max(0f, Math.min(1f, p.x));
+            p.y = Math.max(0f, Math.min(1f, p.y));
+        }
         soundVolume = Math.max(0f, Math.min(1f, soundVolume));
         if (events == null) events = new LinkedHashMap<>();
         if (keywords == null) keywords = new Keywords();

@@ -1,11 +1,14 @@
 package kr.ddingmate.test;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.counter.BagTracker;
 import kr.ddingmate.counter.MaterialCounter;
 import kr.ddingmate.gear.DurabilityTracker;
-import kr.ddingmate.gui.AlarmConfigScreen;
+import kr.ddingmate.gui.DdingMateScreen;
+import kr.ddingmate.gui.HudEditorScreen;
+import kr.ddingmate.hud.HudLayout;
+import kr.ddingmate.ui.Widgets;
 import kr.ddingmate.notify.AlertLog;
 import kr.ddingmate.playtime.PlaytimeTracker;
 import kr.ddingmate.schedule.ScheduleEngine;
@@ -35,21 +38,21 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext ctx) {
         // 초기화 시각 계산(게임 밖에서도 확인 가능한 순수 계산)
         ZonedDateTime fri2am = ZonedDateTime.of(2026, 10, 9, 2, 0, 0, 0, ScheduleEngine.KST);
-        check(TodoList.lastReset(AlarmConfig.Reset.DAILY, fri2am).equals(fri2am.minusDays(1).withHour(3)),
+        check(TodoList.lastReset(DdingMateConfig.Reset.DAILY, fri2am).equals(fri2am.minusDays(1).withHour(3)),
                 "매일 03시 초기화 계산 오류");
-        check(TodoList.lastReset(AlarmConfig.Reset.WEEKLY, fri2am).equals(ZonedDateTime.of(2026, 10, 8, 3, 0, 0, 0, ScheduleEngine.KST)),
+        check(TodoList.lastReset(DdingMateConfig.Reset.WEEKLY, fri2am).equals(ZonedDateTime.of(2026, 10, 8, 3, 0, 0, 0, ScheduleEngine.KST)),
                 "목요일 03시 초기화 계산 오류");
-        check(TodoList.lastReset(AlarmConfig.Reset.WEEKLY, fri2am.minusDays(1).withHour(2))
+        check(TodoList.lastReset(DdingMateConfig.Reset.WEEKLY, fri2am.minusDays(1).withHour(2))
                         .equals(ZonedDateTime.of(2026, 10, 1, 3, 0, 0, 0, ScheduleEngine.KST)),
                 "목요일 03시 직전 주간 초기화 계산 오류");
-        check(TodoList.lastReset(AlarmConfig.Reset.MIDNIGHT, fri2am).equals(fri2am.withHour(0)), "자정 초기화 계산 오류");
+        check(TodoList.lastReset(DdingMateConfig.Reset.MIDNIGHT, fri2am).equals(fri2am.withHour(0)), "자정 초기화 계산 오류");
 
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
             sp.getClientWorld().waitForChunksRender();
             ctx.runOnClient(c -> {
                 BagTracker.clearCurrent();
                 AlertLog.clear();
-                AlarmConfig cfg = DdingMate.config();
+                DdingMateConfig cfg = DdingMate.config();
                 cfg.counter.pins.get(0).recipe = "강화 제작 시설/하급 라이프스톤";
                 cfg.counter.pins.get(0).crafts = 2;
                 cfg.counter.pins.get(1).recipe = "";
@@ -60,7 +63,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 cfg.durability.warnPercent = 10;
                 cfg.durability.tracked.clear();
                 cfg.todo.hudEnabled = true;
-                for (AlarmConfig.TodoItem t : cfg.todo.items) t.doneAt = 0;
+                for (DdingMateConfig.TodoItem t : cfg.todo.items) t.doneAt = 0;
                 cfg.playtime.enabled = true;
                 cfg.playtime.showInHud = true;
             });
@@ -145,13 +148,61 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.takeScreenshot("features-2b-playtime-synced");
 
+            // HUD 위치 편집: 일정 HUD 를 화면 가운데로 끌어 [저장] → 그 자리에 그려짐. Esc 는 취소, [초기화]는 구석으로
+            ctx.runOnClient(c -> {
+                DdingMate.config().hudPos.clear();
+                c.setScreen(new HudEditorScreen(null));
+            });
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> {
+                var b = HudLayout.bounds();
+                check(b.keySet().containsAll(HudLayout.NAMES.keySet()), "편집 화면에 HUD 4개가 다 보이지 않음: " + b.keySet());
+                HudEditorScreen s = (HudEditorScreen) c.currentScreen;
+                HudLayout.Rect r = b.get(HudLayout.SCHEDULE);
+                s.mouseClicked(r.x() + 5, r.y() + 5, 0);
+                s.mouseDragged(s.width / 2.0, s.height / 2.0, 0, 0, 0);
+                s.mouseReleased(s.width / 2.0, s.height / 2.0, 0);
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-4-hud-editor");
+            ctx.runOnClient(c -> press(c, "저장"));
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                check(c.currentScreen == null, "저장 후 편집 화면이 닫히지 않음");
+                check(HudLayout.custom(HudLayout.SCHEDULE), "옮긴 자리가 저장되지 않음");
+                HudLayout.Rect r = HudLayout.bounds().get(HudLayout.SCHEDULE);
+                int cx = c.getWindow().getScaledWidth() / 2, cy = c.getWindow().getScaledHeight() / 2;
+                check(Math.abs(r.x() + 5 - cx) <= 2 && Math.abs(r.y() + 5 - cy) <= 2, "옮긴 자리에 그려지지 않음: " + r);
+                // 다시 열어 할 일 HUD 를 옮긴 뒤 Esc → 취소
+                c.setScreen(new HudEditorScreen(null));
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                HudEditorScreen s = (HudEditorScreen) c.currentScreen;
+                HudLayout.Rect r = HudLayout.bounds().get(HudLayout.TODO);
+                s.mouseClicked(r.x() + 3, r.y() + 3, 0);
+                s.mouseDragged(40, 120, 0, 0, 0);
+                s.mouseReleased(40, 120, 0);
+                s.close();
+                check(!HudLayout.custom(HudLayout.TODO), "Esc 로 나갔는데 옮긴 자리가 남음");
+                check(HudLayout.custom(HudLayout.SCHEDULE), "취소했는데 저장해 둔 자리까지 사라짐");
+                c.setScreen(new HudEditorScreen(null));
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                press(c, "초기화");
+                press(c, "저장");
+                check(DdingMate.config().hudPos.isEmpty(), "초기화 후 저장했는데 옮긴 자리가 남음");
+            });
+            ctx.waitTicks(3);
+
             // 10) 알림 기록함과 새 탭 화면
             ctx.runOnClient(c -> check(AlertLog.entries().size() >= 2, "알림 기록이 쌓이지 않음"));
             String[] names = {"gear", "todo", "log"};
             for (int i = 0; i < names.length; i++) {
-                int tab = 5 + i;
+                int tab = 6 + i;
                 ctx.runOnClient(c -> {
-                    AlarmConfigScreen s = new AlarmConfigScreen(null);
+                    DdingMateScreen s = new DdingMateScreen(null);
                     c.setScreen(s);
                     s.openTab(tab);
                 });
@@ -202,6 +253,14 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
         }
         s.set(DataComponentTypes.LORE, new LoreComponent(lore));
         return s;
+    }
+
+    /** 지금 화면에서 이름이 같은 단추를 누른다 */
+    private static void press(MinecraftClient c, String label) {
+        c.currentScreen.children().stream()
+                .filter(e -> e instanceof Widgets.Button b && b.getMessage().getString().equals(label))
+                .findFirst().map(e -> (Widgets.Button) e)
+                .orElseThrow(() -> new AssertionError("단추 없음: " + label)).onPress();
     }
 
     private static MaterialCounter.Line line(String name) {

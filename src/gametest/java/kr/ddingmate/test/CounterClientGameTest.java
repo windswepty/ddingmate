@@ -1,10 +1,10 @@
 package kr.ddingmate.test;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.counter.BagTracker;
 import kr.ddingmate.counter.MaterialCounter;
-import kr.ddingmate.gui.AlarmConfigScreen;
+import kr.ddingmate.gui.DdingMateScreen;
 import kr.ddingmate.gui.RecipePickerScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -38,7 +38,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
 
             ctx.runOnClient(c -> {
                 BagTracker.clearCurrent();
-                AlarmConfig.Counter cc = DdingMate.config().counter;
+                DdingMateConfig.Counter cc = DdingMate.config().counter;
                 cc.enabled = true;
                 cc.includeBags = true;
                 cc.pins.get(0).recipe = LIFESTONE;
@@ -135,9 +135,9 @@ public class CounterClientGameTest implements FabricClientGameTest {
 
             // 설정 화면의 재료 카운터 영역과 레시피 고르기 화면
             ctx.runOnClient(c -> {
-                AlarmConfigScreen s = new AlarmConfigScreen(null);
+                DdingMateScreen s = new DdingMateScreen(null);
                 c.setScreen(s);
-                s.openTab(4);
+                s.openTab(5);
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("counter-4-settings");

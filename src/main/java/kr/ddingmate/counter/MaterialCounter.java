@@ -1,7 +1,7 @@
 package kr.ddingmate.counter;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.notify.Notifier;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerInventory;
@@ -29,7 +29,7 @@ public final class MaterialCounter {
         }
     }
 
-    public record PinView(int index, AlarmConfig.Pin pin, RecipeBook.Recipe recipe, List<Line> lines) {
+    public record PinView(int index, DdingMateConfig.Pin pin, RecipeBook.Recipe recipe, List<Line> lines) {
         public boolean done() {
             return lines.stream().allMatch(Line::done);
         }
@@ -41,8 +41,8 @@ public final class MaterialCounter {
 
     private static List<PinView> views = List.of();
     /** 핀별 "다 모였음" 상태. null 이면 아직 한 번도 계산 안 함(접속 직후 알림이 울리지 않게) */
-    private static final Boolean[] wasDone = new Boolean[AlarmConfig.PIN_COUNT];
-    private static final String[] lastKey = new String[AlarmConfig.PIN_COUNT];
+    private static final Boolean[] wasDone = new Boolean[DdingMateConfig.PIN_COUNT];
+    private static final String[] lastKey = new String[DdingMateConfig.PIN_COUNT];
 
     private MaterialCounter() {}
 
@@ -51,7 +51,7 @@ public final class MaterialCounter {
     }
 
     public static void tick(MinecraftClient client) {
-        AlarmConfig.Counter cfg = DdingMate.config().counter;
+        DdingMateConfig.Counter cfg = DdingMate.config().counter;
         if (client.player == null || !cfg.enabled) {
             views = List.of();
             return;
@@ -60,8 +60,8 @@ public final class MaterialCounter {
         Map<String, Integer> bags = cfg.includeBags ? BagTracker.totals() : Map.of();
         Map<String, Integer> storage = cfg.includeStorage ? BagTracker.storageTotals() : Map.of();
         List<PinView> out = new ArrayList<>();
-        for (int i = 0; i < cfg.pins.size() && i < AlarmConfig.PIN_COUNT; i++) {
-            AlarmConfig.Pin pin = cfg.pins.get(i);
+        for (int i = 0; i < cfg.pins.size() && i < DdingMateConfig.PIN_COUNT; i++) {
+            DdingMateConfig.Pin pin = cfg.pins.get(i);
             RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
             String key = r == null ? null : r.id + "*" + pin.crafts;
             if (key == null || !key.equals(lastKey[i])) {
@@ -81,7 +81,7 @@ public final class MaterialCounter {
         views = out;
     }
 
-    static PinView view(int index, AlarmConfig.Pin pin, RecipeBook.Recipe r, Map<String, Integer> inv,
+    static PinView view(int index, DdingMateConfig.Pin pin, RecipeBook.Recipe r, Map<String, Integer> inv,
                         Map<String, Integer> bags, Map<String, Integer> storage, boolean expand) {
         List<Line> lines = new ArrayList<>();
         for (RecipeBook.Material m : r.materials) {

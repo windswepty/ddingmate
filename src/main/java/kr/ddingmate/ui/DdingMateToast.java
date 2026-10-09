@@ -7,7 +7,7 @@ import net.minecraft.client.toast.ToastManager;
 import net.minecraft.item.ItemStack;
 
 /** 띵타이쿤 창 모양 알림 팝업: 둥근 회청색 창 + 왼쪽 색 띠 + 슬롯 안 아이콘 + 굵은 제목·본문 */
-public class AlarmToast implements Toast {
+public class DdingMateToast implements Toast {
 
     private static final int WIDTH = 180;
     private static final int HEIGHT = 32;
@@ -20,7 +20,7 @@ public class AlarmToast implements Toast {
     private Visibility visibility = Visibility.SHOW;
 
     /** accent: 왼쪽 띠·제목 색(일정=파랑, 키워드=하늘, 완료=초록 등) */
-    public AlarmToast(String title, String body, ItemStack icon, int accent) {
+    public DdingMateToast(String title, String body, ItemStack icon, int accent) {
         this.title = title;
         this.body = body;
         this.icon = icon;

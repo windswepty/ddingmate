@@ -1,7 +1,7 @@
 package kr.ddingmate.gear;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.counter.ItemKeys;
 import kr.ddingmate.notify.Notifier;
 import net.minecraft.client.MinecraftClient;
@@ -37,7 +37,7 @@ public final class DurabilityTracker {
     }
 
     /** HUD 한 줄. stack 이 null 이면 지금 인벤토리에 없음 */
-    public record Row(AlarmConfig.TrackedItem item, ItemStack stack, Durability durability) {}
+    public record Row(DdingMateConfig.TrackedItem item, ItemStack stack, Durability durability) {}
 
     private static List<Row> rows = List.of();
     private static final Set<String> WARNED = new HashSet<>();
@@ -96,14 +96,14 @@ public final class DurabilityTracker {
     }
 
     public static void tick(MinecraftClient client) {
-        AlarmConfig.Durability cfg = DdingMate.config().durability;
+        DdingMateConfig.Durability cfg = DdingMate.config().durability;
         if (client.player == null || cfg.tracked.isEmpty()) {
             rows = List.of();
             return;
         }
         List<ItemStack> order = searchOrder(client.player.getInventory());
         List<Row> out = new ArrayList<>();
-        for (AlarmConfig.TrackedItem t : cfg.tracked) {
+        for (DdingMateConfig.TrackedItem t : cfg.tracked) {
             ItemStack found = null;
             Durability d = null;
             for (ItemStack s : order) {
@@ -121,7 +121,7 @@ public final class DurabilityTracker {
     }
 
     /** 경고선 아래로 처음 내려갈 때 한 번 알리고, 수리해서 5%p 이상 회복하면 다시 알릴 수 있게 한다. */
-    private static void checkWarn(AlarmConfig.Durability cfg, AlarmConfig.TrackedItem t, ItemStack s, Durability d) {
+    private static void checkWarn(DdingMateConfig.Durability cfg, DdingMateConfig.TrackedItem t, ItemStack s, Durability d) {
         if (cfg.warnPercent <= 0) return;
         double pct = d.ratio() * 100;
         if (pct <= cfg.warnPercent) {
@@ -136,9 +136,9 @@ public final class DurabilityTracker {
     }
 
     public static void setTracked(String key, String name, boolean on) {
-        List<AlarmConfig.TrackedItem> list = DdingMate.config().durability.tracked;
+        List<DdingMateConfig.TrackedItem> list = DdingMate.config().durability.tracked;
         list.removeIf(t -> t.key.equals(key));
-        if (on) list.add(new AlarmConfig.TrackedItem(key, name));
+        if (on) list.add(new DdingMateConfig.TrackedItem(key, name));
         WARNED.remove(key);
     }
 }

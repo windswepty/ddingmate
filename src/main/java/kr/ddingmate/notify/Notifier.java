@@ -1,9 +1,9 @@
 package kr.ddingmate.notify;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.schedule.ScheduleEngine;
-import kr.ddingmate.ui.AlarmToast;
+import kr.ddingmate.ui.DdingMateToast;
 import kr.ddingmate.ui.Theme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.sound.PositionedSoundInstance;
@@ -76,12 +76,12 @@ public final class Notifier {
                                boolean alwaysChat) {
         AlertLog.add(kind, title, body);
         MinecraftClient client = MinecraftClient.getInstance();
-        AlarmConfig cfg = DdingMate.config();
+        DdingMateConfig cfg = DdingMate.config();
         if (cfg.soundEnabled && cfg.soundVolume > 0f) {
             client.getSoundManager().play(PositionedSoundInstance.master(sound, 1.0f, cfg.soundVolume));
         }
         if (cfg.toastEnabled) {
-            client.getToastManager().add(new AlarmToast(title, body, icon, accent));
+            client.getToastManager().add(new DdingMateToast(title, body, icon, accent));
         }
         if (cfg.chatEnabled || alwaysChat) {
             chat(Text.literal(title).formatted(Formatting.YELLOW)

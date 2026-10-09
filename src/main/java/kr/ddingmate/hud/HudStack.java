@@ -1,6 +1,6 @@
 package kr.ddingmate.hud;
 
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 
 /**
  * 같은 구석에 HUD 여러 개(일정 → 할 일 → 재료 → 내구도)를 차례로 쌓기 위한 프레임별 자리표.
@@ -8,7 +8,7 @@ import kr.ddingmate.config.AlarmConfig;
  */
 public final class HudStack {
 
-    private static final int[] USED = new int[AlarmConfig.Corner.values().length];
+    private static final int[] USED = new int[DdingMateConfig.Corner.values().length];
 
     private HudStack() {}
 
@@ -17,12 +17,12 @@ public final class HudStack {
     }
 
     /** 이 구석에 이미 쌓인 높이 */
-    public static int offset(AlarmConfig.Corner corner) {
+    public static int offset(DdingMateConfig.Corner corner) {
         return USED[corner.ordinal()];
     }
 
     /** 높이 h 만큼 그렸다고 기록한다(사이 여백 포함) */
-    public static void push(AlarmConfig.Corner corner, int h) {
-        USED[corner.ordinal()] += h + AlarmHud.MARGIN;
+    public static void push(DdingMateConfig.Corner corner, int h) {
+        USED[corner.ordinal()] += h + ScheduleHud.MARGIN;
     }
 }

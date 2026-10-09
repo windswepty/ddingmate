@@ -1,7 +1,7 @@
 package kr.ddingmate.hud;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.gear.DurabilityTracker;
 import kr.ddingmate.ui.Theme;
 import net.minecraft.client.MinecraftClient;
@@ -24,13 +24,17 @@ public final class DurabilityHud {
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
-        AlarmConfig all = DdingMate.config();
-        AlarmConfig.Durability cfg = all.durability;
+        DdingMateConfig all = DdingMate.config();
+        DdingMateConfig.Durability cfg = all.durability;
         List<DurabilityTracker.Row> rows = DurabilityTracker.rows();
-        if (!cfg.enabled || rows.isEmpty() || AlarmHud.hidden(client)) return;
+        if (ScheduleHud.hidden(client)) return;
+        if (!cfg.enabled || rows.isEmpty()) {
+            HudLayout.placeholder(ctx, HudLayout.DURABILITY, cfg.corner, ANVIL, cfg.enabled ? "추적 중인 장비가 없어요" : "꺼져 있어요");
+            return;
+        }
         TextRenderer tr = client.textRenderer;
-        boolean classic = all.hudStyle == AlarmConfig.HudStyle.CLASSIC;
-        boolean dark = all.hudStyle != AlarmConfig.HudStyle.LIGHT;
+        boolean classic = all.hudStyle == DdingMateConfig.HudStyle.CLASSIC;
+        boolean dark = all.hudStyle != DdingMateConfig.HudStyle.LIGHT;
         int alpha = all.hudOpacity * 255 / 100;
 
         String title = "장비 내구도";
@@ -40,17 +44,16 @@ public final class DurabilityHud {
             valW = Math.max(valW, Theme.boldWidth(tr, value(r)));
         }
         int boxW = Math.max(ICON + 4 + nameW + 8 + valW, 18 + Theme.boldWidth(tr, title)) + 12;
-        int boxH = AlarmHud.HEAD_H + 2 + rows.size() * ROW_H + 2;
-        int stack = HudStack.offset(cfg.corner);
-        int x = AlarmHud.cornerX(ctx, cfg.corner, boxW);
-        int y = AlarmHud.cornerY(ctx, cfg.corner, boxH, stack);
+        int boxH = ScheduleHud.HEAD_H + 2 + rows.size() * ROW_H + 2;
+        int[] o = HudLayout.place(ctx, HudLayout.DURABILITY, cfg.corner, boxW, boxH);
+        int x = o[0], y = o[1];
 
         if (classic) ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);
-        else AlarmHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
-        AlarmHud.header(ctx, tr, x, y, boxW, title, ANVIL, dark, alpha);
+        else ScheduleHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
+        ScheduleHud.header(ctx, tr, x, y, boxW, title, ANVIL, dark, alpha);
         int text = dark ? 0xFFE8ECF2 : Theme.TEXT;
         int soft = dark ? 0xFF9AA3B2 : Theme.TEXT_SOFT;
-        int cy = y + AlarmHud.HEAD_H + 2;
+        int cy = y + ScheduleHud.HEAD_H + 2;
         for (DurabilityTracker.Row r : rows) {
             int rx = x + 6;
             if (r.stack() != null) Theme.item(ctx, r.stack(), rx, cy, ICON);
@@ -67,7 +70,6 @@ public final class DurabilityHud {
             }
             cy += ROW_H;
         }
-        HudStack.push(cfg.corner, boxH);
     }
 
     private static String value(DurabilityTracker.Row r) {

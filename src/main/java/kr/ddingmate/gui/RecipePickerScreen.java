@@ -1,7 +1,7 @@
 package kr.ddingmate.gui;
 
 import kr.ddingmate.DdingMate;
-import kr.ddingmate.config.AlarmConfig;
+import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.counter.IconCache;
 import kr.ddingmate.counter.ItemKeys;
 import kr.ddingmate.counter.RecipeBook;
@@ -52,7 +52,7 @@ public class RecipePickerScreen extends Screen {
         px = (width - pw) / 2;
         py = 6;
         cx = px + 6;
-        cy = py + AlarmConfigScreen.HEADER_H + 30;
+        cy = py + DdingMateScreen.HEADER_H + 30;
         cw = pw - 12;
         ch = ph - (cy - py) - 32;
 
@@ -61,7 +61,7 @@ public class RecipePickerScreen extends Screen {
         search.setPlaceholder(Text.literal("검색: 라이프스톤, 구리 블록 …"));
         search.setMaxLength(50);
         search.setText(query);
-        search.place(cx, py + AlarmConfigScreen.HEADER_H + 5, fieldW);
+        search.place(cx, py + DdingMateScreen.HEADER_H + 5, fieldW);
         search.setChangedListener(t -> {
             query = t;
             refill();
@@ -77,7 +77,7 @@ public class RecipePickerScreen extends Screen {
                     refill();
                 });
         filter.setX(cx + cw - 128);
-        filter.setY(py + AlarmConfigScreen.HEADER_H + 5);
+        filter.setY(py + DdingMateScreen.HEADER_H + 5);
         filter.setTooltip(Tooltip.of(Text.literal("시설로 거르기 (오른쪽 클릭은 거꾸로)")));
         addDrawableChild(filter);
 
@@ -99,7 +99,7 @@ public class RecipePickerScreen extends Screen {
         addDrawableChild(cancel);
     }
 
-    private AlarmConfig.Pin pin() {
+    private DdingMateConfig.Pin pin() {
         return DdingMate.config().counter.pins.get(pinIndex);
     }
 
@@ -124,7 +124,7 @@ public class RecipePickerScreen extends Screen {
     }
 
     private void choose(RecipeBook.Recipe r) {
-        AlarmConfig.Pin p = pin();
+        DdingMateConfig.Pin p = pin();
         p.recipe = r.id;
         if (p.crafts < 1) p.crafts = 1;
         close();
@@ -133,7 +133,7 @@ public class RecipePickerScreen extends Screen {
     @Override
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.renderBackground(ctx, mouseX, mouseY, delta);
-        AlarmConfigScreen.drawFrame(ctx, textRenderer, px, py, pw, ph, "레시피 고르기");
+        DdingMateScreen.drawFrame(ctx, textRenderer, px, py, pw, ph, "레시피 고르기");
         Theme.inset(ctx, cx, cy, cw, ch);
         String sub = "핀 " + (pinIndex + 1) + " · " + list.children().size() + "개";
         Theme.text(ctx, textRenderer, sub, px + (pw - Theme.width(textRenderer, sub)) / 2, py + ph - 20, Theme.TEXT_SOFT);
@@ -193,7 +193,7 @@ public class RecipePickerScreen extends Screen {
         }
     }
 
-    private class RecipeList extends AlarmConfigScreen.ThemedList<Row> {
+    private class RecipeList extends DdingMateScreen.ThemedList<Row> {
         RecipeList(MinecraftClient client, int width, int height, int y, int itemHeight) {
             super(client, width, height, y, itemHeight);
         }
