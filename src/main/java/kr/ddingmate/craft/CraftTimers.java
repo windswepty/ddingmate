@@ -101,7 +101,9 @@ public final class CraftTimers {
     private static final Pattern COLLECT = Pattern.compile("^(.+?)\\s*아이템\\s*([\\d,]+)\\s*개를\\s*제작대에서\\s*회수했습니다");
     /** "향장품 제조를 시작했습니다. 10분 후 제조가 완료됩니다." */
     private static final Pattern PERFUME_START = Pattern.compile("^향장품\\s*제조를\\s*시작했습니다.*?(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+)\\s*초)?\\s*후");
-    private static final Pattern PERFUME_DONE = Pattern.compile("^제조\\s*완료된\\s*향장품을\\s*성공적으로\\s*수령");
+    /** "유실라 항해 보상을 수령했습니다." (2026-10-10 실제 채팅) */
+    private static final Pattern VOYAGE_CLAIM = Pattern.compile("^(.+?)\\s*항해\\s*보상을\\s*수령했습니다");
+    private static final Pattern PERFUME_DONE =Pattern.compile("^제조\\s*완료된\\s*향장품을\\s*성공적으로\\s*수령");
     public static final String PERFUME = "향장품";
 
     /** 설명 줄의 시간: "2분 0초", "1시간 2분 3초", "45초" */
@@ -149,6 +151,14 @@ public final class CraftTimers {
         m = COLLECT.matcher(t);
         if (m.find()) {
             collect(m.group(1).trim(), parseInt(m.group(2)), false);
+            return;
+        }
+        m = VOYAGE_CLAIM.matcher(t);
+        if (m.find()) {
+            // "유실라 항해 보상을 수령했습니다." → 그 섬 항해를 목록에서 뺀다
+            List<Job> jobs = jobsForWrite();
+            String name = m.group(1).trim() + " " + VOYAGE;
+            if (jobs != null && jobs.removeIf(j -> j.separate && j.name.equals(name))) changed();
             return;
         }
         m = PERFUME_START.matcher(t);
@@ -482,8 +492,11 @@ public final class CraftTimers {
      * "항해선이 돌아와 보상을 수령할 수 있습니다!"는 모든 섬 칸에 붙는 안내 문구일 수 있어 쓰지 않는다
      */
     private static final Pattern VOYAGE_READY = Pattern.compile("항해\\s*보상을\\s*수령합니다");
-    /** 칸 이름에서 섬 이름만: "[ 유실라 보상 수령 ]" → 유실라 */
-    private static final Pattern VOYAGE_NAME = Pattern.compile("^\\[?\\s*(.+?)\\s*(?:보상\\s*수령|항해.*|출항.*|보내기.*)?\\s*]?$");
+    /**
+     * 칸 이름에서 섬 이름만(2026-10-10 실제): "[ 유실라 보상 수령 ]"(돌아옴), "[ 벨로아 빠른 항해 ]"(항해 중, "남은 시간 : 2시간 16분 15초"),
+     * "[ 유실라 항해 완료 ]"(보상까지 받음) → 유실라·벨로아
+     */
+    private static final Pattern VOYAGE_NAME = Pattern.compile("^\\[?\\s*(.+?)\\s*(?:보상\\s*수령|빠른\\s*항해.*|항해.*|출항.*|보내기.*)?\\s*]?$");
 
     private static boolean isVoyage(List<Text> lines) {
         for (Text l : lines) if (VOYAGE_HINT.matcher(ItemKeys.stripGlyphs(l.getString())).find()) return true;

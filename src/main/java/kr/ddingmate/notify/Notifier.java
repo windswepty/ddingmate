@@ -34,6 +34,8 @@ public final class Notifier {
 
     /** word 가 null 이면 내 닉네임 언급. 본문은 채팅에 뜬 메시지 그대로 */
     public static void keyword(String word, String message) {
+        // 서버 그림 글자(말머리·등급 아이콘)는 띵메이트 글꼴에 없어 네모로 보이므로 뺀다
+        message = kr.ddingmate.counter.ItemKeys.stripGlyphs(message).replaceAll("\\s+", " ").trim();
         String shortMsg = message.length() > 60 ? message.substring(0, 60) + "…" : message;
         String title = word == null ? "누가 내 닉네임을 불렀어요" : "채팅에 '" + word + "'";
         notify("키워드", title, shortMsg, SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(),

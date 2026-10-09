@@ -317,19 +317,31 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         "돌아온 항해를 항해 타이머로 읽지 못하거나 제작으로 착각함: " + jobs.stream().map(j -> j.name).toList());
                 check(CraftTimers.groups().get(0).done(), "돌아온 항해가 완료로 보이지 않음");
                 // 항해 중인 칸에 남은 시간이 보이면 그 시각으로
-                c.setScreen(facility(c, item("[ 큐로아 항해 중 ]", 1, "  항해를 통해 다양한 아이템을 획득해보세요.", "  - 남은 시간 : 1시간 2분 3초")));
+                c.setScreen(facility(c, item("[ 벨로아 빠른 항해 ]", 1, "", "  항해를 통해 다양한 아이템을 획득해보세요.",
+                        "  크리스탈을 소모해 빠른 항해를 진행할 수 있습니다.", "", "  - 남은 시간 : 2시간 16분 15초",
+                        "  - 빠른 항해 비용 : 1,370크리스탈", "", "쉬프트 클릭 시 빠른 항해를 진행합니다.")));
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
-                CraftTimers.Job j = CraftTimers.jobs().stream().filter(x -> x.name.equals("큐로아 항해")).findFirst().orElse(null);
-                check(j != null && Math.abs(j.endsAt - (now() + 3_723_000)) < 2500, "항해 남은 시간을 읽지 못함: " + j);
+                CraftTimers.Job j = CraftTimers.jobs().stream().filter(x -> x.name.equals("벨로아 항해")).findFirst().orElse(null);
+                check(j != null && Math.abs(j.endsAt - (now() + 8_175_000)) < 2500, "항해 남은 시간을 읽지 못함(섬 이름 '벨로아'): "
+                        + CraftTimers.jobs().stream().map(x -> x.name).toList());
                 // 보상을 받아 칸이 바뀌면(보상 수령 → 보내기) 목록에서 빠진다
-                c.setScreen(facility(c, item("[ 유실라 ]", 1, "  항해를 통해 다양한 아이템을 획득해보세요.", "  - 항해 소요 시간 : 4시간 5분 0초", "클릭 시 항해를 보냅니다.")));
+                c.setScreen(facility(c, item("[ 유실라 항해 완료 ]", 1, "", "  이미 항해를 마친 섬/대륙입니다.", "  모든 섬/대륙을 항해하면 초기화됩니다.")));
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 check(CraftTimers.jobs().stream().noneMatch(x -> x.name.equals("유실라 항해")), "보상을 받은 항해가 남음");
                 check(CraftTimers.jobs().stream().noneMatch(x -> !x.separate), "항해 칸을 제작으로 등록함");
+                // 실제 채팅 "케르아 항해 보상을 수령했습니다." → 그 섬 항해를 뺀다. 남이 쓴 채팅은 무시
+                CraftTimers.onChat("[칭호] 누군가 : 벨로아 항해 보상을 수령했습니다.");
+                check(CraftTimers.jobs().stream().anyMatch(x -> x.name.equals("벨로아 항해")), "남이 쓴 채팅으로 항해를 뺌");
+                CraftTimers.onChat("ꀂ 벨로아 항해 보상을 수령했습니다.");
+                check(CraftTimers.jobs().stream().noneMatch(x -> x.name.equals("벨로아 항해")), "보상 수령 메시지로 항해를 빼지 않음");
+                // 키워드 알림 본문에 서버 그림 글자(네모로 보임)가 남지 않는다
+                kr.ddingmate.notify.Notifier.keyword("풍선", "ꀂꀁ[질문]meeee10 : 혹시 풍선 선물상자는 한번만 뜨나요");
+                String body = AlertLog.entries().stream().max(java.util.Comparator.comparingLong(e -> e.at)).orElseThrow().body;
+                check(!body.contains("ꀂ") && !body.contains(""), "키워드 알림에 서버 그림 글자가 남음: " + body);
                 c.setScreen(null);
                 CraftTimers.debugClear();
             });
