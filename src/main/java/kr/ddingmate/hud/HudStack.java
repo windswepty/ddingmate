@@ -35,6 +35,11 @@ public final class HudStack {
         return SHIFT[corner.ordinal()];
     }
 
+    /** 이 구석의 지금 줄에서 가장 넓은 HUD 너비 */
+    static int width(DdingMateConfig.Corner corner) {
+        return WIDTH[corner.ordinal()];
+    }
+
     /** 지금 줄을 닫고 옆에 새 줄을 시작한다 */
     static void newColumn(DdingMateConfig.Corner corner) {
         int i = corner.ordinal();

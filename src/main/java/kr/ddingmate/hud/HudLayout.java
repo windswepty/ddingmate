@@ -8,7 +8,9 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -159,22 +161,66 @@ public final class HudLayout {
             x = Math.round(p.x * Math.max(0, sw - rw));
             y = Math.round(p.y * Math.max(0, sh - rh));
         } else {
-            boolean top = corner == DdingMateConfig.Corner.TOP_LEFT || corner == DdingMateConfig.Corner.TOP_RIGHT;
-            boolean left = corner == DdingMateConfig.Corner.TOP_LEFT || corner == DdingMateConfig.Corner.BOTTOM_LEFT;
-            y = cornerY(sh, corner, rh, HudStack.offset(corner));
-            // 같은 구석에 쌓다가 채팅창·핫바나 반대쪽 끝까지 닿으면 옆에 새 줄을 시작한다
-            if (HudStack.offset(corner) > 0 && overflows(sh, corner, top, y, rh)) {
-                HudStack.newColumn(corner);
-                y = cornerY(sh, corner, rh, 0);
-            }
-            x = left ? ScheduleHud.MARGIN + HudStack.shift(corner)
-                    : sw - rw - ScheduleHud.MARGIN - HudStack.shift(corner);
-            HudStack.push(corner, rw, rh);
+            Spot s = bestSpot(corner, sw, sh, rw, rh);
+            if (s.newColumn()) HudStack.newColumn(s.corner());
+            HudStack.push(s.corner(), rw, rh);
+            x = s.x();
+            y = s.y();
         }
         x = Math.max(0, Math.min(sw - rw, x));
         y = Math.max(0, Math.min(sh - rh, y));
         BOUNDS.put(id, new Rect(x, y, rw, rh));
         return new int[]{Math.round(x / current), Math.round(y / current)};
+    }
+
+    /** 놓을 수 있는 자리 하나와 그 자리의 나쁨 점수(낮을수록 좋음) */
+    private record Spot(DdingMateConfig.Corner corner, boolean newColumn, int x, int y, int cost) {}
+
+    /**
+     * 정해 둔 구석에 쌓을 자리를 고르되, 먼저 그린 HUD 와 겹치거나 화면 밖이면 다른 자리를 찾는다.
+     * 좋은 순서: 그 구석 아래 → 그 구석 옆 줄 → 다른 구석 → (마지막 수단) 채팅창·핫바 자리까지 내려가기.
+     * 다른 HUD 와 겹치는 자리는 다른 방법이 전혀 없을 때만 쓴다.
+     */
+    private static Spot bestSpot(DdingMateConfig.Corner corner, int sw, int sh, int rw, int rh) {
+        List<Spot> spots = new ArrayList<>();
+        List<DdingMateConfig.Corner> order = new ArrayList<>();
+        order.add(corner);
+        for (DdingMateConfig.Corner k : DdingMateConfig.Corner.values()) if (k != corner) order.add(k);
+        for (DdingMateConfig.Corner k : order) {
+            boolean own = k == corner;
+            boolean top = k == DdingMateConfig.Corner.TOP_LEFT || k == DdingMateConfig.Corner.TOP_RIGHT;
+            int stack = HudStack.offset(k);
+            int y = cornerY(sh, k, rh, stack);
+            int x = cornerX(sw, k, rw, HudStack.shift(k));
+            boolean over = stack > 0 && overflows(sh, k, top, y, rh);
+            spots.add(new Spot(k, false, x, y, (own ? 0 : 40) + (over ? 70 : 0)));
+            if (stack > 0) {
+                int shift = HudStack.shift(k) + HudStack.width(k) + ScheduleHud.MARGIN;
+                spots.add(new Spot(k, true, cornerX(sw, k, rw, shift), cornerY(sh, k, rh, 0), own ? 10 : 50));
+            }
+        }
+        Spot best = null;
+        int bestCost = Integer.MAX_VALUE;
+        for (Spot s : spots) {
+            int cost = s.cost();
+            if (s.x() < 0 || s.y() < 0 || s.x() + rw > sw || s.y() + rh > sh) cost += 500;
+            for (Rect r : BOUNDS.values()) {
+                if (s.x() < r.x() + r.w() && r.x() < s.x() + rw && s.y() < r.y() + r.h() && r.y() < s.y() + rh) {
+                    cost += 1000;
+                    break;
+                }
+            }
+            if (cost < bestCost) {
+                best = s;
+                bestCost = cost;
+            }
+        }
+        return best;
+    }
+
+    private static int cornerX(int sw, DdingMateConfig.Corner corner, int rw, int shift) {
+        boolean left = corner == DdingMateConfig.Corner.TOP_LEFT || corner == DdingMateConfig.Corner.BOTTOM_LEFT;
+        return left ? ScheduleHud.MARGIN + shift : sw - rw - ScheduleHud.MARGIN - shift;
     }
 
     private static int cornerY(int sh, DdingMateConfig.Corner corner, int rh, int stack) {
