@@ -29,6 +29,7 @@ import java.util.Set;
  */
 public final class ScreenNotes {
 
+    private static final boolean ENABLED = Boolean.getBoolean("ddingmate.screens");
     private static final long MAX_BYTES = 1_000_000;
     private static final Set<String> SEEN = new HashSet<>();
     private static Object lastScreen;
@@ -37,6 +38,8 @@ public final class ScreenNotes {
 
     /** 10틱마다 */
     public static void tick(MinecraftClient client) {
+        // 개발용 기록이라 배포판에서는 꺼 둔다. 켜려면 JVM 인수 -Dddingmate.screens=true
+        if (!ENABLED) return;
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) {
             lastScreen = null;
             return;
