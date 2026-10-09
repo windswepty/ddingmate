@@ -94,6 +94,7 @@ public final class DdingMate implements ClientModInitializer {
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             BagTracker.onOverlay(message.getString()); // "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" → 저장소 재고
+            if (overlay) ServerHud.onOverlay(message.getString()); // 채팅으로 온 액션바: 잠수 채널 알아보기(일반 채팅은 안 씀)
             if (!overlay) {
                 KeywordWatcher.onMessage(message, null);
                 TodoList.onChat(message.getString()); // 할 일 "자동으로 세기 문구"
@@ -117,6 +118,8 @@ public final class DdingMate implements ClientModInitializer {
         if (!config.opened || !ServerHud.inGame()) return;
         // Tab(접속자 목록)이 떠 있는 동안은 그리지 않는다: 서버 Tab 판 밑으로 잘려 보이거나 겹쳐 보이면 이질적이다
         if (playerListShown()) return;
+        // 잠수 채널은 서버도 화면을 비워 두는 곳이라 HUD 를 띄우지 않는다
+        if (ServerHud.afk()) return;
         drawAll(ctx, tick);
     }
 

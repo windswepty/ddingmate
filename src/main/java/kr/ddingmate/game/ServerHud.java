@@ -54,6 +54,7 @@ public final class ServerHud {
             area = a;
             channel = ch;
             seen = true;
+            afk = false; // 채널 표시가 다시 보이면 잠수 채널에서 나온 것
             if (changed) {
                 DdingMate.LOG.info("채널 인식: {} {}채널", a.label, ch);
                 remember(a, ch);
@@ -140,6 +141,24 @@ public final class ServerHud {
         rebootAt = System.currentTimeMillis() + (m.group(2).equals("분") ? n * 60_000 : n * 1000);
     }
 
+    /**
+     * 잠수 채널: 서버가 재화 바·채널 표시를 지우고 화면 아래에 "292초 뒤 잠수 포인트를 획득합니다. | 현재 잠수 포인트 : 4239"
+     * (2026-10-10 실제)를 띄운다. 이 문구를 보면 잠수 중으로 보고, 채널 표시가 다시 보이면 끝낸다
+     */
+    private static final Pattern AFK = Pattern.compile("잠수\\s*포인트를\\s*획득|현재\\s*잠수\\s*포인트");
+    private static boolean afk;
+
+    /** 액션바(화면 아래 글) */
+    public static void onOverlay(String message) {
+        if (message == null || !message.contains("잠수")) return;
+        if (AFK.matcher(ItemKeys.stripGlyphs(message)).find()) afk = true;
+    }
+
+    /** 잠수 채널에 있는지(이때는 띵메이트 HUD 를 그리지 않는다) */
+    public static boolean afk() {
+        return afk;
+    }
+
     /** 지금 채널이 재부팅될 시각(ms). 예고가 없거나 지났으면 0 */
     public static long rebootAt() {
         return rebootAt > System.currentTimeMillis() ? rebootAt : 0;
@@ -148,6 +167,7 @@ public final class ServerHud {
     /** 접속이 끊기면 처음부터 다시 */
     public static void reset() {
         rebootAt = 0;
+        afk = false;
         area = null;
         channel = 0;
         seen = false;
@@ -156,6 +176,7 @@ public final class ServerHud {
     /** 시험용 */
     public static void debugSet(Area a, int ch) {
         if (a != area || ch != channel) rebootAt = 0;
+        afk = false;
         area = a;
         channel = ch;
         seen = true;

@@ -17,7 +17,9 @@ public abstract class InGameHudOverlayMixin {
 
     @Inject(method = "setOverlayMessage", at = @At("HEAD"))
     private void ddingmate$overlay(Text message, boolean tinted, CallbackInfo ci) {
-        if (message != null) BagTracker.onOverlay(message.getString());
+        if (message == null) return;
+        BagTracker.onOverlay(message.getString());
+        kr.ddingmate.game.ServerHud.onOverlay(message.getString()); // 잠수 채널 알아보기
     }
 
     @Inject(method = "setTitle", at = @At("HEAD"))

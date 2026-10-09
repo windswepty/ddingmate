@@ -368,6 +368,28 @@ public class CraftClientGameTest implements FabricClientGameTest {
             });
             sp.getServer().runCommand("scoreboard objectives remove tabtest");
 
+            // 9-6) 잠수 채널(실제 액션바 "292초 뒤 잠수 포인트를 획득합니다. | 현재 잠수 포인트 : 4239")에서는 HUD 를 띄우지 않고,
+            //      채널 표시가 다시 보이면 돌아온다
+            ctx.runOnClient(c -> {
+                CraftTimers.onChat(START);
+                c.inGameHud.setOverlayMessage(Text.literal("292초 뒤 잠수 포인트를 획득합니다. | 현재 잠수 포인트 : 4239"), false);
+                check(kr.ddingmate.game.ServerHud.afk(), "잠수 채널을 알아보지 못함");
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> kr.ddingmate.hud.HudLayout.bounds().clear());
+            ctx.waitTicks(10);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.hud.HudLayout.bounds().isEmpty(), "잠수 채널에서 HUD 를 그림: " + kr.ddingmate.hud.HudLayout.bounds().keySet());
+                c.inGameHud.setOverlayMessage(Text.literal("[칭호] 누군가 : 잠수 좋다"), false);
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.VILLAGE, 30);
+                check(!kr.ddingmate.game.ServerHud.afk(), "채널 표시가 다시 보였는데 잠수로 봄");
+            });
+            ctx.waitTicks(10);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.hud.HudLayout.bounds().containsKey(kr.ddingmate.hud.HudLayout.SCHEDULE), "잠수 채널에서 나왔는데 HUD 가 돌아오지 않음");
+                CraftTimers.debugClear();
+            });
+
             // 10) 설정 화면: 재료 탭 목록, 홈 '제작 중'
             ctx.runOnClient(c -> {
                 c.setScreen(new DdingMateScreen(null));
