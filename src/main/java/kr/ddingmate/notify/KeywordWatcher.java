@@ -32,8 +32,8 @@ public final class KeywordWatcher {
         boolean fromMe = me != null && (me.equalsIgnoreCase(senderName) || looksLikeMyOwnChatLine(lower, me));
         if (fromMe) return; // 내가 쓴 채팅에는 반응하지 않는다
 
-        if (kw.includeOwnName && me != null && lower.contains(me.toLowerCase(Locale.ROOT))) {
-            fire("@" + me, text, kw.cooldownSeconds);
+        if (kw.includeOwnName && me != null && mentionsMe(lower, me.toLowerCase(Locale.ROOT), senderName)) {
+            fire(MENTION, text, kw.cooldownSeconds);
             return;
         }
         for (String word : kw.words) {
@@ -43,6 +43,21 @@ public final class KeywordWatcher {
                 return;
             }
         }
+    }
+
+    /** 닉네임 언급 알림의 기록 키 */
+    static final String MENTION = "@닉네임";
+
+    /**
+     * 다른 사람이 채팅에서 내 닉네임을 불렀는가. "닉네임님이 업적을 달성했습니다" 같은 시스템 메시지에
+     * 이름만 들어간 경우는 빼고, "[칭호] 보낸사람 : ...내 닉네임..." 처럼 채팅 내용 부분에 있을 때만 센다.
+     */
+    private static boolean mentionsMe(String lower, String me, String senderName) {
+        if (senderName != null) return lower.contains(me); // 바닐라 채팅: 보낸 사람이 따로 오면 본문만 들어옴
+        int sep = lower.indexOf(" : ");
+        if (sep < 0) sep = lower.indexOf(": ");
+        if (sep < 0) return false; // 채팅 줄 모양이 아니면 시스템 메시지로 본다
+        return lower.indexOf(me, sep) >= 0;
     }
 
     /** 서버 채팅 플러그인은 내 채팅도 시스템 메시지로 돌려보낸다. "닉네임:" 이나 "<닉네임>" 으로 시작하면 내 채팅으로 본다. */
@@ -59,6 +74,6 @@ public final class KeywordWatcher {
         Long last = LAST_FIRED.get(word);
         if (last != null && now - last < cooldownSeconds * 1000L) return;
         LAST_FIRED.put(word, now);
-        Notifier.keyword(word, text);
+        Notifier.keyword(MENTION.equals(word) ? null : word, text);
     }
 }

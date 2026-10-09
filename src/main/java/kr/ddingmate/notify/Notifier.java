@@ -32,10 +32,12 @@ public final class Notifier {
                 new ItemStack(Items.CLOCK), Theme.BLUE, false);
     }
 
+    /** word 가 null 이면 내 닉네임 언급. 본문은 채팅에 뜬 메시지 그대로 */
     public static void keyword(String word, String message) {
         String shortMsg = message.length() > 60 ? message.substring(0, 60) + "…" : message;
-        notify("키워드", "키워드 감지: " + word, shortMsg, SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(),
-                new ItemStack(Items.BELL), KEYWORD_BLUE, false);
+        String title = word == null ? "누가 내 닉네임을 불렀어요" : "채팅에 '" + word + "'";
+        notify("키워드", title, shortMsg, SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(),
+                new ItemStack(word == null ? Items.NAME_TAG : Items.BELL), KEYWORD_BLUE, false);
     }
 
     public static void materialsReady(String recipe, int crafts, ItemStack icon) {

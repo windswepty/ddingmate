@@ -24,8 +24,6 @@ import java.util.List;
 public final class ScheduleHud {
 
     static final int MARGIN = 4;
-    /** 아래쪽 구석은 채팅창·핫바와 겹치지 않도록 띄운다 */
-    static final int BOTTOM_GAP = 60;
     static final int HEAD_H = 14;
 
     private static final ItemStack CLOCK = new ItemStack(Items.CLOCK);
@@ -39,10 +37,19 @@ public final class ScheduleHud {
     private ScheduleHud() {}
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
+        HudLayout.beginFrame(); // 프레임마다 가장 먼저 그리는 HUD
+        if (hidden(MinecraftClient.getInstance())) return;
+        HudLayout.push(ctx, HudLayout.SCHEDULE);
+        try {
+            draw(ctx);
+        } finally {
+            HudLayout.pop(ctx);
+        }
+    }
+
+    private static void draw(DrawContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
         DdingMateConfig cfg = DdingMate.config();
-        HudLayout.beginFrame(); // 프레임마다 가장 먼저 그리는 HUD
-        if (hidden(client)) return;
         if (!cfg.hudEnabled) {
             HudLayout.placeholder(ctx, HudLayout.SCHEDULE, cfg.hudCorner, CLOCK, "꺼져 있어요");
             return;
@@ -125,20 +132,6 @@ public final class ScheduleHud {
             ctx.drawTextWithShadow(tr, lines.get(i), x + pad, y + pad + i * lineH, color);
         }
         return boxH;
-    }
-
-    static int cornerX(DrawContext ctx, DdingMateConfig.Corner corner, int boxW) {
-        return switch (corner) {
-            case TOP_LEFT, BOTTOM_LEFT -> MARGIN;
-            case TOP_RIGHT, BOTTOM_RIGHT -> ctx.getScaledWindowWidth() - boxW - MARGIN;
-        };
-    }
-
-    static int cornerY(DrawContext ctx, DdingMateConfig.Corner corner, int boxH, int stack) {
-        return switch (corner) {
-            case TOP_LEFT, TOP_RIGHT -> MARGIN + stack;
-            case BOTTOM_LEFT, BOTTOM_RIGHT -> ctx.getScaledWindowHeight() - boxH - BOTTOM_GAP - stack;
-        };
     }
 
     private static List<Entry> build(DdingMateConfig cfg) {

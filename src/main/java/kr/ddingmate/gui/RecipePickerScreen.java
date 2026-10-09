@@ -113,7 +113,7 @@ public class RecipePickerScreen extends Screen {
         }
     }
 
-    static boolean matches(RecipeBook.Recipe r, String normalizedQuery) {
+    public static boolean matches(RecipeBook.Recipe r, String normalizedQuery) {
         if (ItemKeys.normalize(r.name).contains(normalizedQuery)) return true;
         if (ItemKeys.normalize(r.category).contains(normalizedQuery)) return true;
         if (ItemKeys.normalize(r.facility).contains(normalizedQuery)) return true;

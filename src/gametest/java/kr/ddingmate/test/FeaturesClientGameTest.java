@@ -7,9 +7,13 @@ import kr.ddingmate.counter.MaterialCounter;
 import kr.ddingmate.gear.DurabilityTracker;
 import kr.ddingmate.gui.DdingMateScreen;
 import kr.ddingmate.gui.HudEditorScreen;
+import kr.ddingmate.gui.RecipePickerScreen;
+import kr.ddingmate.counter.ItemKeys;
+import kr.ddingmate.counter.RecipeBook;
 import kr.ddingmate.hud.HudLayout;
 import kr.ddingmate.ui.Widgets;
 import kr.ddingmate.notify.AlertLog;
+import kr.ddingmate.notify.KeywordWatcher;
 import kr.ddingmate.playtime.PlaytimeTracker;
 import kr.ddingmate.schedule.ScheduleEngine;
 import kr.ddingmate.todo.TodoList;
@@ -148,6 +152,81 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.takeScreenshot("features-2b-playtime-synced");
 
+            // 모든 레시피를 하나씩 핀해 재료 줄이 레시피대로 나오는지, 검색으로 찾을 수 있는지 확인
+            ctx.runOnClient(c -> {
+                DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(0);
+                String keep = pin.recipe;
+                int keepCrafts = pin.crafts;
+                java.util.Set<String> facilities = new java.util.TreeSet<>();
+                for (RecipeBook.Recipe r : RecipeBook.all()) {
+                    facilities.add(r.facility);
+                    check(!r.materials.isEmpty(), "재료 없는 레시피: " + r.id);
+                    pin.recipe = r.id;
+                    pin.crafts = 3;
+                    MaterialCounter.tick(c);
+                    MaterialCounter.PinView v = MaterialCounter.views().get(0);
+                    check(v.recipe().id.equals(r.id) && v.lines().size() == r.materials.size(), "핀 결과가 레시피와 다름: " + r.id);
+                    for (int i = 0; i < r.materials.size(); i++) {
+                        check(v.lines().get(i).need() == r.materials.get(i).count * 3, "필요 개수 계산 오류: " + r.id);
+                    }
+                    check(RecipePickerScreen.matches(r, ItemKeys.normalize(r.name)), "검색으로 못 찾음: " + r.id);
+                }
+                check(RecipeBook.all().size() >= 373, "레시피 수가 줄어듦: " + RecipeBook.all().size());
+                check(facilities.size() == 16, "시설 수가 16개가 아님: " + facilities);
+                pin.recipe = keep;
+                pin.crafts = keepCrafts;
+                MaterialCounter.tick(c);
+            });
+
+            // 키워드 알림: 남이 내 닉네임을 부른 채팅만 언급으로 보고, 내 이름이 든 시스템 공지·내 채팅은 무시
+            ctx.runOnClient(c -> {
+                String me = c.getSession().getUsername();
+                DdingMateConfig.Keywords kw = DdingMate.config().keywords;
+                kw.enabled = true;
+                kw.includeOwnName = true;
+                kw.cooldownSeconds = 0;
+                kw.words = new java.util.ArrayList<>(List.of("오션오더", "풍선"));
+                AlertLog.clear();
+                KeywordWatcher.onMessage(Text.literal(me + "님이 업적을 달성했습니다"), null);
+                check(AlertLog.entries().isEmpty(), "시스템 공지의 내 이름에 언급 알림이 울림");
+                KeywordWatcher.onMessage(Text.literal("[칭호] " + me + " : 오션오더 왔다"), null);
+                check(AlertLog.entries().isEmpty(), "내가 쓴 채팅에 키워드 알림이 울림");
+                KeywordWatcher.onMessage(Text.literal("[꼬마송편] kanghan15 : " + me + " 거기 있어?"), null);
+                check(AlertLog.entries().size() == 1 && AlertLog.entries().get(0).title.equals("누가 내 닉네임을 불렀어요"),
+                        "다른 사람의 닉네임 언급 알림이 없음");
+                KeywordWatcher.onMessage(Text.literal("[알림] 풍선이 근처에 도착했어요!"), null);
+                check(AlertLog.entries().size() == 2 && AlertLog.entries().get(0).title.equals("채팅에 '풍선'"),
+                        "키워드 알림 제목이 다름: " + AlertLog.entries().get(0).title);
+                kw.cooldownSeconds = 10;
+            });
+            ctx.waitTicks(20);
+            ctx.takeScreenshot("features-4a-keyword-toast");
+
+            // HUD 크기·서버 HUD 피하기: 50% 면 일정 HUD 가 절반 크기, 위쪽은 서버 재화 바 아래(16px)부터
+            int[] full = new int[2];
+            ctx.runOnClient(c -> {
+                DdingMate.config().hudPos.clear();
+                DdingMate.config().avoidServerHud = true;
+                DdingMate.config().hudScale = 100;
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                HudLayout.Rect r = HudLayout.bounds().get(HudLayout.SCHEDULE);
+                full[0] = r.w();
+                full[1] = r.h();
+                check(r.y() >= 16, "서버 재화 바 자리를 가림: y=" + r.y());
+                DdingMate.config().hudScale = 50;
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                HudLayout.Rect r = HudLayout.bounds().get(HudLayout.SCHEDULE);
+                check(Math.abs(r.w() - full[0] / 2) <= 2 && Math.abs(r.h() - full[1] / 2) <= 2,
+                        "HUD 크기 50% 가 적용되지 않음: " + r + " / " + full[0] + "x" + full[1]);
+                check(r.y() >= 16, "줄였을 때 서버 재화 바 자리를 가림: y=" + r.y());
+            });
+            ctx.takeScreenshot("features-4b-hud-50");
+            ctx.runOnClient(c -> DdingMate.config().hudScale = 100);
+
             // HUD 위치 편집: 일정 HUD 를 화면 가운데로 끌어 [저장] → 그 자리에 그려짐. Esc 는 취소, [초기화]는 구석으로
             ctx.runOnClient(c -> {
                 DdingMate.config().hudPos.clear();
@@ -188,11 +267,57 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(HudLayout.custom(HudLayout.SCHEDULE), "취소했는데 저장해 둔 자리까지 사라짐");
                 c.setScreen(new HudEditorScreen(null));
             });
+            // HUD 별 크기: 재료 HUD 위에서 휠 두 칸 → 120%, 내구도 HUD 모서리 손잡이를 끌어 키우기, [−] 로 줄이기
+            int[] counterW = new int[1];
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                HudEditorScreen s = (HudEditorScreen) c.currentScreen;
+                HudLayout.Rect r = HudLayout.bounds().get(HudLayout.COUNTER);
+                counterW[0] = r.w();
+                s.mouseScrolled(r.x() + 10, r.y() + 10, 0, 1);
+                s.mouseScrolled(r.x() + 10, r.y() + 10, 0, 1);
+                check(HudLayout.size(HudLayout.COUNTER) == 120, "휠로 크기가 바뀌지 않음: " + HudLayout.size(HudLayout.COUNTER));
+                check(HudLayout.COUNTER.equals(s.selected()), "휠을 굴린 HUD 가 골라지지 않음");
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                HudEditorScreen s = (HudEditorScreen) c.currentScreen;
+                HudLayout.Rect r = HudLayout.bounds().get(HudLayout.COUNTER);
+                check(Math.abs(r.w() - counterW[0] * 1.2) <= 3, "120% 인데 너비가 그만큼 커지지 않음: " + r.w() + " / " + counterW[0]);
+                HudLayout.Rect d = HudLayout.bounds().get(HudLayout.DURABILITY);
+                double hx = d.x() + d.w() - 2, hy = d.y() + d.h() - 2;
+                s.mouseClicked(hx, hy, 0);
+                s.mouseDragged(hx + d.w() * 0.3, hy, 0, 0, 0);
+                s.mouseReleased(hx + d.w() * 0.3, hy, 0);
+                check(HudLayout.size(HudLayout.DURABILITY) == 130, "모서리 손잡이로 크기가 바뀌지 않음: " + HudLayout.size(HudLayout.DURABILITY));
+                press(c, "−");
+                check(HudLayout.size(HudLayout.DURABILITY) == 120, "[−] 로 고른 HUD 가 작아지지 않음");
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-4c-hud-sizes");
+            ctx.runOnClient(c -> {
+                press(c, "저장");
+                check(DdingMate.config().hudSizes.get(HudLayout.COUNTER) == 120
+                        && DdingMate.config().hudSizes.get(HudLayout.DURABILITY) == 120, "HUD 별 크기가 저장되지 않음");
+                // 다시 열어 크기를 바꾼 뒤 Esc → 저장해 둔 크기로
+                c.setScreen(new HudEditorScreen(null));
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                HudEditorScreen s = (HudEditorScreen) c.currentScreen;
+                HudLayout.Rect r = HudLayout.bounds().get(HudLayout.SCHEDULE);
+                s.mouseScrolled(r.x() + 5, r.y() + 5, 0, -1);
+                s.close();
+                check(HudLayout.size(HudLayout.SCHEDULE) == 100, "Esc 로 나갔는데 크기가 남음");
+                check(HudLayout.size(HudLayout.COUNTER) == 120, "취소했는데 저장해 둔 크기까지 사라짐");
+                c.setScreen(new HudEditorScreen(null));
+            });
             ctx.waitTicks(3);
             ctx.runOnClient(c -> {
                 press(c, "초기화");
                 press(c, "저장");
                 check(DdingMate.config().hudPos.isEmpty(), "초기화 후 저장했는데 옮긴 자리가 남음");
+                check(DdingMate.config().hudSizes.isEmpty(), "초기화 후 저장했는데 HUD 별 크기가 남음");
             });
             ctx.waitTicks(3);
 

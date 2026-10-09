@@ -1,9 +1,12 @@
 {
- "source": "https://wiki.ddingtycoon.kr/ko 제작 시설·가공 시설 문서 (2026-10-08 기준)",
+ "source": "https://wiki.ddingtycoon.kr/ko 제작 시설·가공 시설·추가 조합법(대형 제작대)·바리스타·플로리스트·영혼 명품 문서 (2026-10-09 기준)",
  "vanilla": {
   "가문비나무 잎": "minecraft:spruce_leaves",
+  "가스트 눈물": "minecraft:ghast_tear",
   "가죽": "minecraft:leather",
+  "갈색 버섯": "minecraft:brown_mushroom",
   "감자": "minecraft:potatoes",
+  "거미 눈": "minecraft:spider_eye",
   "거미줄": "minecraft:cobweb",
   "구리 블록": "minecraft:copper_block",
   "구리 주괴": "minecraft:copper_ingot",
@@ -13,64 +16,92 @@
   "금 블록": "minecraft:gold_block",
   "금 주괴": "minecraft:gold_ingot",
   "깃털": "minecraft:feather",
+  "꿀 블록": "minecraft:honey_block",
   "나침반": "minecraft:compass",
   "낚싯대": "minecraft:fishing_rod",
+  "네더 사마귀 블록": "minecraft:nether_wart_block",
   "네더 석영": "minecraft:quartz",
   "네더라이트 곡괭이": "minecraft:netherite_pickaxe",
   "네더라이트 블록": "minecraft:netherite_block",
   "네더라이트 주괴": "minecraft:netherite_ingot",
   "네더랙": "minecraft:netherrack",
+  "네더의 별": "minecraft:nether_star",
   "다이아몬드": "minecraft:diamond",
   "다이아몬드 블록": "minecraft:diamond_block",
   "달콤한 열매": "minecraft:sweet_berries",
   "당근": "minecraft:carrots",
   "대나무": "minecraft:bamboo",
   "대장장이 작업대": "minecraft:smithing_table",
+  "데이지": "minecraft:oxeye_daisy",
+  "돌": "minecraft:stone",
+  "뒤틀린 균": "minecraft:warped_fungus",
   "뒤틀린 자루": "minecraft:warped_stem",
   "레드스톤 블록": "minecraft:redstone_block",
   "마그마 블록": "minecraft:magma_block",
+  "마그마 크림": "minecraft:magma_cream",
   "마법 부여대": "minecraft:enchanting_table",
+  "마법이 부여된 황금 사과": "minecraft:enchanted_golden_apple",
   "막대기": "minecraft:stick",
+  "만회 나침반": "minecraft:recovery_compass",
   "망원경": "minecraft:spyglass",
+  "먹물 주머니": "minecraft:ink_sac",
   "모닥불": "minecraft:campfire",
   "모래": "minecraft:sand",
   "모루": "minecraft:anvil",
+  "민들레": "minecraft:dandelion",
   "밀": "minecraft:wheat",
+  "바다의 심장": "minecraft:heart_of_the_sea",
   "발광 열매": "minecraft:glow_berries",
   "발광 이끼": "minecraft:glow_lichen",
   "발사기": "minecraft:dispenser",
   "버섯불": "minecraft:shroomlight",
+  "벌집 조각": "minecraft:honeycomb",
+  "벚나무 원목": "minecraft:cherry_log",
   "벚나무 잎": "minecraft:cherry_leaves",
   "부싯돌": "minecraft:flint",
   "부싯돌과 부시": "minecraft:flint_and_steel",
   "분홍 꽃잎": "minecraft:pink_petals",
   "불우렁쉥이": "minecraft:sea_pickle",
   "브리즈 막대기": "minecraft:breeze_rod",
+  "블레이즈 가루": "minecraft:blaze_powder",
   "블레이즈 막대기": "minecraft:blaze_rod",
   "비트": "minecraft:beetroots",
   "뼈다귀": "minecraft:bone",
+  "뼛가루": "minecraft:bone_meal",
   "뾰족한 점적석": "minecraft:pointed_dripstone",
   "사과": "minecraft:apple",
   "사탕수수": "minecraft:sugar_cane",
   "석재 절단기": "minecraft:stonecutter",
+  "석탄": "minecraft:coal",
   "석탄 블록": "minecraft:coal_block",
+  "선애기별꽃": "minecraft:azure_bluet",
+  "섬록암": "minecraft:diorite",
   "소리 블록": "minecraft:note_block",
+  "수레국화": "minecraft:cornflower",
   "수박": "minecraft:melon",
+  "수지 벽돌": "minecraft:resin_bricks",
   "숫돌": "minecraft:grindstone",
   "숯": "minecraft:charcoal",
+  "스컬크 촉매": "minecraft:sculk_catalyst",
   "스테이크": "minecraft:cooked_beef",
   "시계": "minecraft:clock",
   "신호기": "minecraft:beacon",
+  "실": "minecraft:string",
+  "심층암": "minecraft:deepslate",
   "심층암 조약돌": "minecraft:cobbled_deepslate",
   "썩은 살점": "minecraft:rotten_flesh",
   "앵무조개 껍데기": "minecraft:nautilus_shell",
+  "양귀비": "minecraft:poppy",
   "양동이": "minecraft:bucket",
+  "얼음": "minecraft:ice",
   "에메랄드": "minecraft:emerald",
   "에메랄드 블록": "minecraft:emerald_block",
   "엔더 진주": "minecraft:ender_pearl",
   "엔더의 눈": "minecraft:ender_eye",
   "열대어": "minecraft:tropical_fish",
   "영혼 랜턴": "minecraft:soul_lantern",
+  "영혼 모닥불": "minecraft:soul_campfire",
+  "영혼 모래": "minecraft:soul_sand",
   "영혼 흙": "minecraft:soul_soil",
   "용암 양동이": "minecraft:lava_bucket",
   "우는 흑요석": "minecraft:crying_obsidian",
@@ -87,32 +118,45 @@
   "자수정 블록": "minecraft:amethyst_block",
   "자수정 조각": "minecraft:amethyst_shard",
   "자작나무 잎": "minecraft:birch_leaves",
+  "자홍색 염료": "minecraft:magenta_dye",
   "장식된 도자기": "minecraft:decorated_pot",
   "점토": "minecraft:clay",
   "제작대": "minecraft:crafting_table",
   "조약돌": "minecraft:cobblestone",
+  "종이": "minecraft:paper",
   "죽은 거품 산호 블록": "minecraft:dead_bubble_coral_block",
   "죽은 관 산호 블록": "minecraft:dead_tube_coral_block",
   "죽은 뇌 산호 블록": "minecraft:dead_brain_coral_block",
   "죽은 불 산호 블록": "minecraft:dead_fire_coral_block",
   "죽은 사방산호 블록": "minecraft:dead_horn_coral_block",
+  "진홍빛 균": "minecraft:crimson_fungus",
   "진홍빛 자루": "minecraft:crimson_stem",
   "짙은 참나무 잎": "minecraft:dark_oak_leaves",
   "참나무 보트": "minecraft:oak_boat",
   "참나무 잎": "minecraft:oak_leaves",
   "참나무 판자": "minecraft:oak_planks",
   "철 곡괭이": "minecraft:iron_pickaxe",
+  "철 문": "minecraft:iron_door",
   "철 블록": "minecraft:iron_block",
   "철 주괴": "minecraft:iron_ingot",
   "철사 덫 갈고리": "minecraft:tripwire_hook",
   "청금석 블록": "minecraft:lapis_block",
+  "초": "minecraft:candle",
   "케이크": "minecraft:cake",
+  "켈프": "minecraft:kelp",
   "코코아 콩": "minecraft:cocoa_beans",
+  "쿠키": "minecraft:cookie",
+  "키 작은 잔디": "minecraft:short_grass",
+  "토끼발": "minecraft:rabbit_foot",
   "통": "minecraft:barrel",
+  "튀긴 후렴과": "minecraft:popped_chorus_fruit",
+  "피뢰침": "minecraft:lightning_rod",
   "해초": "minecraft:seagrass",
   "현무암": "minecraft:basalt",
   "호박": "minecraft:pumpkin",
   "화강암": "minecraft:granite",
+  "화약": "minecraft:gunpowder",
+  "황금 당근": "minecraft:golden_carrot",
   "횃불": "minecraft:torch",
   "훈연기": "minecraft:smoker",
   "흑암": "minecraft:blackstone",
@@ -5542,6 +5586,2434 @@
     {
      "name": "타락 침식의 영약 ★★★",
      "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/바다의 심장",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "바다의 심장",
+   "output": 1,
+   "materials": [
+    {
+     "name": "종이",
+     "count": 32
+    },
+    {
+     "name": "밀",
+     "count": 32
+    },
+    {
+     "name": "석탄",
+     "count": 32
+    },
+    {
+     "name": "감자",
+     "count": 32
+    },
+    {
+     "name": "앵무조개 껍데기",
+     "count": 1
+    },
+    {
+     "name": "당근",
+     "count": 32
+    },
+    {
+     "name": "화약",
+     "count": 32
+    },
+    {
+     "name": "대나무",
+     "count": 32
+    },
+    {
+     "name": "썩은 살점",
+     "count": 32
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/드래곤의 숨결 x50",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "드래곤의 숨결",
+   "output": 50,
+   "materials": [
+    {
+     "name": "튀긴 후렴과",
+     "count": 16
+    },
+    {
+     "name": "네더의 별",
+     "count": 1
+    },
+    {
+     "name": "엔더의 눈",
+     "count": 16
+    },
+    {
+     "name": "유리병",
+     "count": 1
+    },
+    {
+     "name": "가스트 눈물",
+     "count": 16
+    },
+    {
+     "name": "흑요석",
+     "count": 16
+    },
+    {
+     "name": "우는 흑요석",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/거북 인갑",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "거북 인갑",
+   "output": 1,
+   "materials": [
+    {
+     "name": "해초",
+     "count": 128
+    },
+    {
+     "name": "불우렁쉥이",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/벌집 조각 x16",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "벌집 조각",
+   "output": 16,
+   "materials": [
+    {
+     "name": "벌집 조각",
+     "count": 4
+    },
+    {
+     "name": "철 주괴",
+     "count": 2
+    },
+    {
+     "name": "모닥불",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/지구 모양 현수막",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "지구 모양 현수막",
+   "output": 1,
+   "materials": [
+    {
+     "name": "종이",
+     "count": 1
+    },
+    {
+     "name": "바다의 심장",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/거미줄",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "거미줄",
+   "output": 1,
+   "materials": [
+    {
+     "name": "실",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/꿀 블록 x2",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "꿀 블록",
+   "output": 2,
+   "materials": [
+    {
+     "name": "꿀 블록",
+     "count": 1
+    },
+    {
+     "name": "금 주괴",
+     "count": 2
+    },
+    {
+     "name": "영혼 모래",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/벌크 워든 심장",
+   "facility": "대형 제작대",
+   "category": "야생 아이템",
+   "name": "벌크 워든 심장",
+   "output": 1,
+   "materials": [
+    {
+     "name": "영혼 램프",
+     "count": 16
+    },
+    {
+     "name": "고대의 잔재",
+     "count": 1
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 20
+    },
+    {
+     "name": "에메랄드 블록",
+     "count": 1
+    },
+    {
+     "name": "스컬크 촉매",
+     "count": 9
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/농작물 가공 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "농작물 가공 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마법이 부여된 황금 사과",
+     "count": 4
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/채광물 가공 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "채광물 가공 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "우는 흑요석",
+     "count": 40
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/요리 제작 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "요리 제작 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토끼발",
+     "count": 40
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/도구 제작 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "도구 제작 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "수지 벽돌",
+     "count": 40
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/강화 제작 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "강화 제작 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "자수정 조각",
+     "count": 240
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/해양 제작 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "해양 제작 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "바다의 심장",
+     "count": 4
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/연금 제작 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "연금 제작 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "블레이즈 가루",
+     "count": 256
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/영혼 가공 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "영혼 가공 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "영혼 모닥불",
+     "count": 256
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정밀 연금 제작 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "정밀 연금 제작 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "엔더의 눈",
+     "count": 256
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/황금 요리 제작 시설 청사진",
+   "facility": "대형 제작대",
+   "category": "시설 청사진",
+   "name": "황금 요리 제작 시설 청사진",
+   "output": 1,
+   "materials": [
+    {
+     "name": "토끼 발",
+     "count": 40
+    },
+    {
+     "name": "만회 나침반",
+     "count": 1
+    },
+    {
+     "name": "마법이 부여된 황금 사과",
+     "count": 4
+    },
+    {
+     "name": "코룸 주괴",
+     "count": 50
+    },
+    {
+     "name": "리프톤 주괴",
+     "count": 50
+    },
+    {
+     "name": "세렌트 주괴",
+     "count": 50
+    },
+    {
+     "name": "네더라이트 주괴",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/깐 새우 x2",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "깐 새우",
+   "output": 2,
+   "materials": [
+    {
+     "name": "익히지 않은 새우",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/도미 회 x2",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "도미 회",
+   "output": 2,
+   "materials": [
+    {
+     "name": "익히지 않은 도미",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/청어 회 x2",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "청어 회",
+   "output": 2,
+   "materials": [
+    {
+     "name": "익히지 않은 청어",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/금붕어 회 x2",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "금붕어 회",
+   "output": 2,
+   "materials": [
+    {
+     "name": "금붕어",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/농어 회 x2",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "농어 회",
+   "output": 2,
+   "materials": [
+    {
+     "name": "농어",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/켈프 더미",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "켈프 더미",
+   "output": 1,
+   "materials": [
+    {
+     "name": "켈프",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/식용 금 가루 x10",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "식용 금 가루",
+   "output": 10,
+   "materials": [
+    {
+     "name": "금 가루",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/금 가루",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "금 가루",
+   "output": 1,
+   "materials": [
+    {
+     "name": "식용 금 가루",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/곰 발바닥 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "곰 발바닥 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "곰 발바닥",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/칠면조의 깃털 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "칠면조의 깃털 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "칠면조의 깃털",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/플라밍고의 부리 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "플라밍고의 부리 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "플라밍고의 부리",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/하마의 송곳니 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "하마의 송곳니 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "하마의 송곳니",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/코끼리의 상아 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "코끼리의 상아 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "코끼리의 상아",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/기린의 가죽 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "기린의 가죽 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "기린의 가죽",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/미어캣의 꼬리 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "미어캣의 꼬리 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "미어캣의 꼬리",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/사슴의 뿔 주머니",
+   "facility": "대형 제작대",
+   "category": "전문가 아이템",
+   "name": "사슴의 뿔 주머니",
+   "output": 1,
+   "materials": [
+    {
+     "name": "사슴의 뿔",
+     "count": 64
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정제된 루미디아의 조각",
+   "facility": "대형 제작대",
+   "category": "노크틸라 아이템",
+   "name": "정제된 루미디아의 조각",
+   "output": 1,
+   "materials": [
+    {
+     "name": "루미디아의 조각",
+     "count": 40
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정제된 루미디아의 결정",
+   "facility": "대형 제작대",
+   "category": "노크틸라 아이템",
+   "name": "정제된 루미디아의 결정",
+   "output": 1,
+   "materials": [
+    {
+     "name": "루미디아의 결정",
+     "count": 40
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정제된 빛바랜 낙화",
+   "facility": "대형 제작대",
+   "category": "노크틸라 아이템",
+   "name": "정제된 빛바랜 낙화",
+   "output": 1,
+   "materials": [
+    {
+     "name": "빛바랜 낙화",
+     "count": 40
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정제된 선홍의 균사",
+   "facility": "대형 제작대",
+   "category": "노크틸라 아이템",
+   "name": "정제된 선홍의 균사",
+   "output": 1,
+   "materials": [
+    {
+     "name": "선홍의 균사",
+     "count": 40
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정제된 고요한 포자",
+   "facility": "대형 제작대",
+   "category": "노크틸라 아이템",
+   "name": "정제된 고요한 포자",
+   "output": 1,
+   "materials": [
+    {
+     "name": "고요한 포자",
+     "count": 40
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정제된 갈라진 암석",
+   "facility": "대형 제작대",
+   "category": "노크틸라 아이템",
+   "name": "정제된 갈라진 암석",
+   "output": 1,
+   "materials": [
+    {
+     "name": "갈라진 암석",
+     "count": 40
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/정제된 인피니티 에테르",
+   "facility": "대형 제작대",
+   "category": "노크틸라 아이템",
+   "name": "정제된 인피니티 에테르",
+   "output": 1,
+   "materials": [
+    {
+     "name": "인피니티 에테르",
+     "count": 40
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/광휘의 결정",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "광휘의 결정",
+   "output": 1,
+   "materials": [
+    {
+     "name": "은은한 결정",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/위대한 결정",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "위대한 결정",
+   "output": 1,
+   "materials": [
+    {
+     "name": "용감한 결정",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/청명한 결정",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "청명한 결정",
+   "output": 1,
+   "materials": [
+    {
+     "name": "고요한 결정",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/영롱한 결정",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "영롱한 결정",
+   "output": 1,
+   "materials": [
+    {
+     "name": "소박한 결정",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/화사한 결정",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "화사한 결정",
+   "output": 1,
+   "materials": [
+    {
+     "name": "아련한 결정",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/순진무구한 코어",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "순진무구한 코어",
+   "output": 1,
+   "materials": [
+    {
+     "name": "은은한 결정",
+     "count": 1
+    },
+    {
+     "name": "용감한 결정",
+     "count": 1
+    },
+    {
+     "name": "고요한 결정",
+     "count": 1
+    },
+    {
+     "name": "소박한 결정",
+     "count": 1
+    },
+    {
+     "name": "아련한 결정",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/영광스러운 코어",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "영광스러운 코어",
+   "output": 1,
+   "materials": [
+    {
+     "name": "광휘의 결정",
+     "count": 1
+    },
+    {
+     "name": "위대한 결정",
+     "count": 1
+    },
+    {
+     "name": "청명한 결정",
+     "count": 1
+    },
+    {
+     "name": "영롱한 결정",
+     "count": 1
+    },
+    {
+     "name": "화사한 결정",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/스킬 아크",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "스킬 아크",
+   "output": 1,
+   "materials": [
+    {
+     "name": "스킬 펄스",
+     "count": 1
+    },
+    {
+     "name": "스킬 프리즘",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "대형 제작대/스킬 아크 (x10)",
+   "facility": "대형 제작대",
+   "category": "기타 아이템",
+   "name": "스킬 아크 (x10)",
+   "output": 1,
+   "materials": [
+    {
+     "name": "스킬 아크",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/뜨거운 큐브",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "뜨거운 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "마그마 블록",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/차가운 큐브",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "차가운 큐브",
+   "output": 1,
+   "materials": [
+    {
+     "name": "얼음",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/검정 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "검정 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "먹물 주머니",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/초코 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "초코 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "코코아 콩",
+     "count": 16
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/순백 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "순백 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "뼛가루",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/눈꽃 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "눈꽃 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "사탕수수",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/숯 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "숯 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "숯",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/버섯 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "버섯 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "갈색 버섯",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/돌 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "돌 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "돌",
+     "count": 16
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 믹서기/녹색 분말",
+   "facility": "바리스타 · 믹서기",
+   "category": "큐브·분말",
+   "name": "녹색 분말",
+   "output": 1,
+   "materials": [
+    {
+     "name": "대나무",
+     "count": 16
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/블랙 커피",
+   "facility": "바리스타 · 커피 머신",
+   "category": "레어 등급 커피",
+   "name": "블랙 커피",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 3
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 2
+    },
+    {
+     "name": "검정 분말",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/카페 모카",
+   "facility": "바리스타 · 커피 머신",
+   "category": "레어 등급 커피",
+   "name": "카페 모카",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 3
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 2
+    },
+    {
+     "name": "초코 분말",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/화이트 모카",
+   "facility": "바리스타 · 커피 머신",
+   "category": "레어 등급 커피",
+   "name": "화이트 모카",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 3
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 2
+    },
+    {
+     "name": "순백 분말",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/드립 커피",
+   "facility": "바리스타 · 커피 머신",
+   "category": "레어 등급 커피",
+   "name": "드립 커피",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 3
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 2
+    },
+    {
+     "name": "눈꽃 분말",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/콜드 브루",
+   "facility": "바리스타 · 커피 머신",
+   "category": "레어 등급 커피",
+   "name": "콜드 브루",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 3
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 2
+    },
+    {
+     "name": "숯 분말",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/아메리카노",
+   "facility": "바리스타 · 커피 머신",
+   "category": "레어 등급 커피",
+   "name": "아메리카노",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 3
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 2
+    },
+    {
+     "name": "버섯 분말",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/플랫 마끼아또",
+   "facility": "바리스타 · 커피 머신",
+   "category": "에픽 등급 커피",
+   "name": "플랫 마끼아또",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 8
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 4
+    },
+    {
+     "name": "스팀 우유",
+     "count": 2
+    },
+    {
+     "name": "순백 분말",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/머쉬룸 마끼아또",
+   "facility": "바리스타 · 커피 머신",
+   "category": "에픽 등급 커피",
+   "name": "머쉬룸 마끼아또",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 8
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 4
+    },
+    {
+     "name": "스팀 우유",
+     "count": 2
+    },
+    {
+     "name": "버섯 분말",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/코코아 마끼아또",
+   "facility": "바리스타 · 커피 머신",
+   "category": "에픽 등급 커피",
+   "name": "코코아 마끼아또",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 8
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 4
+    },
+    {
+     "name": "스팀 우유",
+     "count": 2
+    },
+    {
+     "name": "초코 분말",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/돌체 라떼",
+   "facility": "바리스타 · 커피 머신",
+   "category": "에픽 등급 커피",
+   "name": "돌체 라떼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 8
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 4
+    },
+    {
+     "name": "스팀 우유",
+     "count": 2
+    },
+    {
+     "name": "돌 분말",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/그린티 라떼",
+   "facility": "바리스타 · 커피 머신",
+   "category": "에픽 등급 커피",
+   "name": "그린티 라떼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 8
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 4
+    },
+    {
+     "name": "스팀 우유",
+     "count": 2
+    },
+    {
+     "name": "녹색 분말",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/우드 라떼",
+   "facility": "바리스타 · 커피 머신",
+   "category": "에픽 등급 커피",
+   "name": "우드 라떼",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 8
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 4
+    },
+    {
+     "name": "스팀 우유",
+     "count": 2
+    },
+    {
+     "name": "숯 분말",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/플라워 카푸치노",
+   "facility": "바리스타 · 커피 머신",
+   "category": "전설 등급 커피",
+   "name": "플라워 카푸치노",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 12
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 6
+    },
+    {
+     "name": "스팀 우유",
+     "count": 4
+    },
+    {
+     "name": "눈꽃 분말",
+     "count": 12
+    },
+    {
+     "name": "양귀비",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/썬더 카푸치노",
+   "facility": "바리스타 · 커피 머신",
+   "category": "전설 등급 커피",
+   "name": "썬더 카푸치노",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 12
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 6
+    },
+    {
+     "name": "스팀 우유",
+     "count": 4
+    },
+    {
+     "name": "숯 분말",
+     "count": 12
+    },
+    {
+     "name": "피뢰침",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/가든 카푸치노",
+   "facility": "바리스타 · 커피 머신",
+   "category": "전설 등급 커피",
+   "name": "가든 카푸치노",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 12
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 6
+    },
+    {
+     "name": "스팀 우유",
+     "count": 4
+    },
+    {
+     "name": "녹색 분말",
+     "count": 12
+    },
+    {
+     "name": "짙은 참나무 잎",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/스톤 블렌디드",
+   "facility": "바리스타 · 커피 머신",
+   "category": "전설 등급 커피",
+   "name": "스톤 블렌디드",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 12
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 6
+    },
+    {
+     "name": "스팀 우유",
+     "count": 4
+    },
+    {
+     "name": "돌 분말",
+     "count": 12
+    },
+    {
+     "name": "심층암",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/쿠키 블렌디드",
+   "facility": "바리스타 · 커피 머신",
+   "category": "전설 등급 커피",
+   "name": "쿠키 블렌디드",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 12
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 6
+    },
+    {
+     "name": "스팀 우유",
+     "count": 4
+    },
+    {
+     "name": "초코 분말",
+     "count": 12
+    },
+    {
+     "name": "쿠키",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/다크 블렌디드",
+   "facility": "바리스타 · 커피 머신",
+   "category": "전설 등급 커피",
+   "name": "다크 블렌디드",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 12
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 6
+    },
+    {
+     "name": "스팀 우유",
+     "count": 4
+    },
+    {
+     "name": "검정 분말",
+     "count": 12
+    },
+    {
+     "name": "흑요석",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/그린트리 프라페",
+   "facility": "바리스타 · 커피 머신",
+   "category": "신화 등급 커피",
+   "name": "그린트리 프라페",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 16
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 8
+    },
+    {
+     "name": "스팀 우유",
+     "count": 6
+    },
+    {
+     "name": "녹색 분말",
+     "count": 16
+    },
+    {
+     "name": "키 작은 잔디",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/체리 블라썸 프라페",
+   "facility": "바리스타 · 커피 머신",
+   "category": "신화 등급 커피",
+   "name": "체리 블라썸 프라페",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 16
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 8
+    },
+    {
+     "name": "스팀 우유",
+     "count": 6
+    },
+    {
+     "name": "순백 분말",
+     "count": 16
+    },
+    {
+     "name": "벚나무 원목",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/프로즌 스노우 프라페",
+   "facility": "바리스타 · 커피 머신",
+   "category": "신화 등급 커피",
+   "name": "프로즌 스노우 프라페",
+   "output": 1,
+   "materials": [
+    {
+     "name": "유리컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 16
+    },
+    {
+     "name": "차가운 큐브",
+     "count": 8
+    },
+    {
+     "name": "스팀 우유",
+     "count": 6
+    },
+    {
+     "name": "눈꽃 분말",
+     "count": 16
+    },
+    {
+     "name": "섬록암",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/실버문 아인슈페너",
+   "facility": "바리스타 · 커피 머신",
+   "category": "신화 등급 커피",
+   "name": "실버문 아인슈페너",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 16
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 8
+    },
+    {
+     "name": "스팀 우유",
+     "count": 6
+    },
+    {
+     "name": "돌 분말",
+     "count": 16
+    },
+    {
+     "name": "철 문",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/오로라 아인슈페너",
+   "facility": "바리스타 · 커피 머신",
+   "category": "신화 등급 커피",
+   "name": "오로라 아인슈페너",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 16
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 8
+    },
+    {
+     "name": "스팀 우유",
+     "count": 6
+    },
+    {
+     "name": "검정 분말",
+     "count": 16
+    },
+    {
+     "name": "자수정 블록",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/골든 아인슈페너",
+   "facility": "바리스타 · 커피 머신",
+   "category": "신화 등급 커피",
+   "name": "골든 아인슈페너",
+   "output": 1,
+   "materials": [
+    {
+     "name": "머그컵",
+     "count": 1
+    },
+    {
+     "name": "커피 가루",
+     "count": 16
+    },
+    {
+     "name": "뜨거운 큐브",
+     "count": 8
+    },
+    {
+     "name": "스팀 우유",
+     "count": 6
+    },
+    {
+     "name": "버섯 분말",
+     "count": 16
+    },
+    {
+     "name": "황금 당근",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/인스턴트 커피",
+   "facility": "바리스타 · 커피 머신",
+   "category": "인스턴트 커피",
+   "name": "인스턴트 커피",
+   "output": 1,
+   "materials": [
+    {
+     "name": "커피 가루",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "바리스타 · 커피 머신/인스턴트 커피 x5",
+   "facility": "바리스타 · 커피 머신",
+   "category": "인스턴트 커피",
+   "name": "인스턴트 커피",
+   "output": 5,
+   "materials": [
+    {
+     "name": "커피 가루",
+     "count": 50
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/아쿠아네타 앰플 ★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "아쿠아네타 앰플 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 32
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 8
+    },
+    {
+     "name": "데이지",
+     "count": 6
+    },
+    {
+     "name": "유리병",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/아쿠아네타 앰플 ★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "아쿠아네타 앰플 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 48
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 16
+    },
+    {
+     "name": "데이지",
+     "count": 8
+    },
+    {
+     "name": "유리병",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/아쿠아네타 앰플 ★★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "아쿠아네타 앰플 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 64
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 24
+    },
+    {
+     "name": "데이지",
+     "count": 12
+    },
+    {
+     "name": "유리병",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/루밀리아 디퓨저 ★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "루밀리아 디퓨저 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 32
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 8
+    },
+    {
+     "name": "수레국화",
+     "count": 6
+    },
+    {
+     "name": "막대기",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/루밀리아 디퓨저 ★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "루밀리아 디퓨저 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 48
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 16
+    },
+    {
+     "name": "수레국화",
+     "count": 8
+    },
+    {
+     "name": "막대기",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/루밀리아 디퓨저 ★★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "루밀리아 디퓨저 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 64
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 24
+    },
+    {
+     "name": "수레국화",
+     "count": 12
+    },
+    {
+     "name": "막대기",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/솔라리스티 캔들 ★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "솔라리스티 캔들 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 32
+    },
+    {
+     "name": "진홍빛 균",
+     "count": 8
+    },
+    {
+     "name": "민들레",
+     "count": 6
+    },
+    {
+     "name": "초",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/솔라리스티 캔들 ★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "솔라리스티 캔들 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 48
+    },
+    {
+     "name": "진홍빛 균",
+     "count": 16
+    },
+    {
+     "name": "민들레",
+     "count": 8
+    },
+    {
+     "name": "초",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/솔라리스티 캔들 ★★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "솔라리스티 캔들 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 64
+    },
+    {
+     "name": "진홍빛 균",
+     "count": 24
+    },
+    {
+     "name": "민들레",
+     "count": 12
+    },
+    {
+     "name": "초",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/벨라로제 퍼퓸 ★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "벨라로제 퍼퓸 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 32
+    },
+    {
+     "name": "진홍빛 균",
+     "count": 8
+    },
+    {
+     "name": "양귀비",
+     "count": 6
+    },
+    {
+     "name": "자홍색 염료",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/벨라로제 퍼퓸 ★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "벨라로제 퍼퓸 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 48
+    },
+    {
+     "name": "진홍빛 균",
+     "count": 16
+    },
+    {
+     "name": "양귀비",
+     "count": 8
+    },
+    {
+     "name": "자홍색 염료",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/벨라로제 퍼퓸 ★★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "벨라로제 퍼퓸 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 64
+    },
+    {
+     "name": "진홍빛 균",
+     "count": 24
+    },
+    {
+     "name": "양귀비",
+     "count": 12
+    },
+    {
+     "name": "자홍색 염료",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/크리스텔라 오일 ★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "크리스텔라 오일 ★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 32
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 8
+    },
+    {
+     "name": "선애기별꽃",
+     "count": 6
+    },
+    {
+     "name": "유리병",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/크리스텔라 오일 ★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "크리스텔라 오일 ★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 48
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 16
+    },
+    {
+     "name": "선애기별꽃",
+     "count": 8
+    },
+    {
+     "name": "유리병",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "플로리스트 제조/크리스텔라 오일 ★★★",
+   "facility": "플로리스트 제조",
+   "category": "향장품",
+   "name": "크리스텔라 오일 ★★★",
+   "output": 1,
+   "materials": [
+    {
+     "name": "네더 사마귀 블록",
+     "count": 64
+    },
+    {
+     "name": "뒤틀린 균",
+     "count": 24
+    },
+    {
+     "name": "선애기별꽃",
+     "count": 12
+    },
+    {
+     "name": "유리병",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "가죽 공방/반짝 광택제",
+   "facility": "가죽 공방",
+   "category": "영혼 가죽 가공재",
+   "name": "반짝 광택제",
+   "output": 1,
+   "materials": [
+    {
+     "name": "기린의 가죽",
+     "count": 8
+    },
+    {
+     "name": "코끼리의 상아",
+     "count": 8
+    },
+    {
+     "name": "하마의 송곳니",
+     "count": 8
+    },
+    {
+     "name": "플라밍고의 부리",
+     "count": 8
+    },
+    {
+     "name": "가죽",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "가죽 공방/장인 인증 도장",
+   "facility": "가죽 공방",
+   "category": "영혼 가죽 가공재",
+   "name": "장인 인증 도장",
+   "output": 1,
+   "materials": [
+    {
+     "name": "사슴의 뿔",
+     "count": 8
+    },
+    {
+     "name": "미어캣의 꼬리",
+     "count": 8
+    },
+    {
+     "name": "곰의 발바닥",
+     "count": 8
+    },
+    {
+     "name": "칠면조의 깃털",
+     "count": 8
+    },
+    {
+     "name": "부싯돌",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "가죽 공방/고독한 가죽 키링",
+   "facility": "가죽 공방",
+   "category": "가죽 명품",
+   "name": "고독한 가죽 키링",
+   "output": 1,
+   "materials": [
+    {
+     "name": "고독한 영혼 가죽",
+     "count": 1
+    },
+    {
+     "name": "장인 인증 도장",
+     "count": 1
+    },
+    {
+     "name": "반짝 광택제",
+     "count": 1
+    },
+    {
+     "name": "썩은 살점",
+     "count": 20
+    }
+   ]
+  },
+  {
+   "id": "가죽 공방/신비한 가죽 팔찌",
+   "facility": "가죽 공방",
+   "category": "가죽 명품",
+   "name": "신비한 가죽 팔찌",
+   "output": 1,
+   "materials": [
+    {
+     "name": "신비한 영혼 가죽",
+     "count": 1
+    },
+    {
+     "name": "장인 인증 도장",
+     "count": 1
+    },
+    {
+     "name": "반짝 광택제",
+     "count": 1
+    },
+    {
+     "name": "거미 눈",
+     "count": 12
+    }
+   ]
+  },
+  {
+   "id": "가죽 공방/활기찬 가죽 지갑",
+   "facility": "가죽 공방",
+   "category": "가죽 명품",
+   "name": "활기찬 가죽 지갑",
+   "output": 1,
+   "materials": [
+    {
+     "name": "활기찬 영혼 가죽",
+     "count": 1
+    },
+    {
+     "name": "장인 인증 도장",
+     "count": 1
+    },
+    {
+     "name": "반짝 광택제",
+     "count": 1
+    },
+    {
+     "name": "브리즈 막대기",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "가죽 공방/특이한 가죽 파우치",
+   "facility": "가죽 공방",
+   "category": "가죽 명품",
+   "name": "특이한 가죽 파우치",
+   "output": 1,
+   "materials": [
+    {
+     "name": "특이한 영혼 가죽",
+     "count": 1
+    },
+    {
+     "name": "장인 인증 도장",
+     "count": 1
+    },
+    {
+     "name": "반짝 광택제",
+     "count": 1
+    },
+    {
+     "name": "슬라임 볼",
+     "count": 12
+    },
+    {
+     "name": "엔더 진주",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "가죽 공방/화끈한 가죽 핸드백",
+   "facility": "가죽 공방",
+   "category": "가죽 명품",
+   "name": "화끈한 가죽 핸드백",
+   "output": 1,
+   "materials": [
+    {
+     "name": "화끈한 영혼 가죽",
+     "count": 1
+    },
+    {
+     "name": "장인 인증 도장",
+     "count": 1
+    },
+    {
+     "name": "반짝 광택제",
+     "count": 1
+    },
+    {
+     "name": "마그마 크림",
+     "count": 12
+    },
+    {
+     "name": "현무암",
+     "count": 32
     }
    ]
   }

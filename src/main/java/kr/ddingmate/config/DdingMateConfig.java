@@ -32,7 +32,7 @@ public final class DdingMateConfig {
         public boolean enabled = true;
         /** 내 닉네임이 다른 사람 메시지에 나오면 알림 */
         public boolean includeOwnName = true;
-        public List<String> words = new ArrayList<>(List.of("오션오더", "풍선", "청소"));
+        public List<String> words = new ArrayList<>(List.of("오션오더", "풍선"));
         public int cooldownSeconds = 10;
     }
 
@@ -135,9 +135,15 @@ public final class DdingMateConfig {
     public boolean hudEnabled = true;
     /** HUD 이름(schedule·todo·counter·durability) → 옮긴 자리. 없으면 정해 둔 구석 */
     public Map<String, HudPos> hudPos = new LinkedHashMap<>();
+    /** HUD 이름 → 편집 화면에서 정한 HUD 별 크기(%). 없으면 100 */
+    public Map<String, Integer> hudSizes = new LinkedHashMap<>();
     public HudStyle hudStyle = HudStyle.DARK;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
+    /** HUD 크기 50~100 (%) */
+    public int hudScale = 100;
+    /** 서버 HUD(위쪽 재화 바·날짜/채널, 왼쪽 아래 채팅창)를 피해서 구석 HUD 를 놓음 */
+    public boolean avoidServerHud = true;
     /** 설정 화면·HUD·팝업을 갈무리 글꼴(띵타이쿤과 같은 글꼴)로 그릴지 */
     public boolean galmuriFont = true;
     public Corner hudCorner = Corner.TOP_LEFT;
@@ -199,7 +205,11 @@ public final class DdingMateConfig {
         hudLines = Math.max(1, Math.min(10, hudLines));
         hudOpacity = Math.max(30, Math.min(100, hudOpacity));
         if (hudStyle == null) hudStyle = HudStyle.DARK;
+        hudScale = Math.max(50, Math.min(100, hudScale));
         if (hudPos == null) hudPos = new LinkedHashMap<>();
+        if (hudSizes == null) hudSizes = new LinkedHashMap<>();
+        hudSizes.values().removeIf(java.util.Objects::isNull);
+        hudSizes.replaceAll((k, v) -> Math.max(50, Math.min(150, v)));
         hudPos.values().removeIf(java.util.Objects::isNull);
         for (HudPos p : hudPos.values()) {
             p.x = Math.max(0f, Math.min(1f, p.x));

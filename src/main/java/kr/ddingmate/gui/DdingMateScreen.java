@@ -200,18 +200,24 @@ public class DdingMateScreen extends Screen {
                         DdingMateScreen::styleName, v -> cfg.hudStyle = v),
                 new Widgets.Cycle<>(half(), "HUD 진하기", List.of(30, 40, 50, 60, 70, 80, 85, 90, 100), nearest(cfg.hudOpacity),
                         v -> v + "%", v -> cfg.hudOpacity = v));
+        Widgets.Cycle<Integer> size = new Widgets.Cycle<>(half(), "HUD 전체 크기", List.of(50, 60, 70, 80, 90, 100),
+                nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
+        size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 편집'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));
+        Widgets.Toggle avoid = toggle("서버 HUD 피하기", cfg.avoidServerHud, v -> cfg.avoidServerHud = v);
+        avoid.setTooltip(Tooltip.of(Text.literal("구석 HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.")));
+        list.pair(size, avoid);
         list.pair(toggle("띵타이쿤 글꼴(갈무리)", cfg.galmuriFont, v -> cfg.galmuriFont = v), null);
-        Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치 직접 옮기기"), true, b -> {
+        Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 편집"), true, b -> {
             savedScroll = list.getScrollY();
             client.setScreen(new HudEditorScreen(this));
         });
         boolean inGame = client != null && client.player != null;
         move.active = inGame;
         move.setTooltip(Tooltip.of(Text.literal(inGame
-                ? "게임 화면에서 HUD 를 마우스로 끌어 원하는 곳에 놓아요. 옮긴 HUD 는 위의 '위치' 설정 대신 그 자리에 보여요."
+                ? "게임 화면에서 HUD 를 끌어 옮기고, 휠이나 오른쪽 아래 모서리로 HUD 마다 크기를 바꿔요. 옮긴 HUD 는 위의 '위치' 설정 대신 그 자리에 보여요."
                 : "게임에 들어가 있을 때 쓸 수 있어요.")));
         list.single(move);
-        list.note("HUD 는 화면 구석에만 그려요. 서버 HUD·NPC 말풍선이 쓰는 화면 위 가운데는 비워 둬요.");
+        list.note("HUD 는 화면 구석에만 그려요. 화면 위 가운데(서버 HUD·NPC 말풍선 자리)는 비워 둬요.");
     }
 
     private void buildEvents() {
@@ -319,10 +325,13 @@ public class DdingMateScreen extends Screen {
         Widgets.Field words = new Widgets.Field(rowWidth(), Text.literal("키워드"));
         words.setMaxLength(500);
         words.setText(String.join(", ", cfg.keywords.words));
-        words.setTooltip(Tooltip.of(Text.literal("쉼표로 구분해서 적어요. 예: 오션오더, 풍선, 청소")));
+        words.setTooltip(Tooltip.of(Text.literal("쉼표로 구분해서 적어요. 예: 오션오더, 풍선, 경매")));
         words.setChangedListener(text -> cfg.keywords.words = splitList(text));
         list.labeled("키워드", words);
-        list.note("내가 쓴 채팅에는 반응하지 않아요. 같은 단어는 " + cfg.keywords.cooldownSeconds + "초 안에 다시 울리지 않아요.");
+        list.header("이렇게 울려요");
+        list.note("채팅에 키워드가 들어간 메시지가 뜨면 소리와 함께 팝업 \"채팅에 '오션오더'\" 가 뜨고, 아래에 그 메시지가 그대로 보여요.");
+        list.note("다른 사람이 채팅으로 내 닉네임을 부르면 \"누가 내 닉네임을 불렀어요\" 가 떠요. 내 이름이 들어간 시스템 공지에는 울리지 않아요.");
+        list.note("내가 쓴 채팅에는 반응하지 않고, 같은 단어는 " + cfg.keywords.cooldownSeconds + "초 안에 다시 울리지 않아요. 영어는 대소문자를 가리지 않아요.");
     }
 
     private void buildCounter() {

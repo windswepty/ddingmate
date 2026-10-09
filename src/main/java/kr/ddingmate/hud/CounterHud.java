@@ -26,13 +26,22 @@ public final class CounterHud {
     private static final int ROW_H = 14;
     private static final int GAP = 8;
     /** 왼쪽 아래 채팅창 자리(기본 높이)와 겹치지 않도록 이만큼은 비워 둔다 */
-    private static final int CHAT_ZONE = 135;
     private static final int COLUMN_GAP = 4;
     private static final ItemStack CHEST = new ItemStack(Items.CHEST);
 
     private CounterHud() {}
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
+        if (ScheduleHud.hidden(MinecraftClient.getInstance())) return;
+        HudLayout.push(ctx, HudLayout.COUNTER);
+        try {
+            draw(ctx);
+        } finally {
+            HudLayout.pop(ctx);
+        }
+    }
+
+    private static void draw(DrawContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
         DdingMateConfig all = DdingMate.config();
         DdingMateConfig.Counter cfg = all.counter;
@@ -43,7 +52,7 @@ public final class CounterHud {
             return;
         }
         String note = cfg.includeBags || cfg.includeStorage ? bagNote(cfg) : null;
-        int stack = HudStack.offset(cfg.corner);
+        int stack = HudLayout.stacked(cfg.corner);
         if (all.hudStyle == DdingMateConfig.HudStyle.CLASSIC) {
             drawClassic(ctx, client.textRenderer, cfg, views, note, stack);
         } else {
@@ -56,15 +65,20 @@ public final class CounterHud {
 
     private static void drawPanels(DrawContext ctx, TextRenderer tr, DdingMateConfig.Counter cfg,
                                    List<MaterialCounter.PinView> views, String note, int stack, int alpha, boolean dark) {
-        int sh = ctx.getScaledWindowHeight();
+        int sh = HudLayout.vh(ctx);
         boolean top = cfg.corner == DdingMateConfig.Corner.TOP_LEFT || cfg.corner == DdingMateConfig.Corner.TOP_RIGHT;
         boolean left = cfg.corner == DdingMateConfig.Corner.TOP_LEFT || cfg.corner == DdingMateConfig.Corner.BOTTOM_LEFT;
         int limit;
         int customY = HudLayout.customTop(ctx, HudLayout.COUNTER, 60);
-        if (customY >= 0) limit = sh - customY - 4; // 옮긴 자리 아래로 남은 높이
-        else limit = top
-                ? (left ? sh - CHAT_ZONE : sh - 30) - (ScheduleHud.MARGIN + stack)
-                : sh - ScheduleHud.BOTTOM_GAP - stack - ScheduleHud.MARGIN;
+        if (customY >= 0) {
+            limit = sh - customY - 4; // 옮긴 자리 아래로 남은 높이
+        } else {
+            int safe = top ? sh - HudLayout.bottomGap(left ? DdingMateConfig.Corner.BOTTOM_LEFT : DdingMateConfig.Corner.BOTTOM_RIGHT)
+                    - HudLayout.topGap() : sh - HudLayout.bottomGap(cfg.corner) - HudLayout.topGap();
+            limit = safe - stack;
+            // 첫 핀도 안 들어가면 어차피 옆 줄로 넘어가므로 화면 높이 전체를 쓴다
+            if (stack > 0 && pinHeight(views.get(0)) + 4 > limit) limit = safe;
+        }
         limit = Math.max(limit, 60);
 
         List<List<MaterialCounter.PinView>> columns = new ArrayList<>();

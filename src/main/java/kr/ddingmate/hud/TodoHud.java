@@ -25,6 +25,16 @@ public final class TodoHud {
     private TodoHud() {}
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
+        if (ScheduleHud.hidden(MinecraftClient.getInstance())) return;
+        HudLayout.push(ctx, HudLayout.TODO);
+        try {
+            draw(ctx);
+        } finally {
+            HudLayout.pop(ctx);
+        }
+    }
+
+    private static void draw(DrawContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
         DdingMateConfig all = DdingMate.config();
         DdingMateConfig.Todo cfg = all.todo;

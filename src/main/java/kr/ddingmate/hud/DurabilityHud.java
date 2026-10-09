@@ -23,6 +23,16 @@ public final class DurabilityHud {
     private DurabilityHud() {}
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
+        if (ScheduleHud.hidden(MinecraftClient.getInstance())) return;
+        HudLayout.push(ctx, HudLayout.DURABILITY);
+        try {
+            draw(ctx);
+        } finally {
+            HudLayout.pop(ctx);
+        }
+    }
+
+    private static void draw(DrawContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
         DdingMateConfig all = DdingMate.config();
         DdingMateConfig.Durability cfg = all.durability;
