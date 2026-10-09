@@ -37,6 +37,8 @@ public class CounterClientGameTest implements FabricClientGameTest {
             sp.getClientWorld().waitForChunksRender();
 
             ctx.runOnClient(c -> {
+                DdingMate.config().tutorialDone = true;
+                DdingMate.config().opened = true;
                 BagTracker.clearCurrent();
                 DdingMateConfig.Counter cc = DdingMate.config().counter;
                 cc.enabled = true;

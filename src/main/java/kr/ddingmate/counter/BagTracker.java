@@ -245,9 +245,18 @@ public final class BagTracker {
         for (int i = 0; i < size; i++) {
             ItemStack s = inv.getStack(i);
             if (s.isEmpty()) continue;
+            String key = ItemKeys.keyOf(s);
+            if (key.equals("n:")) continue; // 이름 없는 꾸미기 칸
             int stored = ItemKeys.storedAmount(s);
-            bag.counts.merge(ItemKeys.keyOf(s), stored >= 0 ? stored : s.getCount(), Integer::sum);
+            bag.counts.merge(key, stored >= 0 ? stored : s.getCount(), Integer::sum);
             IconCache.remember(s);
+        }
+        // 저장소가 여러 쪽(분류)이면 연 쪽마다 기록을 더한다(같은 아이템은 새 값으로). 한 쪽만 열어도 다른 쪽 기록은 남는다
+        if (acc.storage != null && acc.storage.counts != null) {
+            Map<String, Integer> merged = new HashMap<>(acc.storage.counts);
+            merged.remove("n:");
+            merged.putAll(bag.counts);
+            bag.counts = merged;
         }
         acc.storage = bag;
         dirty = true;
@@ -413,12 +422,27 @@ public final class BagTracker {
                     if (a.bags == null) a.bags = new TreeMap<>();
                     a.bags.values().removeIf(b -> b == null || b.counts == null || b.slots == null);
                     if (a.storage != null && (a.storage.counts == null || a.storage.slots == null)) a.storage = null;
+                    // 이름 규칙이 바뀌어도 예전 기록을 그대로 쓸 수 있게 키를 다시 만든다
+                    for (Bag b : a.bags.values()) rekey(b);
+                    if (a.storage != null) rekey(a.storage);
                 }
                 store = s;
             }
         } catch (IOException | RuntimeException e) {
             DdingMate.LOG.warn("가방 기록을 읽지 못해 새로 시작합니다: {}", p, e);
         }
+    }
+
+    private static void rekey(Bag b) {
+        Map<String, Integer> counts = new HashMap<>();
+        b.counts.forEach((k, v) -> counts.merge(ItemKeys.rekey(k), v, Integer::sum));
+        b.counts = counts;
+        List<String> slots = new ArrayList<>();
+        for (String slot : b.slots) {
+            int star = slot.lastIndexOf('*');
+            slots.add(star < 0 ? slot : ItemKeys.rekey(slot.substring(0, star)) + slot.substring(star));
+        }
+        b.slots = slots;
     }
 
     public static void save() {

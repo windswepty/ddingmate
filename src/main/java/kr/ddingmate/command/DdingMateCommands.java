@@ -1,6 +1,7 @@
 package kr.ddingmate.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import kr.ddingmate.game.ServerHud;
 import kr.ddingmate.gui.DdingMateScreen;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.MinecraftClient;
@@ -16,7 +17,8 @@ public final class DdingMateCommands {
     private DdingMateCommands() {}
 
     public static void register(CommandDispatcher<FabricClientCommandSource> d) {
-        d.register(literal("띵메이트").executes(c -> {
+        // 띵타이쿤 대기 서버(스폰으로 옮겨지기 전)에서는 명령어가 없는 것처럼 둔다
+        d.register(literal("띵메이트").requires(s -> ServerHud.inGame()).executes(c -> {
             // 채팅창이 닫힌 다음 프레임에 연다.
             MinecraftClient client = MinecraftClient.getInstance();
             client.send(() -> client.setScreen(new DdingMateScreen(null)));

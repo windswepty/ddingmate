@@ -52,9 +52,25 @@ public final class Notifier {
                 Theme.RED, false);
     }
 
+    /** 제작·가공 시설에서 만들던 아이템이 다 됐을 때 */
+    public static void craftDone(String name, int count, int times) {
+        ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(name);
+        notify("제작", "제작 완료: " + name + (count > 1 ? " ×" + count : "") + (times > 1 ? " [" + times + "]" : ""),
+                times > 1 ? "넣어 둔 " + times + "번이 모두 끝났어요 · 시설에서 꺼내 가세요" : "시설에서 꺼내 가세요",
+                SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
+                Theme.GREEN, false);
+    }
+
     public static void todoReminder(int left, String names, int minutes) {
         notify("할 일", "오늘 할 일 " + left + "개 남았어요", "일일 초기화 " + minutes + "분 전 · " + names,
                 SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), new ItemStack(Items.WRITABLE_BOOK), Theme.GOLD, false);
+    }
+
+    /** 할 일 자동 세기: 채팅 알림을 켜 둔 경우에만 내 채팅창에 한 줄 남긴다(소리·팝업 없음) */
+    public static void todoProgress(String name, int progress, int target) {
+        if (!DdingMate.config().chatEnabled) return;
+        chat(Text.literal("할 일 " + name + " [" + progress + "/" + target + "]" + (progress >= target ? " 완료!" : ""))
+                .formatted(progress >= target ? Formatting.GREEN : Formatting.WHITE));
     }
 
     /** 접속 시간 보상. 채팅으로 꼭 알려 달라는 요청이라 채팅 알림을 꺼 두었어도 채팅에 남긴다. */

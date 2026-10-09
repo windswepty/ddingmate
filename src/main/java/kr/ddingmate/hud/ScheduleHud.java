@@ -88,7 +88,10 @@ public final class ScheduleHud {
         int text = Theme.text(dark);
         for (int i = 0; i < cached.size(); i++) {
             Entry e = cached.get(i);
-            int color = e.color() != 0 ? Theme.gold(dark)
+            // 제작 줄: 다 됨 초록, 진행 중 파랑(곧 끝나도 빨갛게 재촉하지 않는다), 시간 모름 흐리게
+            int color = e.color() == Theme.GREEN ? Theme.green(dark) : e.color() == Theme.TEXT_SOFT ? Theme.soft(dark)
+                    : e.color() == Theme.BLUE ? Theme.blue(dark)
+                    : e.color() != 0 ? Theme.gold(dark)
                     : e.minutes() < 10 ? Theme.red(dark) : e.minutes() < 60 ? Theme.gold(dark) : Theme.blue(dark);
             ctx.fill(x + 6, ty + 3, x + 9, ty + 6, color);
             Theme.textShadow(ctx, tr, e.label(), x + 13, ty + 1, text, dark);
@@ -147,7 +150,19 @@ public final class ScheduleHud {
             if (unclaimed != null && !unclaimed.isEmpty()) left = "받을 보상 " + unclaimed.size() + "개";
             else if (next == 0) left = unclaimed != null ? "보상 다 받음" : "보상 다 채움";
             else left = "다음 보상 " + hm(next * 3600L - played);
-            out.add(new Entry("오늘 접속 " + (synced ? "" : "약 ") + hm(played), left, Long.MAX_VALUE, Theme.GOLD));
+            // 서버 기록을 오늘 한 번도 못 봤으면 틀릴 수 있는 추정값 대신 확인 방법을 보여 준다
+            if (synced) out.add(new Entry("오늘 접속 " + hm(played), left, Long.MAX_VALUE, Theme.GOLD));
+            else out.add(new Entry("오늘 접속 시간", "/접속시간 열면 표시", Long.MAX_VALUE, Theme.GOLD));
+        }
+        // 제작 중인 아이템: 완료가 가까운 순서로
+        if (cfg.craft.enabled && cfg.craft.showInHud) {
+            long nowMs = System.currentTimeMillis();
+            // 같은 아이템·개수를 여러 번 넣었으면 한 줄로: "조약돌 뭉치 ×7 [3]" · 마지막 것이 끝날 때까지
+            for (kr.ddingmate.craft.CraftTimers.Group g : kr.ddingmate.craft.CraftTimers.groups()) {
+                long mins = g.unknown() ? Long.MAX_VALUE - 1 : Math.max(0, (g.endsAt() - nowMs) / 60000);
+                out.add(new Entry(g.label(), kr.ddingmate.craft.CraftTimers.remainingText(g, nowMs),
+                        mins, g.done() ? Theme.GREEN : g.unknown() ? Theme.TEXT_SOFT : Theme.BLUE));
+            }
         }
         for (ScheduleEngine.Occurrence o : ScheduleEngine.upcoming(DdingMate.rules(), cfg::isEnabled, now, cfg.hudLines)) {
             Duration left = Duration.between(now, o.time());

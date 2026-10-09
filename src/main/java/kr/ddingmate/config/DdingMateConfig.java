@@ -90,14 +90,27 @@ public final class DdingMateConfig {
     public static final class TodoItem {
         public String name = "";
         public Reset reset = Reset.DAILY;
-        /** 마지막으로 체크한 시각(ms). 초기화 시점보다 이전이면 안 한 것 */
+        /** 목표 횟수. 1 이면 체크 하나짜리, 10 이면 [0/10] 처럼 센다 */
+        public int target = 1;
+        /** 지금까지 한 횟수. doneAt 이 마지막 초기화보다 이전이면 0 으로 본다 */
+        public int progress;
+        /** 마지막으로 세거나 체크한 시각(ms) */
         public long doneAt;
+        /** 채팅에 이 문구가 뜨면 알아서 +1 (비워 두면 쓰지 않음) */
+        public String autoPhrase = "";
+        /** 어떤 할 일인지(TodoPreset.id) */
+        public String preset = "";
 
         public TodoItem() {}
 
         public TodoItem(String name, Reset reset) {
             this.name = name;
             this.reset = reset;
+        }
+
+        public TodoItem(String name, Reset reset, int target) {
+            this(name, reset);
+            this.target = target;
         }
     }
 
@@ -106,14 +119,30 @@ public final class DdingMateConfig {
         public Corner corner = Corner.TOP_RIGHT;
         /** 일일 초기화 몇 분 전에 남은 할 일을 알려 줄지 (0 = 알리지 않음) */
         public int remindMinutes = 60;
-        public List<TodoItem> items = new ArrayList<>(List.of(
-                new TodoItem("일일 의뢰", Reset.DAILY),
-                new TodoItem("오션오더", Reset.DAILY),
-                new TodoItem("미니보스", Reset.DAILY),
-                new TodoItem("바리스타", Reset.DAILY),
-                new TodoItem("인피니티 타워", Reset.DAILY),
-                new TodoItem("주간 의뢰", Reset.WEEKLY),
-                new TodoItem("접속 시간 보상 받기", Reset.MIDNIGHT)));
+        public List<TodoItem> items = new ArrayList<>(defaults());
+        /** 3 = 할 일은 모드가 알아서 셀 수 있는 것(TodoPreset)만. 예전 설정 파일에는 없어서 0 으로 읽히고, 한 번 정리한다 */
+        public int version = 0;
+
+        /** 기본 할 일: 알아서 셀 수 있는 것 전부(TodoPreset) */
+        public static List<TodoItem> defaults() {
+            List<TodoItem> out = new ArrayList<>();
+            for (kr.ddingmate.todo.TodoPreset p : kr.ddingmate.todo.TodoPreset.values()) out.add(p.create());
+            return out;
+        }
+    }
+
+    public static final class Craft {
+        /** 제작·가공 시설에서 만드는 아이템의 완료까지 남은 시간 세기 */
+        public boolean enabled = true;
+        /** 다 되면 소리·팝업으로 알림 */
+        public boolean notify = true;
+        /** 일정 HUD 에 제작 중인 아이템과 남은 시간 표시 */
+        public boolean showInHud = true;
+        /** 제작 시간을 줄여 주는 전문가 스킬 레벨(0 = 안 배움, 1~5). 위키 기준 */
+        public int mining;   // 채광 · 초고속 용광로: 채광물 가공·강화 제작 시설
+        public int farming;  // 재배 · 불 더 올려!: 농작물 가공·요리 제작 시설
+        public int marine;   // 해양 · 물 흐르듯 술술: 해양 제작·연금 제작 시설
+        public int hunting;  // 사냥 · 고속 영혼 가공기: 영혼 가공 시설
     }
 
     public static final class Playtime {
@@ -135,6 +164,10 @@ public final class DdingMateConfig {
     }
 
     public boolean hudEnabled = true;
+    /** /띵메이트 창을 한 번이라도 열었는지. 열기 전에는 HUD 를 그리지 않고 채팅 안내만 한다 */
+    public boolean opened = false;
+    /** 처음 /띵메이트 를 열 때 나오는 튜토리얼을 끝냈거나 건너뛰었는지 */
+    public boolean tutorialDone = false;
     /** 홈 탭의 "처음 사용 안내"를 숨겼는지 */
     public boolean guideSeen = false;
     /** 월드에 들어갈 때 "/띵메이트 로 열 수 있어요" 안내를 채팅에 한 번 남길지 */
@@ -158,6 +191,8 @@ public final class DdingMateConfig {
     public float soundVolume = 1.0f;
     public boolean toastEnabled = true;
     public boolean chatEnabled = true;
+    /** 화면 오른쪽 위 채널 표시를 읽어 지역별 "내 채널"을 알아서 맞출지 */
+    public boolean autoChannel = true;
     public int villageChannel = 0;
     public int huntChannel = 0;
     public int wildChannel = 0;
@@ -168,6 +203,7 @@ public final class DdingMateConfig {
     public Counter counter = new Counter();
     public Durability durability = new Durability();
     public Todo todo = new Todo();
+    public Craft craft = new Craft();
     public Playtime playtime = new Playtime();
 
     // ---------------------------------------------------------------- 저장·불러오기
@@ -242,14 +278,55 @@ public final class DdingMateConfig {
         if (durability.corner == null) durability.corner = Corner.BOTTOM_RIGHT;
         if (durability.tracked == null) durability.tracked = new ArrayList<>();
         durability.tracked.removeIf(t -> t == null || t.key == null || t.key.isBlank());
+        // 이름 규칙(서버 그림 글자 지우기)이 바뀌기 전에 저장한 장비는 키·이름을 다시 만들고, 같은 장비가 둘이면 하나만 남긴다
+        java.util.Set<String> seenKeys = new java.util.HashSet<>();
+        durability.tracked.removeIf(t -> {
+            t.key = kr.ddingmate.counter.ItemKeys.rekey(t.key);
+            t.name = t.name == null ? "" : kr.ddingmate.counter.ItemKeys.stripGlyphs(t.name).trim();
+            return !seenKeys.add(t.key);
+        });
         durability.warnPercent = Math.max(0, Math.min(90, durability.warnPercent));
         if (todo == null) todo = new Todo();
         if (todo.corner == null) todo.corner = Corner.TOP_RIGHT;
         if (todo.items == null) todo.items = new ArrayList<>();
         todo.items.removeIf(t -> t == null || t.name == null || t.name.isBlank());
-        for (TodoItem t : todo.items) if (t.reset == null) t.reset = Reset.DAILY;
+        if (todo.version < 3) {
+            // 알아서 셀 수 있는 것만 남긴다: 예전 이름을 해당 항목으로 바꾸고(센 값 유지), 나머지(출석 체크·직접 만든 것)는 뺀다
+            List<TodoItem> kept = new ArrayList<>();
+            for (TodoItem t : todo.items) {
+                kr.ddingmate.todo.TodoPreset p = kr.ddingmate.todo.TodoPreset.of(t);
+                if (p == null) p = kr.ddingmate.todo.TodoPreset.byOldName(t.name);
+                if (p == null) continue;
+                kr.ddingmate.todo.TodoPreset found = p;
+                if (kept.stream().anyMatch(k -> found.id.equals(k.preset))) continue;
+                t.preset = p.id;
+                kept.add(t);
+            }
+            if (todo.version == 0 && kept.isEmpty()) kept.addAll(Todo.defaults());
+            todo.items = kept;
+            todo.version = 3;
+        }
+        // 할 일은 직접 고치지 않는다: 이름·초기화·목표·문구는 늘 정해진 값
+        todo.items.removeIf(t -> kr.ddingmate.todo.TodoPreset.of(t) == null);
+        java.util.Set<String> presetSeen = new java.util.HashSet<>();
+        todo.items.removeIf(t -> !presetSeen.add(t.preset));
+        for (TodoItem t : todo.items) {
+            kr.ddingmate.todo.TodoPreset p = kr.ddingmate.todo.TodoPreset.of(t);
+            t.name = p.label;
+            t.reset = p.reset;
+            t.target = p.target;
+            t.autoPhrase = p.phrase;
+            // 예전 설정(체크만 있던 때): 체크 시각만 있으면 다 한 것으로
+            if (t.progress <= 0 && t.doneAt > 0 && t.target == 1) t.progress = 1;
+            t.progress = Math.max(0, Math.min(t.target, t.progress));
+        }
         todo.remindMinutes = Math.max(0, Math.min(600, todo.remindMinutes));
         if (playtime == null) playtime = new Playtime();
+        if (craft == null) craft = new Craft();
+        craft.mining = Math.max(0, Math.min(5, craft.mining));
+        craft.farming = Math.max(0, Math.min(5, craft.farming));
+        craft.marine = Math.max(0, Math.min(5, craft.marine));
+        craft.hunting = Math.max(0, Math.min(5, craft.hunting));
         // 채널 재시작 규칙까지 모두 만들 수 있도록 임의 채널로 전체 규칙을 받아 기본 설정을 채운다.
         for (EventRule r : ScheduleEngine.buildRules(new ScheduleEngine.Channels(1, 1, 1, 1, 1))) {
             EventSetting s = events.get(r.id());

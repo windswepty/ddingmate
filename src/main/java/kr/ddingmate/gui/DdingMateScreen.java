@@ -56,7 +56,7 @@ public class DdingMateScreen extends Screen {
     static final int HEADER_H = 26;
     private static final int TAB_ROWS = 2;
 
-    private enum Tab {
+    enum Tab {
         HOME("홈", Items.RED_BED), NOTIFY("알림 방식", Items.BELL), EVENTS("일정", Items.CLOCK), CHANNELS("내 채널", Items.COMPASS),
         KEYWORDS("키워드", Items.NAME_TAG), COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
         TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK);
@@ -99,6 +99,10 @@ public class DdingMateScreen extends Screen {
     private double savedScroll;
     private boolean confirmClearBags;
     private boolean confirmClearLog;
+    /** 진행 중인 튜토리얼. 없으면 null */
+    private Tutorial tutorial;
+    private boolean tutorialOffered;
+    private final java.util.Map<Tab, TabButton> tabButtons = new java.util.EnumMap<>(Tab.class);
 
     private int px, py, pw, ph;
     private int cx, cy, cw, ch;
@@ -110,6 +114,10 @@ public class DdingMateScreen extends Screen {
 
     @Override
     protected void init() {
+        if (!cfg.opened) {
+            cfg.opened = true; // 이제부터 HUD 를 보여 준다
+            cfg.save();
+        }
         pw = Math.min(400, width - 16);
         ph = height - 12;
         px = (width - pw) / 2;
@@ -128,6 +136,7 @@ public class DdingMateScreen extends Screen {
             b.setX(cx + (i % perRow) * (tabW + 3));
             b.setY(py + HEADER_H + 5 + (i / perRow) * 23);
             addDrawableChild(b);
+            tabButtons.put(tabs[i], b);
         }
         if (tab == Tab.LOG) AlertLog.markRead();
 
@@ -146,6 +155,104 @@ public class DdingMateScreen extends Screen {
         done.setX(px + pw - 126);
         done.setY(py + ph - 27);
         addDrawableChild(done);
+
+        // 처음 열면 튜토리얼을 한 번 보여 준다
+        if (!cfg.tutorialDone && !tutorialOffered) {
+            tutorialOffered = true;
+            client.send(this::startTutorial);
+        }
+    }
+
+    // ---------------------------------------------------------------- 튜토리얼
+
+    /** 튜토리얼 시작(홈의 '튜토리얼 다시 보기'에서도 부른다) */
+    public void startTutorial() {
+        tutorial = new Tutorial(this::switchTab, t -> {
+            TabButton b = tabButtons.get(t);
+            return b == null ? null : new int[]{b.getX(), b.getY(), b.getWidth(), b.getHeight()};
+        }, key -> list == null ? null : list.focus(key), this::endTutorial);
+        tutorial.start();
+    }
+
+    private void endTutorial() {
+        tutorial = null;
+        cfg.tutorialDone = true;
+        cfg.save();
+        switchTab(Tab.HOME);
+    }
+
+    /** 시험용 */
+    public boolean tutorialActive() {
+        return tutorial != null;
+    }
+
+    public int tutorialStep() {
+        return tutorial == null ? -1 : tutorial.index();
+    }
+
+    public int tabIndex() {
+        return tab.ordinal();
+    }
+
+    /** 지금 튜토리얼이 강조하는 자리. 시험용 */
+    public int[] tutorialHighlight() {
+        return tutorial == null ? null : tutorial.highlight();
+    }
+
+    public int[] tutorialPanel() {
+        return tutorial == null ? null : tutorial.panel();
+    }
+
+    /** 튜토리얼 단계 수. 시험용 */
+    public static int tutorialSteps() {
+        return Tutorial.STEPS.size();
+    }
+
+    @Override
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        if (tutorial == null) {
+            super.render(ctx, mouseX, mouseY, delta);
+            return;
+        }
+        // 튜토리얼 중에는 아래 창에 마우스가 닿지 않은 것처럼 그리고, 그 위에 안내를 덧그린다
+        super.render(ctx, -1, -1, delta);
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(0, 0, 400);
+        tutorial.render(ctx, textRenderer, width, height, new int[]{px, py, pw, ph}, mouseX, mouseY, delta);
+        ctx.getMatrices().pop();
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (tutorial != null) {
+            tutorial.mouseClicked(mouseX, mouseY, button);
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        return tutorial != null || super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+        return tutorial != null || super.mouseDragged(mouseX, mouseY, button, dx, dy);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (tutorial != null) {
+            tutorial.keyPressed(keyCode);
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char chr, int modifiers) {
+        return tutorial != null || super.charTyped(chr, modifiers);
     }
 
     /** 탭 번호(0부터)로 바로 이동. 시험·단축 이동용 */
@@ -194,8 +301,7 @@ public class DdingMateScreen extends Screen {
                 v -> "소리 크기  " + Math.round(v * 100) + "%", v -> cfg.soundVolume = (float) v));
 
         list.header("HUD 모양");
-        list.pair(new Widgets.Cycle<>(half(), "일정 HUD 위치", List.of(DdingMateConfig.Corner.values()), cfg.hudCorner,
-                        DdingMateScreen::cornerName, v -> cfg.hudCorner = v),
+        list.pair(hudButton(),
                 new Widgets.Cycle<>(half(), "보일 일정 수", IntStream.rangeClosed(1, 10).boxed().toList(), cfg.hudLines,
                         n -> n + "개", v -> cfg.hudLines = v));
         list.pair(new Widgets.Cycle<>(half(), "HUD 스타일", List.of(DdingMateConfig.HudStyle.values()), cfg.hudStyle,
@@ -204,12 +310,12 @@ public class DdingMateScreen extends Screen {
                         v -> v + "%", v -> cfg.hudOpacity = v));
         Widgets.Cycle<Integer> size = new Widgets.Cycle<>(half(), "HUD 전체 크기", List.of(50, 60, 70, 80, 90, 100),
                 nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
-        size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 편집'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));
+        size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 설정'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));
         Widgets.Toggle avoid = toggle("서버 HUD 피하기", cfg.avoidServerHud, v -> cfg.avoidServerHud = v);
         avoid.setTooltip(Tooltip.of(Text.literal("구석 HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.")));
         list.pair(size, avoid);
         list.pair(toggle("띵타이쿤 글꼴(갈무리)", cfg.galmuriFont, v -> cfg.galmuriFont = v), null);
-        Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 편집"), true, b -> {
+        Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 설정"), true, b -> {
             savedScroll = list.getScrollY();
             client.setScreen(new HudEditorScreen(this));
         });
@@ -280,7 +386,9 @@ public class DdingMateScreen extends Screen {
             int next = PlaytimeTracker.nextRewardHour(sec);
             String state = unclaimed != null && !unclaimed.isEmpty() ? "받을 보상 " + unclaimed.size() + "개"
                     : next == 0 ? "보상 구간 다 채움" : "다음 보상까지 " + ScheduleHud.hm(next * 3600L - sec);
-            String label = "오늘 접속 " + (PlaytimeTracker.syncedAt() > 0 ? "" : "약 ") + ScheduleHud.hm(sec);
+            boolean synced = PlaytimeTracker.syncedAt() > 0;
+            String label = synced ? "오늘 접속 " + ScheduleHud.hm(sec) : "오늘 접속 시간";
+            if (!synced) state = "/접속시간 창을 열면 맞춰져요";
             list.single(new InfoRow(new ItemStack(Items.NETHER_STAR), label, state,
                     unclaimed != null && !unclaimed.isEmpty() ? Theme.GOLD : Theme.TEXT_SOFT, Tab.TODO));
         }
@@ -298,7 +406,7 @@ public class DdingMateScreen extends Screen {
             list.single(new InfoRow(new ItemStack(Items.CHEST), "재료 카운터 · 핀이 비어 있어요", "레시피 고르기", Theme.BLUE_MID, Tab.COUNTER));
         }
         for (MaterialCounter.PinView v : pins) {
-            ItemStack icon = v.recipe().materials.isEmpty() ? null : IconCache.forMaterial(v.recipe().materials.get(0).name);
+            ItemStack icon = IconCache.forRecipe(v.recipe()); // 만드는 아이템 모양
             list.single(new InfoRow(icon == null ? new ItemStack(Items.CHEST) : icon,
                     MaterialCounter.title(v.pin(), v.recipe()),
                     v.done() ? "준비 완료" : "재료 " + v.doneCount() + "/" + v.lines().size(),
@@ -312,10 +420,29 @@ public class DdingMateScreen extends Screen {
         }
         for (DurabilityTracker.Row r : gear) {
             DurabilityTracker.Durability d = r.durability();
-            list.single(new InfoRow(r.stack() == null ? new ItemStack(Items.ANVIL) : r.stack(), r.item().name,
+            ItemStack seen = r.stack() != null ? r.stack() : kr.ddingmate.counter.IconCache.forKey(r.item().key);
+            list.single(new InfoRow(seen == null ? new ItemStack(Items.ANVIL) : seen, r.item().name,
                     d == null ? "인벤토리에 없음" : d.left() + "/" + d.max(),
                     d == null ? Theme.TEXT_SOFT : d.ratio() > 0.5 ? Theme.GREEN : d.ratio() > 0.2 ? Theme.GOLD : Theme.RED, Tab.GEAR));
         }
+
+        List<kr.ddingmate.craft.CraftTimers.Group> crafting = cfg.craft.enabled ? kr.ddingmate.craft.CraftTimers.groups() : List.of();
+        if (!crafting.isEmpty()) {
+            list.header("제작 중");
+            long nowMs = System.currentTimeMillis();
+            for (kr.ddingmate.craft.CraftTimers.Group j : crafting) {
+                ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(j.name());
+                list.single(new InfoRow(icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
+                        j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
+                        j.done() ? Theme.GREEN : j.unknown() ? Theme.TEXT_SOFT : Theme.BLUE, Tab.COUNTER));
+            }
+        }
+
+        list.header("도움말");
+        Widgets.Button replay = new Widgets.Button(rowWidth(), 20, Text.literal("튜토리얼 다시 보기"), false, b -> startTutorial())
+                .icon(new ItemStack(Items.BOOK));
+        replay.setTooltip(Tooltip.of(Text.literal("기능을 하나씩 소개하는 안내를 처음부터 다시 봐요")));
+        list.single(replay);
     }
 
     private int homeTicks;
@@ -328,14 +455,26 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildChannels() {
-        list.guide("자주 가는 채널 번호를 고르면, 그 채널이 재시작되기 전에 미리 알려 줘요.");
-        list.header("내가 주로 있는 채널");
+        list.guide("내가 있는 채널이 재시작되기 전에 미리 알려 줘요. 화면 오른쪽 위 채널 표시(예: 마을30)를 읽어 알아서 맞춰요.");
+        list.header("채널 자동 인식");
+        list.single(tip(toggle("지금 있는 채널 자동 인식", cfg.autoChannel, v -> {
+            cfg.autoChannel = v;
+            rebuild();
+        }), "채널을 옮기면 그 지역의 내 채널을 알아서 바꿔요. 끄면 아래에서 직접 골라요"));
+        kr.ddingmate.game.ServerHud.Area here = kr.ddingmate.game.ServerHud.area();
+        list.note(here == null
+                ? "지금 있는 곳: 아직 못 읽었어요 (스폰에 들어가면 화면 오른쪽 위 표시를 읽어요)"
+                : "지금 있는 곳: " + here.label + " " + kr.ddingmate.game.ServerHud.channel() + "채널"
+                        + (cfg.autoChannel ? " · 이 지역의 내 채널로 맞췄어요" : ""));
+        list.header(cfg.autoChannel ? "지역별 내 채널 · 마지막으로 있던 채널" : "지역별 내 채널");
         list.pair(channel("마을", 35, cfg.villageChannel, v -> cfg.villageChannel = v),
                 channel("노크틸라", 24, cfg.huntChannel, v -> cfg.huntChannel = v));
         list.pair(channel("야생", 16, cfg.wildChannel, v -> cfg.wildChannel = v),
                 channel("아일랜드", 15, cfg.islandChannel, v -> cfg.islandChannel = v));
         list.pair(channel("스폰", 4, cfg.spawnChannel, v -> cfg.spawnChannel = v), null);
-        list.note("'끔'이면 그 채널 재시작은 알리지 않아요. 클릭하면 다음 번호, 오른쪽 클릭이나 Shift+클릭은 이전 번호예요.");
+        list.note(cfg.autoChannel
+                ? "가 본 지역은 알아서 채워져요. 직접 바꿔도 되고, '끔'이면 그 지역 재시작은 알리지 않아요(그 지역에 다시 가면 다시 켜져요)."
+                : "'끔'이면 그 채널 재시작은 알리지 않아요. 클릭하면 다음 번호, 오른쪽 클릭이나 Shift+클릭은 이전 번호예요.");
     }
 
     private void buildKeywords() {
@@ -380,8 +519,7 @@ public class DdingMateScreen extends Screen {
         list.header("표시와 알림");
         list.pair(tip(toggle("카운터 HUD", cc.enabled, v -> cc.enabled = v), "핀한 레시피의 재료 현황을 화면 구석에 보여 줘요"),
                 tip(toggle("가방도 합산", cc.includeBags, v -> cc.includeBags = v), "한 번 열어 본 모험 가방 안의 재료도 함께 세요"));
-        list.pair(new Widgets.Cycle<>(half(), "카운터 위치", List.of(DdingMateConfig.Corner.values()), cc.corner,
-                        DdingMateScreen::cornerName, v -> cc.corner = v),
+        list.pair(hudButton(),
                 toggle("다 모이면 알림", cc.notifyComplete, v -> cc.notifyComplete = v));
         Widgets.Toggle expand = toggle("원재료까지 펼치기", cc.expandSubMaterials, v -> cc.expandSubMaterials = v);
         expand.setTooltip(Tooltip.of(Text.literal("모자란 재료가 다른 레시피로 만드는 것이면(예: 조약돌 뭉치 = 조약돌 64개) 모자란 만큼 필요한 원재료를 아래에 보여 줘요.")));
@@ -427,6 +565,44 @@ public class DdingMateScreen extends Screen {
             list.single(new InfoRow(new ItemStack(Items.BARREL), "아이템 저장소",
                     CounterHud.ago(storageAt) + " 확인", Theme.TEXT_SOFT, null));
         }
+
+        // 제작 완료 타이머
+        DdingMateConfig.Craft cr = cfg.craft;
+        list.header("제작 완료 타이머");
+        list.pair(tip(toggle("제작 완료 타이머", cr.enabled, v -> {
+                    cr.enabled = v;
+                    rebuild();
+                }), "제작·가공 시설에서 만드는 아이템마다 완료까지 남은 시간을 세요"),
+                tip(toggle("다 되면 알림", cr.notify, v -> cr.notify = v), "다 되면 소리와 팝업으로 알려 줘요"));
+        list.pair(tip(toggle("일정 HUD 에 표시", cr.showInHud, v -> cr.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"), null);
+        list.note("제작을 시작하면 알아서 등록돼요. 시설 창을 한 번 열면 레시피의 \"제작 시간\"을 배워서, 넣은 순서대로 "
+                + "하나씩 끝나는 시각을 계산해요. 같은 걸 여러 번 넣으면 \"×7 [3]\" 처럼 한 줄로 묶고 마지막 것이 끝날 때까지 세요. 꺼내면 빠져요.");
+        list.header("제작 시간 줄이기 · 배운 전문가 스킬");
+        list.pair(fastSkill("채광 · 초고속 용광로", cr.mining, v -> cr.mining = v, "채광물 가공 시설·강화 제작 시설", false),
+                fastSkill("재배 · 불 더 올려!", cr.farming, v -> cr.farming = v, "농작물 가공 시설·요리 제작 시설", false));
+        list.pair(fastSkill("해양 · 물 흐르듯 술술", cr.marine, v -> cr.marine = v, "해양 제작 시설·연금 제작 시설", true),
+                fastSkill("사냥 · 고속 영혼 가공기", cr.hunting, v -> cr.hunting = v, "영혼 가공 시설", false));
+        list.note("시설 창에 적힌 제작 시간은 스킬을 적용하기 전 시간이에요. 배운 레벨을 골라 두면 줄어든 실제 시간으로 계산해요.");
+        list.header("지금 만드는 중");
+        List<kr.ddingmate.craft.CraftTimers.Group> jobs = kr.ddingmate.craft.CraftTimers.groups();
+        if (jobs.isEmpty()) {
+            list.note(client != null && client.player != null
+                    ? "만들고 있는 아이템이 없어요. 시설에서 제작을 시작하면 여기에 나와요."
+                    : "게임에 들어가 있을 때 보여요.");
+        }
+        long nowMs = System.currentTimeMillis();
+        for (kr.ddingmate.craft.CraftTimers.Group j : jobs) {
+            ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(j.name());
+            InfoRow row = new InfoRow(icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
+                    j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
+                    j.done() ? Theme.GREEN : j.unknown() ? Theme.TEXT_SOFT : Theme.BLUE, null);
+            Widgets.Button del = new Widgets.Button(44, 20, Text.literal("지우기"), false, b -> {
+                kr.ddingmate.craft.CraftTimers.remove(j);
+                rebuild();
+            });
+            del.setTooltip(Tooltip.of(Text.literal("이미 꺼냈거나 잘못 등록된 제작을 목록에서 지워요")));
+            list.withButton(row, del);
+        }
     }
 
     private void buildGear() {
@@ -441,7 +617,7 @@ public class DdingMateScreen extends Screen {
         }
         for (Map.Entry<String, ItemStack> e : found.entrySet()) {
             ItemStack s = e.getValue();
-            String name = s.getName().getString();
+            String name = kr.ddingmate.counter.ItemKeys.stripGlyphs(s.getName().getString()).trim();
             DurabilityTracker.Durability d = DurabilityTracker.read(s);
             list.single(new Widgets.Toggle(rowWidth(), name, DurabilityTracker.isTracked(e.getKey()),
                     v -> DurabilityTracker.setTracked(e.getKey(), name, v))
@@ -457,8 +633,7 @@ public class DdingMateScreen extends Screen {
         }
         list.header("표시와 알림");
         list.pair(tip(toggle("내구도 HUD", dc.enabled, v -> dc.enabled = v), "켜 둔 장비의 남은 내구도를 화면 구석에 보여 줘요"),
-                new Widgets.Cycle<>(half(), "HUD 위치", List.of(DdingMateConfig.Corner.values()), dc.corner,
-                        DdingMateScreen::cornerName, v -> dc.corner = v));
+                hudButton());
         list.pair(new Widgets.Cycle<>(half(), "부족 알림", List.of(0, 5, 10, 15, 20, 30),
                 nearestOf(dc.warnPercent, 0, 5, 10, 15, 20, 30),
                 v -> v == 0 ? "끔" : v + "% 이하", v -> dc.warnPercent = v), null);
@@ -468,35 +643,36 @@ public class DdingMateScreen extends Screen {
     private void buildTodo() {
         DdingMateConfig.Todo tc = cfg.todo;
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
-        list.guide("매일 할 일을 체크해 두세요. 초기화 시각(03시·목 03시·자정)이 지나면 체크가 알아서 풀려요.");
-        list.header("오늘 할 일");
+        list.guide("할 일은 서버가 보내는 메시지를 보고 알아서 세요(직접 체크하지 않아요). 초기화 시각이 지나면 0 으로 돌아가요.");
+        list.header("오늘 할 일 · 알아서 세요");
+        if (tc.items.isEmpty()) list.note("목록이 비었어요. 아래에서 넣을 할 일을 골라 주세요.");
         for (DdingMateConfig.TodoItem item : tc.items) {
-            Widgets.Toggle t = new Widgets.Toggle(rowWidth(), item.name, TodoList.isDone(item, now),
-                    v -> TodoList.setDone(item, v)).detail(TodoList.resetName(item.reset));
-            Widgets.Button del = new Widgets.Button(44, 20, Text.literal("삭제"), false, b -> {
+            TodoRow main = new TodoRow(item);
+            Widgets.Button remove = new Widgets.Button(44, 20, Text.literal("빼기"), false, b -> {
                 tc.items.remove(item);
                 rebuild();
             });
-            list.withButton(t, del);
+            remove.setTooltip(Tooltip.of(Text.literal("목록에서 빼요. 아래 '넣을 수 있는 할 일'에서 다시 넣을 수 있어요")));
+            list.withButton(main, remove);
         }
-        Widgets.Field name = new Widgets.Field(rowWidth() - 120 - 44 - GAP * 2, Text.literal("새 할 일"));
-        name.setMaxLength(30);
-        name.setPlaceholder(Text.literal("새 할 일 이름"));
-        DdingMateConfig.Reset[] chosen = {DdingMateConfig.Reset.DAILY};
-        Widgets.Cycle<DdingMateConfig.Reset> reset = new Widgets.Cycle<>(120, "", List.of(DdingMateConfig.Reset.values()),
-                chosen[0], TodoList::resetName, v -> chosen[0] = v);
-        Widgets.Button add = new Widgets.Button(44, 20, Text.literal("추가"), true, b -> {
-            String n = name.getText().trim();
-            if (n.isEmpty()) return;
-            tc.items.add(new DdingMateConfig.TodoItem(n, chosen[0]));
-            rebuild();
-        });
-        list.row(name, reset, add);
+        list.header("넣을 수 있는 할 일");
+        boolean any = false;
+        for (kr.ddingmate.todo.TodoPreset p : kr.ddingmate.todo.TodoPreset.values()) {
+            if (tc.items.stream().anyMatch(t -> p.id.equals(t.preset))) continue;
+            any = true;
+            Widgets.Button add = new Widgets.Button(rowWidth(), 20,
+                    Text.literal("＋ " + p.label + (p.target > 1 ? " [0/" + p.target + "]" : "") + " · " + TodoList.resetName(p.reset)), false, b -> {
+                tc.items.add(p.create());
+                rebuild();
+            });
+            add.setTooltip(Tooltip.of(Text.literal(p.how)));
+            list.single(add);
+        }
+        if (!any) list.note("알아서 셀 수 있는 할 일을 모두 넣었어요.");
 
         list.header("표시와 알림");
         list.pair(tip(toggle("할 일 HUD", tc.hudEnabled, v -> tc.hudEnabled = v), "아직 안 한 할 일을 화면 구석에 보여 줘요"),
-                new Widgets.Cycle<>(half(), "HUD 위치", List.of(DdingMateConfig.Corner.values()), tc.corner,
-                        DdingMateScreen::cornerName, v -> tc.corner = v));
+                hudButton());
         list.pair(new Widgets.Cycle<>(half(), "남은 할 일 알림", List.of(0, 30, 60, 120),
                 nearestOf(tc.remindMinutes, 0, 30, 60, 120),
                 v -> v == 0 ? "끔" : "03시 " + v + "분 전", v -> tc.remindMinutes = v), null);
@@ -562,6 +738,32 @@ public class DdingMateScreen extends Screen {
     private static <W extends ClickableWidget> W tip(W widget, String text) {
         widget.setTooltip(Tooltip.of(Text.literal(text)));
         return widget;
+    }
+
+    /** 제작 시간을 줄여 주는 전문가 스킬 레벨 고르기: "안 배움" / "1레벨 · 10%" … */
+    private Widgets.Cycle<Integer> fastSkill(String name, int level, java.util.function.IntConsumer set, String facilities, boolean marine) {
+        int[] pct = marine ? new int[]{0, 10, 20, 30, 50, 70} : new int[]{0, 10, 30, 40, 60, 80};
+        Widgets.Cycle<Integer> c = new Widgets.Cycle<>(half(), name, IntStream.rangeClosed(0, 5).boxed().toList(), level,
+                v -> v == 0 ? "안 배움" : v + "레벨 · " + pct[v] + "%", v -> {
+                    set.accept(v);
+                    kr.ddingmate.craft.CraftTimers.recalculate();
+                });
+        c.setTooltip(Tooltip.of(Text.literal(facilities + "의 제작 시간을 줄여 주는 스킬이에요. 배운 레벨을 고르면 남은 시간을 그만큼 줄여 계산해요.")));
+        return c;
+    }
+
+    /** 반쪽 너비 "HUD 위치·크기 설정" 단추: 게임 화면에서 HUD 를 끌어 옮기고 크기를 바꾸는 편집 화면을 연다 */
+    private Widgets.Button hudButton() {
+        Widgets.Button b = new Widgets.Button(half(), 20, Text.literal("HUD 위치·크기 설정"), false, x -> {
+            savedScroll = list.getScrollY();
+            client.setScreen(new HudEditorScreen(this));
+        });
+        boolean inGame = client != null && client.player != null;
+        b.active = inGame;
+        b.setTooltip(Tooltip.of(Text.literal(inGame
+                ? "누르면 게임 화면에서 HUD 를 마우스로 끌어 옮기고, 휠이나 모서리로 크기를 바꿔요. 아래쪽 [저장]·[초기화] 단추로 마무리해요."
+                : "게임에 들어가 있을 때 쓸 수 있어요")));
+        return b;
     }
 
     private Widgets.Toggle toggle(String name, boolean value, Consumer<Boolean> set) {
@@ -651,18 +853,21 @@ public class DdingMateScreen extends Screen {
         Theme.item(ctx, new ItemStack(Items.CLOCK), x + 19, y + 9, 14);
         Theme.item(ctx, new ItemStack(Items.CHEST), x + w - 22, y + 6, 16);
         Theme.item(ctx, new ItemStack(Items.COMPASS), x + w - 34, y + 9, 14);
-        // 제목
+        // 제목 + 비공식 꼬리표를 한 덩어리로 보고 가운데에 놓는다(제목만 가운데면 꼬리표 때문에 오른쪽으로 쏠려 보인다)
         Text t = Theme.title(title);
         int tw = tr.getWidth(t);
-        int tx = x + (w - tw) / 2;
-        ctx.drawText(tr, t, tx + 1, y + 9, 0x55FFFFFF, false);
-        ctx.drawText(tr, t, tx, y + 8, Theme.INK, false);
-        // 비공식 꼬리표
         String badge = "비공식";
         int bw = Theme.width(tr, badge) + 6;
-        int bx = tx + tw + 5;
-        ctx.fill(bx, y + 9, bx + bw, y + 18, Theme.SLATE);
-        Theme.text(ctx, tr, badge, bx + 3, y + 10, Theme.WHITE);
+        int gap = 5;
+        int tx = x + (w - (tw + gap + bw)) / 2;
+        int mid = y + 2 + (HEADER_H - 2) / 2; // 하늘색 머리띠의 세로 가운데
+        int ty = mid - 2; // 제목 글꼴(크기 10)은 글자가 줄 위쪽에 붙어 그려져서 2칸 내린다
+        ctx.drawText(tr, t, tx + 1, ty + 1, 0x55FFFFFF, false);
+        ctx.drawText(tr, t, tx, ty, Theme.INK, false);
+        int bx = tx + tw + gap;
+        int by = mid - 4;
+        ctx.fill(bx, by, bx + bw, by + 9, Theme.SLATE);
+        Theme.text(ctx, tr, badge, bx + 3, by + 1, Theme.WHITE);
     }
 
     @Override
@@ -700,7 +905,7 @@ public class DdingMateScreen extends Screen {
             int x = getX() + (width - tw) / 2;
             int dy = on ? 1 : 0;
             Theme.item(ctx, target.icon, x, getY() + 4 + dy, 12);
-            Theme.boldText(ctx, textRenderer, s, x + 14, getY() + 6 + dy, on ? 0xFFDCE8FF : Theme.WHITE, true);
+            Theme.boldText(ctx, textRenderer, s, x + 14, getY() + 6 + dy, on ? 0xFFDCE8FF : Theme.WHITE, false);
         }
 
         @Override
@@ -755,6 +960,64 @@ public class DdingMateScreen extends Screen {
         }
     }
 
+    /**
+     * 할 일 한 줄(보기만): 이름 + 초기화 시각 + 오른쪽에 ON/OFF(목표 1) 또는 [2/5] 와 진행 막대(목표 2 이상).
+     * 서버 메시지를 보고 알아서 세므로 눌러도 바뀌지 않는다. 마우스를 올리면 어떻게 세는지 보여 준다.
+     */
+    private class TodoRow extends PressableWidget {
+        private final DdingMateConfig.TodoItem item;
+
+        TodoRow(DdingMateConfig.TodoItem item) {
+            super(0, 0, 150, 20, Text.literal(item.name));
+            this.item = item;
+            kr.ddingmate.todo.TodoPreset p = kr.ddingmate.todo.TodoPreset.of(item);
+            setTooltip(Tooltip.of(Text.literal(item.name + " · " + TodoList.resetName(item.reset) + " 초기화"
+                    + (p == null ? "" : "\n" + p.how))));
+        }
+
+        @Override
+        public void onPress() {
+            // 직접 체크하지 않는다(알아서 셈)
+        }
+
+        @Override
+        protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+            ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+            boolean done = TodoList.isDone(item, now);
+            Theme.row(ctx, getX(), getY(), width, height, isSelected());
+            int right = getX() + width - 6;
+            if (item.target > 1) {
+                int p = TodoList.progress(item, now);
+                String cnt = p + "/" + item.target;
+                int cw = Theme.boldWidth(textRenderer, cnt);
+                Theme.boldText(ctx, textRenderer, cnt, right - cw, getY() + 5, done ? Theme.GREEN_ON_LIGHT : Theme.BLUE_ON_LIGHT, false);
+                right -= cw + 6;
+                // 진행 막대
+                int bx = getX() + 6, bw = width - 12;
+                ctx.fill(bx, getY() + height - 4, bx + bw, getY() + height - 2, Theme.SLATE);
+                ctx.fill(bx, getY() + height - 4, bx + Math.round(bw * (float) p / item.target), getY() + height - 2,
+                        done ? Theme.GREEN : Theme.BLUE);
+            } else {
+                Theme.onOff(ctx, textRenderer, getX() + width - 39, getY() + 3, done, isSelected());
+                right = getX() + width - 44;
+            }
+            String reset = TodoList.resetName(item.reset);
+            int rw = Theme.width(textRenderer, reset);
+            Theme.text(ctx, textRenderer, reset, right - rw, getY() + 5, Theme.TEXT_SOFT);
+            String name = Theme.ellipsize(textRenderer, item.name, right - rw - 8 - (getX() + 7));
+            Theme.text(ctx, textRenderer, name, getX() + 7, getY() + 5, done ? Theme.GREEN_ON_LIGHT : Theme.TEXT);
+            if (done) {
+                int nw = Theme.width(textRenderer, name);
+                ctx.fill(getX() + 7, getY() + 9, getX() + 7 + nw, getY() + 10, Theme.GREEN_ON_LIGHT); // 다 한 일은 줄 긋기
+            }
+        }
+
+        @Override
+        protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+            appendDefaultNarrations(builder);
+        }
+    }
+
     /** 핀 칸: 번호 꼬리표 + 재료 아이콘 몇 개 + 레시피 이름. 누르면 레시피 고르기 화면 */
     private class PinButton extends PressableWidget {
         private final int index;
@@ -787,25 +1050,29 @@ public class DdingMateScreen extends Screen {
             int x = getX() + 3;
             Theme.tile(ctx, x, getY() + 3, 14, 14, Theme.Tile.BLUE, false);
             String n = String.valueOf(index + 1);
-            Theme.boldText(ctx, textRenderer, n, x + 7 - Theme.boldWidth(textRenderer, n) / 2, getY() + 6, Theme.WHITE, true);
+            Theme.boldText(ctx, textRenderer, n, x + 7 - Theme.boldWidth(textRenderer, n) / 2, getY() + 6, Theme.WHITE, false);
             x += 18;
             RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
             if (r == null) {
                 Theme.text(ctx, textRenderer, "비어 있음 · 눌러서 레시피 고르기", x + 2, getY() + 6, Theme.TEXT_SOFT);
                 return;
             }
-            int shown = 0;
-            for (RecipeBook.Material m : r.materials) {
-                if (shown == 3) break;
-                ItemStack icon = IconCache.forMaterial(m.name);
-                if (icon != null) Theme.item(ctx, icon, x, getY() + 2, 16);
-                else Theme.unknownIcon(ctx, textRenderer, x + 1, getY() + 3, 14);
-                x += 15;
-                shown++;
-            }
-            x += 4;
-            String name = Theme.ellipsize(textRenderer, MaterialCounter.title(pin, r), getX() + width - 6 - x, true);
+            // [만드는 아이템] 이름 │ 재료 그림들
+            ItemStack out = IconCache.forRecipe(r);
+            if (out != null) Theme.item(ctx, out, x, getY() + 2, 16);
+            else Theme.unknownIcon(ctx, textRenderer, x + 1, getY() + 3, 14);
+            x += 20;
+            int mats = Math.min(4, r.materials.size());
+            String name = Theme.ellipsize(textRenderer, MaterialCounter.title(pin, r), Math.max(40, getX() + width - 10 - mats * 15 - x), true);
             Theme.boldText(ctx, textRenderer, name, x, getY() + 6, Theme.TEXT, false);
+            int mx = x + Theme.boldWidth(textRenderer, name) + 7;
+            if (mats > 0) ctx.fill(mx - 4, getY() + 4, mx - 3, getY() + height - 4, Theme.withAlpha(Theme.TEXT_SOFT, 120));
+            for (int i = 0; i < mats; i++) {
+                ItemStack icon = IconCache.forMaterial(r.materials.get(i).name);
+                if (icon != null) Theme.item(ctx, icon, mx, getY() + 3, 14);
+                else Theme.unknownIcon(ctx, textRenderer, mx + 1, getY() + 4, 12);
+                mx += 15;
+            }
         }
 
         @Override
@@ -860,6 +1127,25 @@ public class DdingMateScreen extends Screen {
 
         void header(String text) {
             addEntry(new Row(List.of(), text, RowKind.HEADER));
+        }
+
+        /**
+         * 튜토리얼이 설명할 설정 줄을 찾아 보이게 스크롤하고 그 줄의 자리 {x, y, w, h} 를 돌려준다.
+         * 위젯 이름이 똑같은 줄 → 글이 똑같은 줄 → 위젯 이름이 그 말로 시작하는 줄 순서로 찾는다.
+         */
+        int[] focus(String key) {
+            Row found = null;
+            for (Row r : children()) if (r.widgetNamed(key, true)) { found = r; break; }
+            if (found == null) for (Row r : children()) if (key.equals(r.text)) { found = r; break; }
+            if (found == null) for (Row r : children()) if (r.widgetNamed(key, false)) { found = r; break; }
+            if (found == null) return null;
+            int i = children().indexOf(found);
+            int top = getRowTop(i);
+            if (top < getY() + 2 || top + 24 > getBottom() - 2) {
+                centerScrollOn(found);
+                top = getRowTop(i);
+            }
+            return new int[]{getRowLeft() - 2, top - 1, getRowWidth() + 4, 23};
         }
 
         void note(String text) {
@@ -1011,6 +1297,14 @@ public class DdingMateScreen extends Screen {
                 }
             }
             if (kind == RowKind.UNIT) Theme.text(ctx, textRenderer, text, cxp, y + 6, Theme.TEXT_SOFT);
+        }
+
+        boolean widgetNamed(String key, boolean exact) {
+            for (ClickableWidget w : widgets) {
+                String m = w.getMessage().getString();
+                if (exact ? m.equals(key) : m.startsWith(key)) return true;
+            }
+            return false;
         }
 
         @Override

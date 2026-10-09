@@ -45,16 +45,18 @@ public final class TodoHud {
         }
         TextRenderer tr = client.textRenderer;
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
-        List<DdingMateConfig.TodoItem> left = TodoList.remaining(now);
-        int total = cfg.items.size();
+        List<DdingMateConfig.TodoItem> items = cfg.items;
+        int total = items.size();
+        int done = total - TodoList.remaining(now).size();
         boolean dark = all.hudStyle != DdingMateConfig.HudStyle.LIGHT;
         int alpha = all.hudOpacity * 255 / 100;
 
-        String title = "오늘 할 일 " + (total - left.size()) + "/" + total;
-        List<DdingMateConfig.TodoItem> shown = left.subList(0, Math.min(MAX_ROWS, left.size()));
-        int nameW = Theme.width(tr, left.isEmpty() ? "오늘 할 일 끝!" : "외 00개");
-        for (DdingMateConfig.TodoItem t : shown) nameW = Math.max(nameW, Theme.width(tr, t.name));
-        int rows = left.isEmpty() ? 1 : shown.size() + (left.size() > MAX_ROWS ? 1 : 0);
+        // 다 한 일도 지우지 않고 체크 표시로 남긴다
+        String title = "오늘 할 일 " + done + "/" + total;
+        List<DdingMateConfig.TodoItem> shown = items.subList(0, Math.min(MAX_ROWS, total));
+        int nameW = Theme.width(tr, "외 00개");
+        for (DdingMateConfig.TodoItem t : shown) nameW = Math.max(nameW, Theme.width(tr, TodoList.label(t, now)));
+        int rows = shown.size() + (total > MAX_ROWS ? 1 : 0);
         int boxW = Math.max(14 + nameW, 18 + Theme.boldWidth(tr, title)) + 12;
         int boxH = ScheduleHud.HEAD_H + 2 + rows * ROW_H + 3;
         int[] o = HudLayout.place(ctx, HudLayout.TODO, cfg.corner, boxW, boxH);
@@ -64,18 +66,31 @@ public final class TodoHud {
         else ScheduleHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
         ScheduleHud.header(ctx, tr, x, y, boxW, title, BOOK, dark, alpha);
         int text = Theme.text(dark);
+        int soft = Theme.soft(dark);
+        int green = Theme.green(dark);
+        int a = Math.max(alpha, 200);
         int cy = y + ScheduleHud.HEAD_H + 3;
-        if (left.isEmpty()) {
-            Theme.textShadow(ctx, tr, "오늘 할 일 끝!", x + 6, cy, Theme.green(dark), dark);
-        } else {
-            for (DdingMateConfig.TodoItem t : shown) {
-                // 빈 체크 상자
-                ctx.fill(x + 6, cy + 1, x + 13, cy + 8, Theme.withAlpha(dark ? 0xFF9FB8D8 : Theme.SLATE, Math.max(alpha, 200)));
-                ctx.fill(x + 7, cy + 2, x + 12, cy + 7, Theme.withAlpha(dark ? 0xFF14171C : Theme.WINDOW_LIGHT, Math.max(alpha, 200)));
-                Theme.textShadow(ctx, tr, t.name, x + 17, cy, text, dark);
-                cy += ROW_H;
+        for (DdingMateConfig.TodoItem t : shown) {
+            boolean ok = TodoList.isDone(t, now);
+            // 체크 상자: 다 하면 초록 상자에 흰 체크 표시
+            ctx.fill(x + 6, cy + 1, x + 13, cy + 8, Theme.withAlpha(ok ? green : dark ? 0xFF9FB8D8 : Theme.SLATE, a));
+            if (ok) {
+                check(ctx, x + 7, cy + 2, Theme.withAlpha(0xFFFFFFFF, a));
+            } else {
+                ctx.fill(x + 7, cy + 2, x + 12, cy + 7, Theme.withAlpha(dark ? 0xFF14171C : Theme.WINDOW_LIGHT, a));
             }
-            if (left.size() > MAX_ROWS) Theme.textShadow(ctx, tr, "외 " + (left.size() - MAX_ROWS) + "개", x + 17, cy, text, dark);
+            Theme.textShadow(ctx, tr, TodoList.label(t, now), x + 17, cy, ok ? soft : text, dark);
+            cy += ROW_H;
         }
+        if (total > MAX_ROWS) Theme.textShadow(ctx, tr, "외 " + (total - MAX_ROWS) + "개", x + 17, cy, text, dark);
+    }
+
+    /** 5×5 칸 안의 체크 표시(✓) */
+    private static void check(DrawContext ctx, int x, int y, int color) {
+        ctx.fill(x, y + 2, x + 1, y + 3, color);
+        ctx.fill(x + 1, y + 3, x + 2, y + 4, color);
+        ctx.fill(x + 2, y + 4, x + 3, y + 5, color);
+        ctx.fill(x + 3, y + 3, x + 4, y + 4, color);
+        ctx.fill(x + 4, y + 1, x + 5, y + 3, color);
     }
 }

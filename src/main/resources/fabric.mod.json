@@ -16,6 +16,7 @@
     "client": ["kr.ddingmate.DdingMate"],
     "modmenu": ["kr.ddingmate.compat.ModMenuIntegration"]
   },
+  "mixins": ["ddingmate.mixins.json"],
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "~1.21.4",

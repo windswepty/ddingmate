@@ -67,7 +67,8 @@ public final class Widgets {
             int tx = getX() + (width - tw) / 2;
             if (icon != null) Theme.item(ctx, icon, tx, getY() + (height - 12) / 2, 12);
             int color = !active ? 0xFFAEB4BF : primary ? Theme.TEXT_LIGHT : Theme.TEXT;
-            Theme.boldText(ctx, tr(), s, tx + iconW, getY() + (height - 8) / 2, color, primary && active);
+            // 그림자는 글자 획과 어긋나 두 겹으로 번져 보여서 쓰지 않는다
+            Theme.boldText(ctx, tr(), s, tx + iconW, getY() + (height - 8) / 2, color, false);
         }
 
         @Override
@@ -146,6 +147,8 @@ public final class Widgets {
         private final Consumer<T> setter;
         private int index;
         private int lastButton;
+        /** 마지막으로 누른 곳이 ◀ 쪽(값 칸의 왼쪽 절반)인지 */
+        private boolean lastLeft;
 
         public Cycle(int w, String label, List<T> values, T initial, Function<T, String> names, Consumer<T> setter) {
             super(0, 0, w, 20, Text.literal(label));
@@ -159,6 +162,8 @@ public final class Widgets {
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             lastButton = button;
+            int[] chip = chip();
+            lastLeft = mouseX >= chip[0] - 2 && mouseX < chip[0] + chip[1] / 2.0;
             return super.mouseClicked(mouseX, mouseY, button);
         }
 
@@ -167,10 +172,19 @@ public final class Widgets {
             return button == 0 || button == 1;
         }
 
+        /** 값 칸(◀ 값 ▶)의 x 와 너비 */
+        private int[] chip() {
+            int vw = Theme.boldWidth(tr(), names.apply(values.get(index)));
+            int chipW = vw + 26;
+            return new int[]{getX() + width - chipW - 3, chipW};
+        }
+
+        /** ◀ 를 누르면 이전 값, ▶ 나 나머지를 누르면 다음 값. 오른쪽 클릭·Shift+클릭은 이전 값 */
         @Override
         public void onPress() {
-            boolean back = lastButton == 1 || Screen.hasShiftDown();
+            boolean back = lastButton == 1 || Screen.hasShiftDown() || lastLeft;
             lastButton = 0;
+            lastLeft = false;
             index = Math.floorMod(index + (back ? -1 : 1), values.size());
             setter.accept(values.get(index));
         }
@@ -179,9 +193,8 @@ public final class Widgets {
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
             Theme.row(ctx, getX(), getY(), width, height, isSelected());
             String v = names.apply(values.get(index));
-            int vw = Theme.boldWidth(tr(), v);
-            int chipW = vw + 26;
-            int chipX = getX() + width - chipW - 3;
+            int[] chip = chip();
+            int chipX = chip[0], chipW = chip[1];
             Theme.tile(ctx, chipX, getY() + 3, chipW, 14, Theme.Tile.GRAY, isSelected());
             arrow(ctx, chipX + 4, getY() + 6, false, Theme.GRAY_SHADE);
             arrow(ctx, chipX + chipW - 8, getY() + 6, true, Theme.GRAY_SHADE);
@@ -248,6 +261,7 @@ public final class Widgets {
             setDrawsBackground(false);
             setEditableColor(Theme.TEXT);
             setUneditableColor(Theme.TEXT_DISABLED);
+            // 글자 그림자는 kr.ddingmate.mixin.TextFieldWidgetMixin 에서 끈다(한글 조합 중인 글자까지)
         }
 
         /** 만들 때 정한 바깥 칸 너비 */

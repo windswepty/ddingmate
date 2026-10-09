@@ -44,7 +44,7 @@ public class HudEditorScreen extends Screen {
     private double resizeStartX;
 
     public HudEditorScreen(Screen parent) {
-        super(Text.literal("HUD 위치·크기 편집"));
+        super(Text.literal("HUD 위치·크기 설정"));
         this.parent = parent;
         DdingMateConfig cfg = DdingMate.config();
         for (Map.Entry<String, DdingMateConfig.HudPos> e : cfg.hudPos.entrySet()) {

@@ -55,6 +55,8 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
             sp.getClientWorld().waitForChunksRender();
             ctx.runOnClient(c -> {
+                DdingMate.config().tutorialDone = true;
+                DdingMate.config().opened = true;
                 BagTracker.clearCurrent();
                 AlertLog.clear();
                 DdingMateConfig cfg = DdingMate.config();
@@ -93,12 +95,119 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(!hasLog("내구도", "철 검"), "멀쩡한 철 검에 내구도 알림이 울림");
             });
 
-            // 3) 오늘 할 일: 하나 체크하면 남은 개수가 하나 줄어든다
+            // 3) 오늘 할 일: 알아서 세는 것만. 서버 메시지로 세고, 다 채우면 더 세지 않고, 지난 초기화 이전 기록은 0
             ctx.runOnClient(c -> {
                 ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+                DdingMateConfig.Todo tc = DdingMate.config().todo;
+                tc.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
+                check(tc.items.size() == kr.ddingmate.todo.TodoPreset.values().length, "기본 할 일이 전부가 아님");
+                check(tc.items.stream().noneMatch(t -> t.name.contains("출석")), "출석 체크가 남아 있음");
+                DdingMateConfig.TodoItem daily = item("daily_quest"), weekly = item("weekly_quest"), trade = item("trade");
+                check(daily.target == 5 && weekly.target == 3, "의뢰 목표가 일일 5·주간 3 이 아님: " + daily.target + "/" + weekly.target);
+                check(TodoList.label(daily, now).equals("일일 의뢰 [0/5]"), "표시가 [0/5] 가 아님: " + TodoList.label(daily, now));
                 int before = TodoList.remaining(now).size();
-                TodoList.setDone(DdingMate.config().todo.items.get(0), true);
-                check(TodoList.remaining(now).size() == before - 1, "할 일 체크가 반영되지 않음");
+                TodoList.onChat("ꀂ 무역 아이템을 12,345골드에 판매하였습니다.");
+                check(TodoList.isDone(trade, now) && TodoList.remaining(now).size() == before - 1, "무역 메시지로 체크되지 않음");
+                // 의뢰: 주간 의뢰 창이 열려 있지 않으면 일일 의뢰, 열려 있었으면 주간 의뢰
+                TodoList.QuestContext.debugSet(false);
+                for (int i = 0; i < 7; i++) TodoList.onChat(" 의뢰를 완료하였습니다.");
+                check(TodoList.progress(daily, now) == 5 && TodoList.isDone(daily, now), "일일 의뢰를 5번에서 멈추지 않음: " + TodoList.progress(daily, now));
+                TodoList.QuestContext.debugSet(true);
+                TodoList.onChat(" 의뢰를 완료하였습니다.");
+                check(TodoList.progress(weekly, now) == 1, "주간 의뢰 창에서 완료한 것을 주간으로 세지 않음");
+                TodoList.QuestContext.debugSet(false);
+                TodoList.onChat(" 의뢰를 완료하지 않았습니다.");
+                TodoList.onChat("[칭호] 누군가 : 의뢰를 완료하였습니다.");
+                check(TodoList.progress(weekly, now) == 1, "관계없는 메시지로 셈");
+                // 지난 초기화 이전에 센 것은 0
+                daily.doneAt = TodoList.lastReset(daily.reset, now).minusMinutes(1).toInstant().toEpochMilli();
+                check(TodoList.progress(daily, now) == 0, "지난 초기화 이전 기록이 0 으로 돌아가지 않음");
+                // 접속 보상: /접속시간 창의 받은 보상 수로 맞추고 줄이지 않는다
+                TodoList.sync(kr.ddingmate.todo.TodoPreset.PLAYTIME, 4);
+                check(TodoList.progress(item("playtime"), now) == 4, "받은 보상 수로 맞추지 않음");
+                TodoList.sync(kr.ddingmate.todo.TodoPreset.PLAYTIME, 2);
+                check(TodoList.progress(item("playtime"), now) == 4, "받은 보상 수가 줄어듦");
+                TodoList.onChat(" 5시간 접속 보상을 수령하였습니다.");
+                check(TodoList.progress(item("playtime"), now) == 5, "보상 수령 메시지로 세지 않음");
+            });
+
+            // 3-1) 예전 설정 정리: 같은 할 일은 센 값을 지키며 바꾸고, 출석 체크·직접 만든 할 일은 뺀다. 이름·목표는 고칠 수 없다
+            ctx.runOnClient(c -> {
+                DdingMateConfig old = new DdingMateConfig();
+                DdingMateConfig.TodoItem q = new DdingMateConfig.TodoItem("의뢰 완료", DdingMateConfig.Reset.DAILY, 3);
+                q.progress = 2;
+                q.doneAt = System.currentTimeMillis();
+                old.todo.items = new java.util.ArrayList<>(List.of(q,
+                        new DdingMateConfig.TodoItem("출석 체크", DdingMateConfig.Reset.MIDNIGHT, 1),
+                        new DdingMateConfig.TodoItem("내가 만든 일", DdingMateConfig.Reset.DAILY, 10),
+                        new DdingMateConfig.TodoItem("오션오더", DdingMateConfig.Reset.DAILY, 10)));
+                old.todo.version = 2;
+                old.sanitize();
+                check(old.todo.items.size() == 1, "알아서 못 세는 할 일이 남음: " + old.todo.items.stream().map(t -> t.name).toList());
+                DdingMateConfig.TodoItem kept = old.todo.items.get(0);
+                check(kept.preset.equals("daily_quest") && kept.name.equals("일일 의뢰") && kept.target == 5 && kept.progress == 2,
+                        "의뢰 완료가 일일 의뢰(센 값 유지)로 바뀌지 않음: " + kept.name + " " + kept.target + " " + kept.progress);
+                kept.target = 99;
+                kept.name = "고친 이름";
+                old.sanitize();
+                check(kept.target == 5 && kept.name.equals("일일 의뢰"), "할 일 이름·목표를 고칠 수 있음");
+            });
+
+            // 3-2) 할 일 탭: 줄을 눌러도 바뀌지 않고, [빼기]로 빼고, '넣을 수 있는 할 일'에서 다시 넣는다
+            ctx.runOnClient(c -> {
+                c.setScreen(new DdingMateScreen(null));
+                ((DdingMateScreen) c.currentScreen).openTab(7);
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-0b-todo-tab");
+            ctx.runOnClient(c -> {
+                ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+                DdingMateConfig.TodoItem recommend = item("recommend");
+                int before = TodoList.progress(recommend, now);
+                var widgets = UiSmokeClientGameTest.widgets(c.currentScreen);
+                widgets.stream().filter(w -> w.getMessage().getString().equals("마인리스트 추천"))
+                        .findFirst().orElseThrow().onClick(10, 10);
+                check(TodoList.progress(recommend, now) == before, "할 일 줄을 눌렀는데 값이 바뀜");
+                int n = DdingMate.config().todo.items.size();
+                widgets.stream().filter(w -> w instanceof Widgets.Button b && b.getMessage().getString().equals("빼기"))
+                        .findFirst().orElseThrow().onClick(10, 10);
+                check(DdingMate.config().todo.items.size() == n - 1, "[빼기]로 빠지지 않음");
+            });
+            ctx.waitTicks(2);
+            ctx.runOnClient(c -> {
+                int n = DdingMate.config().todo.items.size();
+                UiSmokeClientGameTest.widgets(c.currentScreen).stream()
+                        .filter(w -> w instanceof Widgets.Button b && b.getMessage().getString().startsWith("＋ "))
+                        .findFirst().orElseThrow().onClick(10, 10);
+                check(DdingMate.config().todo.items.size() == n + 1, "넣을 수 있는 할 일에서 넣어지지 않음");
+                c.setScreen(null);
+            });
+            ctx.waitTicks(2);
+
+            // 7-1) 아이콘 기억: 다른 창(제작 시설 등)에서 본 서버 아이템 모양을 기억하고, 파일에 남아 다시 켜도 그대로,
+            //      내 인벤토리에서 다시 보면 그 모양으로 바뀐다
+            ctx.runOnClient(c -> {
+                net.minecraft.util.Identifier m1 = net.minecraft.util.Identifier.of("ddingtest", "icon_a");
+                net.minecraft.util.Identifier m2 = net.minecraft.util.Identifier.of("ddingtest", "icon_b");
+                ItemStack a = new ItemStack(Items.PAPER);
+                a.set(DataComponentTypes.CUSTOM_NAME, Text.literal("시험용 서버 아이템"));
+                a.set(DataComponentTypes.ITEM_MODEL, m1);
+                a.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("설명은 기억하지 않음"))));
+                kr.ddingmate.counter.IconCache.rememberSeen(a);
+                ItemStack got = kr.ddingmate.counter.IconCache.forMaterial("시험용 서버 아이템");
+                check(got != null && m1.equals(got.get(DataComponentTypes.ITEM_MODEL)), "창에서 본 아이템 모양을 기억하지 못함");
+                check(got.get(DataComponentTypes.LORE) == null || got.get(DataComponentTypes.LORE).lines().isEmpty(), "설명까지 기억함");
+                kr.ddingmate.counter.IconCache.reloadForTest();
+                got = kr.ddingmate.counter.IconCache.forMaterial("시험용 서버 아이템");
+                check(got != null && m1.equals(got.get(DataComponentTypes.ITEM_MODEL)), "다시 불러온 뒤 아이콘이 사라짐");
+                ItemStack b = a.copy();
+                b.set(DataComponentTypes.ITEM_MODEL, m2);
+                kr.ddingmate.counter.IconCache.rememberSeen(b);
+                check(m1.equals(kr.ddingmate.counter.IconCache.forMaterial("시험용 서버 아이템").get(DataComponentTypes.ITEM_MODEL)),
+                        "다른 창에서 본 것이 이미 아는 모양을 덮어씀");
+                kr.ddingmate.counter.IconCache.remember(b);
+                check(m2.equals(kr.ddingmate.counter.IconCache.forMaterial("시험용 서버 아이템").get(DataComponentTypes.ITEM_MODEL)),
+                        "인벤토리에서 본 모양으로 바뀌지 않음");
             });
 
             // 8) 원재료 펼치기: 조약돌 뭉치 4개 필요(0개) → 조약돌 256개 필요, 인벤토리 100개
@@ -152,6 +261,66 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(after == before[0], "맞춘 뒤 지난 구간 알림이 한꺼번에 울림");
             });
             ctx.takeScreenshot("features-2b-playtime-synced");
+
+            // 12-2) 게임 서버에 들어가면 서버가 채팅으로 보내는 일일 접속 시간에 맞춘다. 남이 채팅으로 흉내 낸 줄은 무시
+            ctx.runOnClient(c -> {
+                PlaytimeTracker.onChat("\uE001\uA002├ 일일 접속 시간 : 16시간 37분 57초");
+                check(PlaytimeTracker.seconds() == 16 * 3600 + 37 * 60 + 57, "서버 채팅의 일일 접속 시간으로 맞추지 않음: " + PlaytimeTracker.seconds());
+                PlaytimeTracker.onChat("[칭호] 누군가 : ├ 일일 접속 시간 : 1시간 0분 0초");
+                check(PlaytimeTracker.seconds() >= 16 * 3600, "다른 사람이 쓴 채팅으로 접속 시간이 바뀜");
+                check(PlaytimeTracker.syncedAt() > 0, "채팅으로 맞춘 뒤에도 맞춘 시각이 없음");
+            });
+
+            // 12-3) 서버 아이템 이름의 등급 그림 글자·강화 수치는 빼고 비교한다(아이콘·개수 세기 공통)
+            ctx.runOnClient(c -> {
+                check(ItemKeys.normalize("\uA006세이지 곡괭이 [+11]").equals("세이지곡괭이"),
+                        "그림 글자·강화 수치를 지우지 않음: " + ItemKeys.normalize("\uA006세이지 곡괭이 [+11]"));
+                check(ItemKeys.normalize("\uDB80\uDC00§6[강화석] 코룸 주괴").equals("코룸주괴"), "사용자 정의 글자·분류를 지우지 않음");
+                check(ItemKeys.rekey("n:\uA006네더라이트 검").equals("n:네더라이트검"), "예전 키를 다시 만들지 않음");
+                ItemStack named = new ItemStack(Items.PAPER);
+                named.set(DataComponentTypes.CUSTOM_NAME, Text.literal("\uA006치즈 조각"));
+                check(ItemKeys.keyOf(named).equals(ItemKeys.nameKey("치즈 조각")), "그림 글자가 붙은 아이템을 레시피 재료와 같은 것으로 보지 않음");
+            });
+
+            // 12-4) 화면 위쪽 보스바의 "에버그린 마을 (마을30)" 을 읽어 지금 채널을 알고, 그 지역의 내 채널을 맞춘다
+            ctx.runOnClient(c -> {
+                DdingMate.config().autoChannel = true;
+                DdingMate.config().villageChannel = 7;
+                java.util.UUID id = java.util.UUID.randomUUID();
+                var bars = ((kr.ddingmate.mixin.BossBarHudAccessor) c.inGameHud.getBossBarHud()).ddingmate$bossBars();
+                bars.put(id, new net.minecraft.client.gui.hud.ClientBossBar(id,
+                        Text.literal("\uE010 2026.10.09 17:06 에버그린 마을 (마을30)"), 1f,
+                        net.minecraft.entity.boss.BossBar.Color.YELLOW, net.minecraft.entity.boss.BossBar.Style.PROGRESS, false, false, false));
+                kr.ddingmate.game.ServerHud.tick(c);
+                bars.remove(id);
+                check(kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.VILLAGE
+                        && kr.ddingmate.game.ServerHud.channel() == 30, "보스바의 채널 표시를 읽지 못함");
+                check(DdingMate.config().villageChannel == 30, "지역별 내 채널을 지금 채널로 맞추지 않음: " + DdingMate.config().villageChannel);
+                check(kr.ddingmate.game.ServerHud.inGame(), "싱글플레이·채널 표시가 있는데 게임 밖으로 봄");
+                DdingMate.config().autoChannel = false;
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.WILD, 3);
+                check(DdingMate.config().wildChannel != 3, "자동 인식을 껐는데 채널이 바뀜");
+                DdingMate.config().autoChannel = true;
+            });
+            ctx.runOnClient(c -> {
+                c.setScreen(new DdingMateScreen(null));
+                ((DdingMateScreen) c.currentScreen).openTab(3);
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-2c-channels-auto");
+            ctx.runOnClient(c -> c.setScreen(null));
+
+            // 12-5) 다 한 할 일은 HUD 체크 상자에 체크 표시
+            ctx.runOnClient(c -> {
+                DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
+                DdingMate.config().todo.hudEnabled = true;
+                TodoList.onChat(" 마인리스트 추천 보상 우편이 도착했습니다. [/우편함]에서 확인할 수 있습니다.");
+                TodoList.QuestContext.debugSet(false);
+                TodoList.onChat(" 의뢰를 완료하였습니다.");
+                check(TodoList.isDone(item("recommend"), ZonedDateTime.now(ScheduleEngine.KST)), "추천 메시지로 체크되지 않음");
+            });
+            ctx.waitTicks(25);
+            ctx.takeScreenshot("features-2d-todo-checked");
 
             // 모든 레시피를 하나씩 핀해 재료 줄이 레시피대로 나오는지, 검색으로 찾을 수 있는지 확인
             ctx.runOnClient(c -> {
@@ -442,6 +611,10 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
 
     private static boolean hasLog(String kind, String titlePart) {
         return AlertLog.entries().stream().anyMatch(e -> e.kind.equals(kind) && e.title.contains(titlePart));
+    }
+
+    private static DdingMateConfig.TodoItem item(String preset) {
+        return DdingMate.config().todo.items.stream().filter(t -> preset.equals(t.preset)).findFirst().orElseThrow();
     }
 
     private static void check(boolean ok, String message) {

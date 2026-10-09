@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 오늘 할 일. 직접 체크하고, 서버 초기화 시각(매일 03시·목요일 03시·자정)이 지나면 체크가 알아서 풀린다.
+ * 오늘 할 일. 서버 메시지를 보고 알아서 세고(직접 체크하지 않음), 서버 초기화 시각(매일 03시·목요일 03시·자정)이 지나면 0 으로 돌아간다.
  * 체크 시각만 저장하고 "마지막 초기화 이후에 체크했는가"로 판단하므로 게임을 꺼 둔 사이에 지나간 초기화도 반영된다.
  */
 public final class TodoList {
@@ -46,12 +46,121 @@ public final class TodoList {
         return reset == DdingMateConfig.Reset.WEEKLY ? last.plusWeeks(1) : last.plusDays(1);
     }
 
-    public static boolean isDone(DdingMateConfig.TodoItem item, ZonedDateTime now) {
-        return item.doneAt > 0 && item.doneAt >= lastReset(item.reset, now).toInstant().toEpochMilli();
+    /** 지금까지 한 횟수. 마지막 초기화 이전에 센 것이면 0 */
+    public static int progress(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        if (item.doneAt <= 0 || item.doneAt < lastReset(item.reset, now).toInstant().toEpochMilli()) return 0;
+        return Math.max(0, Math.min(item.target, item.progress));
     }
 
+    public static boolean isDone(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        return progress(item, now) >= Math.max(1, item.target);
+    }
+
+    /** 체크(목표만큼 채우기) / 체크 해제(0으로) */
     public static void setDone(DdingMateConfig.TodoItem item, boolean done) {
-        item.doneAt = done ? System.currentTimeMillis() : 0;
+        item.progress = done ? Math.max(1, item.target) : 0;
+        item.doneAt = System.currentTimeMillis();
+    }
+
+    /** delta 만큼 세기(+1·−1). 0 ~ 목표 사이로 맞춘다 */
+    public static void add(DdingMateConfig.TodoItem item, int delta) {
+        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        item.progress = Math.max(0, Math.min(Math.max(1, item.target), progress(item, now) + delta));
+        item.doneAt = System.currentTimeMillis();
+    }
+
+    /** 목록에 보일 글: "접속 시간 보상 받기 [2/6]", 목표가 1이면 이름만 */
+    public static String label(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        return item.target > 1 ? item.name + " [" + progress(item, now) + "/" + item.target + "]" : item.name;
+    }
+
+    /** "의뢰를 완료하였습니다." (실제 서버 메시지). "의뢰를 완료하지 않았습니다." 는 아님 */
+    private static final java.util.regex.Pattern QUEST_DONE = java.util.regex.Pattern.compile("^의뢰를\\s*완료하였습니다");
+
+    /**
+     * 서버 메시지를 보고 할 일을 센다. 다 채운 할 일은 더 세지 않는다. 메시지를 읽기만 하고 아무것도 보내지 않는다.
+     * 의뢰 완료는 메시지만으로 일일·주간을 알 수 없어서, 그때 열려 있던(또는 방금 연) 의뢰 창이 주간 의뢰였는지로 나눈다.
+     */
+    public static void onChat(String message) {
+        if (message == null || message.isBlank()) return;
+        String text = net.minecraft.util.Formatting.strip(message);
+        if (text == null) return;
+        text = kr.ddingmate.counter.ItemKeys.stripGlyphs(text).trim();
+        // 사람이 쓴 채팅 줄("[칭호] 닉네임 : ...")은 세지 않는다. 서버 공지만 센다
+        if (text.contains(" : ")) return;
+        if (QUEST_DONE.matcher(text).find()) {
+            count(QuestContext.weekly() ? TodoPreset.WEEKLY_QUEST : TodoPreset.DAILY_QUEST);
+            return;
+        }
+        for (TodoPreset p : TodoPreset.values()) {
+            if (!p.phrase.isEmpty() && text.contains(p.phrase)) count(p);
+        }
+    }
+
+    /** 목록에 있는 그 할 일을 +1 */
+    public static void count(TodoPreset preset) {
+        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        for (DdingMateConfig.TodoItem item : DdingMate.config().todo.items) {
+            if (!preset.id.equals(item.preset) || isDone(item, now)) continue;
+            add(item, 1);
+            Notifier.todoProgress(item.name, progress(item, now), item.target);
+            DdingMate.config().save();
+            return;
+        }
+    }
+
+    /** 서버 기록에서 알게 된 횟수로 맞춘다(예: /접속시간 창의 받은 보상 수). 줄이지는 않는다 */
+    public static void sync(TodoPreset preset, int done) {
+        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        for (DdingMateConfig.TodoItem item : DdingMate.config().todo.items) {
+            if (!preset.id.equals(item.preset)) continue;
+            int target = Math.min(item.target, Math.max(0, done));
+            if (target > progress(item, now)) {
+                item.progress = target;
+                item.doneAt = System.currentTimeMillis();
+                DdingMate.config().save();
+            }
+        }
+    }
+
+    /**
+     * 지금(또는 방금) 열린 창이 주간 의뢰 창인지. 창 제목과 칸 이름·설명에 "주간 의뢰"가 보이면 주간으로 본다.
+     * 창을 닫은 직후 메시지가 와도 맞게 30초 동안 기억한다.
+     */
+    public static final class QuestContext {
+        private static boolean weekly;
+        private static long seenAt;
+
+        private QuestContext() {}
+
+        /** 10틱마다 */
+        public static void scan(net.minecraft.client.MinecraftClient client) {
+            if (!(client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?> screen)) return;
+            StringBuilder sb = new StringBuilder(kr.ddingmate.counter.ItemKeys.stripGlyphs(screen.getTitle().getString()));
+            for (net.minecraft.screen.slot.Slot slot : screen.getScreenHandler().slots) {
+                if (slot.inventory instanceof net.minecraft.entity.player.PlayerInventory || !slot.hasStack()) continue;
+                net.minecraft.item.ItemStack st = slot.getStack();
+                sb.append('\n').append(st.getName().getString());
+                var lore = st.get(net.minecraft.component.DataComponentTypes.LORE);
+                if (lore != null) for (net.minecraft.text.Text l : lore.lines()) sb.append('\n').append(l.getString());
+            }
+            String all = kr.ddingmate.counter.ItemKeys.stripGlyphs(sb.toString());
+            boolean w = all.contains("주간 의뢰") || all.contains("주간의뢰");
+            boolean d = all.contains("일간 의뢰") || all.contains("일일 의뢰") || all.contains("일간의뢰");
+            if (!w && !d) return;
+            weekly = w && !d;
+            seenAt = System.currentTimeMillis();
+        }
+
+        static boolean weekly() {
+            return weekly && System.currentTimeMillis() - seenAt < 30_000;
+        }
+
+        /** 시험용 */
+        public static void debugSet(boolean isWeekly) {
+            weekly = isWeekly;
+            seenAt = isWeekly ? System.currentTimeMillis() : 0;
+        }
     }
 
     public static List<DdingMateConfig.TodoItem> remaining(ZonedDateTime now) {

@@ -26,6 +26,8 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import kr.ddingmate.craft.CraftTimers;
+import kr.ddingmate.game.ServerHud;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -54,6 +56,8 @@ public final class DdingMate implements ClientModInitializer {
     private static KeyBinding openSettingsKey;
     private static int tickCounter;
     private static boolean joinTipShown;
+    /** 지난 틱에 실제 게임(스폰 이후)에 있었는지. 대기 서버에서 게임으로 넘어오는 순간을 안다 */
+    private static boolean wasInGame;
 
     @Override
     public void onInitializeClient() {
@@ -63,6 +67,7 @@ public final class DdingMate implements ClientModInitializer {
         BagTracker.load();
         AlertLog.load();
         PlaytimeTracker.load();
+        CraftTimers.load();
 
         // 기본 키는 비워 둔다. 서버 조작(F·Q·숫자키·Shift 조합)과 겹치지 않게 사용자가 직접 지정한다.
         toggleHudKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -72,32 +77,53 @@ public final class DdingMate implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(DdingMate::onTick);
         // 같은 구석이면 등록한 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도
-        HudRenderCallback.EVENT.register(ScheduleHud::render);
-        HudRenderCallback.EVENT.register(TodoHud::render);
-        HudRenderCallback.EVENT.register(CounterHud::render);
-        HudRenderCallback.EVENT.register(DurabilityHud::render);
+        // 설치만 하고 아직 /띵메이트 를 열어 보지 않았으면 화면에 아무것도 띄우지 않는다
+        // 띵타이쿤 대기 서버(접속 직후 스폰으로 옮겨지기 전)에서도 띄우지 않는다
+        HudRenderCallback.EVENT.register((ctx, tick) -> {
+            if (!config.opened || !ServerHud.inGame()) return;
+            ScheduleHud.render(ctx, tick);
+            TodoHud.render(ctx, tick);
+            CounterHud.render(ctx, tick);
+            DurabilityHud.render(ctx, tick);
+        });
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
-        // 처음 쓰는 사람을 위해 게임을 켠 뒤 첫 접속 때 한 번 사용법을 알려 준다(설정에서 끌 수 있음)
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> client.execute(() -> {
-            if (config.joinTip && !joinTipShown) {
-                joinTipShown = true;
-                Notifier.chat("채팅에 /띵메이트 를 입력하면 일정·재료·장비·할 일을 한 창에서 보고 바꿀 수 있어요.");
-            }
-        }));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            ServerHud.reset();
+            wasInGame = false;
             BagTracker.save();
             PlaytimeTracker.save();
+            kr.ddingmate.counter.IconCache.save();
+            CraftTimers.onDisconnect();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) KeywordWatcher.onMessage(message, null);
+            if (!overlay) {
+                KeywordWatcher.onMessage(message, null);
+                TodoList.onChat(message.getString()); // 할 일 "자동으로 세기 문구"
+                PlaytimeTracker.onChat(message.getString()); // 서버가 알려 주는 일일 접속 시간·받은 보상
+                CraftTimers.onChat(message.getString()); // 제작 시작·회수 메시지
+            }
         });
         ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, ts) ->
                 KeywordWatcher.onMessage(message, sender == null ? null : sender.getName()));
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) -> DdingMateCommands.register(dispatcher));
 
         LOG.info("띵메이트 로드됨 (일정 {}개)", rules.size());
+    }
+
+    /**
+     * 스폰으로 들어온 순간(대기 서버 다음). 처음 쓰는 사람에게는 게임을 켠 뒤 한 번 사용법을 알려 준다(설정에서 끌 수 있음).
+     */
+    private static void onEnteredGame() {
+        if (joinTipShown) return;
+        if (!config.opened) {
+            joinTipShown = true;
+            Notifier.chat("띵메이트가 설치됐어요! 채팅에 /띵메이트 를 입력하면 사용법 안내가 시작되고, 그다음부터 화면에 일정 HUD 가 나와요.");
+        } else if (config.joinTip) {
+            joinTipShown = true;
+            Notifier.chat("채팅에 /띵메이트 를 입력하면 일정·재료·장비·할 일을 한 창에서 보고 바꿀 수 있어요.");
+        }
     }
 
     private static void onTick(MinecraftClient client) {
@@ -107,15 +133,23 @@ public final class DdingMate implements ClientModInitializer {
             Notifier.chat(config.hudEnabled ? "HUD 를 켰어요." : "HUD 를 껐어요.");
         }
         while (openSettingsKey.wasPressed()) {
-            client.setScreen(new DdingMateScreen(client.currentScreen));
+            if (ServerHud.inGame()) client.setScreen(new DdingMateScreen(client.currentScreen));
         }
         BagTracker.tick(client);
         PlaytimeTracker.tick(client);
         tickCounter++;
         if (tickCounter % 10 == 0) {
+            ServerHud.tick(client); // 오른쪽 위 위치·채널 표시 읽기
+            boolean inGame = ServerHud.inGame();
+            if (inGame && !wasInGame) onEnteredGame();
+            wasInGame = inGame;
             MaterialCounter.tick(client);
             DurabilityTracker.tick(client);
             PlaytimeTracker.scanScreen(client); // 내가 연 /접속시간 창이면 서버 기록에 맞춘다
+            CraftTimers.scanScreen(client); // 내가 연 시설 창의 남은 제작 시간
+            TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
+            kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
+            if (client.world != null) kr.ddingmate.counter.IconCache.tick(client); // 열어 본 창의 아이템 모양을 기억
         }
         // 알림 판정은 1초에 한 번. 월드(서버)에 들어가 있을 때만 울린다.
         if (tickCounter % 20 != 0 || client.world == null || client.player == null) return;
@@ -124,6 +158,7 @@ public final class DdingMate implements ClientModInitializer {
             Notifier.schedule(a);
         }
         TodoList.tick(now);
+        CraftTimers.tick();
     }
 
     public static DdingMateConfig config() {

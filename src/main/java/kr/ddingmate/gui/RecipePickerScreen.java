@@ -164,7 +164,12 @@ public class RecipePickerScreen extends Screen {
         int n = MaterialCounter.craftsOf(probe, r);
         StringBuilder sb = new StringBuilder(r.facility).append(" · [").append(r.category).append("]\n")
                 .append(MaterialCounter.title(probe, r)).append(" 에 필요한 재료");
-        for (RecipeBook.Material m : r.materials) sb.append("\n").append(m.name).append("  ").append(m.count * n).append("개");
+        boolean unknown = false;
+        for (RecipeBook.Material m : r.materials) {
+            sb.append("\n").append(m.name).append("  ").append(m.count * n).append("개");
+            if (IconCache.forMaterial(m.name) == null) unknown = true;
+        }
+        if (unknown) sb.append("\n\n? 칸: 아직 본 적 없는 재료예요. 인벤토리·가방·제작 시설 창에서 한 번 보면 그림이 나와요.");
         return Tooltip.of(Text.literal(sb.toString()));
     }
 
@@ -205,25 +210,35 @@ public class RecipePickerScreen extends Screen {
             boolean current = recipe.id.equals(pin().recipe);
             Theme.row(ctx, getX(), getY(), width, height, isSelected());
             if (current) ctx.fill(getX() + 1, getY() + 2, getX() + 3, getY() + height - 2, Theme.BLUE);
+            // [만드는 아이템] 이름  │ 재료 그림들 …            [분류]
             int x = getX() + 5;
-            int shown = 0;
-            for (RecipeBook.Material m : recipe.materials) {
-                if (shown == 4) break;
-                ItemStack icon = IconCache.forMaterial(m.name);
-                if (icon != null) Theme.item(ctx, icon, x, getY() + 3, 16);
-                else Theme.unknownIcon(ctx, textRenderer, x + 1, getY() + 4, 14);
-                x += 15;
-                shown++;
-            }
-            x = getX() + 5 + 4 * 15 + 4;
+            ItemStack out = IconCache.forRecipe(recipe);
+            if (out != null) Theme.item(ctx, out, x, getY() + 3, 16);
+            else Theme.unknownIcon(ctx, textRenderer, x + 1, getY() + 4, 14);
+            x += 21;
             String tag = recipe.category;
             int tagW = Theme.width(textRenderer, tag) + 10;
             int tagX = getX() + width - tagW - 4;
             Theme.tile(ctx, tagX, getY() + 4, tagW, 14, Theme.Tile.BLUE, false);
             Theme.text(ctx, textRenderer, tag, tagX + 5, getY() + 7, Theme.WHITE);
-            String name = Theme.ellipsize(textRenderer, recipe.displayName(), tagX - 6 - x, true);
+            int mats = Math.min(MAX_MATERIAL_ICONS, recipe.materials.size());
+            int matsW = mats * 15 + (recipe.materials.size() > mats ? 10 : 0);
+            String name = Theme.ellipsize(textRenderer, recipe.displayName(), Math.max(40, tagX - 14 - matsW - x), true);
             Theme.boldText(ctx, textRenderer, name, x, getY() + 7, Theme.TEXT, false);
+            // 재료는 이름 오른쪽에 작게(앞에 옅은 세로줄)
+            int mx = x + Theme.boldWidth(textRenderer, name) + 7;
+            if (mats > 0) ctx.fill(mx - 4, getY() + 5, mx - 3, getY() + height - 5, Theme.withAlpha(Theme.TEXT_SOFT, 120));
+            for (int i = 0; i < mats; i++) {
+                ItemStack icon = IconCache.forMaterial(recipe.materials.get(i).name);
+                if (icon != null) Theme.item(ctx, icon, mx, getY() + 4, 14);
+                else Theme.unknownIcon(ctx, textRenderer, mx + 1, getY() + 5, 12);
+                mx += 15;
+            }
+            if (recipe.materials.size() > mats) Theme.text(ctx, textRenderer, "…", mx + 1, getY() + 7, Theme.TEXT_SOFT);
         }
+
+        /** 이름 오른쪽에 보일 재료 그림 수(나머지는 … 과 마우스를 올리면 나오는 설명으로) */
+        private static final int MAX_MATERIAL_ICONS = 6;
 
         @Override
         protected void appendClickableNarrations(NarrationMessageBuilder builder) {

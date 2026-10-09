@@ -43,6 +43,8 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             String[] snapshot = new String[1];
             ctx.runOnClient(c -> {
                 DdingMateConfig cfg = DdingMate.config();
+                cfg.tutorialDone = true;
+                cfg.opened = true;
                 cfg.hudPos.clear();
                 cfg.hudSizes.clear();
                 cfg.hudEnabled = true;
@@ -217,7 +219,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
     }
 
     /** 화면 안의 모든 위젯(목록 줄 안쪽까지) */
-    private static List<ClickableWidget> widgets(Element root) {
+    static List<ClickableWidget> widgets(Element root) {
         List<ClickableWidget> out = new ArrayList<>();
         collect(root, out);
         return out;

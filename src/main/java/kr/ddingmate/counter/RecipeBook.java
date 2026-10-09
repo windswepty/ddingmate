@@ -28,6 +28,8 @@ public final class RecipeBook {
     public static final class Recipe {
         public String id;
         public String facility;
+        /** 제작 1번에 걸리는 초(시설 창 "제작 시간", 스킬 적용 전). 모르면 0. 실제 서버에서 모은 값 */
+        public int time;
         public String category;
         public String name;
         public int output = 1;
@@ -86,6 +88,32 @@ public final class RecipeBook {
     /** 이 이름의 아이템을 만드는 레시피. 없으면 null */
     public static Recipe recipeFor(String outputName) {
         return byOutput.get(outputName);
+    }
+
+    /**
+     * 제작 1번 시간(초). 시설 창·채팅에 보이는 이름("키론 오르골")으로도 찾을 수 있게
+     * 레시피 이름 앞의 "(Common)" 같은 등급 표시와 뒤의 "(조합 1)" 은 떼고도 비교한다. 모르면 -1
+     */
+    public static long timeFor(String name) {
+        String key = ItemKeys.normalize(name);
+        for (Recipe r : all) {
+            if (r.time > 0 && (ItemKeys.normalize(r.name).equals(key) || plainKey(r.name).equals(key))) return r.time;
+        }
+        return -1;
+    }
+
+    private static String plainKey(String name) {
+        return ItemKeys.normalize(name.replaceFirst("^\\s*\\((Common|Normal|Rare|Epic|Legendary|Mythic)\\)\\s*", "")
+                .replaceFirst("\\s*\\(조합\\s*\\d+\\)\\s*$", ""));
+    }
+
+    /** 이 이름의 아이템을 만드는 시설 이름(이름 비교는 너그럽게). 모르면 null */
+    public static String facilityOf(String outputName) {
+        Recipe r = recipeFor(outputName);
+        if (r != null) return r.facility;
+        String key = ItemKeys.normalize(outputName);
+        for (Recipe rec : all) if (ItemKeys.normalize(rec.name).equals(key)) return rec.facility;
+        return null;
     }
 
     /** 재료 이름에 해당하는 아이템 키들. 이름이 같은 서버 아이템과, 이름 없는 바닐라 아이템을 모두 센다. */

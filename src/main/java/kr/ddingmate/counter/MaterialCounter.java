@@ -89,7 +89,7 @@ public final class MaterialCounter {
             out.add(v);
             boolean done = v.done();
             if (Boolean.FALSE.equals(wasDone[i]) && done && cfg.notifyComplete) {
-                ItemStack icon = r.materials.isEmpty() ? null : IconCache.forMaterial(r.materials.get(0).name);
+                ItemStack icon = IconCache.forRecipe(r); // 만드는 아이템 모양
                 Notifier.materialsReady(title(pin, r), icon);
             }
             wasDone[i] = done;

@@ -182,7 +182,8 @@ public final class CounterHud {
         int soft = Theme.soft(dark);
         int cy = y;
         for (MaterialCounter.PinView v : views) {
-            ItemStack headIcon = v.recipe().materials.isEmpty() ? CHEST : IconCache.forMaterial(v.recipe().materials.get(0).name);
+            ItemStack headIcon = IconCache.forRecipe(v.recipe()); // 제목 옆: 만드는 아이템 모양(첫 재료 아님)
+            if (headIcon == null) headIcon = CHEST;
             ScheduleHud.header(ctx, tr, x, cy, boxW, title(v), headIcon == null ? CHEST : headIcon, dark, alpha);
             // 진행 꼬리표
             String p = progress(v);
@@ -275,7 +276,7 @@ public final class CounterHud {
     /** 가방·저장소에서 온 개수 표시: "가방 28 · 저장 1200" */
     private static String extra(DdingMateConfig.Counter cfg, MaterialCounter.Line l) {
         String bags = cfg.includeBags && l.bags() > 0 ? "가방 " + l.bags() : "";
-        String store = cfg.includeStorage && l.storage() > 0 ? "저장 " + l.storage() : "";
+        String store = cfg.includeStorage && l.storage() > 0 ? "저장소 " + l.storage() : "";
         if (bags.isEmpty()) return store;
         return store.isEmpty() ? bags : bags + " · " + store;
     }

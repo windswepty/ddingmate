@@ -138,7 +138,7 @@ public final class DurabilityTracker {
     public static void setTracked(String key, String name, boolean on) {
         List<DdingMateConfig.TrackedItem> list = DdingMate.config().durability.tracked;
         list.removeIf(t -> t.key.equals(key));
-        if (on) list.add(new DdingMateConfig.TrackedItem(key, name));
+        if (on) list.add(new DdingMateConfig.TrackedItem(key, ItemKeys.stripGlyphs(name).trim()));
         WARNED.remove(key);
     }
 }

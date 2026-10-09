@@ -63,6 +63,8 @@ public final class PlaytimeTracker {
         boolean reminded;
         /** 서버 기록(/접속시간 창)에 마지막으로 맞춘 시각(ms). 0 이면 오늘은 아직 안 맞춤(추정값) */
         long syncedAt;
+        /** 접속하면 서버가 채팅으로 보내는 "일일 접속 시간"에 맞춘 시각(ms). 받은 보상은 알 수 없다 */
+        long chatSyncedAt;
         /** /접속시간 창에서 확인한 이미 받은 보상 구간. syncedAt 이 0 이면 모름 */
         List<Integer> claimed = new ArrayList<>();
     }
@@ -73,6 +75,11 @@ public final class PlaytimeTracker {
     private static final Pattern TODAY = Pattern.compile(
             "오늘\\s*접속\\s*시간\\s*[:：]?\\s*(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+)\\s*초)?");
     private static final String CLAIMED = "이미 수령";
+    /** 게임 서버에 들어가면 서버가 보내는 채팅: "├ 일일 접속 시간 : 16시간 37분 57초" */
+    private static final Pattern CHAT_TODAY = Pattern.compile(
+            "[├└]?\\s*일일\\s*접속\\s*시간\\s*[:：]\\s*(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+)\\s*초)?");
+    /** 보상을 받으면 서버가 보내는 채팅: "3시간 접속 보상을 수령하였습니다." */
+    private static final Pattern CHAT_CLAIMED = Pattern.compile("(\\d+)\\s*시간\\s*접속\\s*보상을\\s*수령");
 
     private static final class Store {
         Map<String, Day> accounts = new LinkedHashMap<>();
@@ -88,7 +95,8 @@ public final class PlaytimeTracker {
     /** 매 틱. 월드에 들어가 있는 동안만 시간을 더한다. */
     public static void tick(MinecraftClient client) {
         long now = System.currentTimeMillis();
-        if (client.world == null || client.player == null) {
+        // 띵타이쿤 대기 서버에 있는 동안은 서버도 접속 시간을 세지 않는다
+        if (client.world == null || client.player == null || !kr.ddingmate.game.ServerHud.inGame()) {
             if (lastMs != 0) save();
             lastMs = 0;
             return;
@@ -138,6 +146,37 @@ public final class PlaytimeTracker {
      * 설명의 "오늘 접속 시간 : 11시간 49분 33초" 로 시간을, "이미 수령한 보상입니다." 로 받은 보상을 안다.
      * 창을 대신 열거나 명령어를 보내지 않는다.
      */
+    /**
+     * 서버 채팅으로 접속 시간을 맞춘다. 게임 서버에 들어가면 서버가 "일일 접속 시간"을 알려 주므로
+     * /접속시간 창을 열지 않아도 정확한 값으로 시작한다. 보상을 받았다는 메시지는 받은 보상으로 기록한다.
+     */
+    public static void onChat(String message) {
+        if (message == null) return;
+        String t = Formatting.strip(message);
+        if (t == null) return;
+        // 서버 그림 글자를 지운 뒤 줄 맨 앞이 "├ 일일 접속 시간" 이어야 서버 안내다(다른 사람이 채팅으로 흉내 내도 앞에 이름이 붙는다)
+        t = kr.ddingmate.counter.ItemKeys.stripGlyphs(t).trim();
+        Day d = MinecraftClient.getInstance().player == null ? null : today();
+        if (d == null) return;
+        Matcher m = CHAT_TODAY.matcher(t);
+        if (m.lookingAt() && (m.group(1) != null || m.group(2) != null || m.group(3) != null)) {
+            d.seconds = num(m.group(1)) * 3600L + num(m.group(2)) * 60L + num(m.group(3));
+            d.chatSyncedAt = System.currentTimeMillis();
+            lastMs = System.currentTimeMillis();
+            // 이미 넘긴 구간은 접속하자마자 한꺼번에 울리지 않게 알린 것으로 친다
+            for (int h : REWARDS.keySet()) if (d.seconds >= h * 3600L && !d.notified.contains(h)) d.notified.add(h);
+            save();
+            return;
+        }
+        Matcher c = CHAT_CLAIMED.matcher(t);
+        if (!t.contains(" : ") && c.lookingAt()) {
+            int h = Integer.parseInt(c.group(1));
+            if (!d.claimed.contains(h)) d.claimed.add(h);
+            if (!d.notified.contains(h)) d.notified.add(h);
+            save();
+        }
+    }
+
     public static void scanScreen(MinecraftClient client) {
         if (!(client.currentScreen instanceof GenericContainerScreen screen) || client.player == null) return;
         Inventory inv = screen.getScreenHandler().getInventory();
@@ -171,6 +210,7 @@ public final class PlaytimeTracker {
         }
         d.syncedAt = System.currentTimeMillis();
         d.claimed = claimed;
+        kr.ddingmate.todo.TodoList.sync(kr.ddingmate.todo.TodoPreset.PLAYTIME, claimed.size()); // 할 일 "접속 시간 보상 받기"
         // 이미 넘긴 구간은 알림이 한꺼번에 울리지 않게 알린 것으로 친다(창을 보고 있으니 따로 알릴 필요 없음).
         for (int h : REWARDS.keySet()) if (d.seconds >= h * 3600L && !d.notified.contains(h)) d.notified.add(h);
         if (System.currentTimeMillis() - lastSaveMs > 5000) save();
@@ -204,7 +244,7 @@ public final class PlaytimeTracker {
     /** 오늘 서버 기록에 맞춘 적이 있으면 그 시각(ms), 아니면 0 */
     public static long syncedAt() {
         Day d = MinecraftClient.getInstance().player == null ? null : today();
-        return d == null ? 0 : d.syncedAt;
+        return d == null ? 0 : Math.max(d.syncedAt, d.chatSyncedAt);
     }
 
     /** 채웠지만 안 받은 보상 구간. 오늘 서버 기록을 본 적이 없으면 null(모름) */

@@ -1,0 +1,476 @@
+package kr.ddingmate.test;
+
+import kr.ddingmate.DdingMate;
+import kr.ddingmate.config.DdingMateConfig;
+import kr.ddingmate.craft.CraftTimers;
+import kr.ddingmate.gui.DdingMateScreen;
+import kr.ddingmate.notify.AlertLog;
+import kr.ddingmate.ui.Widgets;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.LoreComponent;
+import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.screen.GenericContainerScreenHandler;
+import net.minecraft.text.Text;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.IntStream;
+
+/**
+ * 제작 완료 타이머 점검. 서버 메시지와 시설 창 설명은 실제 게임 로그에서 확인한 문장을 그대로 쓴다:
+ *  - "조약돌 뭉치 아이템 7개 제작을 시작했습니다." / "…7개를 제작대에서 회수했습니다." (앞에 서버 그림 글자)
+ *  - 레시피 칸 설명: "제작 시간 : 20초", "(좌) 해당 레시피 선택", "(쉬프트+우) 레시피 제거"
+ *  - 여러 번 넣으면 하나씩 차례대로 끝난다(20·40·60·80초)
+ * 대기열 칸의 남은 시간 표기는 아직 실제로 못 봐서 여러 표기를 시험한다.
+ * 덤으로 ◀ 단추(이전 값)와 장비 목록 중복 정리도 확인한다.
+ */
+public class CraftClientGameTest implements FabricClientGameTest {
+
+    /** 서버 메시지 앞에 붙는 그림 글자(실제 로그: U+CFFFB, U+A002, U+11661) */
+    private static final String G = new String(Character.toChars(0xCFFFB)) + "\uA002" + new String(Character.toChars(0x11661)) + " ";
+    private static final String START = G + "조약돌 뭉치 아이템 7개 제작을 시작했습니다.";
+    private static final String COLLECT = G + "조약돌 뭉치 아이템 7개를 제작대에서 회수했습니다.";
+
+    @Override
+    public void runTest(ClientGameTestContext ctx) {
+        try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
+            sp.getClientWorld().waitForChunksRender();
+            ctx.runOnClient(c -> {
+                DdingMateConfig cfg = DdingMate.config();
+                cfg.tutorialDone = true;
+                cfg.opened = true;
+                cfg.hudEnabled = true;
+                cfg.hudLines = 2;
+                cfg.craft.enabled = true;
+                cfg.craft.notify = true;
+                cfg.craft.showInHud = true;
+                cfg.craft.mining = cfg.craft.farming = cfg.craft.marine = cfg.craft.hunting = 0;
+                CraftTimers.debugClear();
+            });
+
+            // 1) 설명 줄 읽기
+            ctx.runOnClient(c -> {
+                CraftTimers.Reading recipe = CraftTimers.read(lines("다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 20초", "",
+                        " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거"));
+                check(recipe != null && recipe.recipe() && recipe.totalSec() == 20, "실제 레시피 칸 설명을 읽지 못함: " + recipe);
+                check(CraftTimers.read(lines("  제작 시간 : 2분 0초")).totalSec() == 120, "'2분 0초'를 120초로 읽지 못함");
+                check(CraftTimers.read(lines("  제작 시간 : 1분 0초")).totalSec() == 60, "'1분 0초'를 60초로 읽지 못함");
+                remain("남은 시간 : 2분 30초", 150);
+                remain("§7남은 시간: §e2분 30초", 150);
+                remain("제작 완료까지 1시간 2분 3초", 3723);
+                remain("남은 시간 : 01:02:03", 3723);
+                remain("남은 시간 02:30", 150);
+                remain("남은 시간 : 45초", 45);
+                remain("1일 2시간 남음", 26 * 3600);
+                CraftTimers.Reading done = CraftTimers.read(lines("제작 완료!", "클릭하여 회수"));
+                check(done != null && done.done(), "다 된 표시를 알아보지 못함");
+                check(CraftTimers.read(lines("남은 시간 : 0초")).done(), "남은 시간 0초를 완료로 보지 않음");
+                check(CraftTimers.read(lines("보관 중: 1,234개", "우클릭: 꺼내기")) == null, "시간이 아닌 설명을 시간으로 읽음");
+                check(CraftTimers.read(lines("[강화석] 2등급")) == null, "숫자만 있는 설명을 시간으로 읽음");
+                check(CraftTimers.read(lines("제작 완료까지 2분 10초")).remainingSec() == 130, "'완료까지'를 다 된 표시로 착각함");
+            });
+
+            // 2) 시작 메시지 4번(시간 아직 모름) → 한 줄 "조약돌 뭉치 ×7 [4]" · "시설 창 열면 표시". 관계없는 메시지는 무시
+            ctx.runOnClient(c -> {
+                for (int i = 0; i < 4; i++) CraftTimers.onChat(START);
+                CraftTimers.onChat("[칭호] 누군가 : 조약돌 뭉치 아이템 7개 제작을 시작했습니다.");
+                CraftTimers.onChat(G + "어빌리티 스톤 아이템을 회수하였습니다.");
+                CraftTimers.onChat(G + "제작에 필요한 재료가 부족합니다.");
+                CraftTimers.onChat(G + "아직 제작이 완료되지 않은 아이템입니다.");
+                check(CraftTimers.jobs().size() == 4, "제작 수가 4가 아님: " + CraftTimers.jobs().size());
+                List<CraftTimers.Group> g = CraftTimers.groups();
+                check(g.size() == 1 && g.get(0).label().equals("조약돌 뭉치 ×7 [4]"), "한 줄로 묶이지 않음: " + labels(g));
+                // 시설 창을 안 열었어도 모드에 넣어 둔 시간(조약돌 뭉치 20초 × 4번 = 약 80초)으로 바로 센다
+                String t0 = CraftTimers.remainingText(g.get(0), now());
+                check(t0.startsWith("약 1분 1") || t0.startsWith("약 1분 2"), "넣어 둔 시간으로 바로 세지 않음: " + t0);
+                // 시간을 정말 모르는 아이템은 "시설 창 열면 표시"
+                CraftTimers.onChat(G + "시험용 미지 아이템 아이템 1개 제작을 시작했습니다.");
+                CraftTimers.Group unknown = CraftTimers.groups().stream().filter(x -> x.name().equals("시험용 미지 아이템")).findFirst().orElseThrow();
+                check(CraftTimers.remainingText(unknown, now()).equals("시설 창 열면 표시"), "시간을 모르는데 시간을 표시함");
+                CraftTimers.remove(unknown);
+                CraftTimers.onChat(G + "강화 횃불 아이템 1,024개 제작을 시작했습니다.");
+                check(CraftTimers.jobs().stream().anyMatch(x -> x.name.equals("강화 횃불") && x.count == 1024), "쉼표가 든 개수를 읽지 못함");
+                CraftTimers.debugClear();
+                for (int i = 0; i < 4; i++) CraftTimers.onChat(START);
+            });
+
+            // 3) 시설 창의 레시피 칸(실제 설명)을 보면 1번 20초를 배우고, 넣은 순서대로 20·40·60·80초로 계산. 레시피 칸은 제작으로 등록하지 않음
+            ctx.runOnClient(c -> c.setScreen(facility(c,
+                    recipeItem("\uA002조약돌 뭉치", "20초"),
+                    recipeItem("하급 라이프스톤", "1분 0초"),
+                    recipeItem("어빌리티 스톤", "2분 0초"))));
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.secondsPerJob("조약돌 뭉치") == 20, "제작 1번 시간을 배우지 못함: " + CraftTimers.secondsPerJob("조약돌 뭉치"));
+                check(CraftTimers.secondsPerJob("하급 라이프스톤") == 60, "하급 라이프스톤 시간을 배우지 못함");
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                check(jobs.size() == 4, "레시피 칸을 제작으로 잘못 등록함: " + jobs.size());
+                long first = jobs.get(0).startedAt;
+                for (int i = 0; i < 4; i++) {
+                    long expect = first + 20_000L * (i + 1);
+                    check(Math.abs(jobs.get(i).endsAt - expect) < 3000, (i + 1) + "번째가 차례대로 계산되지 않음: " + (jobs.get(i).endsAt - first));
+                }
+                CraftTimers.Group g = CraftTimers.groups().get(0);
+                check(g.label().equals("조약돌 뭉치 ×7 [4]"), "묶음 이름이 다름: " + g.label());
+                String t = CraftTimers.remainingText(g, now());
+                check(t.startsWith("약 1분 1") || t.startsWith("약 1분 2"), "4번 합친 시간(약 80초)이 아님: " + t);
+                c.setScreen(null);
+            });
+
+            // 3-1) 전문가 스킬: 설명의 제작 시간은 스킬 전 시간. 채광 1레벨(10%)이면 강화 제작 시설의 조약돌 뭉치 20초 → 18초
+            //      (실제 로그와 같음). 레벨을 바꾸면 안 끝난 제작을 다시 계산하고, 되돌리면 원래대로
+            ctx.runOnClient(c -> {
+                DdingMateConfig.Craft cr = DdingMate.config().craft;
+                check(kr.ddingmate.counter.RecipeBook.facilityOf("조약돌 뭉치").equals("강화 제작 시설"), "조약돌 뭉치 시설을 모름");
+                check(kr.ddingmate.counter.RecipeBook.facilityOf("강화 횃불").equals("채광물 가공 시설"), "강화 횃불 시설을 모름");
+                cr.mining = 1;
+                CraftTimers.recalculate();
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                long first = jobs.get(0).startedAt;
+                for (int i = 0; i < 4; i++) {
+                    check(Math.abs(jobs.get(i).endsAt - (first + 18_000L * (i + 1))) < 3000,
+                            "채광 1레벨인데 " + (i + 1) + "번째가 18초 간격이 아님: " + (jobs.get(i).endsAt - first));
+                }
+                CraftTimers.debugLearn("강화 횃불", 2);
+                check(CraftTimers.durationMs("강화 횃불") == 1800, "강화 횃불 2초가 1.8초로 줄지 않음: " + CraftTimers.durationMs("강화 횃불"));
+                cr.mining = 5;
+                check(CraftTimers.durationMs("조약돌 뭉치") == 4000, "채광 5레벨(80%)이 아님: " + CraftTimers.durationMs("조약돌 뭉치"));
+                cr.marine = 4;
+                cr.hunting = 5;
+                cr.farming = 3;
+                check(CraftTimers.reductionPercent("해양 제작 시설") == 50 && CraftTimers.reductionPercent("연금 제작 시설") == 50,
+                        "해양 4레벨(50%)이 아님");
+                check(CraftTimers.reductionPercent("영혼 가공 시설") == 80, "사냥 5레벨(80%)이 아님");
+                check(CraftTimers.reductionPercent("농작물 가공 시설") == 40 && CraftTimers.reductionPercent("요리 제작 시설") == 40,
+                        "재배 3레벨(40%)이 아님");
+                check(CraftTimers.reductionPercent("대형 제작대") == 0 && CraftTimers.reductionPercent("황금 요리 제작 시설") == 0,
+                        "스킬이 없는 시설까지 줄임");
+                cr.mining = cr.farming = cr.marine = cr.hunting = 0;
+                CraftTimers.recalculate();
+                jobs = CraftTimers.jobs();
+                check(Math.abs(jobs.get(3).endsAt - (first + 80_000)) < 3000, "스킬을 되돌렸는데 원래 시간으로 돌아오지 않음");
+            });
+
+            // 4) 배운 뒤 하나 더 넣으면 맨 뒤에 붙는다(100초). 다른 아이템은 그 뒤에 이어서
+            ctx.runOnClient(c -> {
+                CraftTimers.onChat(START);
+                CraftTimers.onChat(G + "하급 라이프스톤 아이템 12개 제작을 시작했습니다.");
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                long first = jobs.get(0).startedAt;
+                check(Math.abs(jobs.get(4).endsAt - (first + 100_000)) < 3000, "다섯 번째가 맨 뒤에 붙지 않음: " + (jobs.get(4).endsAt - first));
+                check(Math.abs(jobs.get(5).endsAt - (first + 160_000)) < 3000, "다른 아이템이 앞 제작 뒤에 이어지지 않음: " + (jobs.get(5).endsAt - first));
+                List<String> order = labels(CraftTimers.groups());
+                check(order.equals(List.of("조약돌 뭉치 ×7 [5]", "하급 라이프스톤 ×12")), "묶음·순서가 다름: " + order);
+            });
+
+            // 5) 대기열 칸에 남은 시간이 보이면 맨 앞 제작을 그 값으로 맞추고, 뒤 제작도 같은 만큼 옮긴다
+            ctx.runOnClient(c -> c.setScreen(facility(c, queueItem("조약돌 뭉치", 7, "남은 시간 : 10초"))));
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                long now = now();
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                check(Math.abs(jobs.get(0).endsAt - (now + 10_000)) < 2500 && jobs.get(0).synced, "맨 앞 제작을 창 값으로 맞추지 않음");
+                check(Math.abs(jobs.get(1).endsAt - (now + 30_000)) < 2500, "뒤 제작을 같이 옮기지 않음: " + (jobs.get(1).endsAt - now));
+                check(Math.abs(jobs.get(5).endsAt - (now + 150_000)) < 2500, "다른 아이템도 같이 옮기지 않음: " + (jobs.get(5).endsAt - now));
+                check(CraftTimers.jobs().size() == 6, "대기열 칸을 새 제작으로 또 등록함");
+                c.setScreen(null);
+            });
+            ctx.waitTicks(25); // 일정 HUD 는 1초마다 새로 그린다
+            ctx.takeScreenshot("craft-1-hud-grouped");
+
+            // 6) 일부만 끝나면 알리지 않고 "[2] 완료!" 와 "[3] 남은 시간" 두 줄. 같은 것이 모두 끝나야 한 번 알림
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                long now = now();
+                jobs.get(0).endsAt = now - 3000;
+                jobs.get(1).endsAt = now - 1000;
+                int before = countDone();
+                CraftTimers.tick();
+                check(countDone() == before, "같은 제작이 남았는데 알림이 울림");
+                List<String> g = labels(CraftTimers.groups());
+                check(g.contains("조약돌 뭉치 ×7 [2]") && g.contains("조약돌 뭉치 ×7 [3]"), "끝난 것과 남은 것이 나뉘지 않음: " + g);
+                check(CraftTimers.groups().get(0).done(), "끝난 묶음이 맨 위가 아님");
+                for (int i = 2; i < 5; i++) jobs.get(i).endsAt = now - 500;
+                CraftTimers.tick();
+                CraftTimers.tick();
+                check(countDone() == before + 1, "모두 끝났을 때 한 번만 알리지 않음: " + (countDone() - before));
+                String title = AlertLog.entries().stream().filter(e -> e.title != null && e.title.startsWith("제작 완료"))
+                        .max(java.util.Comparator.comparingLong(e -> e.at)).orElseThrow().title;
+                check(title.equals("제작 완료: 조약돌 뭉치 ×7 [5]"), "알림 제목이 다름: " + title);
+            });
+            ctx.waitTicks(25);
+            ctx.takeScreenshot("craft-2-done");
+
+            // 7) 꺼내면(회수 메시지) 끝난 것부터 하나씩 빠진다
+            ctx.runOnClient(c -> {
+                CraftTimers.onChat(COLLECT);
+                CraftTimers.onChat(COLLECT);
+                check(CraftTimers.jobs().stream().filter(j -> j.name.equals("조약돌 뭉치")).count() == 3, "회수한 만큼 빠지지 않음");
+                check(labels(CraftTimers.groups()).contains("조약돌 뭉치 ×7 [3]"), "남은 묶음 표시가 다름: " + labels(CraftTimers.groups()));
+            });
+
+            // 8) 향장품: 대기열과 따로, 서버가 알려 준 10분으로 정확하게. 수령하면 빠진다
+            ctx.runOnClient(c -> {
+                long lifeBefore = CraftTimers.jobs().stream().filter(j -> j.name.equals("하급 라이프스톤")).findFirst().orElseThrow().endsAt;
+                CraftTimers.onChat(G + "향장품 제조를 시작했습니다. 10분 후 제조가 완료됩니다.");
+                CraftTimers.Job p = CraftTimers.jobs().stream().filter(j -> j.name.equals(CraftTimers.PERFUME)).findFirst().orElseThrow();
+                check(p.separate && p.synced && Math.abs(p.endsAt - (now() + 600_000)) < 3000, "향장품 시간을 읽지 못함");
+                long lifeAfter = CraftTimers.jobs().stream().filter(j -> j.name.equals("하급 라이프스톤")).findFirst().orElseThrow().endsAt;
+                check(lifeBefore == lifeAfter, "향장품이 제작 대기열 시간을 바꿈");
+                CraftTimers.onChat(G + "제조 완료된 향장품을 성공적으로 수령했습니다.");
+                check(CraftTimers.jobs().stream().noneMatch(j -> j.name.equals(CraftTimers.PERFUME)), "향장품을 받았는데 남음");
+            });
+
+            // 9) 시작 메시지를 놓친 제작: 대기열 칸의 남은 시간으로 등록. 같은 이름의 레시피 칸은 등록하지 않음
+            ctx.runOnClient(c -> c.setScreen(facility(c, queueItem("코룸 주괴", 24, "남은 시간 : 2분"), recipeItem("코룸 주괴", "30초"))));
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> coroom = CraftTimers.jobs().stream().filter(j -> j.name.equals("코룸 주괴")).toList();
+                check(coroom.size() == 1 && coroom.get(0).count == 24 && coroom.get(0).synced
+                        && Math.abs(coroom.get(0).endsAt - (now() + 120_000)) < 2500, "놓친 제작을 창에서 등록하지 못함: " + coroom.size());
+                c.setScreen(null);
+            });
+
+            // 10) 설정 화면: 재료 탭 목록, 홈 '제작 중'
+            ctx.runOnClient(c -> {
+                c.setScreen(new DdingMateScreen(null));
+                ((DdingMateScreen) c.currentScreen).openTab(5);
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(CraftClientGameTest::scrollToBottom);
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("craft-3-counter-tab");
+            ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTab(0));
+            ctx.waitTicks(3);
+            ctx.runOnClient(CraftClientGameTest::scrollToBottom);
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("craft-4-home");
+            ctx.runOnClient(c -> c.setScreen(null));
+
+            // 11) 저장·불러오기, 예전 형식(시간 계산 방식이 다르던 때) 기록은 비우고 배운 시간은 남긴다
+            ctx.runOnClient(c -> {
+                int n = CraftTimers.jobs().size();
+                CraftTimers.save();
+                CraftTimers.debugClear();
+                CraftTimers.load();
+                check(CraftTimers.jobs().size() == n, "다시 불러온 제작 수가 다름: " + CraftTimers.jobs().size() + " / " + n);
+                check(CraftTimers.secondsPerJob("조약돌 뭉치") == 20, "배운 시간이 사라짐");
+                Path p = FabricLoader.getInstance().getConfigDir().resolve("ddingmate-crafts.json");
+                String uuid = c.player.getUuid() + "@singleplayer";
+                write(p, "{\"accounts\":{\"" + uuid + "\":[{\"name\":\"어빌리티 스톤\",\"count\":1,\"startedAt\":0,\"endsAt\":0}]},"
+                        + "\"secondsPerJob\":{\"조약돌뭉치\":20}}");
+                CraftTimers.load();
+                check(CraftTimers.jobs().isEmpty(), "예전 형식의 가짜 제작이 남음: " + CraftTimers.jobs().size());
+                check(CraftTimers.secondsPerJob("조약돌 뭉치") == 20, "예전 형식에서 배운 시간을 버림");
+            });
+
+            // 12) 끄면 아무것도 세지 않는다
+            ctx.runOnClient(c -> {
+                DdingMate.config().craft.enabled = false;
+                CraftTimers.onChat(START);
+                check(CraftTimers.jobs().isEmpty(), "꺼 두었는데 등록됨");
+                DdingMate.config().craft.enabled = true;
+                CraftTimers.debugClear();
+                CraftTimers.save();
+            });
+
+            // 13) ◀ 를 누르면 이전 값, ▶ 를 누르면 다음 값(오른쪽 클릭은 이전 값)
+            ctx.runOnClient(c -> {
+                int[] value = {2};
+                Widgets.Cycle<Integer> cycle = new Widgets.Cycle<>(200, "시험", IntStream.rangeClosed(0, 5).boxed().toList(), 2,
+                        v -> v + "채널", v -> value[0] = v);
+                cycle.setX(10);
+                cycle.setY(10);
+                int chipW = kr.ddingmate.ui.Theme.boldWidth(c.textRenderer, "2채널") + 26;
+                int chipX = 10 + 200 - chipW - 3;
+                cycle.mouseClicked(chipX + 5, 18, 0);
+                check(value[0] == 1, "◀ 를 눌렀는데 이전 값이 아님: " + value[0]);
+                cycle.mouseClicked(chipX + chipW - 5, 18, 0);
+                check(value[0] == 2, "▶ 를 눌렀는데 다음 값이 아님: " + value[0]);
+                cycle.mouseClicked(30, 18, 0);
+                check(value[0] == 3, "이름 쪽을 누르면 다음 값이어야 함: " + value[0]);
+                cycle.mouseClicked(30, 18, 1);
+                check(value[0] == 2, "오른쪽 클릭이 이전 값이 아님: " + value[0]);
+            });
+
+            // 14) 장비: 예전 이름 규칙으로 저장한 같은 장비가 둘이면 하나로, 이름의 서버 그림 글자는 지운다
+            ctx.runOnClient(c -> {
+                DdingMateConfig cfg = new DdingMateConfig();
+                cfg.durability.tracked.clear();
+                cfg.durability.tracked.add(new DdingMateConfig.TrackedItem("n:\uA006네더라이트곡괭이", "\uA006 네더라이트 곡괭이"));
+                cfg.durability.tracked.add(new DdingMateConfig.TrackedItem("n:네더라이트곡괭이", "네더라이트 곡괭이"));
+                cfg.sanitize();
+                check(cfg.durability.tracked.size() == 1, "같은 장비가 둘로 남음: " + cfg.durability.tracked.size());
+                check(cfg.durability.tracked.get(0).name.equals("네더라이트 곡괭이"), "이름에 그림 글자가 남음: " + cfg.durability.tracked.get(0).name);
+            });
+
+            // 15) 본 적 없는 재료도 그림: 모드에 넣은 표가 실제 게임에서 기억한 모양(아이템·모델 번호)과 같은지
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.counter.IconCache.bundledSize() >= 280, "아이콘 표가 비었거나 잘못 읽힘: " + kr.ddingmate.counter.IconCache.bundledSize());
+                // 2026-10-09 실제 서버에서 기억한 값(config/ddingmate-icons.json)
+                look("코룸 주괴", Items.PAPER, 2006004f);
+                look("코룸", Items.PAPER, 2006003f);
+                look("조약돌 뭉치", Items.PAPER, 2006023f);
+                look("하급 라이프스톤", Items.PAPER, 2006024f);
+                look("어빌리티 스톤", Items.PAPER, 2006040f);
+                look("세이지 곡괭이", Items.GOLDEN_PICKAXE, 2016003f);
+                look("강화 제작 시설 청사진", Items.PAPER, 2010017f);
+                // 한 번도 안 본 재료
+                look("요리용 소금", Items.PAPER, 2013011f);
+                look("요리용 우유", Items.PAPER, 2013007f);
+                look("치즈 조각", Items.PAPER, 2013003f);
+                look("아메리카노", Items.ENCHANTED_BOOK, 2032001f);
+                look("황금 어니언 링", Items.COOKED_BEEF, 2004114f);
+                look("굴 ★★★", Items.PAPER, 2027079f);
+                // 레시피 대표 그림은 첫 재료가 아니라 만드는 아이템(하급 라이프스톤 → 라이프스톤 그림, 첫 재료 조약돌 뭉치 아님)
+                kr.ddingmate.counter.IconCache.debugForgetSeen(); // 앞 시험에서 만든 가짜 아이템 모양은 잊고 표만으로
+                kr.ddingmate.counter.RecipeBook.Recipe life = kr.ddingmate.counter.RecipeBook.get("강화 제작 시설/하급 라이프스톤");
+                ItemStack lifeIcon = kr.ddingmate.counter.IconCache.forRecipe(life);
+                check(ItemStack.areEqual(lifeIcon, kr.ddingmate.counter.IconCache.forMaterial("하급 라이프스톤")),
+                        "하급 라이프스톤 대표 그림이 하급 라이프스톤 모양이 아님");
+                check(!ItemStack.areEqual(lifeIcon, kr.ddingmate.counter.IconCache.forMaterial(life.materials.get(0).name)),
+                        "대표 그림이 첫 재료(" + life.materials.get(0).name + ") 모양임");
+                kr.ddingmate.counter.RecipeBook.Recipe cheese24 = kr.ddingmate.counter.RecipeBook.get("농작물 가공 시설/치즈 조각 x24");
+                check(ItemStack.areEqual(kr.ddingmate.counter.IconCache.forRecipe(cheese24), kr.ddingmate.counter.IconCache.forMaterial("치즈 조각")),
+                        "'치즈 조각 x24' 대표 그림이 치즈 조각이 아님");
+                // 2차(텍스처를 직접 보고 대조): 귀중품·원석·항해 뱃지·연금품·인피니티 타워 재료·모듈·도구
+                look("(Mythic) 탁월한 키론 오르골", Items.PAPER, 2046004f);
+                look("(Common)넬트 천체관측기", Items.PAPER, 2046025f);
+                look("피로시아 (Rare)", Items.PAPER, 2045036f);
+                look("홍옥의 팔찌 획득권", Items.PAPER, 2025057f);
+                look("천상의 성배 획득권", Items.PAPER, 2025109f);
+                look("봉인된 소중한 귀걸이", Items.PAPER, 2025103f);
+                look("부식의 엘릭서 ★★★", Items.PAPER, 2027057f);
+                look("수호의 정수 ★", Items.PAPER, 2027054f);
+                look("맹독 파동의 영약 ★★★", Items.PAPER, 2027041f);
+                look("정제된 고요한 포자", Items.PAPER, 2035030f);
+                look("커피 그라인더 모듈", Items.PAPER, 2032047f);
+                look("어항 모듈", Items.LEATHER_HORSE_ARMOR, 1210001f);
+                look("세이지 낚싯대", Items.FISHING_ROD, 2016017f); // 실제 게임 값
+                look("소금", Items.PAPER, 2013006f);
+                look("고요한 결정", Items.PAPER, 2020005f);
+                look("하급 광채 생성기", Items.LEATHER_HORSE_ARMOR, 1203001f);
+                look("영웅의 체력 포션", Items.GLISTERING_MELON_SLICE, 2035020f);
+                // 16) 바닐라 재료(당근·감자·비트)는 작물 블록이 아니라 실제 아이템으로 그리고 센다
+                for (String[] v : new String[][]{{"당근", "minecraft:carrot"}, {"감자", "minecraft:potato"}, {"비트", "minecraft:beetroot"}}) {
+                    ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(v[0]);
+                    check(icon != null && net.minecraft.registry.Registries.ITEM.getId(icon.getItem()).toString().equals(v[1]),
+                            v[0] + " 그림이 " + v[1] + " 가 아님: " + icon);
+                    check(kr.ddingmate.counter.RecipeBook.keysFor(v[0]).contains("v:" + v[1]), v[0] + " 를 인벤토리 " + v[1] + " 로 세지 않음");
+                }
+                // 17) 서버의 별 그림 글자(産 ★ · 山 ★★ · 算 ★★★)를 레시피 이름의 별과 같게 본다
+                check(kr.ddingmate.counter.ItemKeys.normalize("굴山").equals(kr.ddingmate.counter.ItemKeys.normalize("굴 ★★")), "山 을 ★★ 로 보지 않음");
+                check(kr.ddingmate.counter.ItemKeys.normalize("영생의 아쿠티스産").equals(kr.ddingmate.counter.ItemKeys.normalize("영생의 아쿠티스 ★")), "産 을 ★ 로 보지 않음");
+                check(kr.ddingmate.counter.ItemKeys.normalize("무저의 척추算").equals(kr.ddingmate.counter.ItemKeys.normalize("무저의 척추 ★★★")), "算 을 ★★★ 로 보지 않음");
+                check(!kr.ddingmate.counter.ItemKeys.normalize("굴山").equals(kr.ddingmate.counter.ItemKeys.normalize("굴 ★")), "★ 와 ★★ 를 같게 봄");
+                // 18) 모드에 넣어 둔 제작 시간: 시설 창 이름("키론 오르골")·등급 붙은 레시피 이름 모두로 찾는다
+                check(kr.ddingmate.counter.RecipeBook.timeFor("키론 오르골") == 45, "키론 오르골 시간을 못 찾음");
+                check(kr.ddingmate.counter.RecipeBook.timeFor("(Rare) 키론 오르골") == 45, "등급 붙은 이름으로 시간을 못 찾음");
+                check(kr.ddingmate.counter.RecipeBook.timeFor("탁월한 키론 오르골") == 1800, "탁월한 키론 오르골 시간이 다름");
+                check(kr.ddingmate.counter.RecipeBook.timeFor("굴山") == 5, "별 그림 글자 이름으로 시간을 못 찾음");
+                check(kr.ddingmate.counter.RecipeBook.timeFor("하급 라이프스톤") == 60, "하급 라이프스톤 60초가 아님");
+                // 19) 저장소 보관 개수 읽기: 낱말이 있으면 그 수, 없으면 조작 안내가 아닌 줄의 "N개" 중 큰 수, 없으면 -1
+                check(stored("보관 중: 1,234개") == 1234, "보관 중 줄을 못 읽음");
+                check(stored(" 현재 4,096개", "좌클릭: 64개 꺼내기", "쉬프트 클릭: 전부 꺼내기") == 4096, "N개 줄을 못 읽거나 꺼내기 안내를 읽음");
+                check(stored("우클릭: 꺼내기") == -1, "숫자 없는 설명을 수로 읽음");
+                ItemStack quartz = kr.ddingmate.counter.IconCache.forMaterial("석영");
+                check(quartz != null && quartz.isOf(Items.QUARTZ), "바닐라 재료(석영) 그림이 아님");
+                // 레시피의 모든 재료 중 표나 바닐라로 그림이 나오는 비율
+                java.util.Set<String> all = new java.util.HashSet<>();
+                for (kr.ddingmate.counter.RecipeBook.Recipe r : kr.ddingmate.counter.RecipeBook.all()) {
+                    for (kr.ddingmate.counter.RecipeBook.Material m : r.materials) all.add(m.name);
+                }
+                long shown = all.stream().filter(n -> kr.ddingmate.counter.IconCache.forMaterial(n) != null).count();
+                DdingMate.LOG.info("재료 그림 {}/{}", shown, all.size());
+                check(shown * 100 / all.size() >= 95, "재료 그림이 95% 미만: " + shown + "/" + all.size());
+            });
+        }
+    }
+
+    private static void look(String name, net.minecraft.item.Item item, float cmd) {
+        ItemStack s = kr.ddingmate.counter.IconCache.fromTable(name);
+        check(s != null && s.isOf(item), name + " 의 아이템이 다름: " + s);
+        var data = s.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+        check(data != null && !data.floats().isEmpty() && data.floats().get(0) == cmd, name + " 의 모델 번호가 다름: " + data);
+    }
+
+    private static int stored(String... lore) {
+        ItemStack s = new ItemStack(Items.COBBLESTONE);
+        s.set(DataComponentTypes.LORE, new LoreComponent(lines(lore)));
+        return kr.ddingmate.counter.ItemKeys.storedAmount(s);
+    }
+
+    private static long now() {
+        return System.currentTimeMillis();
+    }
+
+    private static void remain(String line, long expect) {
+        CraftTimers.Reading r = CraftTimers.read(lines(line));
+        check(r != null && r.remainingSec() == expect, "'" + line + "' 을 " + expect + "초로 읽지 못함: " + r);
+    }
+
+    private static List<Text> lines(String... s) {
+        return Arrays.stream(s).map(x -> (Text) Text.literal(x)).toList();
+    }
+
+    private static List<String> labels(List<CraftTimers.Group> g) {
+        return g.stream().map(CraftTimers.Group::label).toList();
+    }
+
+    /** 실제 시설 창 레시피 칸과 같은 설명 */
+    private static ItemStack recipeItem(String name, String time) {
+        return item(name, 1, "설명 문장입니다.", "", "  제작 시간 : " + time, "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거");
+    }
+
+    private static ItemStack queueItem(String name, int count, String... lore) {
+        return item(name, count, lore);
+    }
+
+    private static ItemStack item(String name, int count, String... lore) {
+        ItemStack s = new ItemStack(Items.PAPER, Math.min(count, 64));
+        s.set(DataComponentTypes.CUSTOM_NAME, Text.literal(name));
+        s.set(DataComponentTypes.LORE, new LoreComponent(lines(lore)));
+        return s;
+    }
+
+    private static GenericContainerScreen facility(MinecraftClient c, ItemStack... items) {
+        SimpleInventory inv = new SimpleInventory(54);
+        for (int i = 0; i < items.length; i++) inv.setStack(10 + i, items[i]);
+        GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(90, c.player.getInventory(), inv);
+        return new GenericContainerScreen(h, c.player.getInventory(), Text.literal("가공 시설"));
+    }
+
+    private static int countDone() {
+        return (int) AlertLog.entries().stream().filter(e -> e.title != null && e.title.startsWith("제작 완료")).count();
+    }
+
+    private static void scrollToBottom(MinecraftClient c) {
+        c.currentScreen.children().stream()
+                .filter(e -> e instanceof net.minecraft.client.gui.widget.ElementListWidget<?>)
+                .map(e -> (net.minecraft.client.gui.widget.ElementListWidget<?>) e)
+                .findFirst().ifPresent(l -> l.setScrollY(l.getMaxScrollY()));
+    }
+
+    private static void write(Path p, String s) {
+        try {
+            Files.writeString(p, s, StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static void check(boolean ok, String message) {
+        if (!ok) throw new AssertionError(message);
+    }
+}

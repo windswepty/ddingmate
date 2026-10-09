@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "kr.ddingmate.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "BossBarHudAccessor",
+    "TextFieldWidgetMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
