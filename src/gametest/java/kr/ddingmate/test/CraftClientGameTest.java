@@ -274,12 +274,16 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(Math.abs(jobs.get(2).endsAt - jobs.get(1).endsAt - 7_000) < 600, "세 번째가 두 번째 뒤 7초가 아님");
                 for (int i = 0; i < 3; i++) before[i] = jobs.get(i).endsAt;
             });
-            // 1초 뒤 서버 값이 그만큼 줄어든 창을 다시 읽어도(정상 진행) 완료 시각이 밀리지 않는다
+            // 조금 뒤 서버 값이 흐른 만큼 줄어든 창을 다시 읽어도(정상 진행) 완료 시각이 밀리지 않는다.
+            // 서버처럼 남은 시간을 초 단위로 내려 보여 준다(실제 흐른 시간으로 계산해 시험이 느려져도 맞게)
             ctx.waitTicks(20);
-            ctx.runOnClient(c -> c.setScreen(facility(c,
-                    queueItem("강화 횃불", 1, "  제작 시간 : 3초"),
-                    queueItem("강화 횃불", 1, "  제작 시간 : 7초"),
-                    queueItem("강화 횃불", 1, "  제작 시간 : 7초"))));
+            ctx.runOnClient(c -> {
+                long left = Math.max(0, (before[0] - now()) / 1000);
+                c.setScreen(facility(c,
+                        queueItem("강화 횃불", 1, "  제작 시간 : " + left + "초"),
+                        queueItem("강화 횃불", 1, "  제작 시간 : 7초"),
+                        queueItem("강화 횃불", 1, "  제작 시간 : 7초")));
+            });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 List<CraftTimers.Job> jobs = CraftTimers.jobs();

@@ -205,10 +205,16 @@ public final class BagTracker {
         boolean pending = pendingBag > 0 && System.currentTimeMillis() - pendingAt < PENDING_MS;
         // 1) 서버 창 제목의 가방 글리프로 판단 (가장 확실)
         TitleSignal sig = readTitle(screen.getTitle());
+        List<String> slots = slotsOf(screen);
+        if (decorated(slots)) {
+            // 이름 없는 장식 칸이 많은 창(메뉴·구매 안내 등)은 가방이 아니다(2026-10-10 실제로 이런 창이 3번 가방으로 잡혔음)
+            pendingBag = 0;
+            return;
+        }
         if (sig.bagUi()) {
             if (sig.bag()) {
                 openIsBag = true;
-                openBag = resolveBag(acc, slotsOf(screen), sig.number() > 0 ? sig.number() : pending ? pendingBag : 0);
+                openBag = resolveBag(acc, slots, sig.number() > 0 ? sig.number() : pending ? pendingBag : 0, true);
             }
             pendingBag = 0;
             return;
@@ -228,14 +234,15 @@ public final class BagTracker {
                     dirty = true;
                 }
                 openIsBag = true;
-                openBag = resolveBag(acc, slotsOf(screen), pendingBag);
+                openBag = resolveBag(acc, slots, pendingBag, true);
             }
             pendingBag = 0;
             return;
         }
         if (acc.titles.contains(title) || title.contains("가방")) {
+            // 제목만 보고 가방이라 짐작한 창: 이미 기록한 가방과 맞을 때만 쓰고, 새 가방 기록은 만들지 않는다
             openIsBag = true;
-            openBag = resolveBag(acc, slotsOf(screen), 0);
+            openBag = resolveBag(acc, slots, 0, false);
         }
     }
 
@@ -466,7 +473,7 @@ public final class BagTracker {
      * 똑같으면 같은 가방이다(번호를 몰라도 된다 — 서버 가방 창에는 번호가 안 보일 때가 있다, 2026-10-10 실제 창).
      * known(명령어 /ㄱ2 등으로 안 번호)이 있으면 그 번호로 자리를 바로잡는다. 처음 보는 가방이면 빈 번호로 새로 기록한다.
      */
-    static int resolveBag(Account acc, List<String> slots, int known) {
+    static int resolveBag(Account acc, List<String> slots, int known, boolean allowNew) {
         String exact = null;
         long exactSeen = -1;
         for (Map.Entry<String, Bag> e : acc.bags.entrySet()) {
@@ -495,7 +502,19 @@ public final class BagTracker {
         if (exact != null) return Integer.parseInt(exact);
         int best = bestMatch(acc, slots);
         if (best > 0) return best;
-        return freeNumber(acc, 0);
+        return allowNew ? freeNumber(acc, 0) : 0;
+    }
+
+    /** 시험용 */
+    public static boolean isDecorated(List<String> slots) {
+        return decorated(slots);
+    }
+
+    /** 이름 없는 장식 칸("n:*1")이 9칸 이상인 창 — 가방 안에는 이런 칸이 없다 */
+    static boolean decorated(List<String> slots) {
+        int n = 0;
+        for (String s : slots) if (s.startsWith("n:*")) n++;
+        return n >= 9;
     }
 
     /** 시험용: 기록(번호 → 칸 배치)에서 지금 칸·아는 번호로 정한 번호. bags 는 바뀐 기록으로 고쳐 쓴다 */
@@ -508,7 +527,7 @@ public final class BagTracker {
             b.seenAt = t++;
             acc.bags.put(e.getKey(), b);
         }
-        int n = resolveBag(acc, slots, known);
+        int n = resolveBag(acc, slots, known, true);
         bags.clear();
         acc.bags.forEach((k, v) -> bags.put(k, v.slots));
         return n;
@@ -596,6 +615,8 @@ public final class BagTracker {
                     if (a.titles == null) a.titles = new ArrayList<>();
                     if (a.bags == null) a.bags = new TreeMap<>();
                     a.bags.values().removeIf(b -> b == null || b.counts == null || b.slots == null);
+                    // 0.3.1 초기판: 가방이 아닌 장식 창을 가방으로 기록한 것(이름 없는 칸만 있고 센 아이템 없음)을 지운다
+                    a.bags.values().removeIf(b -> b.counts.isEmpty() && decorated(b.slots));
                     if (a.storage != null && (a.storage.counts == null || a.storage.slots == null)) a.storage = null;
                     // 이름 규칙이 바뀌어도 예전 기록을 그대로 쓸 수 있게 키를 다시 만든다
                     for (Bag b : a.bags.values()) rekey(b);

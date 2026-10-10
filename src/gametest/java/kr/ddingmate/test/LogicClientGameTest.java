@@ -167,6 +167,11 @@ public class LogicClientGameTest implements FabricClientGameTest {
         // 그 번호 자리에 전혀 다른 가방 기록이 있으면 지우지 않고 빈 번호로 옮긴다(합계에서 사라지지 않게)
         check(BagTracker.debugResolve(bags, c3, 2) == 2 && bags.containsValue(a) && !bags.containsKey("2") && bags.size() == 2,
                 "그 번호 자리의 다른 가방 기록을 옮기지 않음: " + bags);
+        // 장식 칸(이름 없는 칸)이 많은 창은 가방이 아니다(실제: 이런 창이 "3번 가방"으로 잡힘)
+        java.util.List<String> deco = new java.util.ArrayList<>(java.util.Collections.nCopies(54, ""));
+        for (int i = 18; i < 54; i++) deco.set(i, "n:*1");
+        check(BagTracker.isDecorated(deco), "장식 창을 가방으로 볼 수 있음");
+        check(!BagTracker.isDecorated(a) && !BagTracker.isDecorated(java.util.Collections.nCopies(54, "")), "빈 가방·보통 가방을 장식 창으로 봄");
 
         check(PlaytimeTracker.nextRewardHour(0) == 1 && PlaytimeTracker.nextRewardHour(3600) == 2
                 && PlaytimeTracker.nextRewardHour(5 * 3600) == 8 && PlaytimeTracker.nextRewardHour(8 * 3600) == 0,
