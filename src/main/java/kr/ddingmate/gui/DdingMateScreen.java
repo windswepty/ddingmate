@@ -519,11 +519,11 @@ public class DdingMateScreen extends Screen {
         list.pair(expand, storage);
 
         list.header("모험 가방");
-        Widgets.Field aliases = new Widgets.Field(rowWidth(), Text.literal("가방 단축어"));
+        Widgets.Field aliases = new Widgets.Field(rowWidth(), Text.literal("가방 단축어(선택)"));
         aliases.setMaxLength(100);
         aliases.setText(String.join(", ", cc.bagAliases));
-        aliases.setTooltip(Tooltip.of(Text.literal("가방을 열 때 보내는 단축어예요. 뒤에 붙는 번호로 몇 번 가방인지 알아요.\n"
-                + "예: ㄱ 이면 ㄱ1·/ㄱ1, 가방 이면 /가방 1")));
+        aliases.setTooltip(Tooltip.of(Text.literal("/ㄱ1 · /가방 2 · /.ㄱ2 같은 띵타이쿤 가방 명령어는 적지 않아도 알아서 알아봐요.\n"
+                + "다른 단축어를 쓸 때만 적어요. 예: 짐 (→ 짐1·짐2) 또는 짐1, 짐2")));
         aliases.setChangedListener(text -> cc.bagAliases = splitList(text));
         list.labeled("가방 단축어", aliases);
         Widgets.Button clear = new Widgets.Button(rowWidth(), 20, Text.literal("이 계정의 가방 기록 지우기"), false, b -> {

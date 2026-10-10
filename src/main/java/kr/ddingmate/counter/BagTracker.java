@@ -98,18 +98,33 @@ public final class BagTracker {
         }
     }
 
-    /** "ㄱ3", "/ㄱ3", "가방 3", "/가방 3" → 3. 해당 없으면 0. */
+    /** 띵타이쿤 가방 명령어(설정 없이 늘 알아본다): /ㄱ1, /가방 2, /.ㄱ2 (사용자 명령 기록에서 확인) */
+    private static final Pattern BUILT_IN = Pattern.compile("^/?\\.?(?:ㄱ|가방)\\s*([1-9])$");
+
+    /**
+     * "ㄱ3", "/ㄱ3", "가방 3", "/가방 3", "/.ㄱ3" → 3. 해당 없으면 0.
+     * 설정의 단축어는 더해서 알아본다: "ㄱ" 처럼 앞부분만 적었으면 뒤에 번호, "ㄱ1" 처럼 번호까지 적었으면 그 단축어 = 그 번호
+     */
     public static int parseBagNumber(String text, List<String> aliases) {
-        if (text == null || aliases == null || aliases.isEmpty()) return 0;
-        StringBuilder alt = new StringBuilder();
+        if (text == null) return 0;
+        String t = text.trim();
+        Matcher b = BUILT_IN.matcher(t);
+        if (b.matches()) return Integer.parseInt(b.group(1));
+        if (aliases == null) return 0;
+        String bare = t.startsWith("/") ? t.substring(1).trim() : t;
         for (String a : aliases) {
             if (a == null || a.isBlank()) continue;
-            if (!alt.isEmpty()) alt.append('|');
-            alt.append(Pattern.quote(a.trim()));
+            String alias = a.trim();
+            if (alias.startsWith("/")) alias = alias.substring(1).trim();
+            char last = alias.charAt(alias.length() - 1);
+            if (last >= '1' && last <= '9' && alias.length() > 1) {
+                if (bare.equals(alias)) return last - '0';
+                continue;
+            }
+            Matcher m = Pattern.compile("^" + Pattern.quote(alias) + "\\s*([1-9])$").matcher(bare);
+            if (m.matches()) return Integer.parseInt(m.group(1));
         }
-        if (alt.isEmpty()) return 0;
-        Matcher m = Pattern.compile("^/?(?:" + alt + ")\\s*([1-9])$").matcher(text.trim());
-        return m.matches() ? Integer.parseInt(m.group(1)) : 0;
+        return 0;
     }
 
     public static void tick(MinecraftClient client) {
@@ -152,13 +167,14 @@ public final class BagTracker {
     static final Identifier BAG_BUTTON_FONT = Identifier.of(DDING_NS, "bag/ui/button");
 
     /** bagUi: 가방 관련 창인가, bag: 가방 내용 창인가, number: 눌린 번호 단추(모르면 0) */
-    record TitleSignal(boolean bagUi, boolean bag, int number) {}
+    public record TitleSignal(boolean bagUi, boolean bag, int number) {}
 
-    static TitleSignal readTitle(Text title) {
+    public static TitleSignal readTitle(Text title) {
         boolean[] ui = {false};
         boolean[] bag = {false};
         int[] number = {0};
         int[] pressed = {0};
+        int[] buttons = {0};
         title.visit((style, s) -> {
             Identifier font = style.getFont();
             if (BAG_MAIN_FONT.equals(font)) {
@@ -171,6 +187,9 @@ public final class BagTracker {
                     if (c >= '뀁' && c <= '뀉') {
                         number[0] = c - '뀀';
                         pressed[0]++;
+                        buttons[0]++;
+                    } else if (c >= 'ꀁ' && c <= 'ꀉ') {
+                        buttons[0]++;
                     }
                 }
             }

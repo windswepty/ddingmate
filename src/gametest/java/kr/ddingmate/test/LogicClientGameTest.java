@@ -141,6 +141,15 @@ public class LogicClientGameTest implements FabricClientGameTest {
         check(BagTracker.parseBagNumber("ㄱ0", aliases) == 0, "ㄱ0 은 가방 번호가 아님");
         check(BagTracker.parseBagNumber("ㄱㄱ1", aliases) == 0, "ㄱㄱ1 은 가방 번호가 아님");
         check(BagTracker.parseBagNumber("안녕 ㄱ1", aliases) == 0, "문장 속 ㄱ1 을 단축어로 봄");
+        // 띵타이쿤 가방 명령어는 설정이 비어 있어도 알아본다(실제 명령 기록: /ㄱ1, /가방 2, /.ㄱ2)
+        check(BagTracker.parseBagNumber("ㄱ1", List.of()) == 1, "설정 없이 ㄱ1 을 못 알아봄");
+        check(BagTracker.parseBagNumber("가방 2", List.of()) == 2, "설정 없이 가방 2 를 못 알아봄");
+        check(BagTracker.parseBagNumber(".ㄱ2", List.of()) == 2, "설정 없이 .ㄱ2 를 못 알아봄");
+        // 실제 사용자 설정처럼 번호까지 적은 단축어("ㄱ1", "ㄱ2")도 그대로 그 번호
+        check(BagTracker.parseBagNumber("ㄱ2", List.of("ㄱ1", "ㄱ2")) == 2, "번호까지 적은 단축어를 못 알아봄");
+        check(BagTracker.parseBagNumber("ㄹ1", List.of("ㄹ")) == 1, "직접 적은 앞부분 단축어를 못 알아봄");
+        check(BagTracker.parseBagNumber("짐3", List.of("짐3")) == 3, "번호까지 적은 직접 단축어를 못 알아봄");
+        check(BagTracker.parseBagNumber("짐33", List.of("짐3")) == 0, "짐33 을 3번으로 봄");
 
         check(PlaytimeTracker.nextRewardHour(0) == 1 && PlaytimeTracker.nextRewardHour(3600) == 2
                 && PlaytimeTracker.nextRewardHour(5 * 3600) == 8 && PlaytimeTracker.nextRewardHour(8 * 3600) == 0,

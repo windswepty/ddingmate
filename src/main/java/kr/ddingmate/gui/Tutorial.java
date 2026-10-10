@@ -67,7 +67,7 @@ final class Tutorial {
             new Step(DdingMateScreen.Tab.COUNTER, false, "다 모이면 알림", "다 모이면 알림",
                     "핀한 레시피의 재료가 전부 모이면 \"재료 준비 완료\" 알림을 한 번 보내요."),
             new Step(DdingMateScreen.Tab.COUNTER, false, "가방 단축어", "가방 단축어",
-                    "ㄱ1 처럼 가방을 여는 단축어를 쓰면 몇 번 가방인지 더 정확히 알아요. 쓰는 단축어를 쉼표로 적어 두세요."),
+                    "/ㄱ1 · /가방 2 처럼 가방을 여는 명령어로 몇 번 가방인지 알아서 알아봐요. 다른 단축어를 쓸 때만 여기에 적어 두세요."),
             new Step(DdingMateScreen.Tab.COUNTER, false, "제작 완료 타이머", "제작 완료 타이머",
                     "제작·가공 시설에서 제작을 시작하면 아이템마다 완료까지 남은 시간을 일정 HUD 에 보여 주고, 다 되면 알려 줘요. 시설 창을 한 번 열면 정확한 시간으로 맞춰요."),
             new Step(DdingMateScreen.Tab.GEAR, true, null, "장비 탭",

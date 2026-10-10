@@ -120,6 +120,21 @@ public class CounterClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(20);
             ctx.runOnClient(c -> check(BagTracker.openState() == BagTracker.OpenState.NONE, "가방 목록 창을 가방으로 봄"));
             ctx.runOnClient(c -> c.setScreen(null));
+            // 번호 단추가 안 보이는 가방 창(2026-10-10 실제 창, 가방 2개)은 제목만으로는 번호를 모른다 → 명령어(/ㄱ2)로 정한다.
+            // 단추는 있는데 눌린 게 없어도 모른다, 가방 목록 창은 가방이 아니다
+            ctx.runOnClient(c -> {
+                String ns = "e94a3c2f-10aa-4d92-9ed0-c73f74fef20e";
+                Text only = Text.empty()
+                        .append(Text.literal("ꀁ").setStyle(Style.EMPTY.withFont(Identifier.of(ns, "bag/ui/main"))))
+                        .append(Text.literal("모험 가방").setStyle(Style.EMPTY.withFont(Identifier.of(ns, "bag/ui/text/title"))));
+                check(BagTracker.readTitle(only).bag() && BagTracker.readTitle(only).number() == 0, "번호 단추 없는 가방 창의 번호를 추측함");
+                Text unpressed = Text.empty()
+                        .append(Text.literal("ꀁ").setStyle(Style.EMPTY.withFont(Identifier.of(ns, "bag/ui/main"))))
+                        .append(Text.literal("ꀁꀂ").setStyle(Style.EMPTY.withFont(Identifier.of(ns, "bag/ui/button"))));
+                check(BagTracker.readTitle(unpressed).number() == 0, "눌린 단추가 없는데 번호를 정함");
+                Text list = Text.empty().append(Text.literal("ꀀ").setStyle(Style.EMPTY.withFont(Identifier.of(ns, "bag/ui/main"))));
+                check(!BagTracker.readTitle(list).bag() && BagTracker.readTitle(list).number() == 0, "가방 목록 창을 1번 가방으로 봄");
+            });
             ctx.waitTicks(15);
             ctx.runOnClient(c -> {
                 expect("구리 블록", 12, 35, 96);
