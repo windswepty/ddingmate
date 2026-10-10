@@ -163,7 +163,7 @@ public final class ScheduleHud {
             long sec = Math.max(0, (reboot - System.currentTimeMillis()) / 1000);
             kr.ddingmate.game.ServerHud.Area a = kr.ddingmate.game.ServerHud.area();
             String where = a == null ? "지금 채널" : a.label + " " + kr.ddingmate.game.ServerHud.channel() + "채널";
-            out.add(0, new Entry(where + " 재부팅", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초", sec / 60, 0));
+            out.add(0, new Entry(where + " 재시작", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초", sec / 60, 0));
         }
         // 제작 중인 아이템: 완료가 가까운 순서로
         if (cfg.craft.enabled && cfg.craft.showInHud) {
@@ -180,10 +180,18 @@ public final class ScheduleHud {
             if (more > 0) out.add(new Entry("그 밖의 제작 " + more + "개", "/띵메이트 홈", Long.MAX_VALUE - 2, Theme.TEXT_SOFT));
         }
         for (ScheduleEngine.Occurrence o : ScheduleEngine.upcoming(DdingMate.rules(), cfg::isEnabled, now, cfg.hudLines)) {
+            // 같은 재시작을 서버 예고(초 단위)와 시간표로 두 줄 보이지 않게: 예고가 있으면 그 시각 근처 시간표 줄은 뺀다
+            if (sameRestart(o, reboot)) continue;
             Duration left = Duration.between(now, o.time());
             out.add(new Entry(o.rule().label(), ScheduleEngine.formatRemaining(left), left.toMinutes(), 0));
         }
         return out;
+    }
+
+    /** 시간표의 마을 재시작이 서버가 예고한 지금 채널 재부팅과 같은 것인지(3분 안) */
+    public static boolean sameRestart(ScheduleEngine.Occurrence o, long rebootAt) {
+        if (rebootAt <= 0 || !o.rule().id().equals("village_reboot")) return false;
+        return Math.abs(o.time().toInstant().toEpochMilli() - rebootAt) <= 3 * 60_000L;
     }
 
     /** "1시간 5분", "42분" */

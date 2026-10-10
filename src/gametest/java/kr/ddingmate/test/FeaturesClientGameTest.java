@@ -311,6 +311,15 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.game.ServerHud.onChat("ꀂꀁ[서버 리붓] 3분 뒤 현재 채널이 재부팅됩니다.");
                 long left = kr.ddingmate.game.ServerHud.rebootAt() - System.currentTimeMillis();
                 check(left > 170_000 && left <= 180_000, "재부팅 예고를 3분으로 읽지 못함: " + left);
+                // 같은 재시작이 시간표 줄과 예고 줄로 두 번 보이지 않는다(실제: "마을 35채널 재부팅 18분 8초" + "마을 35채널 재시작 18분")
+                kr.ddingmate.schedule.EventRule vr = DdingMate.rules().stream().filter(r -> r.id().equals("village_reboot")).findFirst().orElse(null);
+                if (vr != null) {
+                    long at = kr.ddingmate.game.ServerHud.rebootAt();
+                    java.time.ZonedDateTime t = java.time.Instant.ofEpochMilli(at + 8_000).atZone(kr.ddingmate.schedule.ScheduleEngine.KST);
+                    check(kr.ddingmate.hud.ScheduleHud.sameRestart(new kr.ddingmate.schedule.ScheduleEngine.Occurrence(vr, t), at), "예고와 같은 재시작을 따로 보임");
+                    check(!kr.ddingmate.hud.ScheduleHud.sameRestart(new kr.ddingmate.schedule.ScheduleEngine.Occurrence(vr, t.plusHours(6)), at), "다른 시각 재시작까지 숨김");
+                }
+                check(!kr.ddingmate.game.ServerHud.inVillageChannel(30), "아일랜드에 있는데 마을 채널 안으로 봄");
                 // 아일랜드 왼쪽 위는 서버 프로필(얼굴·체력) 아래부터, 다른 구석·다른 지역은 그대로
                 check(kr.ddingmate.hud.HudLayout.debugTop(DdingMateConfig.Corner.TOP_LEFT) >= 55, "아일랜드에서 서버 프로필을 피하지 않음");
                 check(kr.ddingmate.hud.HudLayout.debugTop(DdingMateConfig.Corner.TOP_RIGHT) == 16, "아일랜드 오른쪽 위 여백이 바뀜");

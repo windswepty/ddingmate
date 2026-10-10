@@ -179,6 +179,8 @@ public final class DdingMate implements ClientModInitializer {
         if (tickCounter % 20 != 0 || client.world == null || client.player == null) return;
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
         for (ScheduleEngine.Alert a : ScheduleEngine.dueAlerts(rules, config::isEnabled, config::leadsOf, now, FIRED)) {
+            // 그 마을 채널 안에 있으면 서버가 재부팅을 직접 예고하므로 같은 알림을 또 내지 않는다(HUD 에는 남은 시간이 보인다)
+            if (a.rule().id().equals("village_reboot") && ServerHud.inVillageChannel(config.villageChannel)) continue;
             Notifier.schedule(a);
         }
         TodoList.tick(now);

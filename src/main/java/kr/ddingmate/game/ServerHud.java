@@ -159,6 +159,11 @@ public final class ServerHud {
         return afk;
     }
 
+    /** 지금 그 마을 채널 안에 있는지(그 채널 사람에게는 서버가 "N분 뒤 현재 채널이 재부팅됩니다"를 직접 알린다) */
+    public static boolean inVillageChannel(int ch) {
+        return ch > 0 && area == Area.VILLAGE && channel == ch;
+    }
+
     /** 지금 채널이 재부팅될 시각(ms). 예고가 없거나 지났으면 0 */
     public static long rebootAt() {
         return rebootAt > System.currentTimeMillis() ? rebootAt : 0;
