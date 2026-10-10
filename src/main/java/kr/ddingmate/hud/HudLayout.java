@@ -213,8 +213,12 @@ public final class HudLayout {
 
     /**
      * (x, y)에 rw×rh 를 놓을 때 avoid 와 겹치면, 화면 안에서 아무것과도 겹치지 않는 가장 가까운 자리.
-     * 후보는 원래 자리와 각 장애물의 바로 아래·위·오른쪽·왼쪽을 섞은 것. 그런 자리가 없으면 원래 자리
+     * 후보는 원래 자리와 각 장애물의 바로 아래·위·오른쪽·왼쪽을 섞은 것. 위아래를 먼저 고르고, 화면에 안 들어가면 옆.
+     * 그런 자리가 없으면 원래 자리
      */
+    /** 옆으로 비키는 거리를 위아래보다 몇 배로 칠지 */
+    private static final int SIDEWAYS_COST = 8;
+
     public static int[] nearestFree(int x, int y, int rw, int rh, int sw, int sh, List<Rect> avoid) {
         if (!hits(x, y, rw, rh, avoid)) return new int[]{x, y};
         List<Integer> xs = new ArrayList<>(List.of(x));
@@ -231,7 +235,9 @@ public final class HudLayout {
             if (cx < 0 || cx + rw > sw) continue;
             for (int cy : ys) {
                 if (cy < 0 || cy + rh > sh || hits(cx, cy, rw, rh, avoid)) continue;
-                long d = (long) (cx - x) * (cx - x) + (long) (cy - y) * (cy - y);
+                // 붙여 둔 HUD 는 위아래로 밀리는 게 자연스럽다: 옆으로 가는 거리는 크게 쳐서, 위아래 자리가 없을 때만 옆으로
+                long dx = (long) (cx - x) * SIDEWAYS_COST, dy = cy - y;
+                long d = dx * dx + dy * dy;
                 if (d < bestD) {
                     bestD = d;
                     best = new int[]{cx, cy};

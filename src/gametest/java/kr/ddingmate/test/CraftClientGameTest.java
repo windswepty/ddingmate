@@ -316,6 +316,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 java.util.List<kr.ddingmate.hud.HudLayout.Rect> tall = java.util.List.of(new kr.ddingmate.hud.HudLayout.Rect(6, 10, 100, 240));
                 int[] side = kr.ddingmate.hud.HudLayout.nearestFree(8, 80, 110, 80, 480, 270, tall);
                 check(side[0] >= 108 && side[1] == 80, "긴 HUD 옆으로 비키지 않음: " + side[0] + "," + side[1]);
+                // 붙여 둔 두 HUD: 위 HUD 가 크게 길어져도(130줄 높이) 화면에 들어가면 옆이 아니라 아래로 밀린다
+                java.util.List<kr.ddingmate.hud.HudLayout.Rect> grown = java.util.List.of(new kr.ddingmate.hud.HudLayout.Rect(6, 10, 100, 130));
+                int[] down = kr.ddingmate.hud.HudLayout.nearestFree(6, 60, 110, 80, 480, 270, grown);
+                check(down[0] == 6 && down[1] == 142, "붙여 둔 HUD 가 아래로 밀리지 않음: " + down[0] + "," + down[1]);
                 int[] home = kr.ddingmate.hud.HudLayout.nearestFree(8, 80, 110, 80, 480, 270, java.util.List.of());
                 check(home[0] == 8 && home[1] == 80, "겹치지 않으면 원래 자리여야 함");
                 // 9-3) 아일랜드: 왼쪽 위로 직접 옮긴 HUD 도 서버 프로필(얼굴·체력) 아래로 비킨다(실제 화면에서 깔렸음)
