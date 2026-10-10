@@ -191,24 +191,13 @@ public final class HudLayout {
         if (p != null) {
             x = Math.round(p.x * Math.max(0, sw - rw));
             y = Math.round(p.y * Math.max(0, sh - rh));
-            // 직접 옮긴 자리라도 먼저 그린 HUD 와 겹치면(일정에 제작 줄이 늘어 길어졌을 때 등) 그 아래로, 안 되면 위로 비킨다
+            // 직접 옮긴 자리라도 먼저 그린 HUD 와 겹치면(일정에 제작 줄이 늘어 길어졌을 때 등) 겹치지 않는 가장 가까운 자리
+            // (아래·위·옆)로 비킨다. 매 프레임 다시 계산하므로 줄어들면 원래 자리로 돌아온다
             List<Rect> avoid = new ArrayList<>(serverAreas());
             avoid.addAll(BOUNDS.values());
-            for (int guard = 0; guard < 8; guard++) {
-                Rect hit = null;
-                for (Rect r : avoid) {
-                    if (x < r.x() + r.w() && r.x() < x + rw && y < r.y() + r.h() && r.y() < y + rh) {
-                        hit = r;
-                        break;
-                    }
-                }
-                if (hit == null) break;
-                int below = hit.y() + hit.h() + 2;
-                int above = hit.y() - rh - 2;
-                if (below + rh <= sh) y = below;
-                else if (above >= 0) y = above;
-                else break;
-            }
+            int[] free = nearestFree(x, y, rw, rh, sw, sh, avoid);
+            x = free[0];
+            y = free[1];
         } else {
             Spot s = bestSpot(corner, sw, sh, rw, rh);
             if (s.newColumn()) HudStack.newColumn(s.corner());
@@ -220,6 +209,43 @@ public final class HudLayout {
         y = Math.max(0, Math.min(sh - rh, y));
         BOUNDS.put(id, new Rect(x, y, rw, rh));
         return new int[]{Math.round(x / current), Math.round(y / current)};
+    }
+
+    /**
+     * (x, y)에 rw×rh 를 놓을 때 avoid 와 겹치면, 화면 안에서 아무것과도 겹치지 않는 가장 가까운 자리.
+     * 후보는 원래 자리와 각 장애물의 바로 아래·위·오른쪽·왼쪽을 섞은 것. 그런 자리가 없으면 원래 자리
+     */
+    public static int[] nearestFree(int x, int y, int rw, int rh, int sw, int sh, List<Rect> avoid) {
+        if (!hits(x, y, rw, rh, avoid)) return new int[]{x, y};
+        List<Integer> xs = new ArrayList<>(List.of(x));
+        List<Integer> ys = new ArrayList<>(List.of(y));
+        for (Rect r : avoid) {
+            xs.add(r.x() + r.w() + 2);
+            xs.add(r.x() - rw - 2);
+            ys.add(r.y() + r.h() + 2);
+            ys.add(r.y() - rh - 2);
+        }
+        int[] best = null;
+        long bestD = Long.MAX_VALUE;
+        for (int cx : xs) {
+            if (cx < 0 || cx + rw > sw) continue;
+            for (int cy : ys) {
+                if (cy < 0 || cy + rh > sh || hits(cx, cy, rw, rh, avoid)) continue;
+                long d = (long) (cx - x) * (cx - x) + (long) (cy - y) * (cy - y);
+                if (d < bestD) {
+                    bestD = d;
+                    best = new int[]{cx, cy};
+                }
+            }
+        }
+        return best != null ? best : new int[]{x, y};
+    }
+
+    private static boolean hits(int x, int y, int w, int h, List<Rect> avoid) {
+        for (Rect r : avoid) {
+            if (x < r.x() + r.w() && r.x() < x + w && y < r.y() + r.h() && r.y() < y + h) return true;
+        }
+        return false;
     }
 
     /** 놓을 수 있는 자리 하나와 그 자리의 나쁨 점수(낮을수록 좋음) */

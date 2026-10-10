@@ -245,6 +245,23 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 c.setScreen(null);
             });
 
+            // 9-0) 실제 2026-10-10 뱃지 제작 창: 레시피 칸 문구가 "(좌) 해당 아이템 제작 시작 / (쉬프트+우) 레시피 고정".
+            //      "제작 시간 : 5초"를 진행 중인 제작으로 착각해 가짜 제작·완료 알림이 쏟아지면 안 된다
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                c.setScreen(facility(c,
+                        item("홍옥의 팔찌 획득권", 1, "쉬프트 우클릭하여 뱃지를 보관합니다.", "사용 시 사라지는 일회용 아이템입니다.", " 뱃지 아이템 정보", "",
+                                " 체력 : 1", "", "  제작 시간 : 5초", "", " (좌) 해당 아이템 제작 시작", " (쉬프트+우) 레시피 고정"),
+                        item("번개의 활 획득권", 1, " 공격력 : 1", "  제작 시간 : 5초", " (좌) 해당 아이템 제작 시작", " (쉬프트+우) 레시피 고정"),
+                        // 레시피 표시가 없어도, 시작 메시지 없이 "제작 시간"만 보이는 칸으로 새 제작을 만들지 않는다
+                        item("코룸 주괴", 3, "  제작 시간 : 1분 0초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.jobs().isEmpty(), "레시피 칸·제작 시간 칸으로 가짜 제작을 만듦: " + CraftTimers.jobs().stream().map(j -> j.name).toList());
+                c.setScreen(null);
+            });
+
             // 9-1) 실제 2026-10-10 창: 어빌리티 스톤 50·50·28개. 개수가 섞이면 "어빌리티 스톤 ×128" 한 줄, 시간은 합쳐서.
             //      대기열 칸의 "제작 시간"은 그 제작의 남은 시간 → 맨 앞 1시간 29분 33초 + 1시간 30분 + 50분 24초
             ctx.runOnClient(c -> {
@@ -295,6 +312,12 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(s1 != null && s2 != null, "HUD 가 그려지지 않음: " + bounds.keySet());
                 boolean overlap = s1.x() < s2.x() + s2.w() && s2.x() < s1.x() + s1.w() && s1.y() < s2.y() + s2.h() && s2.y() < s1.y() + s1.h();
                 check(!overlap, "직접 옮긴 HUD 끼리 겹침: " + s1 + " / " + s2);
+                // 9-2-1) 위로도 아래로도 자리가 없을 만큼 긴 HUD 가 있으면 옆으로 비킨다(실제: 일정 HUD 가 화면 높이만큼 길어짐)
+                java.util.List<kr.ddingmate.hud.HudLayout.Rect> tall = java.util.List.of(new kr.ddingmate.hud.HudLayout.Rect(6, 10, 100, 240));
+                int[] side = kr.ddingmate.hud.HudLayout.nearestFree(8, 80, 110, 80, 480, 270, tall);
+                check(side[0] >= 108 && side[1] == 80, "긴 HUD 옆으로 비키지 않음: " + side[0] + "," + side[1]);
+                int[] home = kr.ddingmate.hud.HudLayout.nearestFree(8, 80, 110, 80, 480, 270, java.util.List.of());
+                check(home[0] == 8 && home[1] == 80, "겹치지 않으면 원래 자리여야 함");
                 // 9-3) 아일랜드: 왼쪽 위로 직접 옮긴 HUD 도 서버 프로필(얼굴·체력) 아래로 비킨다(실제 화면에서 깔렸음)
                 DdingMate.config().hudPos.get(kr.ddingmate.hud.HudLayout.SCHEDULE).y = 0f;
                 kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.ISLAND, 6);

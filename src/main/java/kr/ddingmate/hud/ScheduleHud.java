@@ -137,6 +137,9 @@ public final class ScheduleHud {
         return boxH;
     }
 
+    /** 일정 HUD 에 보여 줄 제작·항해 줄 수 */
+    static final int MAX_CRAFT_ROWS = 6;
+
     private static List<Entry> build(DdingMateConfig cfg) {
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
         List<Entry> out = new ArrayList<>();
@@ -166,11 +169,15 @@ public final class ScheduleHud {
         if (cfg.craft.enabled && cfg.craft.showInHud) {
             long nowMs = System.currentTimeMillis();
             // 같은 아이템·개수를 여러 번 넣었으면 한 줄로: "조약돌 뭉치 ×7 [3]" · 마지막 것이 끝날 때까지
-            for (kr.ddingmate.craft.CraftTimers.Group g : kr.ddingmate.craft.CraftTimers.groups()) {
+            // 너무 많으면 HUD 가 화면을 덮으므로 위에서 몇 줄만, 나머지는 개수로 알려 준다(전체는 /띵메이트 홈)
+            List<kr.ddingmate.craft.CraftTimers.Group> groups = kr.ddingmate.craft.CraftTimers.groups();
+            int more = Math.max(0, groups.size() - MAX_CRAFT_ROWS);
+            for (kr.ddingmate.craft.CraftTimers.Group g : groups.subList(0, groups.size() - more)) {
                 long mins = g.unknown() ? Long.MAX_VALUE - 1 : Math.max(0, (g.endsAt() - nowMs) / 60000);
                 out.add(new Entry(g.label(), kr.ddingmate.craft.CraftTimers.remainingText(g, nowMs),
                         mins, g.done() ? Theme.GREEN : g.unknown() ? Theme.TEXT_SOFT : Theme.BLUE));
             }
+            if (more > 0) out.add(new Entry("그 밖의 제작 " + more + "개", "/띵메이트 홈", Long.MAX_VALUE - 2, Theme.TEXT_SOFT));
         }
         for (ScheduleEngine.Occurrence o : ScheduleEngine.upcoming(DdingMate.rules(), cfg::isEnabled, now, cfg.hudLines)) {
             Duration left = Duration.between(now, o.time());

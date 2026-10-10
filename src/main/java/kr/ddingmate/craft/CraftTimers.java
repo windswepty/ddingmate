@@ -115,7 +115,11 @@ public final class CraftTimers {
     /** 제작 1번에 걸리는 시간을 뜻하는 줄(레시피 칸: "제작 시간 : 20초") */
     private static final Pattern TOTAL_HINT = Pattern.compile("소요|제작\\s*시간|걸리는\\s*시간|필요\\s*시간");
     /** 레시피 고르는 칸(대기열이 아님): "(좌) 해당 레시피 선택", "(쉬프트+우) 레시피 제거" */
-    private static final Pattern RECIPE_HINT = Pattern.compile("레시피\\s*(선택|제거)");
+    /**
+     * 레시피 칸 표시. 시설마다 문구가 다르다(2026-10-10 실제 뱃지 제작 창: "(좌) 해당 아이템 제작 시작", "(쉬프트+우) 레시피 고정").
+     * 이걸 못 알아보면 레시피 칸의 "제작 시간 : 5초"를 진행 중인 제작으로 착각한다
+     */
+    private static final Pattern RECIPE_HINT = Pattern.compile("레시피\\s*(선택|제거|고정)|제작\\s*시작");
     /** 다 됐다는 줄(시간 없이) */
     private static final Pattern DONE_HINT = Pattern.compile("제작\\s*완료|완료되었|완료됨|회수\\s*가능|클릭하여\\s*회수|눌러\\s*회수");
 
@@ -124,7 +128,7 @@ public final class CraftTimers {
 
     private static Store fresh() {
         Store s = new Store();
-        s.version = 2;
+        s.version = 3;
         return s;
     }
     private static boolean dirty;
@@ -389,6 +393,9 @@ public final class CraftTimers {
                     .orElse(same.isEmpty() ? null : same.get(0));
             if (job == null) {
                 if (q.r().done || q.r().remainingSec <= 0) continue;
+                // 시작 메시지 없이 창에서만 새 제작을 만드는 건 "남은 시간"이 분명히 적힌 칸뿐이다.
+                // 칸의 "제작 시간"은 레시피 칸 설명일 수도 있어(뱃지 창) 이미 넣은 제작을 맞출 때만 쓴다
+                if (q.r().own) continue;
                 // 모드를 깔기 전에 넣었거나 시작 메시지를 놓친 제작
                 job = new Job();
                 job.name = q.name();
@@ -787,6 +794,12 @@ public final class CraftTimers {
             if (s.version < 2) {
                 s.accounts.clear(); // 예전 방식으로 센 제작(레시피 칸을 제작으로 잘못 등록한 것 포함)은 버린다
                 s.version = 2;
+                dirty = true;
+            }
+            if (s.version < 3) {
+                // 0.3.4 까지: 뱃지 창 레시피 칸을 창에서만 본 제작으로 잘못 만든 것을 지운다(시작 메시지가 없던 제작)
+                for (List<Job> l : s.accounts.values()) l.removeIf(j -> j != null && !j.separate && j.startedAt == 0);
+                s.version = 3;
                 dirty = true;
             }
             for (List<Job> l : s.accounts.values()) l.removeIf(j -> j == null || j.name == null || j.name.isBlank());
