@@ -169,7 +169,7 @@ public final class PlaytimeTracker {
             return;
         }
         Matcher c = CHAT_CLAIMED.matcher(t);
-        if (!t.contains(" : ") && c.lookingAt()) {
+        if (!kr.ddingmate.game.ServerText.fromPlayer(t) && c.lookingAt()) {
             int h = Integer.parseInt(c.group(1));
             if (!d.claimed.contains(h)) d.claimed.add(h);
             if (!d.notified.contains(h)) d.notified.add(h);

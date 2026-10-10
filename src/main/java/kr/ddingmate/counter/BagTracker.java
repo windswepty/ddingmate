@@ -371,6 +371,7 @@ public final class BagTracker {
 
     public static void onOverlay(String message) {
         if (message == null || !message.contains("저장소")) return;
+        if (kr.ddingmate.game.ServerText.fromPlayer(ItemKeys.stripGlyphs(message))) return; // 남이 흉내 낸 채팅·귓속말
         Matcher w = WITHDRAW_MSG.matcher(ItemKeys.stripGlyphs(message));
         if (w.find()) {
             try {

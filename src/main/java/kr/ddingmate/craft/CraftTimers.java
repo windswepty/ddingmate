@@ -115,11 +115,23 @@ public final class CraftTimers {
     private static final Pattern PERFUME_START = Pattern.compile("^향장품\\s*제조를\\s*시작했습니다.*?(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+)\\s*초)?\\s*후");
     /** "유실라 항해 보상을 수령했습니다." (2026-10-10 실제 채팅) */
     private static final Pattern VOYAGE_CLAIM = Pattern.compile("^(.+?)\\s*항해\\s*보상을\\s*수령했습니다");
+    /** 항해를 보낼 때 서버 채팅(2026-10 실제): "벨로아(으)로 항해를 시작했습니다." */
+    private static final Pattern VOYAGE_START = Pattern.compile("^(.+?)\\s*(?:\\(으\\))?로\\s*항해를\\s*시작했습니다");
+    /** 항해도를 새로 받았을 때 서버 채팅(2026-10 실제): "성공적으로 항해도를 초기화했습니다." */
+    private static final Pattern VOYAGE_RESET_DONE = Pattern.compile("항해도를\\s*초기화했습니다");
     private static final Pattern PERFUME_DONE =Pattern.compile("^제조\\s*완료된\\s*향장품을\\s*성공적으로\\s*수령");
     public static final String PERFUME = "향장품";
 
     /** 설명 줄의 시간: "2분 0초", "1시간 2분 3초", "45초" */
-    private static final Pattern KOREAN_TIME = Pattern.compile("(?:(\\d+)\\s*일)?\\s*(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+)\\s*초)?");
+    private static final Pattern KOREAN_TIME = Pattern.compile("(?:(\\d+)\\s*일)?\\s*(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+(?:\\.\\d+)?)\\s*초)?");
+    /**
+     * 시설 창의 "[ 강화 횃불 제작 시작하기 ]" 버튼(2026-10-09 실제): "- 제작 시간 : 6.3초" — 지금 고른 개수로 넣었을 때의
+     * 스킬 적용 시간. 서버는 이를 초 단위로 올려 쓴다(6.3초 → 대기열 7초, 실제 7초 뒤 회수)
+     */
+    private static final Pattern START_BUTTON = Pattern.compile("^\\[?\\s*(.+?)\\s*제작\\s*시작하기\\s*]?$");
+    /** 마지막으로 본 제작 시작 버튼: 아이템 키, 걸리는 시간(ms), 본 시각 */
+    private static String buttonKey;
+    private static long buttonMs, buttonAt;
     /** 설명 줄의 시간: "01:02:03", "02:30" */
     private static final Pattern CLOCK_TIME = Pattern.compile("(?<!\\d)(\\d{1,2}):(\\d{2})(?::(\\d{2}))?(?!\\d)");
     /** 남은 시간을 뜻하는 줄 */
@@ -157,7 +169,7 @@ public final class CraftTimers {
         String t = Formatting.strip(message);
         if (t == null) return;
         t = ItemKeys.stripGlyphs(t).trim();
-        if (t.contains(" : ")) return; // 사람이 쓴 채팅은 무시
+        if (kr.ddingmate.game.ServerText.fromPlayer(t)) return; // 사람이 쓴 채팅·귓속말은 무시
         long now = System.currentTimeMillis();
         Matcher m = START.matcher(t);
         if (m.find()) {
@@ -176,6 +188,18 @@ public final class CraftTimers {
             String name = m.group(1).trim() + " " + VOYAGE;
             lastVoyageClaim = now; // 마지막 섬이었다면 이때부터 1분 뒤 항해가 초기화된다
             if (jobs != null && jobs.removeIf(j -> j.separate && j.name.equals(name))) changed();
+            return;
+        }
+        m = VOYAGE_START.matcher(t);
+        if (m.find()) {
+            voyageStarted(m.group(1).trim(), now);
+            return;
+        }
+        if (VOYAGE_RESET_DONE.matcher(t).find()) {
+            // 항해도가 새로 바뀌었다 → 지난 섬 줄과 "항해 초기화" 줄을 모두 지운다(새 섬은 항해를 보내면 생긴다)
+            List<Job> jobs = jobsForWrite();
+            lastVoyageClaim = 0;
+            if (jobs != null && jobs.removeIf(j -> j.separate && j.name.endsWith(VOYAGE))) changed();
             return;
         }
         m = PERFUME_START.matcher(t);
@@ -199,6 +223,9 @@ public final class CraftTimers {
     }
 
     /** 제작 시작: 대기열 맨 뒤에 붙인다. 1번에 걸리는 시간을 알면 앞 제작이 끝난 뒤부터 센다 */
+    /** 시작 버튼을 본 뒤 이 안에 시작 메시지가 오면 그 버튼으로 넣은 것으로 본다 */
+    static final long BUTTON_FRESH_MS = 15_000;
+
     private static void start(String name, int count, long now) {
         List<Job> jobs = jobsForWrite();
         if (jobs == null) return;
@@ -206,6 +233,12 @@ public final class CraftTimers {
         j.name = name;
         j.count = Math.max(1, count);
         j.startedAt = now;
+        String key = ItemKeys.normalize(name);
+        if (key.equals(buttonKey) && buttonMs > 0 && now - buttonAt <= BUTTON_FRESH_MS) {
+            // 넣기 직전 시작 버튼에 보인 시간 = 이 제작(이 개수)의 실제 시간
+            store.observedMs.put(key + "*" + j.count, buttonMs);
+            buttonKey = null;
+        }
         jobs.add(j);
         fillUnknown(jobs);
         changed();
@@ -433,6 +466,14 @@ public final class CraftTimers {
             Reading r = read(lore.lines());
             if (r == null) continue;
             String name = cleanName(ItemKeys.stripGlyphs(s.getName().getString()));
+            Matcher button = START_BUTTON.matcher(name.trim());
+            if (button.matches() && r.totalSec > 0) {
+                // 이 개수로 넣으면 걸리는 시간. 바로 뒤 시작 메시지가 오면 그 제작의 정확한 시간으로 쓴다
+                buttonKey = ItemKeys.normalize(button.group(1));
+                buttonMs = r.totalSec * 1000L;
+                buttonAt = now;
+                continue;
+            }
             String key = ItemKeys.normalize(name);
             if (key.isEmpty()) continue;
             logOnce(name, lore.lines());
@@ -565,9 +606,16 @@ public final class CraftTimers {
                 if (m.end() >= t.length()) break;
                 continue;
             }
-            return parseInt(m.group(1)) * 86400L + parseInt(m.group(2)) * 3600L + parseInt(m.group(3)) * 60L + parseInt(m.group(4));
+            return parseInt(m.group(1)) * 86400L + parseInt(m.group(2)) * 3600L + parseInt(m.group(3)) * 60L + secondsPart(m.group(4));
         }
         return -1;
+    }
+
+    /** "7" → 7, "6.3" → 7 (서버처럼 초 단위 올림), 없으면 0 */
+    private static long secondsPart(String s) {
+        if (s == null) return 0;
+        if (!s.contains(".")) return parseInt(s);
+        return (long) Math.ceil(Double.parseDouble(s) - 1e-9);
     }
 
     private static void logOnce(String name, List<Text> lines) {
@@ -697,6 +745,23 @@ public final class CraftTimers {
         return m.matches() ? m.group(1).trim() : "";
     }
 
+    /**
+     * 항해를 보냈다: 그 섬 줄을 새로 만든다. 남은 시간은 채팅에 없어서 항해 창 칸("남은 시간 : …")을 읽을 때 정확히 맞춘다
+     * (보내는 동안 창이 열려 있어 보통 0.5초 안에 맞춰진다). 초기화를 기다리던 줄은 이제 필요 없다
+     */
+    private static void voyageStarted(String island, long now) {
+        List<Job> jobs = jobsForWrite();
+        if (jobs == null || island.isEmpty() || island.length() > 30) return;
+        String name = island + " " + VOYAGE;
+        jobs.removeIf(j -> j.separate && (j.name.equals(name) || j.name.equals(VOYAGE_RESET_NAME)));
+        Job j = new Job();
+        j.name = name;
+        j.separate = true;
+        j.startedAt = now;
+        jobs.add(j);
+        changed();
+    }
+
     private static boolean voyageReset(List<Job> jobs, long shownSec, long now) {
         // 모든 섬을 마쳐 초기화를 기다린다 → 섬 항해 줄은 모두 지우고 "항해 초기화" 한 줄만(새 섬은 항해를 보내면 다시 생긴다)
         boolean removed = jobs.removeIf(j -> j.separate && j.name.endsWith(VOYAGE) && !j.name.equals(VOYAGE_RESET_NAME));
@@ -713,6 +778,13 @@ public final class CraftTimers {
         j.endsAt = ends;
         jobs.add(j);
         return true;
+    }
+
+    /** 시험용: 시작 버튼을 지금 본 것으로 */
+    public static void debugButton(String name, long ms) {
+        buttonKey = ItemKeys.normalize(name);
+        buttonMs = ms;
+        buttonAt = System.currentTimeMillis();
     }
 
     /** 시험용 */
@@ -807,13 +879,18 @@ public final class CraftTimers {
     /** 남은 시간 글: "1분 20초"(어림값이면 "약 "), 끝났으면 "완료!", 모르면 안내 */
     public static String remainingText(Group g, long now) {
         // 확실하지 않은 시각(서버에서 확인 전)은 어림 숫자 대신 확인 방법을 보여 준다
-        if (g.unknown() || g.estimated()) return "시설 창 열면 표시";
+        if (g.unknown() || g.estimated()) return unknownText(g.name());
         return text(g.endsAt(), g.estimated(), now);
     }
 
     public static String remainingText(Job j, long now) {
-        if (j.endsAt == 0 || (!j.synced && !j.derived)) return "시설 창 열면 표시";
+        if (j.endsAt == 0 || (!j.synced && !j.derived)) return unknownText(j.name);
         return text(j.endsAt, !j.synced, now);
+    }
+
+    /** 남은 시간을 아직 모를 때: 어디를 열면 정확히 맞춰지는지 */
+    private static String unknownText(String name) {
+        return name != null && name.endsWith(VOYAGE) ? "항해 창 열면 표시" : "시설 창 열면 표시";
     }
 
     private static String text(long endsAt, boolean estimated, long now) {

@@ -284,6 +284,34 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 DdingMate.config().craft.mining = 0;
             });
 
+            // 9-0000) 실제 2026-10-09 22:26 시작 버튼 "[  강화 횃불 제작 시작하기 ]" "- 제작 시간 : 6.3초" → 1개 시작 → 대기열 7초.
+            //         넣는 순간 버튼 시간(올림 7초)으로 정확히 센다. 소수 초를 3초로 잘못 읽지 않는다
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                check(CraftTimers.read(lines("- 제작 시간 : 6.3초")).remainingSec() == 7, "6.3초를 7초(올림)로 읽지 않음: " + CraftTimers.read(lines("- 제작 시간 : 6.3초")));
+                c.setScreen(facility(c, item("[  강화 횃불 제작 시작하기 ]", 1, "재료를 소모해 아이템을 제작할 수 있습니다.",
+                        "제작 시작 후 제작 대기열에 추가됩니다.", "- 제작 시간 : 6.3초", "클릭 시 제작 을 시작합니다.")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.jobs().isEmpty(), "시작 버튼을 제작으로 등록함");
+                c.setScreen(null);
+                CraftTimers.onChat(G + "강화 횃불 아이템 1개 제작을 시작했습니다.");
+                check(CraftTimers.durationMs("강화 횃불", 1) == 7_000, "시작 버튼 시간(7초)을 쓰지 않음: " + CraftTimers.durationMs("강화 횃불", 1));
+                String t = CraftTimers.remainingText(CraftTimers.groups().get(0), now());
+                check(!t.equals("시설 창 열면 표시") && !CraftTimers.groups().get(0).estimated(), "버튼으로 확실한 시간인데 확인 전으로 보임: " + t);
+                // 귓속말로 흉내 낸 서버 문구는 세지 않는다
+                CraftTimers.onChat("(단무지 → 멜트<받음>) 강화 횃불 아이템 1개 제작을 시작했습니다.");
+                check(CraftTimers.jobs().size() == 1, "귓속말을 제작 시작으로 셈");
+                // 항해: 보내는 순간 줄이 생기고(시간은 항해 창에서), 항해도를 초기화하면 지난 줄은 모두 지운다
+                CraftTimers.onChat(G + "벨로아(으)로 항해를 시작했습니다.");
+                CraftTimers.Group v = CraftTimers.groups().stream().filter(g -> g.name().equals("벨로아 항해")).findFirst().orElse(null);
+                check(v != null && CraftTimers.remainingText(v, now()).equals("항해 창 열면 표시"), "항해 시작 채팅으로 줄을 만들지 않음: " + labels(CraftTimers.groups()));
+                CraftTimers.onChat(G + "성공적으로 항해도를 초기화했습니다.");
+                check(CraftTimers.groups().stream().noneMatch(g -> g.name().endsWith("항해")), "항해도 초기화 뒤 지난 항해 줄이 남음");
+                CraftTimers.debugClear();
+            });
+
             // 9-00) 실제 2026-10-10 강화 횃불 3개(7초, 채광 1레벨): 서버는 개당 7초(6.3초가 아님) → 7·14·21초.
             //       시설 창을 열 때마다 서버 값으로 맞춰도 뒤 제작이 1초씩 밀리지 않고, 끝난 것을 꺼내도 진행 중인 제작 시간은 그대로
             ctx.runOnClient(c -> {

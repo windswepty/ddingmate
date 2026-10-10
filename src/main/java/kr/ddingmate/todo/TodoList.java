@@ -105,7 +105,7 @@ public final class TodoList {
             return;
         }
         // 사람이 쓴 채팅 줄("[칭호] 닉네임 : ...")은 세지 않는다. 서버 공지만 센다
-        if (text.contains(" : ")) return;
+        if (kr.ddingmate.game.ServerText.fromPlayer(text)) return; // 귓속말 포함
         if (QUEST_DONE.matcher(text).find()) {
             // 의뢰 창이 열려 있으면 창에 보이는 "이미 완료한 의뢰" 수로 맞추므로 메시지로는 세지 않는다(두 번 세지 않게)
             if (!QuestContext.windowOpen()) count(QuestContext.weekly() ? TodoPreset.WEEKLY_QUEST : TodoPreset.DAILY_QUEST);

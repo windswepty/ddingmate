@@ -112,7 +112,7 @@ public final class SkillTimers {
         String t = Formatting.strip(message);
         if (t == null) return;
         t = ItemKeys.stripGlyphs(t).trim();
-        if (t.contains(" : ")) return; // 사람이 쓴 채팅은 무시
+        if (kr.ddingmate.game.ServerText.fromPlayer(t)) return; // 사람이 쓴 채팅·귓속말은 무시
         onChat(t, System.currentTimeMillis());
     }
 
