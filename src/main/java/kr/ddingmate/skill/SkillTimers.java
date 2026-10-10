@@ -93,6 +93,8 @@ public final class SkillTimers {
         public boolean cooldownPending;
         /** 서버가 직접 알려 준 남은 쿨타임으로 맞췄는지 */
         public boolean readySynced;
+        /** 다시 쓸 수 있게 된 시각(시간이 됐거나 서버 메시지). "사용 가능"을 두 번 띄우지 않으려고 */
+        public transient long readyNotedAt;
         /** "사용 가능"을 이때까지 보여 준다 */
         public long readyShownUntil;
         /** 스킬 동안 서버가 거는 상태 효과(짝지었으면 id). 효과가 남은 시간이 곧 정확한 지속 시간 */
@@ -158,6 +160,7 @@ public final class SkillTimers {
         s.cooldownPending = s.cooldownSec <= 0;
         s.readySynced = false;
         s.readyShownUntil = 0;
+        s.readyNotedAt = 0;
         s.activeExact = false;
         SkillSignals.activated(s, now); // 서버가 함께 보내는 효과·아이템 쿨타임으로 더 정확히 맞춘다
         changed();
@@ -223,7 +226,9 @@ public final class SkillTimers {
         s.readyAt = 0;
         s.readySynced = false;
         s.cooldownPending = false;
-        s.readyShownUntil = now + READY_SHOW_MS;
+        // 이미 시간이 돼 "사용 가능"을 보여 줬으면 메시지가 조금 늦게 와도 다시 띄우지 않는다
+        if (s.readyNotedAt == 0 || now - s.readyNotedAt > READY_SHOW_MS + 5_000) s.readyShownUntil = now + READY_SHOW_MS;
+        s.readyNotedAt = now;
         changed();
     }
 
@@ -323,9 +328,13 @@ public final class SkillTimers {
                 s.activeUntil = 0;
                 touched = true;
             }
-            if (s.readyAt > 0 && now >= s.readyAt + END_GRACE_MS) {
-                // 서버가 "사용할 수 있습니다"를 보내지 않았어도(접속을 끊었다 들어옴 등) 시간이 지났으면 쓸 수 있다
+            if (s.readyAt > 0 && now >= s.readyAt) {
+                // 재사용 시간이 다 됐으면 바로 "사용 가능". 서버의 "사용할 수 있습니다"는 채널을 옮기면 오지 않기도 해서
+                // 기다리지 않는다(2026-10-10 실측: 야생→스폰→마을로 옮긴 사이 안 옴. 남은 쿨타임 메시지는 매초 이 시각과 일치)
+                s.readyShownUntil = s.readyAt + READY_SHOW_MS;
+                s.readyNotedAt = s.readyAt;
                 s.readyAt = 0;
+                s.readySynced = false;
                 touched = true;
             }
             if (s.cooldownPending && now - s.activatedAt > UNKNOWN_COOLDOWN_MS) {
@@ -358,8 +367,7 @@ public final class SkillTimers {
                 yield "사용 중 " + clock((r.untilMs - now + 999) / 1000);
             }
             // 서버와 같은 방식(초 아래 버림)으로 센다: 서버가 "쿨타임이 1분 36초 남았습니다"라고 할 때 HUD 도 1분 36초
-            case COOLDOWN -> r.untilMs == 0 ? "스킬 창 열면 표시"
-                    : now >= r.untilMs ? "곧 사용 가능" : clock((r.untilMs - now) / 1000);
+            case COOLDOWN -> r.untilMs == 0 ? "스킬 창 열면 표시" : clock(Math.max(0, r.untilMs - now) / 1000);
         };
     }
 

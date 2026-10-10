@@ -983,7 +983,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬의 쿨타임이 1분 0초 남았습니다.", t0 + 83_500);
                 sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 83_600);
                 check(kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 83_600).equals("1분 0초"), "서버가 알려 준 남은 시간으로 맞추지 않음: " + kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 83_600));
-                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 사용할 수 있습니다.", t0 + 144_000);
+                // 시간이 되면 서버 메시지를 기다리지 않고 바로 "사용 가능"("곧 사용 가능" 같은 짐작 표기 없음)
+                sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 144_000);
+                check(sr.size() == 1 && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 144_000).equals("사용 가능"),
+                        "재사용 시간이 됐는데 바로 사용 가능으로 안 바뀜: " + (sr.isEmpty() ? "없음" : kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 144_000)));
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 사용할 수 있습니다.", t0 + 144_500);
                 sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 145_000);
                 check(sr.size() == 1 && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 145_000).equals("사용 가능"), "다시 쓸 수 있다고 보여 주지 않음");
                 check(kr.ddingmate.skill.SkillTimers.rows(t0 + 150_000).isEmpty(), "사용 가능 표시가 사라지지 않음");
