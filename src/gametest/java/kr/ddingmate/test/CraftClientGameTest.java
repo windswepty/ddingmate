@@ -284,6 +284,42 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 DdingMate.config().craft.mining = 0;
             });
 
+            // 9-00000) 섬 그림: 섬 칸은 투명 버튼(종이 2025)이고 그림은 창 제목의 "sailing/ui/island" 글꼴 글자로 찍힌다
+            //          (2026-10 리소스팩). 제목 글자가 그려지는 자리로 섬 칸과 짝짓는다(시험용 글꼴: U+A001 20×16 ascent -21, U+A102 22×15 ascent -39)
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                kr.ddingmate.craft.IslandIcons.debugClear();
+                net.minecraft.util.Identifier font = net.minecraft.util.Identifier.of("e94a3c2f-10aa-4d92-9ed0-c73f74fef20e", "sailing/ui/island");
+                Text title = Text.empty().append(Text.literal("ꀁꄂ").styled(st -> st.withFont(font)));
+                SimpleInventory inv = new SimpleInventory(54);
+                inv.setStack(9, item("[ 토르엔 빠른 항해 ]", 1, "  항해를 통해 다양한 아이템을 획득해보세요.", "  - 남은 시간 : 1시간 0분 0초"));
+                inv.setStack(20, item("[ 라비온 보상 수령 ]", 1, "  항해를 통해 다양한 아이템을 획득해보세요.", "클릭 시 항해 보상을 수령합니다."));
+                GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(91, c.player.getInventory(), inv);
+                c.setScreen(new GenericContainerScreen(h, c.player.getInventory(), title));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                String a = kr.ddingmate.craft.IslandIcons.debugValue("토르엔");
+                String b = kr.ddingmate.craft.IslandIcons.debugValue("라비온");
+                check(a != null && a.endsWith("#" + 0xA001), "토르엔 칸 위 섬 그림(U+A001)과 짝짓지 못함: " + a);
+                check(b != null && b.endsWith("#" + 0xA102), "라비온 칸 위 섬 그림(U+A102)과 짝짓지 못함: " + b);
+                check(kr.ddingmate.craft.IslandIcons.has("토르엔 항해") && !kr.ddingmate.craft.IslandIcons.has("조약돌 뭉치"), "섬 그림 찾기가 틀림");
+                c.setScreen(null);
+                kr.ddingmate.gui.DdingMateScreen s = new kr.ddingmate.gui.DdingMateScreen(null);
+                c.setScreen(s);
+                s.openTab(0);
+            });
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> c.currentScreen.children().stream()
+                    .filter(e -> e instanceof net.minecraft.client.gui.widget.ElementListWidget<?>)
+                    .forEach(e -> ((net.minecraft.client.gui.widget.ElementListWidget<?>) e).setScrollY(10000)));
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("craft-island-icons");
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                CraftTimers.debugClear();
+            });
+
             // 9-0000) 실제 2026-10-09 22:26 시작 버튼 "[  강화 횃불 제작 시작하기 ]" "- 제작 시간 : 6.3초" → 1개 시작 → 대기열 7초.
             //         넣는 순간 버튼 시간(올림 7초)으로 정확히 센다. 소수 초를 3초로 잘못 읽지 않는다
             ctx.runOnClient(c -> {
@@ -481,7 +517,6 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(jobs.size() == 1 && jobs.get(0).name.equals("유실라 항해") && jobs.get(0).separate,
                         "돌아온 항해를 항해 타이머로 읽지 못하거나 제작으로 착각함: " + jobs.stream().map(j -> j.name).toList());
                 check(CraftTimers.groups().get(0).done(), "돌아온 항해가 완료로 보이지 않음");
-                check(kr.ddingmate.counter.IconCache.forMaterial("유실라 항해") != null, "섬 그림을 기억하지 않음");
                 // 실제 2026-10-10 19:19: 전문가 창의 항해 스킬 칸·수하물 칸을 섬으로 읽어, 보상을 안 받은 항해 줄을 지웠다
                 c.setScreen(facility(c,
                         item("[세레니티] 가벼운 항해선 (잠김)", 1, "전문가 스킬 정보", ". 항해 포인트가 5% 높게 책정됩니다.", ". 항해도에서 계산되어 보입니다."),

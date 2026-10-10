@@ -62,20 +62,6 @@ public final class IconCache {
         put(stack, false);
     }
 
-    /** 이 이름(예: "토르엔 항해")의 그림으로 기억한다. 늘 마지막에 본 모양으로 바꾼다 */
-    public static void rememberAs(String name, ItemStack stack) {
-        if (stack.isEmpty()) return;
-        ensureLoaded();
-        String key = ItemKeys.nameKey(name);
-        ItemStack before = SEEN.get(key);
-        ItemStack now = slim(stack);
-        if (before != null && ItemStack.areItemsAndComponentsEqual(before, now)) return;
-        if (before == null && SEEN.size() >= MAX) return;
-        SEEN.put(key, now);
-        WEAK.remove(key);
-        dirty = true;
-    }
-
     /** 그 밖의 창(제작 시설 등)에서 본 아이템: 아직 모르는 것만 기억 */
     public static void rememberSeen(ItemStack stack) {
         put(stack, true);

@@ -447,6 +447,7 @@ public final class CraftTimers {
         // 대기열 칸: 레시피 칸이 아닌데 시간이 보이는 칸. 실제 창은 "제작 시간 : 1시간 29분 33초" 처럼
         // 그 제작의 남은 시간(스킬 적용 후, 맨 앞은 1초마다 줄어듦)을 보여 준다
         Set<String> islandsSeen = new HashSet<>();
+        List<IslandIcons.IslandSlot> islandSlots = new ArrayList<>();
         Map<String, Long> recipeSeen = new LinkedHashMap<>();
         Set<String> recipeConflict = new HashSet<>();
         record QueueSlot(String name, String key, int count, Reading r) {}
@@ -462,8 +463,7 @@ public final class CraftTimers {
                 String island = islandOf(s);
                 if (!island.isEmpty()) {
                     islandsSeen.add(island);
-                    // 일정·홈에서 섬을 그 섬 그림으로 보여 준다
-                    kr.ddingmate.counter.IconCache.rememberAs(island + " " + VOYAGE, s);
+                    islandSlots.add(new IslandIcons.IslandSlot(island, slot.x, slot.y));
                 }
                 if (voyage(jobs, s, lore.lines(), now)) changed = true;
                 continue;
@@ -556,6 +556,8 @@ public final class CraftTimers {
             changed = true;
         }
         // 항해 창: 지금 창에 없는 섬(초기화로 바뀐 섬)의 끝난 항해 줄은 정리한다
+        // 섬 칸은 투명 버튼이고 섬 그림은 창 제목 글꼴로 찍혀 있다 → 제목에서 섬마다 그림을 찾아 둔다
+        if (!islandSlots.isEmpty()) IslandIcons.learn(screen.getTitle(), islandSlots);
         if (islandsSeen.size() >= VOYAGE_MAP_MIN) {
             changed |= jobs.removeIf(j -> j.separate && j.name.endsWith(VOYAGE) && !j.name.equals(VOYAGE_RESET_NAME)
                     && done(j, now) && !islandsSeen.contains(j.name.substring(0, j.name.length() - VOYAGE.length()).trim()));

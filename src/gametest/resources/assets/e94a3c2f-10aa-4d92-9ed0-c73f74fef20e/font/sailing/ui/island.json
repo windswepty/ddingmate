@@ -1,0 +1,22 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "e94a3c2f-10aa-4d92-9ed0-c73f74fef20e:font/sailing/ui/island/island_1_1.png",
+      "height": 16,
+      "ascent": -21,
+      "chars": [
+        "\ua001"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "e94a3c2f-10aa-4d92-9ed0-c73f74fef20e:font/sailing/ui/island/island_1_2.png",
+      "height": 15,
+      "ascent": -39,
+      "chars": [
+        "\ua102"
+      ]
+    }
+  ]
+}

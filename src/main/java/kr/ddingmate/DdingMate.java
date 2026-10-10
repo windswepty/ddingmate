@@ -77,6 +77,19 @@ public final class DdingMate implements ClientModInitializer {
                 "key.ddingmate.open_settings", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, "category.ddingmate"));
 
         ClientTickEvents.END_CLIENT_TICK.register(DdingMate::onTick);
+        // 서버 리소스팩을 받거나 바꾸면 섬 그림 글꼴을 다시 읽는다
+        net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES)
+                .registerReloadListener(new net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener() {
+                    @Override
+                    public net.minecraft.util.Identifier getFabricId() {
+                        return net.minecraft.util.Identifier.of(MOD_ID, "island_icons");
+                    }
+
+                    @Override
+                    public void reload(net.minecraft.resource.ResourceManager manager) {
+                        kr.ddingmate.craft.IslandIcons.clearFonts();
+                    }
+                });
         // 같은 구석이면 등록한 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도
         // 설치만 하고 아직 /띵메이트 를 열어 보지 않았으면 화면에 아무것도 띄우지 않는다
         // 띵타이쿤 대기 서버(접속 직후 스폰으로 옮겨지기 전)에서도 띄우지 않는다

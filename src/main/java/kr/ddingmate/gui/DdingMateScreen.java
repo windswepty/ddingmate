@@ -426,10 +426,9 @@ public class DdingMateScreen extends Screen {
             list.header("제작 중");
             long nowMs = System.currentTimeMillis();
             for (kr.ddingmate.craft.CraftTimers.Group j : crafting) {
-                ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(j.name());
-                list.single(new InfoRow(icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
+                list.single(new InfoRow(craftIcon(j.name()),
                         j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
-                        j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, Tab.COUNTER));
+                        j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, Tab.COUNTER).island(j.name()));
             }
         }
 
@@ -583,10 +582,9 @@ public class DdingMateScreen extends Screen {
         }
         long nowMs = System.currentTimeMillis();
         for (kr.ddingmate.craft.CraftTimers.Group j : jobs) {
-            ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(j.name());
-            InfoRow row = new InfoRow(icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
+            InfoRow row = new InfoRow(craftIcon(j.name()),
                     j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
-                    j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, null);
+                    j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, null).island(j.name());
             Widgets.Button del = new Widgets.Button(44, 20, Text.literal("지우기"), false, b -> {
                 kr.ddingmate.craft.CraftTimers.remove(j);
                 rebuild();
@@ -642,6 +640,13 @@ public class DdingMateScreen extends Screen {
         list.note(skills.stream().anyMatch(s -> s.cooldownSec > 0)
                 ? "스킬을 강화했다면 /전문가 스킬 창을 한 번 열어 주세요. 바뀐 시간을 다시 읽어요."
                 : "/전문가 → 스킬 보기 창을 한 번 열면 스킬마다 지속 시간·재사용 대기 시간을 읽어 와요.");
+    }
+
+    /** 제작 줄 아이콘: 항해는 배(섬 그림을 알면 그 그림을 대신 그린다), 그 밖은 만드는 아이템 → 작업대 */
+    private static ItemStack craftIcon(String name) {
+        if (name != null && name.endsWith(kr.ddingmate.craft.CraftTimers.VOYAGE)) return new ItemStack(Items.OAK_BOAT);
+        ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(name);
+        return icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon;
     }
 
     private static String skillLabel(kr.ddingmate.skill.SkillTimers.Skill s) {
@@ -937,6 +942,13 @@ public class DdingMateScreen extends Screen {
         private final String value;
         private final int valueColor;
         private final Tab target;
+        /** 항해 줄이면 그 섬 그림("토르엔 항해") */
+        private String island;
+
+        InfoRow island(String jobName) {
+            this.island = jobName;
+            return this;
+        }
 
         InfoRow(ItemStack icon, String label, String value, int valueColor, Tab target) {
             super(0, 0, rowWidth(), 20, Text.literal(label));
@@ -956,7 +968,7 @@ public class DdingMateScreen extends Screen {
         @Override
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
             Theme.row(ctx, getX(), getY(), width, height, target != null && isSelected());
-            Theme.item(ctx, icon, getX() + 4, getY() + 2, 16);
+            if (!kr.ddingmate.craft.IslandIcons.draw(ctx, island, getX() + 4, getY() + 2, 16)) Theme.item(ctx, icon, getX() + 4, getY() + 2, 16);
             int right = getX() + width - (target != null ? 14 : 6);
             int vw = Theme.boldWidth(textRenderer, value);
             Theme.boldText(ctx, textRenderer, value, right - vw, getY() + 6, valueColor, false);
