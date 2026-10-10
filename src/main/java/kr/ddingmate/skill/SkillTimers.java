@@ -238,7 +238,21 @@ public final class SkillTimers {
         s.cooldownSec = cooldown;
         s.tool = tool;
         if (changed) changed();
+        // 제작 시간 스킬처럼, 이번 접속에서 처음 읽었거나 값이 바뀌었으면 채팅으로 한 번 알려 준다
+        if (CONFIRMED.add(s.name) || changed) {
+            long dur = durationMs(s) / 1000;
+            String what = (dur > 0 ? "지속 " + clock(dur) + " · " : "") + "재사용 " + clock(cooldown);
+            kr.ddingmate.notify.Notifier.chat("전문가 스킬 '" + s.name + "'" + levelText(level) + " " + what
+                    + (changed ? " 을 스킬 타이머에 반영했어요." : " 을 확인했어요(이미 반영됨)."));
+        }
         return true;
+    }
+
+    /** 이번 접속에서 이미 읽고 알려 준 스킬 */
+    private static final java.util.Set<String> CONFIRMED = new java.util.HashSet<>();
+
+    private static String levelText(int level) {
+        return level >= 99 ? " (MAX)" : level > 0 ? " (+" + level + ")" : "";
     }
 
     /** "[야생] 곡괭이 나가신다! (+5)" → "곡괭이 나가신다!" */
@@ -429,6 +443,7 @@ public final class SkillTimers {
 
     /** 시험용 */
     public static void debugClear() {
+        CONFIRMED.clear();
         store = new Store();
         dirty = true;
     }

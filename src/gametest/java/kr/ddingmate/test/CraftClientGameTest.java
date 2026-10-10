@@ -481,6 +481,17 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(jobs.size() == 1 && jobs.get(0).name.equals("유실라 항해") && jobs.get(0).separate,
                         "돌아온 항해를 항해 타이머로 읽지 못하거나 제작으로 착각함: " + jobs.stream().map(j -> j.name).toList());
                 check(CraftTimers.groups().get(0).done(), "돌아온 항해가 완료로 보이지 않음");
+                check(kr.ddingmate.counter.IconCache.forMaterial("유실라 항해") != null, "섬 그림을 기억하지 않음");
+                // 실제 2026-10-10 19:19: 전문가 창의 항해 스킬 칸·수하물 칸을 섬으로 읽어, 보상을 안 받은 항해 줄을 지웠다
+                c.setScreen(facility(c,
+                        item("[세레니티] 가벼운 항해선 (잠김)", 1, "전문가 스킬 정보", ". 항해 포인트가 5% 높게 책정됩니다.", ". 항해도에서 계산되어 보입니다."),
+                        item("[세레니티] 스피드 복귀 항로 (잠김)", 1, "전문가 스킬 정보", ". 항해 시간이 3% 감소합니다.", ". 항해도에서 반영되어 보입니다."),
+                        item("데르무스의 가죽", 1, "항해 수하물로써 사용되는 유물입니다.", "◇ 항해 수하물 포인트 : 200")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.jobs().size() == 1 && CraftTimers.jobs().get(0).name.equals("유실라 항해"),
+                        "항해 스킬·수하물 칸을 보고 보상을 안 받은 항해를 지우거나 새 줄을 만듦: " + CraftTimers.jobs().stream().map(j -> j.name).toList());
                 // 항해 중인 칸에 남은 시간이 보이면 그 시각으로
                 c.setScreen(facility(c, item("[ 벨로아 빠른 항해 ]", 1, "", "  항해를 통해 다양한 아이템을 획득해보세요.",
                         "  크리스탈을 소모해 빠른 항해를 진행할 수 있습니다.", "", "  - 남은 시간 : 2시간 16분 15초",
@@ -506,7 +517,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 // 모든 섬을 마치면(실제 칸 "[ 벨로아 항해 완료 ]" · "초기화까지 남은 시간 : 12초") 섬 줄 대신
                 // "항해 초기화" 한 줄을 마지막 보상 수령 1분 뒤까지 센다. 멈춰 있는 창 값(12초)으로 다시 맞추지 않는다
                 // 끝난 섬 줄이 남아 있어도 초기화를 기다리는 칸을 보면 모두 지운다
-                CraftTimers.debugVoyage(item("[ 유실라 보상 수령 ]", 1), lines("  - 항해 소요 시간 : 4시간 5분 0초", "클릭 시 항해 보상을 수령합니다."));
+                CraftTimers.debugVoyage(item("[ 유실라 보상 수령 ]", 1), lines("  항해를 통해 다양한 아이템을 획득해보세요.",
+                        "  - 항해 소요 시간 : 4시간 5분 0초", "클릭 시 항해 보상을 수령합니다."));
                 check(CraftTimers.jobs().stream().anyMatch(x -> x.name.equals("유실라 항해")), "돌아온 항해 줄이 안 생김");
                 CraftTimers.debugVoyageClaimAt(now() - 20_000);
                 java.util.List<Text> resetLore = lines("", "  이미 항해를 마친 섬/대륙입니다.", "  모든 섬/대륙을 항해하면 초기화됩니다.", "", "  - 초기화까지 남은 시간 : 12초");

@@ -458,8 +458,13 @@ public final class CraftTimers {
             LoreComponent lore = s.get(DataComponentTypes.LORE);
             if (lore == null || lore.lines().isEmpty()) continue;
             if (isVoyage(lore.lines())) {
+                if (!isIslandSlot(s, lore.lines())) continue; // "라비온 수하물 넣기" 칸: 섬 상태가 아니다
                 String island = islandOf(s);
-                if (!island.isEmpty()) islandsSeen.add(island);
+                if (!island.isEmpty()) {
+                    islandsSeen.add(island);
+                    // 일정·홈에서 섬을 그 섬 그림으로 보여 준다
+                    kr.ddingmate.counter.IconCache.rememberAs(island + " " + VOYAGE, s);
+                }
                 if (voyage(jobs, s, lore.lines(), now)) changed = true;
                 continue;
             }
@@ -551,7 +556,7 @@ public final class CraftTimers {
             changed = true;
         }
         // 항해 창: 지금 창에 없는 섬(초기화로 바뀐 섬)의 끝난 항해 줄은 정리한다
-        if (!islandsSeen.isEmpty()) {
+        if (islandsSeen.size() >= VOYAGE_MAP_MIN) {
             changed |= jobs.removeIf(j -> j.separate && j.name.endsWith(VOYAGE) && !j.name.equals(VOYAGE_RESET_NAME)
                     && done(j, now) && !islandsSeen.contains(j.name.substring(0, j.name.length() - VOYAGE.length()).trim()));
         }
@@ -635,7 +640,14 @@ public final class CraftTimers {
 
     /** 항해 타이머 이름 끝: "유실라 항해" */
     public static final String VOYAGE = "항해";
-    private static final Pattern VOYAGE_HINT = Pattern.compile("항해");
+    /**
+     * 항해 창의 섬 칸에만 붙는 문구(2026-10-10 실제): 항해 전·중·돌아옴은 "항해를 통해 다양한 아이템을 획득해보세요.",
+     * 보상까지 받은 섬은 "이미 항해를 마친 섬/대륙입니다." — "항해" 글자만 보면 전문가 창의 항해 스킬 칸
+     * ("[세레니티] 가벼운 항해선": "항해 포인트가 5% 높게…")이나 수하물 칸까지 섬으로 잘못 읽는다
+     */
+    private static final Pattern VOYAGE_HINT = Pattern.compile("항해를\\s*통해\\s*다양한\\s*아이템|이미\\s*항해를\\s*마친|초기화까지\\s*남은");
+    /** 항해 창 전체(섬 지도)라고 볼 섬 칸 수. 수하물 넣기 창처럼 섬 하나만 보이는 창에서는 다른 섬 줄을 정리하지 않는다 */
+    static final int VOYAGE_MAP_MIN = 3;
     /**
      * 돌아와 보상을 받을 수 있는 칸(2026-10-10 실제 "[ 유실라 보상 수령 ]": "클릭 시 항해 보상을 수령합니다.").
      * "항해선이 돌아와 보상을 수령할 수 있습니다!"는 모든 섬 칸에 붙는 안내 문구일 수 있어 쓰지 않는다
@@ -650,6 +662,11 @@ public final class CraftTimers {
     private static boolean isVoyage(List<Text> lines) {
         for (Text l : lines) if (VOYAGE_HINT.matcher(ItemKeys.stripGlyphs(l.getString())).find()) return true;
         return false;
+    }
+
+    /** 항해 섬 칸인가(수하물 넣기 칸은 아님) */
+    private static boolean isIslandSlot(ItemStack stack, List<Text> lines) {
+        return isVoyage(lines) && !ItemKeys.stripGlyphs(stack.getName().getString()).contains("수하물");
     }
 
     /**
