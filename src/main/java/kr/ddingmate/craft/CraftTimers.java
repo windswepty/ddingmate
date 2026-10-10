@@ -254,7 +254,10 @@ public final class CraftTimers {
         int per = r == null ? 1 : Math.max(1, r.output);
         long times = Math.max(1, (Math.max(1, count) + per - 1) / per);
         int pct = reductionPercent(kr.ddingmate.counter.RecipeBook.facilityOf(name));
-        return Math.round(base * times * 1000.0 * (100 - pct) / 100.0);
+        // 서버는 줄어든 시간을 초 단위로 올려 쓴다(2026-10-10 실측: 강화 횃불 7초 × 채광 10% → 6.3초가 아니라 7초,
+        // 3개 21초). 20초→18초, 2분→108초처럼 나누어떨어지는 경우는 그대로
+        long perUnit = (long) Math.ceil(base * (100 - pct) / 100.0 - 1e-9);
+        return perUnit * times * 1000L;
     }
 
     /** 스킬 레벨을 바꾸면 아직 안 끝난 어림값 제작을 처음부터 다시 계산한다 */

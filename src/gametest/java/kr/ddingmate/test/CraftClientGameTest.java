@@ -145,7 +145,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
                             "채광 1레벨인데 " + (i + 1) + "번째가 126초(7개×18초) 간격이 아님: " + (jobs.get(i).endsAt - first));
                 }
                 CraftTimers.debugLearn("강화 횃불", 2);
-                check(CraftTimers.durationMs("강화 횃불") == 1800, "강화 횃불 2초가 1.8초로 줄지 않음: " + CraftTimers.durationMs("강화 횃불"));
+                // 서버는 줄어든 시간을 초 단위로 올린다: 2초 × 0.9 = 1.8초 → 2초
+                check(CraftTimers.durationMs("강화 횃불") == 2000, "강화 횃불 2초 × 0.9 를 초 단위로 올리지 않음: " + CraftTimers.durationMs("강화 횃불"));
                 cr.mining = 5;
                 check(CraftTimers.durationMs("조약돌 뭉치") == 4000, "채광 5레벨(80%)이 아님: " + CraftTimers.durationMs("조약돌 뭉치"));
                 cr.marine = 4;
@@ -243,6 +244,63 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(coroom.size() == 1 && coroom.get(0).count == 24 && coroom.get(0).synced
                         && Math.abs(coroom.get(0).endsAt - (now() + 120_000)) < 2500, "놓친 제작을 창에서 등록하지 못함: " + coroom.size());
                 c.setScreen(null);
+            });
+
+            // 9-00) 실제 2026-10-10 강화 횃불 3개(7초, 채광 1레벨): 서버는 개당 7초(6.3초가 아님) → 7·14·21초.
+            //       시설 창을 열 때마다 서버 값으로 맞춰도 뒤 제작이 1초씩 밀리지 않고, 끝난 것을 꺼내도 진행 중인 제작 시간은 그대로
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 1;
+                for (int i = 0; i < 3; i++) CraftTimers.onChat(G + "강화 횃불 아이템 1개 제작을 시작했습니다.");
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                long first = jobs.get(0).startedAt;
+                for (int i = 0; i < 3; i++) {
+                    check(Math.abs(jobs.get(i).endsAt - (first + 7_000L * (i + 1))) < 600,
+                            "강화 횃불 " + (i + 1) + "번째가 7초 간격이 아님: " + (jobs.get(i).endsAt - first));
+                }
+                // 시설 창: 맨 앞 남은 4초, 나머지는 기다림(칸의 "제작 시간"은 그 제작만의 시간)
+                c.setScreen(facility(c,
+                        queueItem("강화 횃불", 1, "  제작 시간 : 4초"),
+                        queueItem("강화 횃불", 1, "  제작 시간 : 7초"),
+                        queueItem("강화 횃불", 1, "  제작 시간 : 7초")));
+            });
+            long[] before = new long[3];
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                long now = now();
+                check(Math.abs(jobs.get(0).endsAt - (now + 4_000)) < 1_200, "맨 앞을 창 값(4초)으로 맞추지 않음: " + (jobs.get(0).endsAt - now));
+                check(Math.abs(jobs.get(1).endsAt - jobs.get(0).endsAt - 7_000) < 600, "두 번째가 맨 앞 뒤 7초가 아님");
+                check(Math.abs(jobs.get(2).endsAt - jobs.get(1).endsAt - 7_000) < 600, "세 번째가 두 번째 뒤 7초가 아님");
+                for (int i = 0; i < 3; i++) before[i] = jobs.get(i).endsAt;
+            });
+            // 1초 뒤 서버 값이 그만큼 줄어든 창을 다시 읽어도(정상 진행) 완료 시각이 밀리지 않는다
+            ctx.waitTicks(20);
+            ctx.runOnClient(c -> c.setScreen(facility(c,
+                    queueItem("강화 횃불", 1, "  제작 시간 : 3초"),
+                    queueItem("강화 횃불", 1, "  제작 시간 : 7초"),
+                    queueItem("강화 횃불", 1, "  제작 시간 : 7초"))));
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                for (int i = 0; i < 3; i++) {
+                    check(Math.abs(jobs.get(i).endsAt - before[i]) <= 1_500,
+                            (i + 1) + "번째 완료 시각이 다시 읽을 때 밀림: " + (jobs.get(i).endsAt - before[i]) + "ms");
+                }
+                c.setScreen(null);
+                // 맨 앞이 끝났다고 치고 꺼내면 맨 앞만 빠지고, 진행 중인 두 번째·기다리는 세 번째 시간은 그대로
+                jobs.get(0).endsAt = now() - 500;
+                long second = jobs.get(1).endsAt, third = jobs.get(2).endsAt;
+                CraftTimers.onChat(G + "강화 횃불 아이템 1개를 제작대에서 회수했습니다.");
+                List<CraftTimers.Job> after = CraftTimers.jobs();
+                check(after.size() == 2 && after.get(0).endsAt == second && after.get(1).endsAt == third,
+                        "끝난 것을 꺼냈더니 남은 제작 시간이 바뀜: " + after.stream().map(j -> j.endsAt - now()).toList());
+                // 서버가 조금 빨라 모드가 아직 안 끝났다고 볼 때 꺼내도, 맨 앞(가장 먼저 끝나는 것)이 빠진다
+                CraftTimers.onChat(G + "강화 횃불 아이템 1개를 제작대에서 회수했습니다.");
+                List<CraftTimers.Job> last = CraftTimers.jobs();
+                check(last.size() == 1 && last.get(0).endsAt == third, "먼저 끝나는 제작이 아니라 다른 것을 뺌");
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 0;
             });
 
             // 9-0) 실제 2026-10-10 뱃지 제작 창: 레시피 칸 문구가 "(좌) 해당 아이템 제작 시작 / (쉬프트+우) 레시피 고정".

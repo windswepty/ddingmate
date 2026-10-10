@@ -55,7 +55,8 @@ public final class ScheduleHud {
             return;
         }
         long nowMs = System.currentTimeMillis();
-        if (nowMs - lastBuildMs >= 1000) {
+        // 남은 초가 1초 간격으로 고르게 줄어들도록(갱신 간격이 1초면 숫자가 두 번 보이거나 건너뛴다) 자주 다시 만든다
+        if (nowMs - lastBuildMs >= 200) {
             cached = build(cfg);
             lastBuildMs = nowMs;
         }
