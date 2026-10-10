@@ -491,8 +491,10 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(c.currentScreen == null, "저장 후 편집 화면이 닫히지 않음");
                 check(HudLayout.custom(HudLayout.SCHEDULE), "옮긴 자리가 저장되지 않음");
                 HudLayout.Rect r = HudLayout.bounds().get(HudLayout.SCHEDULE);
-                int cx = c.getWindow().getScaledWidth() / 2, cy = c.getWindow().getScaledHeight() / 2;
-                check(Math.abs(r.x() + 5 - cx) <= 2 && Math.abs(r.y() + 5 - cy) <= 2, "옮긴 자리에 그려지지 않음: " + r);
+                int cx = c.getWindow().getScaledWidth() / 2, cy = c.getWindow().getScaledHeight() / 2, sh = c.getWindow().getScaledHeight();
+                // 놓은 자리에 그린다. 다만 아래쪽이 핫바·체력 줄 자리에 걸리면 그만큼만 위로 비킨다
+                check(Math.abs(r.x() + 5 - cx) <= 2 && (Math.abs(r.y() + 5 - cy) <= 2 || (r.y() + 5 < cy && r.y() + r.h() <= sh - 50)),
+                        "옮긴 자리에 그려지지 않음: " + r);
                 // 다시 열어 할 일 HUD 를 옮긴 뒤 Esc → 취소
                 c.setScreen(new HudEditorScreen(null));
             });
@@ -525,21 +527,22 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 HudEditorScreen s = (HudEditorScreen) c.currentScreen;
                 HudLayout.Rect r = HudLayout.bounds().get(HudLayout.COUNTER);
                 check(Math.abs(r.w() - counterW[0] * 1.2) <= 3, "120% 인데 너비가 그만큼 커지지 않음: " + r.w() + " / " + counterW[0]);
-                HudLayout.Rect d = HudLayout.bounds().get(HudLayout.DURABILITY);
+                // 편집 패널(화면 아래)에 가리지 않는 HUD 의 손잡이로: 작은 시험 화면에서는 장비 HUD 가 패널 밑에 놓일 수 있다
+                HudLayout.Rect d = HudLayout.bounds().get(HudLayout.TODO);
                 double hx = d.x() + d.w() - 2, hy = d.y() + d.h() - 2;
                 s.mouseClicked(hx, hy, 0);
                 s.mouseDragged(hx + d.w() * 0.3, hy, 0, 0, 0);
                 s.mouseReleased(hx + d.w() * 0.3, hy, 0);
-                check(HudLayout.size(HudLayout.DURABILITY) == 130, "모서리 손잡이로 크기가 바뀌지 않음: " + HudLayout.size(HudLayout.DURABILITY));
+                check(HudLayout.size(HudLayout.TODO) == 130, "모서리 손잡이로 크기가 바뀌지 않음: " + HudLayout.size(HudLayout.TODO) + " " + d);
                 press(c, "−");
-                check(HudLayout.size(HudLayout.DURABILITY) == 120, "[−] 로 고른 HUD 가 작아지지 않음");
+                check(HudLayout.size(HudLayout.TODO) == 120, "[−] 로 고른 HUD 가 작아지지 않음");
             });
             ctx.waitTicks(3);
             ctx.takeScreenshot("features-4c-hud-sizes");
             ctx.runOnClient(c -> {
                 press(c, "저장");
                 check(DdingMate.config().hudSizes.get(HudLayout.COUNTER) == 120
-                        && DdingMate.config().hudSizes.get(HudLayout.DURABILITY) == 120, "HUD 별 크기가 저장되지 않음");
+                        && DdingMate.config().hudSizes.get(HudLayout.TODO) == 120, "HUD 별 크기가 저장되지 않음");
                 // 다시 열어 크기를 바꾼 뒤 Esc → 저장해 둔 크기로
                 c.setScreen(new HudEditorScreen(null));
             });

@@ -49,11 +49,35 @@ public final class HudLayout {
     static final int ISLAND_PROFILE_RIGHT = 138;
 
     /** 서버가 그리는 HUD 중 피해야 할 자리(화면 GUI 좌표). 아일랜드 왼쪽 위 프로필 */
-    private static List<Rect> serverAreas() {
-        if (!DdingMate.config().avoidServerHud
-                || kr.ddingmate.game.ServerHud.area() != kr.ddingmate.game.ServerHud.Area.ISLAND) return List.of();
-        return List.of(new Rect(0, 0, ISLAND_PROFILE_RIGHT, ISLAND_PROFILE_TOP));
+    private static List<Rect> serverAreas(int sw, int sh) {
+        if (!DdingMate.config().avoidServerHud) return List.of();
+        return serverAreasFor(sw, sh, kr.ddingmate.game.ServerHud.onDdingtycoon(net.minecraft.client.MinecraftClient.getInstance()),
+                kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND);
     }
+
+    /**
+     * 띵타이쿤이 늘 그리는 HUD 자리(화면 GUI 좌표, 1920×1080·GUI 4배 실측 2026-10-10).
+     * 직접 옮긴 HUD 도 이 자리에 놓이면 비킨다: 왼쪽 위 재화 바(골드·루비·크리스탈), 오른쪽 위 날짜·지역·채널 줄,
+     * 아래 가운데 핫바·체력·배고픔 줄, 아일랜드의 왼쪽 위 프로필
+     */
+    public static List<Rect> serverAreasFor(int sw, int sh, boolean ddingtycoon, boolean island) {
+        List<Rect> out = new ArrayList<>();
+        out.add(new Rect(sw / 2 - HOTBAR_HALF, sh - HOTBAR_ZONE, HOTBAR_HALF * 2, HOTBAR_ZONE));
+        if (ddingtycoon) {
+            out.add(new Rect(0, 0, CURRENCY_RIGHT, SERVER_BAR_H));
+            out.add(new Rect(sw - DATE_BAR_W, 0, DATE_BAR_W, SERVER_BAR_H));
+        }
+        if (island) out.add(new Rect(0, 0, ISLAND_PROFILE_RIGHT, ISLAND_PROFILE_TOP));
+        return out;
+    }
+
+    /** 재화 바 오른쪽 끝, 날짜·채널 줄 너비, 두 줄의 높이 */
+    static final int CURRENCY_RIGHT = 207;
+    static final int DATE_BAR_W = 140;
+    static final int SERVER_BAR_H = 14;
+    /** 핫바(182)와 그 위 체력·방어·배고픔 줄 */
+    static final int HOTBAR_HALF = 92;
+    static final int HOTBAR_ZONE = 50;
     static final int CHAT_ZONE = 135;
     static final int HOTBAR_GAP = 34;
     /** 서버 HUD 피하기를 끈 경우의 예전 여백 */
@@ -193,7 +217,7 @@ public final class HudLayout {
             y = Math.round(p.y * Math.max(0, sh - rh));
             // 직접 옮긴 자리라도 먼저 그린 HUD 와 겹치면(일정에 제작 줄이 늘어 길어졌을 때 등) 겹치지 않는 가장 가까운 자리
             // (아래·위·옆)로 비킨다. 매 프레임 다시 계산하므로 줄어들면 원래 자리로 돌아온다
-            List<Rect> avoid = new ArrayList<>(serverAreas());
+            List<Rect> avoid = new ArrayList<>(serverAreas(sw, sh));
             avoid.addAll(BOUNDS.values());
             int[] free = nearestFree(x, y, rw, rh, sw, sh, avoid);
             x = free[0];
@@ -285,7 +309,10 @@ public final class HudLayout {
         for (Spot s : spots) {
             int cost = s.cost();
             if (s.x() < 0 || s.y() < 0 || s.x() + rw > sw || s.y() + rh > sh) cost += 500;
-            List<Rect> avoid = new ArrayList<>(serverAreas());
+            // 자동 자리는 위·아래 여백으로 재화 바·핫바를 이미 피한다. 여기서는 그 여백이 없는 아일랜드 프로필만 더 피한다
+            List<Rect> avoid = new ArrayList<>(DdingMate.config().avoidServerHud
+                    && kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND
+                    ? List.of(new Rect(0, 0, ISLAND_PROFILE_RIGHT, ISLAND_PROFILE_TOP)) : List.of());
             avoid.addAll(BOUNDS.values());
             for (Rect r : avoid) {
                 if (s.x() < r.x() + r.w() && r.x() < s.x() + rw && s.y() < r.y() + r.h() && r.y() < s.y() + rh) {

@@ -320,6 +320,16 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 java.util.List<kr.ddingmate.hud.HudLayout.Rect> grown = java.util.List.of(new kr.ddingmate.hud.HudLayout.Rect(6, 10, 100, 130));
                 int[] down = kr.ddingmate.hud.HudLayout.nearestFree(6, 60, 110, 80, 480, 270, grown);
                 check(down[0] == 6 && down[1] == 142, "붙여 둔 HUD 가 아래로 밀리지 않음: " + down[0] + "," + down[1]);
+                // 띵타이쿤 기본 HUD 위로 끌어다 놓으면 비킨다(실제: 할 일 HUD 를 오른쪽 위 날짜·채널 줄에, 장비 HUD 를 재화 바 옆에 놓음)
+                java.util.List<kr.ddingmate.hud.HudLayout.Rect> server = kr.ddingmate.hud.HudLayout.serverAreasFor(480, 270, true, false);
+                int[] topRight = kr.ddingmate.hud.HudLayout.nearestFree(360, 0, 110, 40, 480, 270, server);
+                check(topRight[1] >= 14, "날짜·채널 줄 위에 그대로 놓임: " + topRight[0] + "," + topRight[1]);
+                int[] topLeft = kr.ddingmate.hud.HudLayout.nearestFree(150, 2, 110, 30, 480, 270, server);
+                check(topLeft[1] >= 14 || topLeft[0] >= 207, "재화 바 위에 그대로 놓임: " + topLeft[0] + "," + topLeft[1]);
+                int[] bottom = kr.ddingmate.hud.HudLayout.nearestFree(190, 240, 100, 30, 480, 270, server);
+                check(bottom[1] + 30 <= 270 - 50 || bottom[0] + 100 <= 148 || bottom[0] >= 332, "핫바 위에 그대로 놓임: " + bottom[0] + "," + bottom[1]);
+                int[] mid = kr.ddingmate.hud.HudLayout.nearestFree(190, 100, 100, 30, 480, 270, server);
+                check(mid[0] == 190 && mid[1] == 100, "빈자리인데 옮김");
                 int[] home = kr.ddingmate.hud.HudLayout.nearestFree(8, 80, 110, 80, 480, 270, java.util.List.of());
                 check(home[0] == 8 && home[1] == 80, "겹치지 않으면 원래 자리여야 함");
                 // 9-3) 아일랜드: 왼쪽 위로 직접 옮긴 HUD 도 서버 프로필(얼굴·체력) 아래로 비킨다(실제 화면에서 깔렸음)
