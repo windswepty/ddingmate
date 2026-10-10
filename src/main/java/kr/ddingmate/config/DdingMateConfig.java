@@ -84,6 +84,12 @@ public final class DdingMateConfig {
         public List<TrackedItem> tracked = new ArrayList<>();
     }
 
+    /** 쉬프트 우클릭 전문가 스킬의 지속·재사용 대기 시간 HUD */
+    public static final class Skills {
+        public boolean enabled = true;
+        public Corner corner = Corner.BOTTOM_RIGHT;
+    }
+
     /** 할 일 초기화 시점: 매일 03시, 매주 목요일 03시, 매일 자정 */
     public enum Reset { DAILY, WEEKLY, MIDNIGHT }
 
@@ -204,6 +210,7 @@ public final class DdingMateConfig {
     public Keywords keywords = new Keywords();
     public Counter counter = new Counter();
     public Durability durability = new Durability();
+    public Skills skills = new Skills();
     public Todo todo = new Todo();
     public Craft craft = new Craft();
     public Playtime playtime = new Playtime();
@@ -288,6 +295,8 @@ public final class DdingMateConfig {
             return !seenKeys.add(t.key);
         });
         durability.warnPercent = Math.max(0, Math.min(90, durability.warnPercent));
+        if (skills == null) skills = new Skills();
+        if (skills.corner == null) skills.corner = Corner.BOTTOM_RIGHT;
         if (todo == null) todo = new Todo();
         if (todo.corner == null) todo.corner = Corner.TOP_RIGHT;
         if (todo.items == null) todo.items = new ArrayList<>();

@@ -629,6 +629,31 @@ public class DdingMateScreen extends Screen {
                 nearestOf(dc.warnPercent, 0, 5, 10, 15, 20, 30),
                 v -> v == 0 ? "끔" : v + "% 이하", v -> dc.warnPercent = v), null);
         list.note("같은 장비가 여러 개면 손에 든 것 → 왼손 → 입은 것 → 단축바 → 나머지 칸 순서로 먼저 찾은 것을 보여 줘요.");
+
+        DdingMateConfig.Skills sc = cfg.skills;
+        list.header("전문가 스킬 · 쉬프트 우클릭 스킬");
+        list.pair(tip(toggle("스킬 HUD", sc.enabled, v -> sc.enabled = v),
+                "스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 보여 줘요. 안 쓸 때는 숨어 있어요"), hudButton());
+        List<kr.ddingmate.skill.SkillTimers.Skill> skills = kr.ddingmate.skill.SkillTimers.known();
+        for (kr.ddingmate.skill.SkillTimers.Skill s : skills) {
+            list.single(new InfoRow(kr.ddingmate.skill.SkillTimers.icon(s), skillLabel(s), skillDetail(s),
+                    s.cooldownSec > 0 ? Theme.TEXT_SOFT : Theme.GOLD, null));
+        }
+        list.note(skills.stream().anyMatch(s -> s.cooldownSec > 0)
+                ? "스킬을 강화했다면 /전문가 스킬 창을 한 번 열어 주세요. 바뀐 시간을 다시 읽어요."
+                : "/전문가 → 스킬 보기 창을 한 번 열면 스킬마다 지속 시간·재사용 대기 시간을 읽어 와요.");
+    }
+
+    private static String skillLabel(kr.ddingmate.skill.SkillTimers.Skill s) {
+        return s.name + (s.level >= 99 ? " (MAX)" : s.level > 0 ? " (+" + s.level + ")" : "");
+    }
+
+    /** "지속 15초 · 재사용 3분 0초" */
+    private static String skillDetail(kr.ddingmate.skill.SkillTimers.Skill s) {
+        if (s.cooldownSec <= 0) return "스킬 창을 열어 주세요";
+        long dur = s.measuredSec > 0 && s.measuredLevel == s.level ? s.measuredSec : s.durationSec;
+        String cd = "재사용 " + kr.ddingmate.skill.SkillTimers.clock(s.cooldownSec);
+        return dur > 0 ? "지속 " + kr.ddingmate.skill.SkillTimers.clock(dur) + " · " + cd : cd;
     }
 
     private void buildTodo() {

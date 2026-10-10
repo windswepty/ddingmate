@@ -428,13 +428,6 @@ public final class BagTracker {
         return acc == null ? 0 : acc.bags.size();
     }
 
-    /** 가장 오래된 기록 시각(ms). 기록이 없으면 0 */
-    public static long oldestSeenAt() {
-        Account acc = account();
-        if (acc == null) return 0;
-        return acc.bags.values().stream().mapToLong(b -> b.seenAt).min().orElse(0);
-    }
-
     /** 번호 → 기록 시각. 명령어 목록 출력용 */
     public static Map<Integer, Long> recordedBags() {
         Map<Integer, Long> out = new TreeMap<>();

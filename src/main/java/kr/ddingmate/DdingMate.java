@@ -68,6 +68,7 @@ public final class DdingMate implements ClientModInitializer {
         AlertLog.load();
         PlaytimeTracker.load();
         CraftTimers.load();
+        kr.ddingmate.skill.SkillTimers.load();
 
         // 기본 키는 비워 둔다. 서버 조작(F·Q·숫자키·Shift 조합)과 겹치지 않게 사용자가 직접 지정한다.
         toggleHudKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -91,6 +92,7 @@ public final class DdingMate implements ClientModInitializer {
             PlaytimeTracker.save();
             kr.ddingmate.counter.IconCache.save();
             CraftTimers.onDisconnect();
+            kr.ddingmate.skill.SkillTimers.save();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             BagTracker.onOverlay(message.getString()); // "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" → 저장소 재고
@@ -101,6 +103,7 @@ public final class DdingMate implements ClientModInitializer {
                 kr.ddingmate.game.ServerHud.onChat(message.getString()); // "[서버 리붓] 3분 뒤 현재 채널이 재부팅됩니다."
                 PlaytimeTracker.onChat(message.getString()); // 서버가 알려 주는 일일 접속 시간·받은 보상
                 CraftTimers.onChat(message.getString()); // 제작 시작·회수 메시지
+                kr.ddingmate.skill.SkillTimers.onChat(message.getString()); // "곡괭이 나가신다! 스킬을 활성화했습니다." 등
             }
         });
         ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, ts) ->
@@ -128,6 +131,7 @@ public final class DdingMate implements ClientModInitializer {
         TodoHud.render(ctx, tick);
         CounterHud.render(ctx, tick);
         DurabilityHud.render(ctx, tick);
+        kr.ddingmate.hud.SkillHud.render(ctx, tick);
     }
 
     /** 지금 Tab(접속자 목록)이 화면에 떠 있는지 — 바닐라와 같은 조건 */

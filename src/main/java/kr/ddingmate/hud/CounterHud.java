@@ -293,7 +293,7 @@ public final class CounterHud {
         if (cfg.includeBags) {
             int n = BagTracker.recordedCount();
             parts.add(n == 0 ? "가방을 한 번씩 열면 가방 재료도 합산돼요"
-                    : "가방 " + n + "개 기록 · 가장 오래된 기록 " + ago(BagTracker.oldestSeenAt()));
+                    : "가방 " + n + "개 기록");
         }
         if (cfg.includeStorage && BagTracker.storageSeenAt() > 0) {
             parts.add("저장소 " + ago(BagTracker.storageSeenAt()));

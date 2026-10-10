@@ -824,6 +824,60 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.craft.CraftTimers.reductionPercent("채광물 가공 시설") == 30, "자동으로 읽은 레벨이 제작 시간에 안 들어감");
                 check(!kr.ddingmate.craft.ExpertSkills.read(item("[세레니티] 코비 타임 (+1)", 1, ". 제작 시간이 10% 감소합니다.")), "다른 스킬을 제작 시간 스킬로 읽음");
                 DdingMate.config().craft.mining = 0;
+                // 21-3) 쉬프트 우클릭 스킬(실제 2026-10-09 창 칸, 2026-10 실제 채팅 순서)
+                kr.ddingmate.skill.SkillTimers.debugClear();
+                check(kr.ddingmate.skill.SkillTimers.read(item("[야생] 곡괭이 나가신다! (+5)", 1, "전문가 스킬 정보",
+                        ". 15초 간 3x3를 부실 수 있습니다.", ". 곡괭이를 들고 쉬프트 우클릭합니다.", "..(재사용 대기 시간 : 180초)",
+                        "──────────────────", ". [강화 시 스킬 정보]", ". 17초 간 3x3를 부실 수 있습니다.",
+                        ". 곡괭이를 들고 쉬프트 우클릭합니다.", "..(재사용 대기 시간 : 240초)", "──────────────────",
+                        ". - 보유 스킬 포인트 : 118포인트")), "쉬프트 우클릭 스킬 칸을 못 읽음");
+                kr.ddingmate.skill.SkillTimers.Skill pick = kr.ddingmate.skill.SkillTimers.debugSkill("곡괭이 나가신다!");
+                check(pick != null && pick.level == 5 && pick.durationSec == 15 && pick.cooldownSec == 180,
+                        "지금 레벨 값(15초·180초)이 아님(미리보기 17초·240초를 읽었나?): " + (pick == null ? null : pick.durationSec + "/" + pick.cooldownSec));
+                check(!kr.ddingmate.skill.SkillTimers.read(skill), "제작 시간 스킬을 쉬프트 우클릭 스킬로 읽음");
+                String g = G; // 실제 메시지처럼 앞에 서버 그림 글자
+                long t0 = now();
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t0);
+                List<kr.ddingmate.skill.SkillTimers.Row> sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 1000);
+                check(sr.size() == 1 && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 1000).equals("사용 중 14초"),
+                        "활성화 1초 뒤 남은 지속 시간이 14초가 아님: " + (sr.isEmpty() ? "없음" : kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 1000)));
+                // 활성화 직후 서버가 "2분 59초"라고 하면 HUD 도 2분 59초(재사용 대기는 활성화 순간부터)
+                kr.ddingmate.skill.SkillTimers.Row cool = new kr.ddingmate.skill.SkillTimers.Row(pick, kr.ddingmate.skill.SkillTimers.Phase.COOLDOWN, pick.readyAt, 180_000);
+                check(pick.readyAt == t0 + 180_000, "재사용 대기를 활성화 순간부터 세지 않음");
+                check(kr.ddingmate.skill.SkillTimers.text(cool, t0 + 50).equals("2분 59초"), "서버(2분 59초)와 다르게 보임: " + kr.ddingmate.skill.SkillTimers.text(cool, t0 + 50));
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.", t0 + 16_000);
+                check(pick.measuredSec == 16 && pick.activeUntil == 0, "실제 지속 시간(16초)을 배우지 못함: " + pick.measuredSec);
+                sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 16_500);
+                check(sr.size() == 1 && sr.get(0).phase() == kr.ddingmate.skill.SkillTimers.Phase.COOLDOWN
+                        && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 16_500).equals("2분 43초"), "끝난 뒤 재사용 대기로 넘어가지 않음");
+                // 서버 남은 시간과 맞으면 그대로, 어긋나면 서버 값으로 맞춘다
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬의 쿨타임이 1분 36초 남았습니다.", t0 + 83_500);
+                check(pick.readyAt == t0 + 180_000, "맞는 시간을 서버 메시지로 흔듦");
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬의 쿨타임이 1분 0초 남았습니다.", t0 + 83_500);
+                sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 83_600);
+                check(kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 83_600).equals("1분 0초"), "서버가 알려 준 남은 시간으로 맞추지 않음: " + kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 83_600));
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 사용할 수 있습니다.", t0 + 144_000);
+                sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 145_000);
+                check(sr.size() == 1 && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 145_000).equals("사용 가능"), "다시 쓸 수 있다고 보여 주지 않음");
+                check(kr.ddingmate.skill.SkillTimers.rows(t0 + 150_000).isEmpty(), "사용 가능 표시가 사라지지 않음");
+                // 다시 쓰면 배운 실제 지속 시간(16초)으로 센다
+                long t1 = t0 + 200_000;
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t1);
+                sr = kr.ddingmate.skill.SkillTimers.rows(t1);
+                check(kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1).equals("사용 중 16초"), "배운 실제 지속 시간을 쓰지 않음: " + kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1));
+                // 창을 아직 못 본 스킬: 숫자를 지어내지 않고, 서버가 남은 시간을 알려 주면 그 값으로
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "떡밥을 뿌려라! 스킬을 활성화했습니다.", t1);
+                kr.ddingmate.skill.SkillTimers.Skill bait = kr.ddingmate.skill.SkillTimers.debugSkill("떡밥을 뿌려라!");
+                kr.ddingmate.skill.SkillTimers.Row baitRow = kr.ddingmate.skill.SkillTimers.rows(t1 + 100).stream().filter(r -> r.skill() == bait).findFirst().orElseThrow();
+                check(kr.ddingmate.skill.SkillTimers.text(baitRow, t1 + 100).equals("스킬 창 열면 표시"), "모르는 재사용 시간을 지어냄");
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "떡밥을 뿌려라! 스킬의 쿨타임이 4분 56초 남았습니다.", t1 + 4_000);
+                baitRow = kr.ddingmate.skill.SkillTimers.rows(t1 + 4_100).stream().filter(r -> r.skill() == bait).findFirst().orElseThrow();
+                check(kr.ddingmate.skill.SkillTimers.text(baitRow, t1 + 4_100).equals("4분 56초"), "서버가 알려 준 남은 시간을 쓰지 않음");
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "떡밥을 뿌려라! 스킬을 사용할 수 있습니다.", t1 + 300_000);
+                check(bait.cooldownSec == 300, "활성화~사용 가능으로 재사용 시간을 배우지 못함: " + bait.cooldownSec);
+                // 남이 쓴 채팅은 무시
+                kr.ddingmate.skill.SkillTimers.onChat("[칭호] 누군가 : 쓸어담는 광질 스킬을 활성화했습니다.");
+                check(kr.ddingmate.skill.SkillTimers.debugSkill("쓸어담는 광질") == null, "남이 쓴 채팅으로 스킬을 등록함");
                 // 22) 마인리스트 추천 정보 "└ 오늘 추천 여부 : 추천 완료" → 체크, 남이 흉내 낸 채팅은 무시
                 DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
                 java.time.ZonedDateTime now2 = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
@@ -842,6 +896,42 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 DdingMate.LOG.info("재료 그림 {}/{}", shown, all.size());
                 check(shown * 100 / all.size() >= 95, "재료 그림이 95% 미만: " + shown + "/" + all.size());
             });
+            // 21-4) 지금 쓰고 있는 스킬은 HUD 에 그려진다(그리는 중 오류 없음, 자리 기록)
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                kr.ddingmate.skill.SkillTimers.debugClear();
+                kr.ddingmate.skill.SkillTimers.read(item("[야생] 곡괭이 나가신다! (+5)", 1, ". 15초 간 3x3를 부실 수 있습니다.",
+                        ". 곡괭이를 들고 쉬프트 우클릭합니다.", "..(재사용 대기 시간 : 180초)"));
+                kr.ddingmate.skill.SkillTimers.read(item("[마을/야생] 떡밥을 뿌려라! (+5)", 1, ". 30초 간 입질 시간이 25% 감소하고,",
+                        ". 접근 시간이 1.2초로 감소합니다.", ". 낚싯대를 들고 쉬프트 우클릭합니다.", "..(재사용 대기 시간 : 300초)"));
+                kr.ddingmate.skill.SkillTimers.debugChat(G + "곡괭이 나가신다! 스킬을 활성화했습니다.", now() - 4_000);
+                kr.ddingmate.skill.SkillTimers.debugChat(G + "떡밥을 뿌려라! 스킬을 활성화했습니다.", now() - 95_000);
+                c.getToastManager().clear();
+                c.inGameHud.getChatHud().clear(false);
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("skill-1-hud");
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.hud.HudLayout.bounds().containsKey(kr.ddingmate.hud.HudLayout.SKILL), "쓰고 있는 스킬이 HUD 에 안 그려짐");
+                DdingMate.LOG.info("스킬 HUD 자리 {} / 전체 {}", kr.ddingmate.hud.HudLayout.bounds().get(kr.ddingmate.hud.HudLayout.SKILL),
+                        kr.ddingmate.hud.HudLayout.bounds());
+                kr.ddingmate.gui.DdingMateScreen s = new kr.ddingmate.gui.DdingMateScreen(null);
+                c.setScreen(s);
+                s.openTab(6);
+            });
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> c.currentScreen.children().stream()
+                    .filter(e -> e instanceof net.minecraft.client.gui.widget.ElementListWidget<?>)
+                    .forEach(e -> ((net.minecraft.client.gui.widget.ElementListWidget<?>) e).setScrollY(10000)));
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("skill-2-settings");
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                kr.ddingmate.skill.SkillTimers.debugClear();
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> check(!kr.ddingmate.hud.HudLayout.bounds().containsKey(kr.ddingmate.hud.HudLayout.SKILL),
+                    "쓰는 스킬이 없는데 스킬 HUD 가 보임"));
         }
     }
 

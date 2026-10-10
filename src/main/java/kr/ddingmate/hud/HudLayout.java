@@ -23,6 +23,7 @@ public final class HudLayout {
     public static final String TODO = "todo";
     public static final String COUNTER = "counter";
     public static final String DURABILITY = "durability";
+    public static final String SKILL = "skill";
 
     /** 편집 화면에서 보여 줄 이름 */
     public static final Map<String, String> NAMES = new LinkedHashMap<>();
@@ -31,6 +32,7 @@ public final class HudLayout {
         NAMES.put(TODO, "오늘 할 일");
         NAMES.put(COUNTER, "재료 카운터");
         NAMES.put(DURABILITY, "장비 내구도");
+        NAMES.put(SKILL, "전문가 스킬");
     }
 
     public record Rect(int x, int y, int w, int h) {
@@ -225,7 +227,7 @@ public final class HudLayout {
         } else {
             Spot s = bestSpot(corner, sw, sh, rw, rh);
             if (s.newColumn()) HudStack.newColumn(s.corner());
-            HudStack.push(s.corner(), rw, rh);
+            HudStack.push(s.corner(), rw, rh + s.lift());
             x = s.x();
             y = s.y();
         }
@@ -279,7 +281,31 @@ public final class HudLayout {
     }
 
     /** 놓을 수 있는 자리 하나와 그 자리의 나쁨 점수(낮을수록 좋음) */
-    private record Spot(DdingMateConfig.Corner corner, boolean newColumn, int x, int y, int cost) {}
+    private record Spot(DdingMateConfig.Corner corner, boolean newColumn, int x, int y, int cost, int lift) {
+        Spot(DdingMateConfig.Corner corner, boolean newColumn, int x, int y, int cost) {
+            this(corner, newColumn, x, y, cost, 0);
+        }
+    }
+
+    /**
+     * 아래 구석 자리가 핫바·체력·배고픔 줄과 같은 가로 범위에 걸치면(작은 화면이나 옆 줄로 비켰을 때) 그 줄 위로 올린 자리.
+     * 올린 만큼은 같은 줄 쌓기 높이에 더해 다음 HUD 가 그 위에 쌓이게 한다
+     */
+    private static void addWithLift(List<Spot> spots, Spot s, int sw, int sh, int rw, int rh) {
+        spots.add(s);
+        Spot up = lifted(s, sw, sh, rw, rh);
+        if (up != s) spots.add(up);
+    }
+
+    private static Spot lifted(Spot s, int sw, int sh, int rw, int rh) {
+        boolean bottom = s.corner() == DdingMateConfig.Corner.BOTTOM_LEFT || s.corner() == DdingMateConfig.Corner.BOTTOM_RIGHT;
+        if (!bottom || !DdingMate.config().avoidServerHud) return s;
+        int left = sw / 2 - HOTBAR_HALF, right = sw / 2 + HOTBAR_HALF;
+        if (s.x() >= right || s.x() + rw <= left) return s;
+        int lift = s.y() + rh - (sh - HOTBAR_ZONE - 2);
+        if (lift <= 0) return s;
+        return new Spot(s.corner(), s.newColumn(), s.x(), s.y() - lift, s.cost(), lift);
+    }
 
     /**
      * 정해 둔 구석에 쌓을 자리를 고르되, 먼저 그린 HUD 와 겹치거나 화면 밖이면 다른 자리를 찾는다.
@@ -298,10 +324,10 @@ public final class HudLayout {
             int y = cornerY(sh, k, rh, stack);
             int x = cornerX(sw, k, rw, HudStack.shift(k));
             boolean over = stack > 0 && overflows(sh, k, top, y, rh);
-            spots.add(new Spot(k, false, x, y, (own ? 0 : 40) + (over ? 70 : 0)));
+            addWithLift(spots, new Spot(k, false, x, y, (own ? 0 : 40) + (over ? 70 : 0)), sw, sh, rw, rh);
             if (stack > 0) {
                 int shift = HudStack.shift(k) + HudStack.width(k) + ScheduleHud.MARGIN;
-                spots.add(new Spot(k, true, cornerX(sw, k, rw, shift), cornerY(sh, k, rh, 0), own ? 10 : 50));
+                addWithLift(spots, new Spot(k, true, cornerX(sw, k, rw, shift), cornerY(sh, k, rh, 0), own ? 10 : 50), sw, sh, rw, rh);
             }
         }
         Spot best = null;
@@ -309,17 +335,10 @@ public final class HudLayout {
         for (Spot s : spots) {
             int cost = s.cost();
             if (s.x() < 0 || s.y() < 0 || s.x() + rw > sw || s.y() + rh > sh) cost += 500;
-            // 자동 자리는 위·아래 여백으로 재화 바·핫바를 이미 피한다. 여기서는 그 여백이 없는 아일랜드 프로필만 더 피한다
-            List<Rect> avoid = new ArrayList<>(DdingMate.config().avoidServerHud
-                    && kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND
-                    ? List.of(new Rect(0, 0, ISLAND_PROFILE_RIGHT, ISLAND_PROFILE_TOP)) : List.of());
-            avoid.addAll(BOUNDS.values());
-            for (Rect r : avoid) {
-                if (s.x() < r.x() + r.w() && r.x() < s.x() + rw && s.y() < r.y() + r.h() && r.y() < s.y() + rh) {
-                    cost += 1000;
-                    break;
-                }
-            }
+            // 자동 자리도 서버 HUD(재화 바·날짜 줄·핫바·아일랜드 프로필)와 먼저 그린 HUD 를 피한다.
+            // 화면이 너무 좁아 둘 다 피할 수 없으면 HUD 끼리 겹치는 것(못 읽음)보다 서버 HUD 위에 걸치는 쪽을 고른다
+            if (hits(s.x(), s.y(), rw, rh, serverAreas(sw, sh))) cost += 300;
+            if (hits(s.x(), s.y(), rw, rh, new ArrayList<>(BOUNDS.values()))) cost += 1000;
             if (cost < bestCost) {
                 best = s;
                 bestCost = cost;

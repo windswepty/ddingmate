@@ -49,6 +49,7 @@ public final class ExpertSkills {
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
             read(slot.getStack());
+            kr.ddingmate.skill.SkillTimers.read(slot.getStack()); // 쉬프트 우클릭 스킬의 지속·재사용 대기 시간
         }
     }
 
