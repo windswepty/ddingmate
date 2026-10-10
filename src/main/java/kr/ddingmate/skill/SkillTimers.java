@@ -77,7 +77,11 @@ public final class SkillTimers {
         public int durationSec;
         /** 창에 적힌 재사용 대기 시간(초). 0 = 모름 */
         public int cooldownSec;
-        /** 실제로 잰 지속 시간(초)과 그때의 레벨. 창 값과 다르면 이쪽을 쓴다 */
+        /**
+         * 활성화 → 종료 메시지까지 잰 시간 중 가장 짧은 것(초)과 그때의 레벨. 종료 메시지는 늦게만 오고 일찍 오지는 않아서
+         * 가장 짧은 값이 실제 지속 시간에 가장 가깝다(2026-05~10 실측: 곡괭이 나가신다! +5 창 15초 → 15~16초, 한 번 39초 /
+         * 쓸어담는 광질 +1 창 3초 → 8번 모두 5~7초)
+         */
         public int measuredSec;
         public int measuredLevel = -1;
         /** 지속 시간이 끝나면 서버가 알려 주는 스킬인가(한 번이라도 종료 메시지를 봤으면 true) */
@@ -157,9 +161,13 @@ public final class SkillTimers {
         if (s == null) return;
         s.endMessage = true;
         if (s.activatedAt > 0 && now - s.activatedAt < 10 * 60_000L) {
-            // 실제 지속 시간을 배운다(메시지는 1틱 늦게 올 수 있어 초 단위로 반올림)
-            s.measuredSec = (int) Math.round((now - s.activatedAt) / 1000.0);
-            s.measuredLevel = s.level;
+            int m = (int) Math.round((now - s.activatedAt) / 1000.0);
+            // 창 값보다 짧거나 MAX_LATE_SEC 넘게 긴 것은 버린다: 종료 메시지가 늦게 오기도 한다
+            // (2026-10-10 실측: 창 15초인데 활성화 20:09:17 → 종료 메시지 20:09:56, 39초)
+            if (plausible(s, m)) {
+                if (s.measuredLevel != s.level || s.measuredSec <= 0 || m < s.measuredSec) s.measuredSec = m;
+                s.measuredLevel = s.level;
+            }
         }
         s.activeUntil = 0;
         changed();
@@ -228,8 +236,8 @@ public final class SkillTimers {
         String tool = text.contains("곡괭이") ? "pickaxe" : text.contains("괭이") ? "hoe" : text.contains("낚싯대") ? "rod"
                 : text.contains("도끼") ? "axe" : text.contains("검") ? "sword" : "";
         boolean changed = s.level != level || s.durationSec != duration || s.cooldownSec != cooldown || !s.tool.equals(tool);
-        if (s.level != level) {
-            // 레벨이 바뀌면 전에 잰 지속 시간은 버린다
+        if (s.level != level || s.durationSec != duration) {
+            // 레벨이나 창 값이 바뀌면 전에 잰 지속 시간은 버린다
             s.measuredSec = 0;
             s.measuredLevel = -1;
         }
@@ -281,8 +289,10 @@ public final class SkillTimers {
         if (map == null) return out;
         boolean touched = false;
         for (Skill s : map.values()) {
-            if (s.activeUntil > 0 && now >= s.activeUntil && (!s.endMessage || now >= s.activeUntil + END_GRACE_MS)) {
-                s.activeUntil = 0; // 종료 메시지가 없는 스킬이거나, 너무 오래 기다렸다
+            // 창에 적힌 지속 시간이 지나면 끝(종료 메시지는 늦게 올 수 있어 기다리지 않는다).
+            // 지속 시간을 모르면 종료 메시지가 올 때까지(최대 5분) "사용 중"
+            if (s.activeUntil > 0 && now >= s.activeUntil) {
+                s.activeUntil = 0;
                 touched = true;
             }
             if (s.readyAt > 0 && now >= s.readyAt + END_GRACE_MS) {
@@ -351,11 +361,21 @@ public final class SkillTimers {
         });
     }
 
-    /** 실제로 잰 지속 시간(같은 레벨) → 창에 적힌 지속 시간. 모르면 0 */
-    static long durationMs(Skill s) {
-        if (s.measuredSec > 0 && s.measuredLevel == s.level) return s.measuredSec * 1000L;
+    /** 스킬 창에 적힌 지속 시간(ms). 모르면 0 */
+    public static long durationMs(Skill s) {
+        if (s.measuredSec > 0 && s.measuredLevel == s.level && plausible(s, s.measuredSec)) return s.measuredSec * 1000L;
         return s.durationSec * 1000L;
     }
+
+    /** 잰 지속 시간이 창 값과 견줘 믿을 만한가: 창 값 이상, 창 값 + MAX_LATE_SEC 이하(창 값을 모르면 10분 안) */
+    static boolean plausible(Skill s, int sec) {
+        if (sec <= 0) return false;
+        if (s.durationSec <= 0) return sec <= 600;
+        return sec >= s.durationSec && sec <= s.durationSec + MAX_LATE_SEC;
+    }
+
+    /** 실제 지속 시간이 창 값보다 길 수 있는 한도(초). 쓸어담는 광질 3초 → 실측 5~7초 */
+    static final int MAX_LATE_SEC = 5;
 
     /** 이 계정에서 지금까지 알게 된 스킬(설정 창 목록용), 이름순 */
     public static List<Skill> known() {
@@ -420,7 +440,14 @@ public final class SkillTimers {
             s.accounts.values().removeIf(java.util.Objects::isNull);
             for (Map<String, Skill> m : s.accounts.values()) {
                 m.values().removeIf(k -> k == null || k.name == null || k.name.isBlank());
-                for (Skill k : m.values()) if (k.tool == null) k.tool = "";
+                for (Skill k : m.values()) {
+                    if (k.tool == null) k.tool = "";
+                    // 예전 판이 늦은 종료 메시지로 잘못 잰 값(39초·49초 등)은 버린다
+                    if (!plausible(k, k.measuredSec)) {
+                        k.measuredSec = 0;
+                        k.measuredLevel = -1;
+                    }
+                }
             }
             store = s;
         } catch (IOException | RuntimeException e) {

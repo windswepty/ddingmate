@@ -379,7 +379,9 @@ public class CraftClientGameTest implements FabricClientGameTest {
             // 조금 뒤 서버 값이 흐른 만큼 줄어든 창을 다시 읽어도(정상 진행) 완료 시각이 밀리지 않는다.
             // 서버처럼 남은 시간을 초 단위로 내려 보여 준다(실제 흐른 시간으로 계산해 시험이 느려져도 맞게)
             ctx.waitTicks(20);
+            long[] shownAt = new long[1];
             ctx.runOnClient(c -> {
+                shownAt[0] = now();
                 long left = Math.max(0, (before[0] - now()) / 1000);
                 c.setScreen(facility(c,
                         queueItem("강화 횃불", 1, "  제작 시간 : " + left + "초"),
@@ -389,9 +391,17 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                long slack = Math.max(1_500, 1_000 + (now() - shownAt[0]) + 100);
+                StringBuilder diag = new StringBuilder(" [흐른 " + (now() - shownAt[0]) + "ms, 허용 " + slack + "ms]");
+                for (int i = 0; i < jobs.size(); i++) {
+                    CraftTimers.Job x = jobs.get(i);
+                    diag.append(" #").append(i + 1).append(" 밀림=").append(i < 3 ? x.endsAt - before[i] : 0)
+                            .append(" synced=").append(x.synced).append(" derived=").append(x.derived)
+                            .append(" start=").append(x.startedAt == 0 ? 0 : now() - x.startedAt);
+                }
                 for (int i = 0; i < 3; i++) {
-                    check(Math.abs(jobs.get(i).endsAt - before[i]) <= 1_500,
-                            (i + 1) + "번째 완료 시각이 다시 읽을 때 밀림: " + (jobs.get(i).endsAt - before[i]) + "ms");
+                    check(Math.abs(jobs.get(i).endsAt - before[i]) <= slack,
+                            (i + 1) + "번째 완료 시각이 다시 읽을 때 밀림: " + (jobs.get(i).endsAt - before[i]) + "ms" + diag);
                 }
                 c.setScreen(null);
                 // 맨 앞이 끝났다고 치고 꺼내면 맨 앞만 빠지고, 진행 중인 두 번째·기다리는 세 번째 시간은 그대로
@@ -920,8 +930,12 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.skill.SkillTimers.Row cool = new kr.ddingmate.skill.SkillTimers.Row(pick, kr.ddingmate.skill.SkillTimers.Phase.COOLDOWN, pick.readyAt, 180_000);
                 check(pick.readyAt == t0 + 180_000, "재사용 대기를 활성화 순간부터 세지 않음");
                 check(kr.ddingmate.skill.SkillTimers.text(cool, t0 + 50).equals("2분 59초"), "서버(2분 59초)와 다르게 보임: " + kr.ddingmate.skill.SkillTimers.text(cool, t0 + 50));
+                // 창 지속 시간(15초)이 지나면 종료 메시지를 기다리지 않고 재사용 대기로 넘어간다
+                sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 15_200);
+                check(sr.size() == 1 && sr.get(0).phase() == kr.ddingmate.skill.SkillTimers.Phase.COOLDOWN, "15초가 지났는데 아직 사용 중");
+                // 종료 메시지가 16초 뒤에 오면(실측 15~16초) 16초로 배운다
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.", t0 + 16_000);
-                check(pick.measuredSec == 16 && pick.activeUntil == 0, "실제 지속 시간(16초)을 배우지 못함: " + pick.measuredSec);
+                check(pick.activeUntil == 0 && kr.ddingmate.skill.SkillTimers.durationMs(pick) == 16_000, "실제 지속 시간(16초)을 배우지 못함: " + kr.ddingmate.skill.SkillTimers.durationMs(pick));
                 sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 16_500);
                 check(sr.size() == 1 && sr.get(0).phase() == kr.ddingmate.skill.SkillTimers.Phase.COOLDOWN
                         && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 16_500).equals("2분 43초"), "끝난 뒤 재사용 대기로 넘어가지 않음");
@@ -935,11 +949,27 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 145_000);
                 check(sr.size() == 1 && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 145_000).equals("사용 가능"), "다시 쓸 수 있다고 보여 주지 않음");
                 check(kr.ddingmate.skill.SkillTimers.rows(t0 + 150_000).isEmpty(), "사용 가능 표시가 사라지지 않음");
-                // 다시 쓰면 배운 실제 지속 시간(16초)으로 센다
+                // 종료 메시지가 39초 뒤에 오면(실측, 늦은 메시지) 버리고, 15초 뒤에 오면 더 짧은 15초로 바꾼다
                 long t1 = t0 + 200_000;
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t1);
-                sr = kr.ddingmate.skill.SkillTimers.rows(t1);
-                check(kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1).equals("사용 중 16초"), "배운 실제 지속 시간을 쓰지 않음: " + kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1));
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.", t1 + 39_000);
+                check(kr.ddingmate.skill.SkillTimers.durationMs(pick) == 16_000, "늦은 종료 메시지(39초)로 지속 시간을 바꿈: " + kr.ddingmate.skill.SkillTimers.durationMs(pick));
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t1 + 200_000);
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.", t1 + 215_000);
+                kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t1 + 400_000);
+                sr = kr.ddingmate.skill.SkillTimers.rows(t1 + 400_000);
+                check(kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1 + 400_000).equals("사용 중 15초"), "가장 짧은 실측(15초)을 쓰지 않음: " + kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1 + 400_000));
+                // 쓸어담는 광질 +1: 창 3초, 실측 5~7초(8번 모두) → 5초
+                check(kr.ddingmate.skill.SkillTimers.read(item("[세레니티] 쓸어담는 광질 (+1)", 1, "전문가 스킬 정보", ". 3초 간 광석을 한 번에 캡니다.",
+                        ". 곡괭이를 들고 쉬프트 우클릭합니다.", "..(재사용 대기 시간 : 300초)")), "광질 칸을 못 읽음");
+                kr.ddingmate.skill.SkillTimers.Skill sweep = kr.ddingmate.skill.SkillTimers.debugSkill("쓸어담는 광질");
+                for (int k : new int[]{6, 5, 7}) {
+                    long ta = t1 + 1_000_000L * k;
+                    kr.ddingmate.skill.SkillTimers.debugChat(g + "쓸어담는 광질 스킬을 활성화했습니다.", ta);
+                    kr.ddingmate.skill.SkillTimers.debugChat(g + "쓸어담는 광질 스킬 지속시간이 종료되었습니다.", ta + k * 1000L);
+                }
+                check(kr.ddingmate.skill.SkillTimers.durationMs(sweep) == 5_000, "광질 실측(5~7초) 중 가장 짧은 5초가 아님: " + kr.ddingmate.skill.SkillTimers.durationMs(sweep));
+                t1 += 400_000;
                 // 창을 아직 못 본 스킬: 숫자를 지어내지 않고, 서버가 남은 시간을 알려 주면 그 값으로
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "떡밥을 뿌려라! 스킬을 활성화했습니다.", t1);
                 kr.ddingmate.skill.SkillTimers.Skill bait = kr.ddingmate.skill.SkillTimers.debugSkill("떡밥을 뿌려라!");
@@ -950,9 +980,13 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.skill.SkillTimers.text(baitRow, t1 + 4_100).equals("4분 56초"), "서버가 알려 준 남은 시간을 쓰지 않음");
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "떡밥을 뿌려라! 스킬을 사용할 수 있습니다.", t1 + 300_000);
                 check(bait.cooldownSec == 300, "활성화~사용 가능으로 재사용 시간을 배우지 못함: " + bait.cooldownSec);
-                // 남이 쓴 채팅은 무시
-                kr.ddingmate.skill.SkillTimers.onChat("[칭호] 누군가 : 쓸어담는 광질 스킬을 활성화했습니다.");
-                check(kr.ddingmate.skill.SkillTimers.debugSkill("쓸어담는 광질") == null, "남이 쓴 채팅으로 스킬을 등록함");
+                // 남이 쓴 채팅·귓속말은 무시
+                kr.ddingmate.skill.SkillTimers.onChat("[칭호] 누군가 : 쓸어담는 맛 스킬을 활성화했습니다.");
+                kr.ddingmate.skill.SkillTimers.onChat("(단무지 → 멜트<받음>) 쓸어담는 맛 스킬을 활성화했습니다.");
+                check(kr.ddingmate.skill.SkillTimers.debugSkill("쓸어담는 맛") == null, "남이 쓴 채팅·귓속말로 스킬을 등록함");
+                long sweepAt = sweep.activatedAt;
+                kr.ddingmate.skill.SkillTimers.onChat("(단무지 → 멜트<받음>) 쓸어담는 광질 스킬을 활성화했습니다.");
+                check(sweep.activatedAt == sweepAt, "귓속말로 이미 아는 스킬을 활성화함");
                 // 22) 마인리스트 추천 정보 "└ 오늘 추천 여부 : 추천 완료" → 체크, 남이 흉내 낸 채팅은 무시
                 DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
                 java.time.ZonedDateTime now2 = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);

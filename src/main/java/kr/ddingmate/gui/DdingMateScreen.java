@@ -656,7 +656,7 @@ public class DdingMateScreen extends Screen {
     /** "지속 15초 · 재사용 3분 0초" */
     private static String skillDetail(kr.ddingmate.skill.SkillTimers.Skill s) {
         if (s.cooldownSec <= 0) return "스킬 창을 열어 주세요";
-        long dur = s.measuredSec > 0 && s.measuredLevel == s.level ? s.measuredSec : s.durationSec;
+        long dur = kr.ddingmate.skill.SkillTimers.durationMs(s) / 1000;
         String cd = "재사용 " + kr.ddingmate.skill.SkillTimers.clock(s.cooldownSec);
         return dur > 0 ? "지속 " + kr.ddingmate.skill.SkillTimers.clock(dur) + " · " + cd : cd;
     }
