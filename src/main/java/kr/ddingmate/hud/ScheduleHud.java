@@ -176,7 +176,7 @@ public final class ScheduleHud {
             for (kr.ddingmate.craft.CraftTimers.Group g : groups.subList(0, groups.size() - more)) {
                 long mins = g.unknown() ? Long.MAX_VALUE - 1 : Math.max(0, (g.endsAt() - nowMs) / 60000);
                 out.add(new Entry(g.label(), kr.ddingmate.craft.CraftTimers.remainingText(g, nowMs),
-                        mins, g.done() ? Theme.GREEN : g.unknown() ? Theme.TEXT_SOFT : Theme.BLUE));
+                        mins, g.unknown() || g.estimated() ? Theme.TEXT_SOFT : g.done() ? Theme.GREEN : Theme.BLUE));
             }
             if (more > 0) out.add(new Entry("그 밖의 제작 " + more + "개", "/띵메이트 홈", Long.MAX_VALUE - 2, Theme.TEXT_SOFT));
         }

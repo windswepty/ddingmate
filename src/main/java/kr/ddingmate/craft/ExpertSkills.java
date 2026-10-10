@@ -77,7 +77,7 @@ public final class ExpertSkills {
         CONFIRMED.add(skill.name);
         skill.set.accept(c, level);
         DdingMate.config().save();
-        CraftTimers.recalculate();
+        CraftTimers.skillChanged();
         DdingMate.LOG.info("전문가 스킬 {} → {}레벨({}%)", skill.name, level, pct);
         Notifier.chat(level == 0
                 ? "전문가 스킬 '" + skill.name + "'을 아직 안 배운 것으로 확인했어요."

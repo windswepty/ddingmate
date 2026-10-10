@@ -62,6 +62,11 @@ public final class CraftTimers {
         public long endsAt;
         /** 시설 창에 보인 남은 시간이나 서버가 알려 준 시간으로 맞춘 값이면 true(아니면 계산한 어림값) */
         public boolean synced;
+        /**
+         * 창에서 직접 읽진 않았지만, 앞 제작이 확실하고 이 제작의 실제 시간을 알아(서버에서 배운 값) 완료 시각이 확실한 제작.
+         * synced 나 derived 가 아니면 시각을 숫자로 보여 주지 않는다(어림값으로 착각하지 않게)
+         */
+        public boolean derived;
         /** 대기열과 따로 도는 향장품 제조 */
         public boolean separate;
         public boolean notified;
@@ -91,6 +96,13 @@ public final class CraftTimers {
         Map<String, List<Job>> accounts = new LinkedHashMap<>();
         /** 정규화한 아이템 이름 → 제작 1번에 걸리는 초(레시피 칸 "제작 시간") */
         Map<String, Long> secondsPerJob = new LinkedHashMap<>();
+        /**
+         * 서버가 실제로 보여 준 제작 1건의 시간(ms). 키 "정규화 이름*개수". 레시피마다 개수에 따라 늘기도 하고(어빌리티 스톤 50개
+         * = 1시간 30분) 안 늘기도 해서(조약돌 뭉치 7개 = 14초, 2026-10-10 실측) 공식 대신 본 값을 먼저 쓴다. 스킬이 바뀌면 비운다
+         */
+        Map<String, Long> observedMs = new LinkedHashMap<>();
+        /** 한 번에 만들어지는 개수(시간 계산용, 실측에서 배움). 이름 → 개수 */
+        Map<String, Integer> batch = new LinkedHashMap<>();
         /** 2 = 대기열 순서대로 계산하는 방식. 그 전 기록은 시간 계산이 달라 제작 목록을 비운다 */
         int version;
     }
@@ -248,16 +260,50 @@ public final class CraftTimers {
      * (실제: 어빌리티 스톤 2분 × 50개 × 채광 1레벨 0.9 = 1시간 30분 0초). 한 번에 여러 개 나오는 레시피는 횟수로 센다
      */
     public static long durationMs(String name, int count) {
+        Long seen = store.observedMs.get(ItemKeys.normalize(name) + "*" + Math.max(1, count));
+        if (seen != null && seen > 0) return seen;
         long base = secondsPerJob(name);
         if (base <= 0) return -1;
         kr.ddingmate.counter.RecipeBook.Recipe r = kr.ddingmate.counter.RecipeBook.recipeFor(name);
-        int per = r == null ? 1 : Math.max(1, r.output);
+        Integer learned = store.batch.get(ItemKeys.normalize(name));
+        int per = learned != null ? Math.max(1, learned) : r == null ? 1 : Math.max(1, r.output);
         long times = Math.max(1, (Math.max(1, count) + per - 1) / per);
         int pct = reductionPercent(kr.ddingmate.counter.RecipeBook.facilityOf(name));
         // 서버는 줄어든 시간을 초 단위로 올려 쓴다(2026-10-10 실측: 강화 횃불 7초 × 채광 10% → 6.3초가 아니라 7초,
         // 3개 21초). 20초→18초, 2분→108초처럼 나누어떨어지는 경우는 그대로
         long perUnit = (long) Math.ceil(base * (100 - pct) / 100.0 - 1e-9);
         return perUnit * times * 1000L;
+    }
+
+    /** 전문가 스킬 레벨이 바뀌었다: 그 전 레벨에서 본 시간은 버리고 다시 계산한다 */
+    public static void skillChanged() {
+        store.observedMs.clear();
+        recalculate();
+    }
+
+    /**
+     * 제작을 넣은 직후(5초 안) 맨 앞 제작의 남은 시간을 창에서 봤다 → 그 제작 1건의 실제 시간을 배운다.
+     * 레시피 1개 시간과 견줘 한 번에 몇 개가 만들어지는지도 배워 다른 개수에도 쓴다
+     */
+    private static boolean learn(Job job, long ms) {
+        if (ms <= 0) return false;
+        String name = ItemKeys.normalize(job.name);
+        long base = secondsPerJob(job.name);
+        int pct = reductionPercent(kr.ddingmate.counter.RecipeBook.facilityOf(job.name));
+        long perUnit = base > 0 ? (long) Math.ceil(base * (100 - pct) / 100.0 - 1e-9) : 0;
+        long dur;
+        if (perUnit > 0) {
+            // 창의 남은 초는 반올림·올림이 섞여 ±1초 흔들린다 → 레시피 1번 시간의 배수 중 가장 가까운 것으로(실측 14~15초 → 14초)
+            long crafts = Math.max(1, Math.round(ms / 1000.0 / perUnit));
+            dur = crafts * perUnit * 1000L;
+            if (job.count > 1) store.batch.put(name, (int) Math.max(1, Math.round((double) job.count / crafts)));
+        } else {
+            dur = Math.round(ms / 1000.0) * 1000L;
+        }
+        if (dur <= 0) return false;
+        Long before = store.observedMs.put(name + "*" + job.count, dur);
+        dirty = true;
+        return before == null || before != dur;
     }
 
     /** 스킬 레벨을 바꾸면 아직 안 끝난 어림값 제작을 처음부터 다시 계산한다 */
@@ -267,19 +313,24 @@ public final class CraftTimers {
         long now = System.currentTimeMillis();
         long cursor = 0;
         boolean unknown = false;
+        boolean chainOk = true;
         for (Job j : queueOrder(jobs)) {
             if (j.separate) continue;
             if (j.synced || j.startedAt == 0 || (j.endsAt > 0 && j.endsAt <= now)) {
+                chainOk = j.synced || j.derived;
                 cursor = Math.max(cursor, j.endsAt);
                 continue;
             }
             long dur = durationMs(j.name, j.count);
             if (unknown || dur <= 0) {
                 j.endsAt = 0;
+                j.derived = false;
                 unknown = true;
                 continue;
             }
             j.endsAt = Math.max(j.startedAt, cursor) + dur;
+            j.derived = chainOk && confident(j.name, j.count);
+            chainOk = j.derived;
             j.notified = false;
             cursor = j.endsAt;
         }
@@ -300,9 +351,12 @@ public final class CraftTimers {
      */
     private static void fillUnknown(List<Job> jobs) {
         long cursor = 0;
+        boolean chainOk = true;
         for (Job j : queueOrder(jobs)) {
             if (j.separate) continue;
             if (j.endsAt > 0) {
+                if (!j.synced) j.derived = chainOk && confident(j.name, j.count);
+                chainOk = j.synced || j.derived;
                 cursor = Math.max(cursor, j.endsAt);
                 continue;
             }
@@ -311,8 +365,19 @@ public final class CraftTimers {
             if (dur <= 0) return;
             long begin = Math.max(j.startedAt, cursor);
             j.endsAt = begin + dur;
+            j.derived = chainOk && confident(j.name, j.count);
+            chainOk = j.derived;
             cursor = j.endsAt;
         }
+    }
+
+    /**
+     * 이 아이템·개수의 제작 시간을 확실히 아는가: 서버가 보여 준 실제 시간을 배웠거나(같은 개수),
+     * 한 번에 만들어지는 개수를 배워 개수에 따른 시간을 확실히 계산할 수 있을 때
+     */
+    static boolean confident(String name, int count) {
+        String key = ItemKeys.normalize(name);
+        return store.observedMs.containsKey(key + "*" + Math.max(1, count)) || store.batch.containsKey(key);
     }
 
     /** 이 제작의 완료 시각을 창에 보인 값으로 바로잡고, 뒤에 기다리는 어림값 제작도 같은 만큼 옮긴다 */
@@ -349,6 +414,8 @@ public final class CraftTimers {
         // 대기열 칸: 레시피 칸이 아닌데 시간이 보이는 칸. 실제 창은 "제작 시간 : 1시간 29분 33초" 처럼
         // 그 제작의 남은 시간(스킬 적용 후, 맨 앞은 1초마다 줄어듦)을 보여 준다
         Set<String> islandsSeen = new HashSet<>();
+        Map<String, Long> recipeSeen = new LinkedHashMap<>();
+        Set<String> recipeConflict = new HashSet<>();
         record QueueSlot(String name, String key, int count, Reading r) {}
         List<QueueSlot> queue = new ArrayList<>();
         for (Slot slot : screen.getScreenHandler().slots) {
@@ -370,11 +437,11 @@ public final class CraftTimers {
             if (key.isEmpty()) continue;
             logOnce(name, lore.lines());
             if (r.recipe) {
-                // 레시피 칸: 1개 만드는 데 걸리는 시간(스킬 전)만 배운다(제작 중인 것으로 등록하지 않는다)
-                if (r.totalSec > 0 && !Objects.equals(store.secondsPerJob.get(key), r.totalSec)) {
-                    store.secondsPerJob.put(key, r.totalSec);
-                    fillUnknown(jobs);
-                    changed = true;
+                // 레시피 칸: 1개 만드는 데 걸리는 시간(스킬 전)만 배운다(제작 중인 것으로 등록하지 않는다).
+                // 한 창에 같은 이름이 서로 다른 시간으로 보이면(실측: 조약돌 뭉치 5초·20초) 어느 쪽인지 몰라 배우지 않는다
+                if (r.totalSec > 0) {
+                    Long before = recipeSeen.putIfAbsent(key, r.totalSec);
+                    if (before != null && before != r.totalSec) recipeConflict.add(key);
                 }
                 continue;
             }
@@ -385,6 +452,12 @@ public final class CraftTimers {
             boolean dup = queue.stream().anyMatch(q -> q.key().equals(key) && q.count() == count
                     && q.r().done == r.done && Math.abs(q.r().remainingSec - r.remainingSec) <= 2);
             if (!dup) queue.add(new QueueSlot(name, key, count, r));
+        }
+        for (Map.Entry<String, Long> e : recipeSeen.entrySet()) {
+            if (recipeConflict.contains(e.getKey()) || Objects.equals(store.secondsPerJob.get(e.getKey()), e.getValue())) continue;
+            store.secondsPerJob.put(e.getKey(), e.getValue());
+            fillUnknown(jobs);
+            changed = true;
         }
         // 남은 시간이 짧은 칸부터 → 같은 개수 중 먼저 넣은 제작과 짝짓는다(한 제작은 한 칸과만)
         queue.sort(Comparator.comparingLong(q -> q.r().done ? -1 : q.r().remainingSec));
@@ -411,12 +484,17 @@ public final class CraftTimers {
         }
         // 대기열 순서대로 완료 시각을 정한다. "남은 시간"은 지금부터, 칸의 "제작 시간"은 앞 제작이 끝난 뒤부터
         long cursor = now;
+        boolean relearned = false;
         for (Job job : queueOrder(jobs)) {
             if (job.separate) continue;
             Reading r = seen.get(job);
             if (r == null) {
                 if (job.endsAt > 0) cursor = Math.max(cursor, job.endsAt);
                 continue;
+            }
+            if (r.own && !r.done && job.startedAt > 0 && now - job.startedAt <= 5000 && cursor <= now
+                    && learn(job, now - job.startedAt + r.remainingSec * 1000)) {
+                relearned = true;
             }
             long ends = r.done ? Math.min(job.endsAt == 0 ? now : job.endsAt, now)
                     : (r.own ? Math.max(cursor, now) : now) + r.remainingSec * 1000;
@@ -425,6 +503,11 @@ public final class CraftTimers {
                 changed = true;
             }
             cursor = Math.max(cursor, job.endsAt);
+        }
+        // 실제 시간을 새로 배웠으면, 창에 안 보이는 뒤 제작들의 어림값도 그 시간으로 다시 계산한다
+        if (relearned) {
+            recalculate();
+            changed = true;
         }
         // 항해 창: 지금 창에 없는 섬(초기화로 바뀐 섬)의 끝난 항해 줄은 정리한다
         if (!islandsSeen.isEmpty()) {
@@ -654,7 +737,7 @@ public final class CraftTimers {
         boolean changed = false;
         Map<String, Job> finished = new LinkedHashMap<>();
         for (Job j : jobs) {
-            if (done(j, now) && !j.notified) {
+            if (done(j, now) && !j.notified && (j.synced || j.derived || j.separate)) {
                 j.notified = true;
                 changed = true;
                 finished.put(groupKey(j), j);
@@ -706,7 +789,7 @@ public final class CraftTimers {
             boolean unknown = g.stream().anyMatch(j -> j.endsAt == 0);
             long ends = unknown ? 0 : g.stream().mapToLong(j -> j.endsAt).max().orElse(0);
             boolean isDone = !unknown && now >= ends;
-            boolean estimated = g.stream().anyMatch(j -> !j.synced);
+            boolean estimated = g.stream().anyMatch(j -> !j.synced && !j.derived);
             out.add(new Group(first.name, first.count, g.size(), ends, isDone, estimated, unknown, List.copyOf(g)));
         }
         out.sort(Comparator.comparing((Group g) -> !g.done()).thenComparingLong(g -> g.unknown() ? Long.MAX_VALUE : g.endsAt()));
@@ -723,12 +806,13 @@ public final class CraftTimers {
 
     /** 남은 시간 글: "1분 20초"(어림값이면 "약 "), 끝났으면 "완료!", 모르면 안내 */
     public static String remainingText(Group g, long now) {
-        if (g.unknown()) return "시설 창 열면 표시";
+        // 확실하지 않은 시각(서버에서 확인 전)은 어림 숫자 대신 확인 방법을 보여 준다
+        if (g.unknown() || g.estimated()) return "시설 창 열면 표시";
         return text(g.endsAt(), g.estimated(), now);
     }
 
     public static String remainingText(Job j, long now) {
-        if (j.endsAt == 0) return "시설 창 열면 표시";
+        if (j.endsAt == 0 || (!j.synced && !j.derived)) return "시설 창 열면 표시";
         return text(j.endsAt, !j.synced, now);
     }
 
@@ -739,7 +823,7 @@ public final class CraftTimers {
         if (sec >= 3600) s = (sec / 3600) + "시간 " + (sec % 3600 / 60) + "분";
         else if (sec >= 60) s = (sec / 60) + "분 " + (sec % 60) + "초";
         else s = sec + "초";
-        return (estimated ? "약 " : "") + s;
+        return s;
     }
 
     /** 제작 1번에 걸리는 초. 모르면 -1 */
@@ -789,6 +873,8 @@ public final class CraftTimers {
             if (s == null) return;
             if (s.accounts == null) s.accounts = new LinkedHashMap<>();
             if (s.secondsPerJob == null) s.secondsPerJob = new LinkedHashMap<>();
+            if (s.observedMs == null) s.observedMs = new LinkedHashMap<>();
+            if (s.batch == null) s.batch = new LinkedHashMap<>();
             // 이름 규칙(별 그림 글자 등)이 바뀌었을 수 있어 키를 다시 만든다
             Map<String, Long> rekeyed = new LinkedHashMap<>();
             s.secondsPerJob.forEach((k, v) -> rekeyed.put(ItemKeys.normalize(k), v));

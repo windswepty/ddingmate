@@ -95,7 +95,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(g.size() == 1 && g.get(0).label().equals("조약돌 뭉치 ×7 [4]"), "한 줄로 묶이지 않음: " + labels(g));
                 // 시설 창을 안 열었어도 모드에 넣어 둔 시간으로 바로 센다: 1개 20초 × 7개 = 140초씩 4번 = 약 560초
                 String t0 = CraftTimers.remainingText(g.get(0), now());
-                check(t0.startsWith("약 9분 1") || t0.startsWith("약 9분 2"), "넣어 둔 시간 × 개수로 세지 않음: " + t0);
+                // 서버에서 확인하기 전(시설 창을 아직 안 봄)에는 어림 숫자("약 9분") 대신 확인 방법을 보여 준다
+                check(t0.equals("시설 창 열면 표시"), "확인 전인데 어림 시간을 보여 줌: " + t0);
                 // 시간을 정말 모르는 아이템은 "시설 창 열면 표시"
                 CraftTimers.onChat(G + "시험용 미지 아이템 아이템 1개 제작을 시작했습니다.");
                 CraftTimers.Group unknown = CraftTimers.groups().stream().filter(x -> x.name().equals("시험용 미지 아이템")).findFirst().orElseThrow();
@@ -126,7 +127,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 CraftTimers.Group g = CraftTimers.groups().get(0);
                 check(g.label().equals("조약돌 뭉치 ×7 [4]"), "묶음 이름이 다름: " + g.label());
                 String t = CraftTimers.remainingText(g, now());
-                check(t.startsWith("약 9분 1") || t.startsWith("약 9분 2"), "4번 합친 시간(약 560초)이 아님: " + t);
+                check(t.equals("시설 창 열면 표시"), "레시피 시간만 알고 실제 시간은 확인 전인데 숫자를 보여 줌: " + t);
                 c.setScreen(null);
             });
 
@@ -197,6 +198,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 List<CraftTimers.Job> jobs = CraftTimers.jobs();
                 long now = now();
+                for (CraftTimers.Job j : jobs) j.synced = true; // 서버에서 확인된 제작이라고 친다(확인 안 된 제작은 알리지 않는다)
                 jobs.get(0).endsAt = now - 3000;
                 jobs.get(1).endsAt = now - 1000;
                 int before = countDone();
@@ -244,6 +246,42 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(coroom.size() == 1 && coroom.get(0).count == 24 && coroom.get(0).synced
                         && Math.abs(coroom.get(0).endsAt - (now() + 120_000)) < 2500, "놓친 제작을 창에서 등록하지 못함: " + coroom.size());
                 c.setScreen(null);
+            });
+
+            // 9-000) 실제 2026-10-10 조약돌 뭉치 7개(레시피 20초, 채광 2레벨 30%) → 서버 14초(개수만큼 안 늘어남).
+            //        넣은 직후 칸의 "제작 시간 : 14초"로 실제 시간을 배워, 뒤에 넣은 7개 묶음·다른 개수도 맞게 센다
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 2;
+                CraftTimers.onChat(G + "조약돌 뭉치 아이템 7개 제작을 시작했습니다.");
+                c.setScreen(facility(c, queueItem("조약돌 뭉치", 7, "  제작 시간 : 14초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.durationMs("조약돌 뭉치", 7) == 14_000, "실제 14초를 배우지 못함: " + CraftTimers.durationMs("조약돌 뭉치", 7));
+                c.setScreen(null);
+                CraftTimers.onChat(G + "조약돌 뭉치 아이템 7개 제작을 시작했습니다.");
+                CraftTimers.onChat(G + "조약돌 뭉치 아이템 14개 제작을 시작했습니다.");
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                check(Math.abs(jobs.get(1).endsAt - jobs.get(0).endsAt - 14_000) < 1_100, "두 번째 7개가 14초 뒤가 아님: " + (jobs.get(1).endsAt - jobs.get(0).endsAt));
+                check(Math.abs(jobs.get(2).endsAt - jobs.get(1).endsAt - 28_000) < 1_100, "14개(7개씩 2번)가 28초가 아님: " + (jobs.get(2).endsAt - jobs.get(1).endsAt));
+                String t = CraftTimers.remainingText(CraftTimers.groups().get(0), now());
+                check(!t.contains("분") && !t.contains("약") && !t.equals("시설 창 열면 표시"),
+                        "배운 실제 시간으로 정확히 보여 주지 않음(예전: 약 몇 분으로 부풀려짐): " + t);
+                check(!CraftTimers.groups().get(0).estimated(), "실제 시간을 배웠는데 확인 전으로 봄");
+                // 스킬이 바뀌면 그 전에 본 시간은 버린다(한 번에 7개라는 것은 남는다)
+                DdingMate.config().craft.mining = 3;
+                CraftTimers.skillChanged();
+                check(CraftTimers.durationMs("조약돌 뭉치", 7) == 12_000, "채광 3레벨(40%)로 다시 계산하지 않음: " + CraftTimers.durationMs("조약돌 뭉치", 7));
+                // 한 창에 같은 이름이 서로 다른 시간으로 보이면(실측: 조약돌 뭉치 5초·20초) 어느 쪽도 배우지 않는다
+                c.setScreen(facility(c, recipeItem("조약돌 뭉치", "5초"), recipeItem("조약돌 뭉치", "20초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.secondsPerJob("조약돌 뭉치") == 20, "한 창의 서로 다른 레시피 시간 중 하나를 배움: " + CraftTimers.secondsPerJob("조약돌 뭉치"));
+                c.setScreen(null);
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 0;
             });
 
             // 9-00) 실제 2026-10-10 강화 횃불 3개(7초, 채광 1레벨): 서버는 개당 7초(6.3초가 아님) → 7·14·21초.

@@ -429,7 +429,7 @@ public class DdingMateScreen extends Screen {
                 ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(j.name());
                 list.single(new InfoRow(icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
                         j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
-                        j.done() ? Theme.GREEN : j.unknown() ? Theme.TEXT_SOFT : Theme.BLUE, Tab.COUNTER));
+                        j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, Tab.COUNTER));
             }
         }
 
@@ -586,7 +586,7 @@ public class DdingMateScreen extends Screen {
             ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(j.name());
             InfoRow row = new InfoRow(icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
                     j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
-                    j.done() ? Theme.GREEN : j.unknown() ? Theme.TEXT_SOFT : Theme.BLUE, null);
+                    j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, null);
             Widgets.Button del = new Widgets.Button(44, 20, Text.literal("지우기"), false, b -> {
                 kr.ddingmate.craft.CraftTimers.remove(j);
                 rebuild();
@@ -737,7 +737,7 @@ public class DdingMateScreen extends Screen {
         Widgets.Cycle<Integer> c = new Widgets.Cycle<>(half(), name, IntStream.rangeClosed(0, 5).boxed().toList(), level,
                 v -> v == 0 ? "안 배움" : v + "레벨 · " + pct[v] + "%", v -> {
                     set.accept(v);
-                    kr.ddingmate.craft.CraftTimers.recalculate();
+                    kr.ddingmate.craft.CraftTimers.skillChanged();
                 });
         c.setTooltip(Tooltip.of(Text.literal(facilities + "의 제작 시간을 줄여 주는 스킬이에요. /전문가 에서 해당 스킬보기 창을 한 번 열면 레벨을 자동으로 읽어 맞춰요(직접 골라도 돼요).")));
         return c;
