@@ -55,6 +55,11 @@ public final class Notifier {
     }
 
     /** 제작·가공 시설에서 만들던 아이템이 다 됐을 때 */
+    public static void voyageReset() {
+        notify("제작", "항해 초기화 완료", "모든 섬을 다시 항해할 수 있어요",
+                SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);
+    }
+
     public static void voyageDone(String island) {
         notify("제작", "항해 완료: " + island, "항해선이 돌아왔어요 · 항해 창에서 보상을 받으세요",
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);

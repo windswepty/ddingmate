@@ -158,6 +158,7 @@ public final class CraftTimers {
             // "유실라 항해 보상을 수령했습니다." → 그 섬 항해를 목록에서 뺀다
             List<Job> jobs = jobsForWrite();
             String name = m.group(1).trim() + " " + VOYAGE;
+            lastVoyageClaim = now; // 마지막 섬이었다면 이때부터 1분 뒤 항해가 초기화된다
             if (jobs != null && jobs.removeIf(j -> j.separate && j.name.equals(name))) changed();
             return;
         }
@@ -340,6 +341,7 @@ public final class CraftTimers {
         boolean changed = false;
         // 대기열 칸: 레시피 칸이 아닌데 시간이 보이는 칸. 실제 창은 "제작 시간 : 1시간 29분 33초" 처럼
         // 그 제작의 남은 시간(스킬 적용 후, 맨 앞은 1초마다 줄어듦)을 보여 준다
+        Set<String> islandsSeen = new HashSet<>();
         record QueueSlot(String name, String key, int count, Reading r) {}
         List<QueueSlot> queue = new ArrayList<>();
         for (Slot slot : screen.getScreenHandler().slots) {
@@ -348,11 +350,12 @@ public final class CraftTimers {
             if (s.isEmpty()) continue;
             LoreComponent lore = s.get(DataComponentTypes.LORE);
             if (lore == null || lore.lines().isEmpty()) continue;
-            if (voyage(jobs, s, lore.lines(), now)) {
-                changed = true;
+            if (isVoyage(lore.lines())) {
+                String island = islandOf(s);
+                if (!island.isEmpty()) islandsSeen.add(island);
+                if (voyage(jobs, s, lore.lines(), now)) changed = true;
                 continue;
             }
-            if (isVoyage(lore.lines())) continue;
             Reading r = read(lore.lines());
             if (r == null) continue;
             String name = cleanName(ItemKeys.stripGlyphs(s.getName().getString()));
@@ -412,6 +415,11 @@ public final class CraftTimers {
                 changed = true;
             }
             cursor = Math.max(cursor, job.endsAt);
+        }
+        // 항해 창: 지금 창에 없는 섬(초기화로 바뀐 섬)의 끝난 항해 줄은 정리한다
+        if (!islandsSeen.isEmpty()) {
+            changed |= jobs.removeIf(j -> j.separate && j.name.endsWith(VOYAGE) && !j.name.equals(VOYAGE_RESET_NAME)
+                    && done(j, now) && !islandsSeen.contains(j.name.substring(0, j.name.length() - VOYAGE.length()).trim()));
         }
         if (changed) {
             dirty = true;
@@ -511,10 +519,17 @@ public final class CraftTimers {
         if (!isVoyage(lines)) return false;
         boolean ready = false;
         long remaining = -1;
+        long resetSec = -1;
         StringBuilder all = new StringBuilder();
         for (Text l : lines) {
             String t = ItemKeys.stripGlyphs(l.getString());
             all.append(" | ").append(t);
+            if (VOYAGE_RESET.matcher(t).find()) {
+                // "초기화까지 남은 시간 : 12초" 는 항해 남은 시간이 아니다(모든 섬을 마쳐 초기화를 기다리는 칸)
+                long sec = seconds(t);
+                resetSec = Math.max(0, sec);
+                continue;
+            }
             if (VOYAGE_READY.matcher(t).find()) ready = true;
             if (REMAIN_HINT.matcher(t).find()) {
                 long sec = seconds(t);
@@ -523,13 +538,22 @@ public final class CraftTimers {
         }
         String rawName = ItemKeys.stripGlyphs(stack.getName().getString()).trim();
         if (rawName.matches(".*보상\\s*수령.*")) ready = true;
-        Matcher m = VOYAGE_NAME.matcher(rawName);
-        String island = m.matches() ? m.group(1).trim() : "";
+        String island = islandOf(stack);
         if (island.isEmpty()) return false;
         String sig = "voyage:" + island + all.toString().replaceAll("\\d", "#");
         if (LOGGED.size() < 60 && LOGGED.add(sig)) DdingMate.LOG.info("항해 칸 읽음: {}{}", island, all);
         String name = island + " " + VOYAGE;
         Job job = jobs.stream().filter(j -> j.separate && j.name.equals(name)).findFirst().orElse(null);
+        if (resetSec >= 0) {
+            // 이 섬은 보상까지 받았고 모든 섬이 끝나 초기화를 기다린다 → 섬 줄은 빼고 "항해 초기화" 한 줄로
+            boolean changed = job != null && jobs.remove(job);
+            return voyageReset(jobs, resetSec, now) || changed;
+        }
+        Job reset = jobs.stream().filter(j -> j.separate && j.name.equals(VOYAGE_RESET_NAME)).findFirst().orElse(null);
+        if (reset != null && reset.endsAt > 0 && reset.endsAt <= now) {
+            jobs.remove(reset); // 초기화가 끝나 섬 칸이 다시 보이면 정리
+            return true;
+        }
         if (!ready && remaining < 0) {
             // 돌아온 항해가 보상 수령 칸에서 다른 칸으로 바뀌었으면 받아 간 것 → 목록에서 뺀다
             if (job != null && job.endsAt > 0 && job.endsAt <= now) {
@@ -568,6 +592,41 @@ public final class CraftTimers {
         return true;
     }
 
+    /** 모든 섬을 마친 뒤 항해가 초기화되기까지(2026-10-10 실제 칸: "초기화까지 남은 시간 : 12초") */
+    private static final Pattern VOYAGE_RESET = Pattern.compile("초기화까지\\s*남은");
+    public static final String VOYAGE_RESET_NAME = "항해 초기화";
+    /** 초기화는 마지막 섬 보상을 받은 뒤 1분(사용자 실측). 창의 남은 시간은 연 순간 값에서 멈춰 있어 한 번만 쓴다 */
+    static final long VOYAGE_RESET_MS = 60_000;
+    private static long lastVoyageClaim;
+
+    private static String islandOf(ItemStack stack) {
+        Matcher m = VOYAGE_NAME.matcher(ItemKeys.stripGlyphs(stack.getName().getString()).trim());
+        return m.matches() ? m.group(1).trim() : "";
+    }
+
+    private static boolean voyageReset(List<Job> jobs, long shownSec, long now) {
+        // 모든 섬을 마쳐 초기화를 기다린다 → 섬 항해 줄은 모두 지우고 "항해 초기화" 한 줄만(새 섬은 항해를 보내면 다시 생긴다)
+        boolean removed = jobs.removeIf(j -> j.separate && j.name.endsWith(VOYAGE) && !j.name.equals(VOYAGE_RESET_NAME));
+        Job reset = jobs.stream().filter(j -> j.separate && j.name.equals(VOYAGE_RESET_NAME)).findFirst().orElse(null);
+        if (reset != null && reset.endsAt > now) return removed; // 이미 세는 중: 멈춰 있는 창 값으로 다시 맞추지 않는다
+        if (reset != null) jobs.remove(reset);
+        long ends = lastVoyageClaim > 0 && now - lastVoyageClaim < 2 * VOYAGE_RESET_MS
+                ? lastVoyageClaim + VOYAGE_RESET_MS : now + shownSec * 1000;
+        if (ends <= now) return reset != null || removed;
+        Job j = new Job();
+        j.name = VOYAGE_RESET_NAME;
+        j.separate = true;
+        j.synced = true;
+        j.endsAt = ends;
+        jobs.add(j);
+        return true;
+    }
+
+    /** 시험용 */
+    public static void debugVoyageClaimAt(long at) {
+        lastVoyageClaim = at;
+    }
+
     /** 시험용 */
     public static boolean debugVoyage(ItemStack stack, List<Text> lines) {
         List<Job> jobs = jobsForWrite();
@@ -598,7 +657,9 @@ public final class CraftTimers {
             List<Job> all = jobs.stream().filter(o -> groupKey(o).equals(k) && done(o, now)).toList();
             boolean same = all.stream().allMatch(o -> o.count == j.count);
             int sum = all.stream().mapToInt(o -> o.count).sum();
-            if (DdingMate.config().craft.notify && j.name.endsWith(VOYAGE)) {
+            if (DdingMate.config().craft.notify && j.name.equals(VOYAGE_RESET_NAME)) {
+                Notifier.voyageReset();
+            } else if (DdingMate.config().craft.notify && j.name.endsWith(VOYAGE)) {
                 Notifier.voyageDone(j.name.substring(0, j.name.length() - VOYAGE.length()).trim());
             } else if (DdingMate.config().craft.notify) {
                 if (same) Notifier.craftDone(j.name, j.count, all.size());

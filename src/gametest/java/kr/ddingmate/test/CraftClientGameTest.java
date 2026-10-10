@@ -338,6 +338,20 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(CraftTimers.jobs().stream().anyMatch(x -> x.name.equals("벨로아 항해")), "남이 쓴 채팅으로 항해를 뺌");
                 CraftTimers.onChat("ꀂ 벨로아 항해 보상을 수령했습니다.");
                 check(CraftTimers.jobs().stream().noneMatch(x -> x.name.equals("벨로아 항해")), "보상 수령 메시지로 항해를 빼지 않음");
+                // 모든 섬을 마치면(실제 칸 "[ 벨로아 항해 완료 ]" · "초기화까지 남은 시간 : 12초") 섬 줄 대신
+                // "항해 초기화" 한 줄을 마지막 보상 수령 1분 뒤까지 센다. 멈춰 있는 창 값(12초)으로 다시 맞추지 않는다
+                // 끝난 섬 줄이 남아 있어도 초기화를 기다리는 칸을 보면 모두 지운다
+                CraftTimers.debugVoyage(item("[ 유실라 보상 수령 ]", 1), lines("  - 항해 소요 시간 : 4시간 5분 0초", "클릭 시 항해 보상을 수령합니다."));
+                check(CraftTimers.jobs().stream().anyMatch(x -> x.name.equals("유실라 항해")), "돌아온 항해 줄이 안 생김");
+                CraftTimers.debugVoyageClaimAt(now() - 20_000);
+                java.util.List<Text> resetLore = lines("", "  이미 항해를 마친 섬/대륙입니다.", "  모든 섬/대륙을 항해하면 초기화됩니다.", "", "  - 초기화까지 남은 시간 : 12초");
+                CraftTimers.debugVoyage(item("[ 벨로아 항해 완료 ]", 1), resetLore);
+                CraftTimers.debugVoyage(item("[ 케르아 항해 완료 ]", 1), resetLore);
+                List<String> names = CraftTimers.jobs().stream().map(x -> x.name).toList();
+                check(names.equals(List.of("항해 초기화")), "초기화 대기 칸을 섬 항해로 읽음: " + names);
+                long left = CraftTimers.jobs().get(0).endsAt - now();
+                check(left > 38_000 && left <= 40_500, "마지막 보상 수령 1분 뒤로 세지 않음: " + left);
+                CraftTimers.debugClear();
                 // 키워드 알림 본문에 서버 그림 글자(네모로 보임)가 남지 않는다
                 kr.ddingmate.notify.Notifier.keyword("풍선", "ꀂꀁ[질문]meeee10 : 혹시 풍선 선물상자는 한번만 뜨나요");
                 String body = AlertLog.entries().stream().max(java.util.Comparator.comparingLong(e -> e.at)).orElseThrow().body;
