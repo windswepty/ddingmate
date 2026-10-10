@@ -177,6 +177,7 @@ public final class DdingMate implements ClientModInitializer {
         }
         BagTracker.tick(client);
         PlaytimeTracker.tick(client);
+        kr.ddingmate.skill.SkillSignals.tick(client); // 스킬 효과가 남은 틱으로 지속 시간 맞추기
         tickCounter++;
         if (tickCounter % 10 == 0) {
             ServerHud.tick(client); // 오른쪽 위 위치·채널 표시 읽기

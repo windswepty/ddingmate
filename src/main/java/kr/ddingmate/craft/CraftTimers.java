@@ -415,17 +415,29 @@ public final class CraftTimers {
 
     /** 이 제작의 완료 시각을 창에 보인 값으로 바로잡고, 뒤에 기다리는 어림값 제작도 같은 만큼 옮긴다 */
     private static void sync(List<Job> jobs, Job job, long ends) {
-        long delta = job.endsAt > 0 ? ends - job.endsAt : 0;
-        boolean after = false;
-        for (Job j : queueOrder(jobs)) {
-            if (j == job) {
-                after = true;
-                continue;
-            }
-            if (after && !j.separate && !j.synced && j.endsAt > 0 && delta != 0) j.endsAt += delta;
-        }
         job.endsAt = ends;
         job.synced = true;
+        // 뒤에 기다리는(창에서 아직 못 본) 제작은 앞 제작이 끝나는 시각에 다시 이어 붙인다.
+        // 예전에는 바뀐 만큼 더해 옮겨서, 앞 제작 둘을 차례로 맞추면 세 번째부터 두 번 밀렸다(1.5초 → 3초)
+        boolean after = false;
+        long cursor = 0;
+        for (Job j : queueOrder(jobs)) {
+            if (j.separate) continue;
+            if (j == job) {
+                after = true;
+                cursor = j.endsAt;
+                continue;
+            }
+            if (!after) continue;
+            if (j.synced || j.startedAt == 0 || j.endsAt <= 0) {
+                cursor = Math.max(cursor, j.endsAt);
+                continue;
+            }
+            long dur = durationMs(j.name, j.count);
+            if (dur <= 0) break;
+            j.endsAt = Math.max(j.startedAt, cursor) + dur;
+            cursor = j.endsAt;
+        }
         fillUnknown(jobs);
     }
 
@@ -494,9 +506,10 @@ public final class CraftTimers {
             if (kr.ddingmate.counter.RecipeBook.recipeFor(name) == null
                     && jobs.stream().noneMatch(x -> !x.separate && ItemKeys.normalize(x.name).equals(key))) continue;
             int count = Math.max(1, s.getCount());
-            // 같은 제작이 두 칸(진행 칸·대기열 칸)에 보이면 하나로
-            boolean dup = queue.stream().anyMatch(q -> q.key().equals(key) && q.count() == count
-                    && q.r().done == r.done && Math.abs(q.r().remainingSec - r.remainingSec) <= 2);
+            // 대기열 칸("제작 시간 : N", "제작이 완료되었습니다")은 칸마다 다른 제작이다(2026-10 실제 창: 같은 제작이 두 칸에
+            // 보인 적 없음). 진행 중 6초·대기 7초처럼 비슷해도 합치지 않는다. "남은 시간"이 적힌 칸만 같은 값이면 하나로 본다
+            boolean dup = !r.own && !r.done && queue.stream().anyMatch(q -> q.key().equals(key) && q.count() == count
+                    && !q.r().own && !q.r().done && Math.abs(q.r().remainingSec - r.remainingSec) <= 2);
             if (!dup) queue.add(new QueueSlot(name, key, count, r));
         }
         for (Map.Entry<String, Long> e : recipeSeen.entrySet()) {

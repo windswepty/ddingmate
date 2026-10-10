@@ -6,6 +6,7 @@
   "client": [
     "BossBarHudAccessor",
     "InGameHudOverlayMixin",
+    "ItemCooldownMixin",
     "TextFieldWidgetMixin"
   ],
   "injectors": {

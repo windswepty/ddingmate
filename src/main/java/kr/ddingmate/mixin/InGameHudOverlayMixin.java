@@ -20,15 +20,20 @@ public abstract class InGameHudOverlayMixin {
         if (message == null) return;
         BagTracker.onOverlay(message.getString());
         kr.ddingmate.game.ServerHud.onOverlay(message.getString()); // 잠수 채널 알아보기
+        kr.ddingmate.skill.SkillSignals.onOverlay(message.getString()); // 스킬을 켠 직후 액션바(진단 기록)
     }
 
     @Inject(method = "setTitle", at = @At("HEAD"))
     private void ddingmate$title(Text title, CallbackInfo ci) {
-        if (title != null) BagTracker.onOverlay(title.getString());
+        if (title == null) return;
+        BagTracker.onOverlay(title.getString());
+        kr.ddingmate.skill.SkillSignals.onOverlay(title.getString());
     }
 
     @Inject(method = "setSubtitle", at = @At("HEAD"))
     private void ddingmate$subtitle(Text subtitle, CallbackInfo ci) {
-        if (subtitle != null) BagTracker.onOverlay(subtitle.getString());
+        if (subtitle == null) return;
+        BagTracker.onOverlay(subtitle.getString());
+        kr.ddingmate.skill.SkillSignals.onOverlay(subtitle.getString());
     }
 }

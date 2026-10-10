@@ -78,9 +78,8 @@ public final class SkillTimers {
         /** 창에 적힌 재사용 대기 시간(초). 0 = 모름 */
         public int cooldownSec;
         /**
-         * 활성화 → 종료 메시지까지 잰 시간 중 가장 짧은 것(초)과 그때의 레벨. 종료 메시지는 늦게만 오고 일찍 오지는 않아서
-         * 가장 짧은 값이 실제 지속 시간에 가장 가깝다(2026-05~10 실측: 곡괭이 나가신다! +5 창 15초 → 15~16초, 한 번 39초 /
-         * 쓸어담는 광질 +1 창 3초 → 8번 모두 5~7초)
+         * 활성화 → 종료 메시지까지 잰 시간 중 가장 짧은 것(초)과 그때의 레벨. 종료 메시지는 시간이 다 된 뒤 다음 블록을 캘 때
+         * 와서 실제보다 길게 잡히므로, 스킬 창을 못 봤을 때만 쓴다
          */
         public int measuredSec;
         public int measuredLevel = -1;
@@ -96,6 +95,12 @@ public final class SkillTimers {
         public boolean readySynced;
         /** "사용 가능"을 이때까지 보여 준다 */
         public long readyShownUntil;
+        /** 스킬 동안 서버가 거는 상태 효과(짝지었으면 id). 효과가 남은 시간이 곧 정확한 지속 시간 */
+        public String effect = "";
+        /** 스킬을 쓰면 서버가 거는 아이템 쿨타임 묶음(짝지었으면 id). 그 길이가 곧 정확한 재사용 대기 */
+        public String cooldownGroup = "";
+        /** 지금 "사용 중" 끝 시각이 서버 효과로 맞춘 정확한 값인지 */
+        public transient boolean activeExact;
         /** 도구 종류(아이콘): pickaxe·hoe·rod·sword·axe */
         public String tool = "";
     }
@@ -153,13 +158,36 @@ public final class SkillTimers {
         s.cooldownPending = s.cooldownSec <= 0;
         s.readySynced = false;
         s.readyShownUntil = 0;
+        s.activeExact = false;
+        SkillSignals.activated(s, now); // 서버가 함께 보내는 효과·아이템 쿨타임으로 더 정확히 맞춘다
         changed();
+    }
+
+    /** SkillSignals 가 시각을 바꿨을 때 저장 */
+    static void touched() {
+        changed();
+    }
+
+    /** 지금 쓰는 중이거나 방금 켠 스킬 */
+    static List<Skill> activeSkills() {
+        Map<String, Skill> map = skills(false);
+        if (map == null) return List.of();
+        long now = System.currentTimeMillis();
+        List<Skill> out = new ArrayList<>();
+        for (Skill s : map.values()) {
+            if (s.activatedAt > 0 && (s.activeUntil > now || now - s.activatedAt <= SkillSignals.WATCH_MS)) out.add(s);
+        }
+        return out;
     }
 
     private static void ended(String rawName, long now) {
         Skill s = skillForWrite(rawName);
         if (s == null) return;
         s.endMessage = true;
+        if (s.activeExact && s.activeUntil > now) {
+            changed();
+            return; // 서버 효과가 아직 남아 있으면 그쪽이 정확하다
+        }
         if (s.activatedAt > 0 && now - s.activatedAt < 10 * 60_000L) {
             int m = (int) Math.round((now - s.activatedAt) / 1000.0);
             // 창 값보다 짧거나 MAX_LATE_SEC 넘게 긴 것은 버린다: 종료 메시지가 늦게 오기도 한다
@@ -362,9 +390,15 @@ public final class SkillTimers {
     }
 
     /** 스킬 창에 적힌 지속 시간(ms). 모르면 0 */
+    /**
+     * 지속 시간(ms): 스킬 창에 적힌 값. 종료 메시지는 시간이 다 된 뒤 다음 블록을 캘 때 오므로 재지 않는다
+     * (2026-10-10 실측: 전문가 창을 열어 채광을 멈춘 사이 39초·49초 뒤에 옴, 광석은 캐는 데 걸려 쓸어담는 광질 3초 → 5~7초).
+     * 창을 못 봤을 때만 잰 값 중 가장 짧은 것을 쓴다. 모르면 0
+     */
     public static long durationMs(Skill s) {
-        if (s.measuredSec > 0 && s.measuredLevel == s.level && plausible(s, s.measuredSec)) return s.measuredSec * 1000L;
-        return s.durationSec * 1000L;
+        if (s.durationSec > 0) return s.durationSec * 1000L;
+        if (s.measuredSec > 0 && s.measuredLevel == s.level) return s.measuredSec * 1000L;
+        return 0;
     }
 
     /** 잰 지속 시간이 창 값과 견줘 믿을 만한가: 창 값 이상, 창 값 + MAX_LATE_SEC 이하(창 값을 모르면 10분 안) */
@@ -442,6 +476,8 @@ public final class SkillTimers {
                 m.values().removeIf(k -> k == null || k.name == null || k.name.isBlank());
                 for (Skill k : m.values()) {
                     if (k.tool == null) k.tool = "";
+                    if (k.effect == null) k.effect = "";
+                    if (k.cooldownGroup == null) k.cooldownGroup = "";
                     // 예전 판이 늦은 종료 메시지로 잘못 잰 값(39초·49초 등)은 버린다
                     if (!plausible(k, k.measuredSec)) {
                         k.measuredSec = 0;

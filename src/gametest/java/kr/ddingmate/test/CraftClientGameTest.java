@@ -348,6 +348,41 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 CraftTimers.debugClear();
             });
 
+            // 9-000a) 앞 제작을 창 값으로 크게(+3초) 다시 맞추면 뒤에 기다리는 제작은 정확히 3초만 옮겨진다
+            //         (예전 결함: 두 번째를 맞출 때 세 번째를 또 옮겨 6초 밀림. 2026-10-10 시험 진단으로 발견)
+            long[] base = new long[4];
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 1;
+                for (int i = 0; i < 4; i++) CraftTimers.onChat(G + "강화 횃불 아이템 1개 제작을 시작했습니다.");
+                c.setScreen(facility(c,
+                        queueItem("강화 횃불", 1, "  제작 시간 : 4초"),
+                        queueItem("강화 횃불", 1, "  제작 시간 : 7초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                for (int i = 0; i < 4; i++) base[i] = jobs.get(i).endsAt;
+                long left = Math.max(0, (base[0] - now()) / 1000) + 3; // 서버가 3초 더 남았다고 보여 준다
+                c.setScreen(facility(c,
+                        queueItem("강화 횃불", 1, "  제작 시간 : " + left + "초"),
+                        queueItem("강화 횃불", 1, "  제작 시간 : 7초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                long s0 = jobs.get(0).endsAt - base[0];
+                StringBuilder all = new StringBuilder();
+                for (int i = 0; i < 4; i++) all.append(" #").append(i + 1).append("=").append(jobs.get(i).endsAt - base[i]);
+                check(s0 > 1_500 && s0 < 4_500, "맨 앞을 서버 값(+3초)으로 맞추지 않음:" + all);
+                for (int i = 1; i < 4; i++) {
+                    check(Math.abs((jobs.get(i).endsAt - base[i]) - s0) <= 100, (i + 1) + "번째가 맨 앞과 다르게 옮겨짐:" + all);
+                }
+                c.setScreen(null);
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 0;
+            });
+
             // 9-00) 실제 2026-10-10 강화 횃불 3개(7초, 채광 1레벨): 서버는 개당 7초(6.3초가 아님) → 7·14·21초.
             //       시설 창을 열 때마다 서버 값으로 맞춰도 뒤 제작이 1초씩 밀리지 않고, 끝난 것을 꺼내도 진행 중인 제작 시간은 그대로
             ctx.runOnClient(c -> {
@@ -403,6 +438,9 @@ public class CraftClientGameTest implements FabricClientGameTest {
                     check(Math.abs(jobs.get(i).endsAt - before[i]) <= slack,
                             (i + 1) + "번째 완료 시각이 다시 읽을 때 밀림: " + (jobs.get(i).endsAt - before[i]) + "ms" + diag);
                 }
+                // 앞 제작을 다시 맞추면 뒤 제작은 같은 만큼만 옮겨진다(예전: 세 번째부터 두 번 옮겨짐)
+                long s2 = jobs.get(1).endsAt - before[1], s3 = jobs.get(2).endsAt - before[2];
+                check(Math.abs(s3 - s2) <= 100, "뒤 제작이 앞 제작과 다르게 옮겨짐(두 번 밀림?): " + s2 + " / " + s3 + diag);
                 c.setScreen(null);
                 // 맨 앞이 끝났다고 치고 꺼내면 맨 앞만 빠지고, 진행 중인 두 번째·기다리는 세 번째 시간은 그대로
                 jobs.get(0).endsAt = now() - 500;
@@ -933,9 +971,9 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 // 창 지속 시간(15초)이 지나면 종료 메시지를 기다리지 않고 재사용 대기로 넘어간다
                 sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 15_200);
                 check(sr.size() == 1 && sr.get(0).phase() == kr.ddingmate.skill.SkillTimers.Phase.COOLDOWN, "15초가 지났는데 아직 사용 중");
-                // 종료 메시지가 16초 뒤에 오면(실측 15~16초) 16초로 배운다
+                // 종료 메시지는 다음 블록을 캘 때 와서 늦을 수 있다(실측 15~16초, 창을 열어 둔 사이 39·49초) → 지속 시간은 창 값 그대로
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.", t0 + 16_000);
-                check(pick.activeUntil == 0 && kr.ddingmate.skill.SkillTimers.durationMs(pick) == 16_000, "실제 지속 시간(16초)을 배우지 못함: " + kr.ddingmate.skill.SkillTimers.durationMs(pick));
+                check(pick.activeUntil == 0 && kr.ddingmate.skill.SkillTimers.durationMs(pick) == 15_000, "종료 메시지로 지속 시간을 바꿈: " + kr.ddingmate.skill.SkillTimers.durationMs(pick));
                 sr = kr.ddingmate.skill.SkillTimers.rows(t0 + 16_500);
                 check(sr.size() == 1 && sr.get(0).phase() == kr.ddingmate.skill.SkillTimers.Phase.COOLDOWN
                         && kr.ddingmate.skill.SkillTimers.text(sr.get(0), t0 + 16_500).equals("2분 43초"), "끝난 뒤 재사용 대기로 넘어가지 않음");
@@ -953,13 +991,13 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 long t1 = t0 + 200_000;
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t1);
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.", t1 + 39_000);
-                check(kr.ddingmate.skill.SkillTimers.durationMs(pick) == 16_000, "늦은 종료 메시지(39초)로 지속 시간을 바꿈: " + kr.ddingmate.skill.SkillTimers.durationMs(pick));
+                check(kr.ddingmate.skill.SkillTimers.durationMs(pick) == 15_000, "늦은 종료 메시지(39초)로 지속 시간을 바꿈: " + kr.ddingmate.skill.SkillTimers.durationMs(pick));
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t1 + 200_000);
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.", t1 + 215_000);
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t1 + 400_000);
                 sr = kr.ddingmate.skill.SkillTimers.rows(t1 + 400_000);
-                check(kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1 + 400_000).equals("사용 중 15초"), "가장 짧은 실측(15초)을 쓰지 않음: " + kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1 + 400_000));
-                // 쓸어담는 광질 +1: 창 3초, 실측 5~7초(8번 모두) → 5초
+                check(kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1 + 400_000).equals("사용 중 15초"), "창 지속 시간(15초)을 쓰지 않음: " + kr.ddingmate.skill.SkillTimers.text(sr.get(0), t1 + 400_000));
+                // 쓸어담는 광질 +1: 창 3초. 종료 메시지는 다음 광석을 캘 때 와서 5~7초로 잡히지만 실제는 창 값 3초
                 check(kr.ddingmate.skill.SkillTimers.read(item("[세레니티] 쓸어담는 광질 (+1)", 1, "전문가 스킬 정보", ". 3초 간 광석을 한 번에 캡니다.",
                         ". 곡괭이를 들고 쉬프트 우클릭합니다.", "..(재사용 대기 시간 : 300초)")), "광질 칸을 못 읽음");
                 kr.ddingmate.skill.SkillTimers.Skill sweep = kr.ddingmate.skill.SkillTimers.debugSkill("쓸어담는 광질");
@@ -968,7 +1006,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                     kr.ddingmate.skill.SkillTimers.debugChat(g + "쓸어담는 광질 스킬을 활성화했습니다.", ta);
                     kr.ddingmate.skill.SkillTimers.debugChat(g + "쓸어담는 광질 스킬 지속시간이 종료되었습니다.", ta + k * 1000L);
                 }
-                check(kr.ddingmate.skill.SkillTimers.durationMs(sweep) == 5_000, "광질 실측(5~7초) 중 가장 짧은 5초가 아님: " + kr.ddingmate.skill.SkillTimers.durationMs(sweep));
+                check(kr.ddingmate.skill.SkillTimers.durationMs(sweep) == 3_000, "광질을 창 값 3초가 아닌 늦은 종료 메시지로 셈: " + kr.ddingmate.skill.SkillTimers.durationMs(sweep));
                 t1 += 400_000;
                 // 창을 아직 못 본 스킬: 숫자를 지어내지 않고, 서버가 남은 시간을 알려 주면 그 값으로
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "떡밥을 뿌려라! 스킬을 활성화했습니다.", t1);
@@ -1005,6 +1043,43 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 DdingMate.LOG.info("재료 그림 {}/{}", shown, all.size());
                 check(shown * 100 / all.size() >= 95, "재료 그림이 95% 미만: " + shown + "/" + all.size());
             });
+            // 21-35) 서버가 스킬과 함께 상태 효과·아이템 쿨타임을 보내면 그 정확한 값으로 맞춘다.
+            //        길이가 스킬 창 값과 동떨어진 효과(예: 10분짜리 속도)는 짝짓지 않고, 효과가 사라지면 그 순간 끝
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                kr.ddingmate.skill.SkillTimers.debugClear();
+                kr.ddingmate.skill.SkillSignals.debugReset();
+                kr.ddingmate.skill.SkillTimers.read(item("[야생] 곡괭이 나가신다! (+5)", 1, ". 15초 간 3x3를 부실 수 있습니다.",
+                        ". 곡괭이를 들고 쉬프트 우클릭합니다.", "..(재사용 대기 시간 : 180초)"));
+                kr.ddingmate.skill.SkillTimers.debugChat(G + "곡괭이 나가신다! 스킬을 활성화했습니다.", now());
+                c.player.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SPEED, 12_000, 0));
+                c.player.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.HASTE, 17 * 20, 2));
+                c.player.getItemCooldownManager().set(net.minecraft.util.Identifier.ofVanilla("netherite_pickaxe"), 181 * 20);
+            });
+            ctx.waitTicks(4);
+            ctx.runOnClient(c -> {
+                kr.ddingmate.skill.SkillTimers.Skill pick = kr.ddingmate.skill.SkillTimers.debugSkill("곡괭이 나가신다!");
+                check(pick.effect.equals("minecraft:haste"), "스킬 효과를 짝짓지 못하거나 엉뚱한 효과와 짝지음: '" + pick.effect + "'");
+                check(pick.cooldownGroup.equals("minecraft:netherite_pickaxe"), "아이템 쿨타임을 짝짓지 못함: '" + pick.cooldownGroup + "'");
+                long left = pick.activeUntil - now();
+                check(left > 15_500 && left <= 17_000, "효과 남은 시간(약 17초)으로 맞추지 않음: " + left);
+                long ready = pick.readyAt - now();
+                check(ready > 179_000 && ready <= 181_000, "아이템 쿨타임(181초)으로 맞추지 않음: " + ready);
+                // 늦게 온 종료 메시지는 효과가 남아 있으면 무시
+                kr.ddingmate.skill.SkillTimers.onChat(G + "곡괭이 나가신다! 스킬 지속시간이 종료되었습니다.");
+                check(pick.activeUntil > now(), "효과가 남았는데 종료 메시지로 끝냄");
+                c.player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.HASTE);
+                c.player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.SPEED);
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                kr.ddingmate.skill.SkillTimers.Skill pick = kr.ddingmate.skill.SkillTimers.debugSkill("곡괭이 나가신다!");
+                check(pick.activeUntil == 0, "효과가 사라졌는데 사용 중으로 남음");
+                c.player.getItemCooldownManager().remove(net.minecraft.util.Identifier.ofVanilla("netherite_pickaxe"));
+                kr.ddingmate.skill.SkillTimers.debugClear();
+                kr.ddingmate.skill.SkillSignals.debugReset();
+            });
+
             // 21-4) 지금 쓰고 있는 스킬은 HUD 에 그려진다(그리는 중 오류 없음, 자리 기록)
             ctx.runOnClient(c -> {
                 c.setScreen(null);
