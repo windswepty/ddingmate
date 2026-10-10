@@ -150,6 +150,23 @@ public class LogicClientGameTest implements FabricClientGameTest {
         check(BagTracker.parseBagNumber("ㄹ1", List.of("ㄹ")) == 1, "직접 적은 앞부분 단축어를 못 알아봄");
         check(BagTracker.parseBagNumber("짐3", List.of("짐3")) == 3, "번호까지 적은 직접 단축어를 못 알아봄");
         check(BagTracker.parseBagNumber("짐33", List.of("짐3")) == 0, "짐33 을 3번으로 봄");
+        // 가방 번호를 몰라도(서버 가방 창에 번호가 안 보임) 내용으로 같은 가방을 알아본다.
+        // 가방 안은 그 창을 열었을 때만 바뀌므로, 열었을 때 내용이 지난 기록과 같으면 같은 가방
+        List<String> a = List.of("v:minecraft:cobblestone*64", "", "v:minecraft:coal*3");
+        List<String> b2 = List.of("", "v:minecraft:raw_copper*12", "");
+        List<String> c3 = List.of("v:minecraft:torch*5", "", "");
+        java.util.Map<String, List<String>> bags = new java.util.TreeMap<>();
+        check(BagTracker.debugResolve(bags, a, 0) == 1, "처음 보는 가방을 1번 자리로 기록하지 않음");
+        bags.put("1", a);
+        check(BagTracker.debugResolve(bags, a, 0) == 1, "같은 내용인데 다른 가방으로 봄");
+        check(BagTracker.debugResolve(bags, b2, 0) == 2, "다른 내용인데 같은 가방으로 봄(덮어써서 사라짐)");
+        bags.put("2", b2);
+        // 명령어로 번호를 알게 되면 바로잡는다: 2번 자리에 둔 내용(b2)이 사실 1번 가방이었다 → 서로 자리를 바꾼다
+        check(BagTracker.debugResolve(bags, b2, 1) == 1 && bags.get("1").equals(b2) && bags.get("2").equals(a),
+                "명령어 번호로 자리를 바로잡지 않음: " + bags);
+        // 그 번호 자리에 전혀 다른 가방 기록이 있으면 지우지 않고 빈 번호로 옮긴다(합계에서 사라지지 않게)
+        check(BagTracker.debugResolve(bags, c3, 2) == 2 && bags.containsValue(a) && !bags.containsKey("2") && bags.size() == 2,
+                "그 번호 자리의 다른 가방 기록을 옮기지 않음: " + bags);
 
         check(PlaytimeTracker.nextRewardHour(0) == 1 && PlaytimeTracker.nextRewardHour(3600) == 2
                 && PlaytimeTracker.nextRewardHour(5 * 3600) == 8 && PlaytimeTracker.nextRewardHour(8 * 3600) == 0,

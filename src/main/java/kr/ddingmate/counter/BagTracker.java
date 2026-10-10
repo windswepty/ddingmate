@@ -208,7 +208,7 @@ public final class BagTracker {
         if (sig.bagUi()) {
             if (sig.bag()) {
                 openIsBag = true;
-                openBag = sig.number() > 0 ? sig.number() : pending ? pendingBag : bestMatch(acc, slotsOf(screen));
+                openBag = resolveBag(acc, slotsOf(screen), sig.number() > 0 ? sig.number() : pending ? pendingBag : 0);
             }
             pendingBag = 0;
             return;
@@ -228,14 +228,14 @@ public final class BagTracker {
                     dirty = true;
                 }
                 openIsBag = true;
-                openBag = pendingBag;
+                openBag = resolveBag(acc, slotsOf(screen), pendingBag);
             }
             pendingBag = 0;
             return;
         }
         if (acc.titles.contains(title) || title.contains("가방")) {
             openIsBag = true;
-            openBag = bestMatch(acc, slotsOf(screen));
+            openBag = resolveBag(acc, slotsOf(screen), 0);
         }
     }
 
@@ -460,6 +460,64 @@ public final class BagTracker {
     }
 
     // ---------------------------------------------------------------- 비교
+
+    /**
+     * 지금 연 가방 창이 어느 기록인지 정한다. 가방 안은 그 창을 열었을 때만 바뀌므로, 열었을 때 내용이 지난 기록과
+     * 똑같으면 같은 가방이다(번호를 몰라도 된다 — 서버 가방 창에는 번호가 안 보일 때가 있다, 2026-10-10 실제 창).
+     * known(명령어 /ㄱ2 등으로 안 번호)이 있으면 그 번호로 자리를 바로잡는다. 처음 보는 가방이면 빈 번호로 새로 기록한다.
+     */
+    static int resolveBag(Account acc, List<String> slots, int known) {
+        String exact = null;
+        long exactSeen = -1;
+        for (Map.Entry<String, Bag> e : acc.bags.entrySet()) {
+            if (slots.equals(e.getValue().slots) && e.getValue().seenAt > exactSeen) {
+                exact = e.getKey();
+                exactSeen = e.getValue().seenAt;
+            }
+        }
+        if (known > 0) {
+            String k = String.valueOf(known);
+            Bag atKnown = acc.bags.get(k);
+            if (exact != null && !exact.equals(k)) {
+                // 번호를 모를 때 다른 번호로 기록해 둔 가방이었다 → 진짜 번호로 옮기고, 그 번호에 있던 다른 가방 기록은 비운 자리로
+                Bag moved = acc.bags.remove(exact);
+                if (atKnown != null) acc.bags.put(exact, atKnown);
+                acc.bags.put(k, moved);
+                dirty = true;
+            } else if (exact == null && atKnown != null && similarity(slots, atKnown.slots) < MATCH_THRESHOLD) {
+                // 그 번호 자리의 기록이 전혀 다른 가방 것이면(번호를 몰라 잘못 둔 것) 지우지 말고 빈 번호로 옮겨 둔다
+                acc.bags.remove(k);
+                acc.bags.put(String.valueOf(freeNumber(acc, known)), atKnown);
+                dirty = true;
+            }
+            return known;
+        }
+        if (exact != null) return Integer.parseInt(exact);
+        int best = bestMatch(acc, slots);
+        if (best > 0) return best;
+        return freeNumber(acc, 0);
+    }
+
+    /** 시험용: 기록(번호 → 칸 배치)에서 지금 칸·아는 번호로 정한 번호. bags 는 바뀐 기록으로 고쳐 쓴다 */
+    public static int debugResolve(Map<String, List<String>> bags, List<String> slots, int known) {
+        Account acc = new Account();
+        long t = 1;
+        for (Map.Entry<String, List<String>> e : bags.entrySet()) {
+            Bag b = new Bag();
+            b.slots = new ArrayList<>(e.getValue());
+            b.seenAt = t++;
+            acc.bags.put(e.getKey(), b);
+        }
+        int n = resolveBag(acc, slots, known);
+        bags.clear();
+        acc.bags.forEach((k, v) -> bags.put(k, v.slots));
+        return n;
+    }
+
+    /** 기록에 없는 가장 작은 가방 번호(skip 은 빼고) */
+    private static int freeNumber(Account acc, int skip) {
+        for (int i = 1; ; i++) if (i != skip && !acc.bags.containsKey(String.valueOf(i))) return i;
+    }
 
     private static int bestMatch(Account acc, List<String> slots) {
         int best = 0;
