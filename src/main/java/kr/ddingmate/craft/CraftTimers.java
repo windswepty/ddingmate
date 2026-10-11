@@ -295,12 +295,13 @@ public final class CraftTimers {
     public static long durationMs(String name, int count) {
         Long seen = store.observedMs.get(ItemKeys.normalize(name) + "*" + Math.max(1, count));
         if (seen != null && seen > 0) return seen;
-        long base = secondsPerJob(name);
+        Long exact = store.secondsPerJob.get(ItemKeys.normalize(name) + "*" + Math.max(1, count));
+        long base = exact != null ? exact : secondsPerJob(name);
         if (base <= 0) return -1;
         kr.ddingmate.counter.RecipeBook.Recipe r = kr.ddingmate.counter.RecipeBook.recipeFor(name);
         Integer learned = store.batch.get(ItemKeys.normalize(name));
         int per = learned != null ? Math.max(1, learned) : r == null ? 1 : Math.max(1, r.output);
-        long times = Math.max(1, (Math.max(1, count) + per - 1) / per);
+        long times = exact != null ? 1 : Math.max(1, (Math.max(1, count) + per - 1) / per);
         int pct = reductionPercent(kr.ddingmate.counter.RecipeBook.facilityOf(name));
         // 서버는 줄어든 시간을 초 단위로 올려 쓴다(2026-10-10 실측: 강화 횃불 7초 × 채광 10% → 6.3초가 아니라 7초,
         // 3개 21초). 20초→18초, 2분→108초처럼 나누어떨어지는 경우는 그대로
@@ -321,7 +322,8 @@ public final class CraftTimers {
     private static boolean learn(Job job, long ms) {
         if (ms <= 0) return false;
         String name = ItemKeys.normalize(job.name);
-        long base = secondsPerJob(job.name);
+        Long exact = store.secondsPerJob.get(name + "*" + job.count);
+        long base = exact != null ? exact : secondsPerJob(job.name);
         int pct = reductionPercent(kr.ddingmate.counter.RecipeBook.facilityOf(job.name));
         long perUnit = base > 0 ? (long) Math.ceil(base * (100 - pct) / 100.0 - 1e-9) : 0;
         long dur;
@@ -329,7 +331,7 @@ public final class CraftTimers {
             // 창의 남은 초는 반올림·올림이 섞여 ±1초 흔들린다 → 레시피 1번 시간의 배수 중 가장 가까운 것으로(실측 14~15초 → 14초)
             long crafts = Math.max(1, Math.round(ms / 1000.0 / perUnit));
             dur = crafts * perUnit * 1000L;
-            if (job.count > 1) store.batch.put(name, (int) Math.max(1, Math.round((double) job.count / crafts)));
+            if (job.count > 1 && exact == null) store.batch.put(name, (int) Math.max(1, Math.round((double) job.count / crafts)));
         } else {
             dur = Math.round(ms / 1000.0) * 1000L;
         }
@@ -501,9 +503,11 @@ public final class CraftTimers {
             if (r.recipe) {
                 // 레시피 칸: 1개 만드는 데 걸리는 시간(스킬 전)만 배운다(제작 중인 것으로 등록하지 않는다).
                 // 한 창에 같은 이름이 서로 다른 시간으로 보이면(실측: 조약돌 뭉치 5초·20초) 어느 쪽인지 몰라 배우지 않는다
+                // 한 번에 여러 개 나오는 칸(조약돌 뭉치 ×7 = 20초)은 "이름*개수"로 따로 배운다(1개 칸 5초와 섞지 않게)
                 if (r.totalSec > 0) {
-                    Long before = recipeSeen.putIfAbsent(key, r.totalSec);
-                    if (before != null && before != r.totalSec) recipeConflict.add(key);
+                    String rk = s.getCount() > 1 ? key + "*" + s.getCount() : key;
+                    Long before = recipeSeen.putIfAbsent(rk, r.totalSec);
+                    if (before != null && before != r.totalSec) recipeConflict.add(rk);
                 }
                 continue;
             }
