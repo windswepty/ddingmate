@@ -471,7 +471,11 @@ public final class CraftTimers {
             LoreComponent lore = s.get(DataComponentTypes.LORE);
             if (lore == null || lore.lines().isEmpty()) continue;
             if (isVoyage(lore.lines())) {
-                if (!isIslandSlot(s, lore.lines())) continue; // "라비온 수하물 넣기" 칸: 섬 상태가 아니다
+                if (!isIslandSlot(s, lore.lines())) {
+                    // "라비온 수하물 넣기" 칸: 섬 상태는 아니지만, 초기화 뒤 새 항해도에 보이는 칸이라 끝난 "항해 초기화" 줄은 정리한다
+                    if (jobs.removeIf(j -> j.separate && j.name.equals(VOYAGE_RESET_NAME) && done(j, now))) changed = true;
+                    continue;
+                }
                 String island = islandOf(s);
                 if (!island.isEmpty()) {
                     islandsSeen.add(island);
