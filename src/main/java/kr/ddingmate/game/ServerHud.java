@@ -37,6 +37,10 @@ public final class ServerHud {
     private static int channel;
     /** 이번 접속에서 게임 화면(채널 표시)을 본 적이 있는지 */
     private static boolean seen;
+    /** 채널 표시(오른쪽 위 보스바)를 마지막으로 본 시각 */
+    private static long barSeenAt;
+    /** 채널 표시가 이만큼 안 보이면 게임 밖(채널 재시작 대기·로비)으로 본다 */
+    static final long BAR_GONE_MS = 3_000;
 
     private ServerHud() {}
 
@@ -54,6 +58,7 @@ public final class ServerHud {
             area = a;
             channel = ch;
             seen = true;
+            barSeenAt = System.currentTimeMillis();
             afk = false; // 채널 표시가 다시 보이면 잠수 채널에서 나온 것
             if (changed) {
                 DdingMate.LOG.info("채널 인식: {} {}채널", a.label, ch);
@@ -113,7 +118,9 @@ public final class ServerHud {
         MinecraftClient c = MinecraftClient.getInstance();
         if (c.player == null) return false;
         if (!onDdingtycoon(c)) return true;
-        if (seen) return true;
+        // 채널 표시가 지금 보일 때만 게임 중이다. 채널이 재시작되면 대기 서버(로비)로 옮겨져 채널 표시가 사라지는데,
+        // 예전에는 한 번 본 뒤로 계속 게임 중으로 봐서 로비에서도 HUD 가 떴다
+        if (seen) return System.currentTimeMillis() - barSeenAt <= BAR_GONE_MS;
         // 채널 표시를 아직 못 읽었어도, 업적이 잔뜩 온 서버(대기 서버는 2개)는 게임 서버로 본다
         var net = c.getNetworkHandler();
         return net != null && net.getAdvancementHandler().getManager().getAdvancements().size() >= 20;
@@ -176,6 +183,7 @@ public final class ServerHud {
         area = null;
         channel = 0;
         seen = false;
+        barSeenAt = 0;
     }
 
     /** 시험용 */
@@ -185,6 +193,7 @@ public final class ServerHud {
         area = a;
         channel = ch;
         seen = true;
+        barSeenAt = Long.MAX_VALUE / 2; // 시험: 계속 보이는 것으로
         remember(a, ch);
     }
 }

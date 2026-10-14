@@ -77,6 +77,13 @@ public final class DdingMate implements ClientModInitializer {
                 "key.ddingmate.open_settings", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, "category.ddingmate"));
 
         ClientTickEvents.END_CLIENT_TICK.register(DdingMate::onTick);
+        // 손님 주문 창 옆에 바리스타 도우미 판
+        net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> {
+            if (screen instanceof net.minecraft.client.gui.screen.ingame.GenericContainerScreen) {
+                net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterRender(screen).register(
+                        (s, ctx, mx, my, delta) -> kr.ddingmate.expert.BaristaPanel.render(ctx, s));
+            }
+        });
         // 서버 리소스팩을 받거나 바꾸면 섬 그림 글꼴을 다시 읽는다
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES)
                 .registerReloadListener(new net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener() {
@@ -189,6 +196,8 @@ public final class DdingMate implements ClientModInitializer {
             PlaytimeTracker.scanScreen(client); // 내가 연 /접속시간 창이면 서버 기록에 맞춘다
             CraftTimers.scanScreen(client); // 내가 연 시설 창의 남은 제작 시간
             kr.ddingmate.craft.ExpertSkills.scan(client); // 전문가 스킬 창의 "제작 시간이 N% 감소" → 스킬 레벨 자동 설정
+            kr.ddingmate.expert.Barista.scan(client); // 손님 주문 창의 커피
+            kr.ddingmate.expert.Cooking.scan(client); // 밀키 상점 창의 요리 가격
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
             if (client.world != null) kr.ddingmate.counter.IconCache.tick(client); // 열어 본 창의 아이템 모양을 기억

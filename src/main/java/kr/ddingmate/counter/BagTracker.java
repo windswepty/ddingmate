@@ -548,19 +548,38 @@ public final class BagTracker {
         return best;
     }
 
-    /** 두 칸 배치에서 아이템이 있는 칸 중 같은 칸의 비율 */
+    /**
+     * 두 칸 배치(a = 지금 창, b = 기록)가 같은 가방일 비율. 개수는 보지 않고 아이템 종류만 비교하고,
+     * 기록에는 있던 칸이 지금 비었으면 꺼내 쓴 것으로 본다. 예전에는 "아이템*개수"를 그대로 비교해서
+     * 재료를 꺼내 개수가 줄면 다른 가방으로 착각해 새 기록을 만들고, 옛 기록(꺼내기 전 개수)이 계속 합산됐다
+     */
     static double similarity(List<String> a, List<String> b) {
         int n = Math.max(a.size(), b.size());
-        int used = 0;
-        int same = 0;
+        int used = 0, same = 0, removed = 0, nowUsed = 0, nowSame = 0;
         for (int i = 0; i < n; i++) {
-            String x = i < a.size() ? a.get(i) : "";
-            String y = i < b.size() ? b.get(i) : "";
+            String x = kind(i < a.size() ? a.get(i) : "");
+            String y = kind(i < b.size() ? b.get(i) : "");
             if (x.isEmpty() && y.isEmpty()) continue;
             used++;
-            if (x.equals(y)) same++;
+            if (!x.isEmpty()) nowUsed++;
+            if (x.equals(y)) {
+                same++;
+                nowSame++;
+            } else if (x.isEmpty()) {
+                removed++;
+            }
         }
-        return used == 0 ? 0 : (double) same / used;
+        // 지금 든 아이템이 하나도 없으면(빈 가방) 같은 가방이라 볼 근거가 없다
+        if (nowUsed == 0 || used == 0) return 0;
+        // 지금 든 아이템의 절반 이상이 기록과 같은 자리·같은 종류일 때만, 비어 버린 칸을 꺼내 쓴 것으로 본다
+        if (nowSame * 2 >= nowUsed) return (double) (same + removed) / used;
+        return (double) same / used;
+    }
+
+    /** "n:조약돌*64" → "n:조약돌"(개수 떼기) */
+    private static String kind(String slot) {
+        int star = slot.lastIndexOf('*');
+        return star > 0 ? slot.substring(0, star) : slot;
     }
 
     private static List<String> slotsOf(GenericContainerScreen screen) {

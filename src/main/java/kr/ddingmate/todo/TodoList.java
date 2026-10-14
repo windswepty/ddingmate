@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 오늘 할 일. 서버 메시지를 보고 알아서 세고(직접 체크하지 않음), 서버 초기화 시각(매일 03시·목요일 03시·자정)이 지나면 0 으로 돌아간다.
+ * 오늘 할 일. 서버 메시지를 보고 알아서 세고(직접 체크하지 않음), 서버 초기화 시각(매일 03시·수요일 03시·자정)이 지나면 0 으로 돌아간다.
  * 체크 시각만 저장하고 "마지막 초기화 이후에 체크했는가"로 판단하므로 게임을 꺼 둔 사이에 지나간 초기화도 반영된다.
  */
 public final class TodoList {
@@ -33,9 +33,10 @@ public final class TodoList {
                 yield n.isBefore(today) ? today.minusDays(1) : today;
             }
             case WEEKLY -> {
-                ZonedDateTime thu = n.with(TemporalAdjusters.previousOrSame(DayOfWeek.THURSDAY))
+                // 2026-10-01 이후 주간 초기화는 수요일 03시
+                ZonedDateTime wed = n.with(TemporalAdjusters.previousOrSame(DayOfWeek.WEDNESDAY))
                         .with(RESET_TIME).withSecond(0).withNano(0);
-                yield n.isBefore(thu) ? thu.minusWeeks(1) : thu;
+                yield n.isBefore(wed) ? wed.minusWeeks(1) : wed;
             }
         };
     }
@@ -251,7 +252,7 @@ public final class TodoList {
     public static String resetName(DdingMateConfig.Reset r) {
         return switch (r) {
             case DAILY -> "매일 03시";
-            case WEEKLY -> "매주 목 03시";
+            case WEEKLY -> "매주 수 03시";
             case MIDNIGHT -> "매일 자정";
         };
     }

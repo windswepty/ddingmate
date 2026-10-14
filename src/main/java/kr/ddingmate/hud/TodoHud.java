@@ -59,6 +59,7 @@ public final class TodoHud {
         int rows = shown.size() + (total > MAX_ROWS ? 1 : 0);
         int boxW = Math.max(14 + nameW, 18 + Theme.boldWidth(tr, title)) + 12;
         int boxH = ScheduleHud.HEAD_H + 2 + rows * ROW_H + 3;
+        boxW = HudLayout.widen(HudLayout.TODO, boxW); // 편집 화면에서 가로로 늘린 너비
         int[] o = HudLayout.place(ctx, HudLayout.TODO, cfg.corner, boxW, boxH);
         int x = o[0], y = o[1];
 

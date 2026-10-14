@@ -87,7 +87,11 @@ public final class ItemKeys {
 
     public static String keyOf(ItemStack stack) {
         if (stack.isEmpty()) return "";
-        if (renamed(stack)) return nameKey(stack.getName().getString());
+        if (renamed(stack)) {
+            // 등급이 이름 앞 배지 그림으로만 보이는 아이템("라온" + COMMON 배지)은 모델 번호로 등급을 붙인다("라온 (Common)")
+            String graded = IconCache.gradedName(stack);
+            return nameKey(graded != null ? graded : stack.getName().getString());
+        }
         return vanillaKey(Registries.ITEM.getId(stack.getItem()).toString());
     }
 

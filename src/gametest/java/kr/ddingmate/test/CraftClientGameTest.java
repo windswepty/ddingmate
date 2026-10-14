@@ -348,6 +348,98 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 CraftTimers.debugClear();
             });
 
+            // 9-000b) 2026-10 사용자 제보
+            //  ① 귀중품 40초인데 1시간: 다른 시설의 긴 제작 뒤에 이어 붙였다 → 시설이 다르면 따로 센다
+            //  ② 어빌리티 스톤 40개(진행 중, 모드가 모름) 뒤에 7개를 넣었는데 7개 완료 알림이 먼저 → 창의 모르는 진행 칸도 자리를 차지
+            //  ③ 조약돌 뭉치 1개 5초 / 7개 20초 레시피가 따로 있다 → 7개를 5초×7로 세지 않는다
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 0;
+                CraftTimers.debugLearn("어빌리티 스톤", 120);
+                CraftTimers.debugLearn("(Common) 키론 오르골", 45);
+                CraftTimers.onChat(G + "어빌리티 스톤 아이템 30개 제작을 시작했습니다.");   // 강화 제작 시설, 1시간
+                CraftTimers.onChat(G + "키론 오르골 아이템 1개 제작을 시작했습니다.");      // 채광물 가공 시설, 45초
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                CraftTimers.Job orgel = jobs.stream().filter(j -> j.name.equals("키론 오르골")).findFirst().orElseThrow();
+                long left = orgel.endsAt - orgel.startedAt;
+                check(left > 0 && left < 60_000, "다른 시설의 1시간 제작 뒤에 귀중품(45초)을 이어 붙임: " + left + " / 대기열 " + orgel.queue);
+                CraftTimers.debugClear();
+                // ② 모드가 모르는 40개(남은 40분) 다음에 7개를 넣음 → 7개는 40분 + 7개 시간 뒤
+                CraftTimers.onChat(G + "어빌리티 스톤 아이템 7개 제작을 시작했습니다.");
+                c.setScreen(facility(c,
+                        queueItem("어빌리티 스톤", 40, "  제작 시간 : 40분 0초"),
+                        queueItem("어빌리티 스톤", 7, "  제작 시간 : 14분 0초")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                List<CraftTimers.Job> jobs = CraftTimers.jobs();
+                check(jobs.size() == 1, "창의 모르는 진행 칸을 새 제작으로 등록함: " + jobs.size());
+                long left = jobs.get(0).endsAt - now();
+                check(Math.abs(left - (40 * 60_000 + 14 * 60_000)) < 3_000, "7개를 앞 40개(모르는 제작)가 끝난 뒤부터 세지 않음: " + left);
+                c.setScreen(null);
+                CraftTimers.debugClear();
+                // ③ 시설 창에 조약돌 뭉치 1개(5초)·7개(20초) 레시피가 함께 보임 → 개수별로 따로 기억
+                DdingMate.config().craft.mining = 2; // 30%
+                ItemStack seven = item("조약돌 뭉치", 7, "설명", "", "  제작 시간 : 20초", "", " (좌) 해당 아이템 제작 시작", " (쉬프트+우) 레시피 고정");
+                ItemStack one = item("조약돌 뭉치", 1, "설명", "", "  제작 시간 : 5초", "", " (좌) 해당 아이템 제작 시작", " (쉬프트+우) 레시피 고정");
+                c.setScreen(facility(c, one, seven));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.durationMs("조약돌 뭉치", 7) == 14_000, "7개짜리(20초×0.7=14초)가 아님(5초×7?): " + CraftTimers.durationMs("조약돌 뭉치", 7));
+                check(CraftTimers.durationMs("조약돌 뭉치", 1) == 4_000, "1개짜리(5초×0.7=3.5→4초)가 아님: " + CraftTimers.durationMs("조약돌 뭉치", 1));
+                c.setScreen(null);
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 0;
+                // 보석·귀중품: 이름엔 등급이 없고 배지로만(실제 "라온" 2045016) → 모델 번호로 "라온 (Common)"
+                ItemStack raon = new ItemStack(Items.PAPER);
+                raon.set(DataComponentTypes.CUSTOM_NAME, Text.literal("라온"));
+                raon.set(DataComponentTypes.CUSTOM_MODEL_DATA,
+                        new net.minecraft.component.type.CustomModelDataComponent(List.of(2045016f), List.of(), List.of(), List.of()));
+                check(kr.ddingmate.counter.ItemKeys.keyOf(raon).equals(kr.ddingmate.counter.ItemKeys.nameKey("라온 (Common)")),
+                        "보석 등급을 못 알아봄: " + kr.ddingmate.counter.ItemKeys.keyOf(raon));
+                ItemStack terraon = kr.ddingmate.counter.IconCache.forMaterial("테라온 (Normal)");
+                var tcmd = terraon == null ? null : terraon.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+                check(tcmd != null && tcmd.floats().get(0) == 2045008f, "테라온 그림이 2번 묶음(2045008)이 아님: " + tcmd);
+                // 세트 단위 보기
+                DdingMate.config().counter.showSets = true;
+                check(kr.ddingmate.hud.CounterHud.amount(80).equals("1세트 16") && kr.ddingmate.hud.CounterHud.amount(40).equals("40")
+                        && kr.ddingmate.hud.CounterHud.amount(128).equals("2세트"), "세트 표시가 다름");
+                DdingMate.config().counter.showSets = false;
+                check(kr.ddingmate.hud.CounterHud.amount(80).equals("80"), "세트 보기를 껐는데 세트로 보임");
+                // 요리 효율: 지금 가격을 아는 요리만, 원재료당 골드 순
+                kr.ddingmate.expert.Cooking.debugClear();
+                kr.ddingmate.expert.Cooking.debugPrice("토마토 스파게티", 570, now());
+                kr.ddingmate.expert.Cooking.debugPrice("토마토 라자냐", 2757, now());
+                var ranks = kr.ddingmate.expert.Cooking.ranking(false);
+                check(ranks.size() == 2 && ranks.get(0).perItem() >= ranks.get(1).perItem(), "요리 순위가 효율 순이 아님");
+                check(ranks.get(0).rawItems() > 0, "원재료 개수를 못 셈");
+                kr.ddingmate.expert.Cooking.debugClear();
+                // 바리스타: 가진 만큼만 팔아도 되고(나눠 팔기), 합계는 표의 판매가로
+                var lines = List.of(new kr.ddingmate.expert.Barista.Line("아메리카노", 2, 1, 45_999),
+                        new kr.ddingmate.expert.Barista.Line("콜드 브루", 1, 1, 51_110));
+                check(kr.ddingmate.expert.Barista.total(lines) == 45_999 + 51_110 && kr.ddingmate.expert.Barista.fullTotal(lines) == 2 * 45_999 + 51_110,
+                        "커피 판매 합계 계산이 다름");
+                // 전문가 탭 화면
+                kr.ddingmate.expert.Cooking.debugPrice("토마토 스파게티", 570, now());
+                kr.ddingmate.expert.Cooking.debugPrice("토마토 라자냐", 2757, now());
+                kr.ddingmate.expert.Cooking.debugPrice("양파 수프", 1800, now() - 30L * 24 * 3600_000);
+                kr.ddingmate.gui.DdingMateScreen s = new kr.ddingmate.gui.DdingMateScreen(null);
+                c.setScreen(s);
+                s.openTab(9);
+            });
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("expert-1-top");
+            ctx.runOnClient(c -> c.currentScreen.children().stream()
+                    .filter(e -> e instanceof net.minecraft.client.gui.widget.ElementListWidget<?>)
+                    .forEach(e -> ((net.minecraft.client.gui.widget.ElementListWidget<?>) e).setScrollY(10000)));
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("expert-2-cooking");
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                kr.ddingmate.expert.Cooking.debugClear();
+            });
+
             // 9-000a) 앞 제작을 창 값으로 크게(+3초) 다시 맞추면 뒤에 기다리는 제작은 정확히 3초만 옮겨진다
             //         (예전 결함: 두 번째를 맞출 때 세 번째를 또 옮겨 6초 밀림. 2026-10-10 시험 진단으로 발견)
             long[] base = new long[4];
@@ -487,11 +579,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 // 시설 창을 안 열었어도: 2분 × 개수 × 0.9 → 50개 1시간 30분
                 List<CraftTimers.Job> jobs = CraftTimers.jobs();
                 check(Math.abs(jobs.get(0).endsAt - jobs.get(0).startedAt - 5_400_000) < 3000, "50개 제작 시간이 1시간 30분이 아님: " + (jobs.get(0).endsAt - jobs.get(0).startedAt));
-                // 대기열 칸 순서가 섞여 있어도(기다리는 칸이 앞) 남은 시간이 짧은 칸이 맨 앞 제작
+                // 대기열 칸은 넣은 순서대로 놓인다: 진행 중(남은 1시간 29분 33초) → 기다리는 50개(1시간 30분) → 28개(50분 24초)
                 c.setScreen(facility(c,
+                        queueItem("어빌리티 스톤", 50, "  제작 시간 : 1시간 29분 33초"),
                         queueItem("어빌리티 스톤", 50, "신비로운 힘이 깃들어 있는 스톤입니다.", "  제작 시간 : 1시간 30분 0초"),
-                        queueItem("어빌리티 스톤", 28, "  제작 시간 : 50분 24초"),
-                        queueItem("어빌리티 스톤", 50, "  제작 시간 : 1시간 29분 33초")));
+                        queueItem("어빌리티 스톤", 28, "  제작 시간 : 50분 24초")));
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {

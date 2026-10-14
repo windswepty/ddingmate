@@ -28,11 +28,18 @@ public class HudEditorScreen extends Screen {
     private static final int BUTTON_W = 80;
     private static final int HANDLE = 6;
     private static final int STEP = 10;
+    /** 오른쪽 가장자리 손잡이 높이 */
+    private static final int EDGE = 12;
 
     private final Screen parent;
     /** 열었을 때 자리·크기. 저장하지 않고 나가면 되돌린다 */
     private final Map<String, DdingMateConfig.HudPos> beforePos = new LinkedHashMap<>();
     private final Map<String, Integer> beforeSize = new LinkedHashMap<>();
+    private final Map<String, Integer> beforeWidth = new LinkedHashMap<>();
+    /** 오른쪽 가장자리 손잡이로 너비만 늘리는 중인 HUD */
+    private String widening;
+    private int wideStartW;
+    private double wideStartX;
     private boolean saved;
 
     private String selected = HudLayout.SCHEDULE;
@@ -54,6 +61,7 @@ public class HudEditorScreen extends Screen {
             beforePos.put(e.getKey(), copy);
         }
         beforeSize.putAll(cfg.hudSizes);
+        beforeWidth.putAll(cfg.hudWidths);
     }
 
     @Override
@@ -84,6 +92,7 @@ public class HudEditorScreen extends Screen {
         Widgets.Button reset = new Widgets.Button(BUTTON_W, 20, Text.literal("초기화"), false, b -> {
             DdingMate.config().hudPos.clear();
             DdingMate.config().hudSizes.clear();
+            DdingMate.config().hudWidths.clear();
         });
         reset.setTooltip(Tooltip.of(Text.literal("모든 HUD 를 원래 자리·크기로 돌려요. [저장]을 눌러야 남아요.")));
         reset.setX(cx + 3);
@@ -103,7 +112,7 @@ public class HudEditorScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         Map<String, HudLayout.Rect> bounds = HudLayout.bounds();
-        String hover = dragging != null ? dragging : resizing != null ? resizing : hit(mouseX, mouseY);
+        String hover = dragging != null ? dragging : resizing != null ? resizing : widening != null ? widening : hit(mouseX, mouseY);
         for (Map.Entry<String, HudLayout.Rect> e : bounds.entrySet()) {
             String id = e.getKey();
             HudLayout.Rect r = e.getValue();
@@ -120,6 +129,10 @@ public class HudEditorScreen extends Screen {
                 int hx = r.x() + r.w() - HANDLE + 1, hy = r.y() + r.h() - HANDLE + 1;
                 ctx.fill(hx - 1, hy - 1, hx + HANDLE + 1, hy + HANDLE + 1, Theme.BLUE_DEEP);
                 ctx.fill(hx, hy, hx + HANDLE, hy + HANDLE, Theme.WHITE);
+                // 오른쪽 가장자리 가운데: 너비만 늘리는 손잡이
+                int ex = r.x() + r.w() - 2, ey = r.y() + r.h() / 2 - EDGE / 2;
+                ctx.fill(ex - 1, ey - 1, ex + 4, ey + EDGE + 1, Theme.BLUE_DEEP);
+                ctx.fill(ex, ey, ex + 3, ey + EDGE, Theme.WHITE);
                 String name = HudLayout.NAMES.get(id) + " · " + HudLayout.size(id) + "%"
                         + (HudLayout.custom(id) ? " · 옮김" : "");
                 int nw = Theme.width(textRenderer, name) + 8;
@@ -129,7 +142,7 @@ public class HudEditorScreen extends Screen {
             }
         }
         // 아래 가운데 조작 판
-        String help = "끌기: 옮기기 · 휠·모서리: 크기 · 오른쪽 클릭: 원래대로 · Esc: 취소";
+        String help = "끌기: 옮기기 · 휠·모서리: 크기 · 오른쪽 가장자리: 가로로 늘리기 · 오른쪽 클릭: 원래대로 · Esc: 취소";
         int hw = Math.max(Theme.width(textRenderer, help) + 16, BUTTON_W * 2 + 22);
         int hx = width / 2 - hw / 2;
         int hy = height - 76;
@@ -152,6 +165,16 @@ public class HudEditorScreen extends Screen {
         return null;
     }
 
+    /** 오른쪽 가장자리 가운데 손잡이(너비만 바꾸기) 위인가 */
+    private String edgeAt(double mx, double my) {
+        for (Map.Entry<String, HudLayout.Rect> e : HudLayout.bounds().entrySet()) {
+            HudLayout.Rect r = e.getValue();
+            int ex = r.x() + r.w(), ey = r.y() + r.h() / 2 - EDGE / 2;
+            if (mx >= ex - 4 && mx <= ex + 4 && my >= ey - 2 && my <= ey + EDGE + 2) return e.getKey();
+        }
+        return null;
+    }
+
     /** 고른(또는 마우스가 올라간) HUD 의 크기 손잡이 위인가 */
     private String handleAt(double mx, double my) {
         for (Map.Entry<String, HudLayout.Rect> e : HudLayout.bounds().entrySet()) {
@@ -166,6 +189,14 @@ public class HudEditorScreen extends Screen {
     public boolean mouseClicked(double mx, double my, int button) {
         if (super.mouseClicked(mx, my, button)) return true;
         if (button == 0) {
+            String w = edgeAt(mx, my);
+            if (w != null && handleAt(mx, my) == null) {
+                selected = w;
+                widening = w;
+                wideStartW = HudLayout.bounds().get(w).w();
+                wideStartX = mx;
+                return true;
+            }
             String h = handleAt(mx, my);
             if (h != null) {
                 selected = h;
@@ -182,6 +213,7 @@ public class HudEditorScreen extends Screen {
         if (button == 1) {
             HudLayout.reset(id);
             HudLayout.setSize(id, 100);
+            HudLayout.setWidth(id, 0);
             return true;
         }
         if (button == 0) {
@@ -205,6 +237,12 @@ public class HudEditorScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (widening != null) {
+            // 끈 만큼 상자 너비만 바꾼다(글자 크기는 그대로). 화면 px → HUD 좌표 px
+            int newW = (int) Math.round(wideStartW + (mx - wideStartX));
+            HudLayout.setWidth(widening, Math.max(1, Math.round(newW / HudLayout.scale(widening))));
+            return true;
+        }
         if (resizing != null) {
             // 손잡이를 끈 만큼 너비가 바뀌도록 크기(%)를 정한다. 5% 단위로 맞춘다
             int newW = Math.max(10, (int) Math.round(resizeStartW + (mx - resizeStartX)));
@@ -232,6 +270,7 @@ public class HudEditorScreen extends Screen {
     public boolean mouseReleased(double mx, double my, int button) {
         dragging = null;
         resizing = null;
+        widening = null;
         return super.mouseReleased(mx, my, button);
     }
 
@@ -244,6 +283,8 @@ public class HudEditorScreen extends Screen {
             cfg.hudPos.putAll(beforePos);
             cfg.hudSizes.clear();
             cfg.hudSizes.putAll(beforeSize);
+            cfg.hudWidths.clear();
+            cfg.hudWidths.putAll(beforeWidth);
         }
         HudLayout.editing = false;
         if (client != null) client.setScreen(parent);

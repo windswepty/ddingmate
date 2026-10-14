@@ -131,11 +131,66 @@ public class RecipePickerScreen extends Screen {
     private void refill() {
         list.clear();
         String q = ItemKeys.normalize(query);
+        java.util.Set<String> inv = inventoryKeys();
+        java.util.Map<String, Integer> uses = materialUses();
+        List<RecipeBook.Recipe> shown = new ArrayList<>();
+        java.util.Map<RecipeBook.Recipe, Double> score = new java.util.IdentityHashMap<>();
         for (RecipeBook.Recipe r : RecipeBook.all()) {
             if (!facility.equals(ALL) && !facility.equals(r.facility)) continue;
             if (!q.isEmpty() && !matches(r, q)) continue;
-            list.add(new RecipeCard(r, list.getRowWidth()));
+            shown.add(r);
+            score.put(r, inventoryScore(r, inv, uses));
         }
+        // 인벤토리에 있는 재료로 만드는 레시피를 맨 위로(예: 루밀리아가 있으면 루밀리아 디퓨저).
+        // 여러 레시피에 두루 쓰이는 재료(조약돌 등)보다 그 레시피에만 쓰이는 재료가 있을수록 위로
+        shown.sort(java.util.Comparator.comparingDouble((RecipeBook.Recipe r) -> -score.get(r)));
+        for (RecipeBook.Recipe r : shown) list.add(new RecipeCard(r, list.getRowWidth(), score.get(r) > 0 ? haveNames(r, inv) : null));
+    }
+
+    /** 지금 인벤토리(손·갑옷 칸 포함)에 있는 아이템 키 */
+    private java.util.Set<String> inventoryKeys() {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (client == null || client.player == null) return out;
+        var pinv = client.player.getInventory();
+        for (int i = 0; i < pinv.size(); i++) {
+            ItemStack s = pinv.getStack(i);
+            if (!s.isEmpty()) out.add(ItemKeys.keyOf(s));
+        }
+        return out;
+    }
+
+    /** 재료 이름 → 그 재료를 쓰는 레시피 수 */
+    private static java.util.Map<String, Integer> materialUses() {
+        java.util.Map<String, Integer> out = new java.util.HashMap<>();
+        for (RecipeBook.Recipe r : RecipeBook.all()) for (RecipeBook.Material m : r.materials) out.merge(m.name, 1, Integer::sum);
+        return out;
+    }
+
+    /** 인벤토리에 있는 재료마다 1/(그 재료를 쓰는 레시피 수)를 더한 값. 없으면 0 */
+    static double inventoryScore(RecipeBook.Recipe r, java.util.Set<String> inv, java.util.Map<String, Integer> uses) {
+        double s = 0;
+        for (RecipeBook.Material m : r.materials) {
+            for (String k : RecipeBook.keysFor(m.name)) {
+                if (inv.contains(k)) {
+                    s += 1.0 / Math.max(1, uses.getOrDefault(m.name, 1));
+                    break;
+                }
+            }
+        }
+        return s;
+    }
+
+    private static String haveNames(RecipeBook.Recipe r, java.util.Set<String> inv) {
+        List<String> names = new ArrayList<>();
+        for (RecipeBook.Material m : r.materials) {
+            for (String k : RecipeBook.keysFor(m.name)) {
+                if (inv.contains(k)) {
+                    names.add(m.name);
+                    break;
+                }
+            }
+        }
+        return String.join(", ", names);
     }
 
     public static boolean matches(RecipeBook.Recipe r, String normalizedQuery) {
@@ -158,6 +213,10 @@ public class RecipePickerScreen extends Screen {
 
     /** 지금 정한 개수로 만들 때 필요한 재료 (마우스를 올리면 보여 줌) */
     private Tooltip tooltipFor(RecipeBook.Recipe r) {
+        return Tooltip.of(Text.literal(tooltipText(r)));
+    }
+
+    private String tooltipText(RecipeBook.Recipe r) {
         DdingMateConfig.Pin probe = new DdingMateConfig.Pin();
         probe.crafts = Math.max(1, count);
         probe.byOutput = byOutput;
@@ -170,7 +229,7 @@ public class RecipePickerScreen extends Screen {
             if (IconCache.forMaterial(m.name) == null) unknown = true;
         }
         if (unknown) sb.append("\n\n? 칸: 아직 본 적 없는 재료예요. 인벤토리·가방·제작 시설 창에서 한 번 보면 그림이 나와요.");
-        return Tooltip.of(Text.literal(sb.toString()));
+        return sb.toString();
     }
 
     @Override
@@ -192,10 +251,13 @@ public class RecipePickerScreen extends Screen {
     /** 레시피 한 장: 재료 아이콘 + 이름 + 분류 꼬리표 */
     private class RecipeCard extends PressableWidget {
         private final RecipeBook.Recipe recipe;
+        /** 인벤토리에 있는 이 레시피의 재료 이름들(없으면 null) */
+        private final String have;
 
-        RecipeCard(RecipeBook.Recipe recipe, int w) {
+        RecipeCard(RecipeBook.Recipe recipe, int w, String have) {
             super(0, 0, w, 22, Text.literal(recipe.displayName()));
             this.recipe = recipe;
+            this.have = have;
             setTooltip(tooltipFor(recipe));
         }
 
@@ -206,10 +268,16 @@ public class RecipePickerScreen extends Screen {
 
         @Override
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
-            if (isHovered()) setTooltip(tooltipFor(recipe)); // 개수를 바꾸면 필요한 재료도 바로 바뀐다
+            if (isHovered()) {
+                // 개수를 바꾸면 필요한 재료도 바로 바뀐다
+                setTooltip(have == null ? tooltipFor(recipe)
+                        : Tooltip.of(Text.literal("인벤토리에 있는 재료: " + have + "\n\n" + tooltipText(recipe))));
+            }
             boolean current = recipe.id.equals(pin().recipe);
             Theme.row(ctx, getX(), getY(), width, height, isSelected());
             if (current) ctx.fill(getX() + 1, getY() + 2, getX() + 3, getY() + height - 2, Theme.BLUE);
+            // 인벤토리 재료로 만드는 레시피: 왼쪽 초록 띠
+            else if (have != null) ctx.fill(getX() + 1, getY() + 2, getX() + 3, getY() + height - 2, Theme.GREEN);
             // [만드는 아이템] 이름  │ 재료 그림들 …            [분류]
             int x = getX() + 5;
             ItemStack out = IconCache.forRecipe(recipe);

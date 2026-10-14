@@ -118,6 +118,24 @@ public final class HudLayout {
         else DdingMate.config().hudSizes.put(id, v);
     }
 
+    /** 가로로 늘린 너비를 적용한 상자 너비(내용보다 좁게는 안 줄어든다) */
+    public static int widen(String id, int contentW) {
+        Integer w = DdingMate.config().hudWidths.get(id);
+        return w == null ? contentW : Math.max(contentW, Math.min(MAX_WIDTH, w));
+    }
+
+    /** 가로로 늘린 너비(HUD 좌표 px). 0 이하면 원래대로 */
+    public static void setWidth(String id, int w) {
+        if (w <= 0) DdingMate.config().hudWidths.remove(id);
+        else DdingMate.config().hudWidths.put(id, Math.min(MAX_WIDTH, w));
+    }
+
+    public static int width(String id) {
+        Integer w = DdingMate.config().hudWidths.get(id);
+        return w == null ? 0 : w;
+    }
+
+    public static final int MAX_WIDTH = 600;
     public static final int MIN_SIZE = 50;
     public static final int MAX_SIZE = 150;
 

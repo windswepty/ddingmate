@@ -80,6 +80,7 @@ public final class ScheduleHud {
         int rowH = 12;
         int boxW = Math.max(12 + labelW + 10 + leftW, 18 + Theme.boldWidth(tr, header)) + 10;
         int boxH = HEAD_H + cached.size() * rowH + 5;
+        boxW = HudLayout.widen(HudLayout.SCHEDULE, boxW); // 편집 화면에서 가로로 늘린 너비
         int[] o = HudLayout.place(ctx, HudLayout.SCHEDULE, cfg.hudCorner, boxW, boxH);
         int x = o[0], y = o[1];
 
@@ -127,6 +128,7 @@ public final class ScheduleHud {
         }
         int boxW = w + pad * 2;
         int boxH = lines.size() * lineH + pad * 2 - 1;
+        boxW = HudLayout.widen(HudLayout.SCHEDULE, boxW); // 편집 화면에서 가로로 늘린 너비
         int[] o = HudLayout.place(ctx, HudLayout.SCHEDULE, cfg.hudCorner, boxW, boxH);
         int x = o[0], y = o[1];
         ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);

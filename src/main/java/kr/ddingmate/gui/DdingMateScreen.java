@@ -59,7 +59,7 @@ public class DdingMateScreen extends Screen {
     enum Tab {
         HOME("홈", Items.RED_BED), NOTIFY("알림 방식", Items.BELL), EVENTS("일정", Items.CLOCK), CHANNELS("내 채널", Items.COMPASS),
         KEYWORDS("키워드", Items.NAME_TAG), COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
-        TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK);
+        TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK), EXPERT("전문가", Items.EXPERIENCE_BOTTLE);
 
         final String title;
         final ItemStack icon;
@@ -78,8 +78,7 @@ public class DdingMateScreen extends Screen {
         EVENT_NAMES.put("fishing_contest", "낚시 대회 (10·22시)");
         EVENT_NAMES.put("invest_deadline", "마을 투자 마감 (수 02:59)");
         EVENT_NAMES.put("maintenance_start", "정기 점검 시작 (수 09:00)");
-        EVENT_NAMES.put("maintenance_end", "정기 점검 종료 (수 15:00)");
-        EVENT_NAMES.put("weekly_reset", "주간 초기화 (목 03:00)");
+        EVENT_NAMES.put("weekly_reset", "주간 초기화 (수 03:00)");
         EVENT_NAMES.put("hunter_affinity", "수렵꾼 호감도 (매월 1일)");
         EVENT_NAMES.put("village_reboot", "마을 채널 재시작");
     }
@@ -281,6 +280,7 @@ public class DdingMateScreen extends Screen {
             case GEAR -> buildGear();
             case TODO -> buildTodo();
             case LOG -> buildLog();
+            case EXPERT -> buildExpert();
         }
     }
 
@@ -511,11 +511,13 @@ public class DdingMateScreen extends Screen {
                 tip(toggle("가방도 합산", cc.includeBags, v -> cc.includeBags = v), "한 번 열어 본 모험 가방 안의 재료도 함께 세요"));
         list.pair(hudButton(),
                 toggle("다 모이면 알림", cc.notifyComplete, v -> cc.notifyComplete = v));
-        Widgets.Toggle expand = toggle("원재료까지 펼치기", cc.expandSubMaterials, v -> cc.expandSubMaterials = v);
-        expand.setTooltip(Tooltip.of(Text.literal("모자란 재료가 다른 레시피로 만드는 것이면(예: 조약돌 뭉치 = 조약돌 64개) 모자란 만큼 필요한 원재료를 아래에 보여 줘요.")));
+        Widgets.Toggle expand = toggle("하위 재료 보기", cc.expandSubMaterials, v -> cc.expandSubMaterials = v);
+        expand.setTooltip(Tooltip.of(Text.literal("켜면: 모자란 재료가 다른 레시피로 만드는 것일 때(예: 조약돌 뭉치 = 조약돌 64개) 필요한 하위 재료를 아래 줄에 보여 줘요.\n끄면: 레시피의 재료만 보여요.")));
         Widgets.Toggle storage = toggle("아이템 저장소도 합산", cc.includeStorage, v -> cc.includeStorage = v);
         storage.setTooltip(Tooltip.of(Text.literal("아이템 저장소를 열었을 때 슬롯별 보관 개수를 기억해 합산해요. 주운 아이템이 저장소로 바로 들어가면 다음에 열 때까지 반영되지 않아요.")));
         list.pair(expand, storage);
+        list.pair(tip(toggle("세트 단위로 보기", cc.showSets, v -> cc.showSets = v),
+                "64개를 1세트로 보여 줘요. 예: 토파즈 주괴 80개 → 1세트 16 · 철 블록 40개 → 40"), null);
 
         list.header("모험 가방");
         Widgets.Field aliases = new Widgets.Field(rowWidth(), Text.literal("가방 단축어(선택)"));
@@ -567,12 +569,7 @@ public class DdingMateScreen extends Screen {
         list.pair(tip(toggle("일정 HUD 에 표시", cr.showInHud, v -> cr.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"), null);
         list.note("제작을 시작하면 알아서 등록돼요. 시설 창을 한 번 열면 레시피의 \"제작 시간\"을 배워서, 넣은 순서대로 "
                 + "하나씩 끝나는 시각을 계산해요. 같은 걸 여러 번 넣으면 \"×7 [3]\" 처럼 한 줄로 묶고 마지막 것이 끝날 때까지 세요. 꺼내면 빠져요.");
-        list.header("제작 시간 줄이기 · 배운 전문가 스킬");
-        list.pair(fastSkill("채광 · 초고속 용광로", cr.mining, v -> cr.mining = v, "채광물 가공 시설·강화 제작 시설", false),
-                fastSkill("재배 · 불 더 올려!", cr.farming, v -> cr.farming = v, "농작물 가공 시설·요리 제작 시설", false));
-        list.pair(fastSkill("해양 · 물 흐르듯 술술", cr.marine, v -> cr.marine = v, "해양 제작 시설·연금 제작 시설", true),
-                fastSkill("사냥 · 고속 영혼 가공기", cr.hunting, v -> cr.hunting = v, "영혼 가공 시설", false));
-        list.note("시설 창에 적힌 제작 시간은 스킬을 적용하기 전 시간이에요. 배운 레벨을 골라 두면 줄어든 실제 시간으로 계산해요.");
+        list.note("제작 시간을 줄여 주는 전문가 스킬 레벨은 [전문가] 탭에서 정해요(전문가 창을 열면 알아서 맞춰져요).");
         list.header("지금 만드는 중");
         List<kr.ddingmate.craft.CraftTimers.Group> jobs = kr.ddingmate.craft.CraftTimers.groups();
         if (jobs.isEmpty()) {
@@ -628,25 +625,7 @@ public class DdingMateScreen extends Screen {
                 v -> v == 0 ? "끔" : v + "% 이하", v -> dc.warnPercent = v), null);
         list.note("같은 장비가 여러 개면 손에 든 것 → 왼손 → 입은 것 → 단축바 → 나머지 칸 순서로 먼저 찾은 것을 보여 줘요.");
 
-        DdingMateConfig.Skills sc = cfg.skills;
-        list.header("전문가 스킬 · 쉬프트 우클릭 스킬");
-        list.pair(tip(toggle("스킬 HUD", sc.enabled, v -> sc.enabled = v),
-                "스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 보여 줘요. 안 쓸 때는 숨어 있어요"), hudButton());
-        List<kr.ddingmate.skill.SkillTimers.Skill> skills = kr.ddingmate.skill.SkillTimers.known();
-        for (kr.ddingmate.skill.SkillTimers.Skill s : skills) {
-            list.single(new InfoRow(kr.ddingmate.skill.SkillTimers.icon(s), skillLabel(s), skillDetail(s),
-                    s.cooldownSec > 0 ? Theme.TEXT_SOFT : Theme.GOLD, null));
-        }
-        list.note(skills.stream().anyMatch(s -> s.cooldownSec > 0)
-                ? "스킬을 강화했다면 /전문가 스킬 창을 한 번 열어 주세요. 바뀐 시간을 다시 읽어요."
-                : "/전문가 → 스킬 보기 창을 한 번 열면 스킬마다 지속 시간·재사용 대기 시간을 읽어 와요.");
-    }
-
-    /** 제작 줄 아이콘: 항해는 배(섬 그림을 알면 그 그림을 대신 그린다), 그 밖은 만드는 아이템 → 작업대 */
-    private static ItemStack craftIcon(String name) {
-        if (name != null && name.endsWith(kr.ddingmate.craft.CraftTimers.VOYAGE)) return new ItemStack(Items.OAK_BOAT);
-        ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(name);
-        return icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon;
+        list.note("쉬프트 우클릭 전문가 스킬 타이머는 [전문가] 탭으로 옮겼어요.");
     }
 
     private static String skillLabel(kr.ddingmate.skill.SkillTimers.Skill s) {
@@ -735,6 +714,98 @@ public class DdingMateScreen extends Screen {
                 rebuild();
             }));
         }
+    }
+
+    private void buildExpert() {
+        list.guide("전문가마다 쓸모 있는 기능을 모았어요. 서버에 아무것도 보내지 않고, 화면에 보이는 것만 읽어요.");
+        list.header("제작 시간 줄이기 · 배운 전문가 스킬");
+        DdingMateConfig.Craft cr = cfg.craft;
+        list.pair(fastSkill("채광 · 초고속 용광로", cr.mining, v -> cr.mining = v, "채광물 가공 시설·강화 제작 시설", false),
+                fastSkill("재배 · 불 더 올려!", cr.farming, v -> cr.farming = v, "농작물 가공 시설·요리 제작 시설", false));
+        list.pair(fastSkill("해양 · 물 흐르듯 술술", cr.marine, v -> cr.marine = v, "해양 제작 시설·연금 제작 시설", true),
+                fastSkill("사냥 · 고속 영혼 가공기", cr.hunting, v -> cr.hunting = v, "영혼 가공 시설", false));
+        list.note("시설 창에 적힌 제작 시간은 스킬을 적용하기 전 시간이에요. 배운 레벨을 골라 두면 줄어든 실제 시간으로 계산해요.");
+
+        DdingMateConfig.Skills sc = cfg.skills;
+        list.header("전문가 스킬 · 쉬프트 우클릭 스킬");
+        list.pair(tip(toggle("스킬 HUD", sc.enabled, v -> sc.enabled = v),
+                "스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 보여 줘요. 안 쓸 때는 숨어 있어요"), hudButton());
+        List<kr.ddingmate.skill.SkillTimers.Skill> skills = kr.ddingmate.skill.SkillTimers.known();
+        for (kr.ddingmate.skill.SkillTimers.Skill s : skills) {
+            list.single(new InfoRow(kr.ddingmate.skill.SkillTimers.icon(s), skillLabel(s), skillDetail(s),
+                    s.cooldownSec > 0 ? Theme.TEXT_SOFT : Theme.GOLD, null));
+        }
+        list.note(skills.stream().anyMatch(s -> s.cooldownSec > 0)
+                ? "스킬을 강화했다면 /전문가 스킬 창을 한 번 열어 주세요. 바뀐 시간을 다시 읽어요."
+                : "/전문가 → 스킬 보기 창을 한 번 열면 스킬마다 지속 시간·재사용 대기 시간을 읽어 와요.");
+
+        buildBarista();
+        buildCooking();
+    }
+
+    /** 제작 줄 아이콘: 항해는 배(섬 그림을 알면 그 그림을 대신 그린다), 그 밖은 만드는 아이템 → 작업대 */
+    private static ItemStack craftIcon(String name) {
+        if (name != null && name.endsWith(kr.ddingmate.craft.CraftTimers.VOYAGE)) return new ItemStack(Items.OAK_BOAT);
+        ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(name);
+        return icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon;
+    }
+
+    /** 재배 · 바리스타: 손님 주문 도우미와 커피 판매가 */
+    private void buildBarista() {
+        DdingMateConfig.Expert ex = cfg.expert;
+        list.header("재배 · 바리스타 주문 도우미");
+        list.pair(tip(toggle("주문 창 옆에 보기", ex.baristaPanel, v -> ex.baristaPanel = v),
+                "손님에게 말을 걸어 주문 창이 열리면, 옆에 원하는 커피·내가 가진 잔 수·판매 합계를 보여 줘요"), null);
+        list.note(ex.coffeeBonus > 0
+                ? "커피값이 밥값 스킬: 판매가 +" + ex.coffeeBonus + "% 반영(인스턴트 커피 제외)"
+                : "커피값이 밥값 스킬을 배웠다면 /전문가 재배 스킬 창을 한 번 열어 주세요. 판매가 증가를 읽어 와요.");
+        String customer = null;
+        for (var e : kr.ddingmate.expert.Barista.PRICE.entrySet()) {
+            String c = kr.ddingmate.expert.Barista.CUSTOMER.get(e.getKey());
+            if (!c.equals(customer)) {
+                customer = c;
+                list.note("손님 " + c);
+            }
+            int price = e.getKey().equals("인스턴트 커피") ? e.getValue() : (int) Math.round(e.getValue() * (100 + ex.coffeeBonus) / 100.0);
+            ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(e.getKey());
+            list.single(new InfoRow(icon == null ? new ItemStack(Items.FLOWER_POT) : icon, e.getKey(),
+                    String.format("%,dG", price), Theme.GOLD, null));
+        }
+        list.note("판매가: 위키 [바리스타] 문서(2026-10). 손님은 커피를 나눠 사도 돼요.");
+    }
+
+    /** 재배 · 요리 효율 순위 */
+    private void buildCooking() {
+        DdingMateConfig.Expert ex = cfg.expert;
+        list.header("재배 · 요리 효율 순위");
+        list.pair(new Widgets.Cycle<>(half(), "기준", List.of(false, true), ex.cookingByTime,
+                v -> v ? "시간당 골드" : "원재료당 골드", v -> {
+                    ex.cookingByTime = v;
+                    rebuild();
+                }), null);
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+        java.time.ZonedDateTime next = kr.ddingmate.expert.Cooking.nextChange(now);
+        List<kr.ddingmate.expert.Cooking.Rank> ranks = kr.ddingmate.expert.Cooking.ranking(ex.cookingByTime);
+        list.note("요리 가격은 매월 1·3·6·9·12·15·18·21·24·27·30일 03시에 바뀌어요. 다음 변동: "
+                + next.getMonthValue() + "월 " + next.getDayOfMonth() + "일 03시. 밀키 상점 창을 열면 지금 가격을 읽어요("
+                + kr.ddingmate.expert.Cooking.knownCount() + "/" + kr.ddingmate.expert.Cooking.dishes().size() + "개 앎).");
+        if (ranks.isEmpty()) {
+            list.note("아직 가격을 모르는 요리뿐이에요. 세레니티 마을 밀키 상점을 한 번 열어 주세요.");
+            return;
+        }
+        double best = ex.cookingByTime ? ranks.get(0).perMinute() : ranks.get(0).perItem();
+        int i = 0;
+        for (kr.ddingmate.expert.Cooking.Rank r : ranks) {
+            i++;
+            double v = ex.cookingByTime ? r.perMinute() : r.perItem();
+            String diff = i == 1 ? "최고" : String.format("-%.0f%%", best > 0 ? (best - v) * 100 / best : 0);
+            String val = ex.cookingByTime ? String.format("%,.0fG/분", v) : String.format("%.1fG/재료", v);
+            String label = i + ". " + r.recipe().name + " · " + String.format("%,dG", r.price()) + (r.fresh() ? "" : " (지난 가격)");
+            ItemStack icon = kr.ddingmate.counter.IconCache.forRecipe(r.recipe());
+            list.single(new InfoRow(icon == null ? new ItemStack(Items.BOWL) : icon, label, val + " · " + diff,
+                    !r.fresh() ? Theme.TEXT_SOFT : i == 1 ? Theme.GREEN : Theme.BLUE, null));
+        }
+        list.note("원재료당 골드 = 판매가 ÷ 베이스·묶음·가공 식재료를 원재료까지 풀어 센 개수. 시간당 골드 = 판매가 ÷ 요리 시간(재배 스킬 반영).");
     }
 
     /** 목록을 다시 만들되 보던 위치는 유지 */

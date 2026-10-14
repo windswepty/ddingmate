@@ -113,6 +113,7 @@ public final class RecipeBook {
         if (r != null) return r.facility;
         String key = ItemKeys.normalize(outputName);
         for (Recipe rec : all) if (ItemKeys.normalize(rec.name).equals(key)) return rec.facility;
+        for (Recipe rec : all) if (plainKey(rec.name).equals(key)) return rec.facility;
         return null;
     }
 

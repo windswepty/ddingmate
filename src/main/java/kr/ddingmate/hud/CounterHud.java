@@ -108,6 +108,12 @@ public final class CounterHud {
             totalW += ws[i] + (i > 0 ? COLUMN_GAP : 0);
             tallest = Math.max(tallest, hs[i]);
         }
+        // 편집 화면에서 가로로 늘렸으면 마지막 칸을 그만큼 넓힌다
+        int wide = HudLayout.widen(HudLayout.COUNTER, totalW);
+        if (wide > totalW) {
+            ws[n - 1] += wide - totalW;
+            totalW = wide;
+        }
         int[] o = HudLayout.place(ctx, HudLayout.COUNTER, cfg.corner, totalW, tallest);
         boolean bottomAlign = !top && !HudLayout.custom(HudLayout.COUNTER);
         int x = o[0];
@@ -250,6 +256,7 @@ public final class CounterHud {
         int lines = rows.size() + (note != null ? 1 : 0);
         int boxW = contentW + pad * 2;
         int boxH = lines * lineH + pad * 2 - 1;
+        boxW = HudLayout.widen(HudLayout.COUNTER, boxW);
         int[] o = HudLayout.place(ctx, HudLayout.COUNTER, cfg.corner, boxW, boxH);
         int x = o[0], y = o[1];
         ctx.fill(x, y, x + boxW, y + boxH, 0x80000000);
@@ -275,14 +282,24 @@ public final class CounterHud {
 
     /** 가방·저장소에서 온 개수 표시: "가방 28 · 저장 1200" */
     private static String extra(DdingMateConfig.Counter cfg, MaterialCounter.Line l) {
-        String bags = cfg.includeBags && l.bags() > 0 ? "가방 " + l.bags() : "";
-        String store = cfg.includeStorage && l.storage() > 0 ? "저장소 " + l.storage() : "";
+        String bags = cfg.includeBags && l.bags() > 0 ? "가방 " + amount(l.bags()) : "";
+        String store = cfg.includeStorage && l.storage() > 0 ? "저장소 " + amount(l.storage()) : "";
         if (bags.isEmpty()) return store;
         return store.isEmpty() ? bags : bags + " · " + store;
     }
 
     private static String count(MaterialCounter.Line l) {
-        return l.have() + "/" + l.need();
+        return amount(l.have()) + "/" + amount(l.need());
+    }
+
+    /** 한 세트 = 64개 */
+    public static final int SET = 64;
+
+    /** 세트 보기를 켰으면 80 → "1세트 16", 128 → "2세트", 40 → "40". 꺼져 있으면 그대로 */
+    public static String amount(int n) {
+        if (!DdingMate.config().counter.showSets || n < SET) return String.valueOf(n);
+        int sets = n / SET, rest = n % SET;
+        return rest == 0 ? sets + "세트" : sets + "세트 " + rest;
     }
 
     private static String bagNote(DdingMateConfig.Counter cfg) {

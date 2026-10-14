@@ -45,11 +45,11 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
         ZonedDateTime fri2am = ZonedDateTime.of(2026, 10, 9, 2, 0, 0, 0, ScheduleEngine.KST);
         check(TodoList.lastReset(DdingMateConfig.Reset.DAILY, fri2am).equals(fri2am.minusDays(1).withHour(3)),
                 "매일 03시 초기화 계산 오류");
-        check(TodoList.lastReset(DdingMateConfig.Reset.WEEKLY, fri2am).equals(ZonedDateTime.of(2026, 10, 8, 3, 0, 0, 0, ScheduleEngine.KST)),
-                "목요일 03시 초기화 계산 오류");
-        check(TodoList.lastReset(DdingMateConfig.Reset.WEEKLY, fri2am.minusDays(1).withHour(2))
-                        .equals(ZonedDateTime.of(2026, 10, 1, 3, 0, 0, 0, ScheduleEngine.KST)),
-                "목요일 03시 직전 주간 초기화 계산 오류");
+        check(TodoList.lastReset(DdingMateConfig.Reset.WEEKLY, fri2am).equals(ZonedDateTime.of(2026, 10, 7, 3, 0, 0, 0, ScheduleEngine.KST)),
+                "수요일 03시 초기화 계산 오류");
+        check(TodoList.lastReset(DdingMateConfig.Reset.WEEKLY, fri2am.minusDays(2).withHour(2))
+                        .equals(ZonedDateTime.of(2026, 9, 30, 3, 0, 0, 0, ScheduleEngine.KST)),
+                "수요일 03시 직전 주간 초기화 계산 오류");
         check(TodoList.lastReset(DdingMateConfig.Reset.MIDNIGHT, fri2am).equals(fri2am.withHour(0)), "자정 초기화 계산 오류");
 
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {

@@ -55,6 +55,7 @@ public final class DurabilityHud {
         }
         int boxW = Math.max(ICON + 4 + nameW + 8 + valW, 18 + Theme.boldWidth(tr, title)) + 12;
         int boxH = ScheduleHud.HEAD_H + 2 + rows.size() * ROW_H + 2;
+        boxW = HudLayout.widen(HudLayout.DURABILITY, boxW); // 편집 화면에서 가로로 늘린 너비
         int[] o = HudLayout.place(ctx, HudLayout.DURABILITY, cfg.corner, boxW, boxH);
         int x = o[0], y = o[1];
 

@@ -60,12 +60,11 @@ public final class ScheduleEngine {
         rules.add(new EventRule("maintenance_start", "정기 점검 시작",
                 "매주 수요일 09:00~15:00 정기 점검",
                 EnumSet.of(DayOfWeek.WEDNESDAY), 0, List.of(t(9, 0)), List.of(30, 10)));
-        rules.add(new EventRule("maintenance_end", "정기 점검 종료 예정",
-                "점검이 끝나면 다시 접속할 수 있어요(공지로 연장될 수 있음)",
-                EnumSet.of(DayOfWeek.WEDNESDAY), 0, List.of(t(15, 0)), List.of(0)));
+        // 점검 종료 시각은 공지로 자주 바뀌어 일정으로 두지 않는다(사용자 요청 2026-10)
+        // 주간 초기화는 2026-10-01 이후 목요일 → 수요일 03시로 바뀌었다(사용자 확인)
         rules.add(new EventRule("weekly_reset", "주간 초기화",
                 "주간 의뢰·상점 주간 제한·인피니티 타워 주간 랭킹 초기화",
-                EnumSet.of(DayOfWeek.THURSDAY), 0, List.of(t(3, 0)), List.of(60)));
+                EnumSet.of(DayOfWeek.WEDNESDAY), 0, List.of(t(3, 0)), List.of(60)));
         rules.add(new EventRule("hunter_affinity", "수렵꾼 호감도 초기화",
                 "매월 1일 03:00 모든 수렵꾼 호감도가 초기화돼요",
                 daily, 1, List.of(t(3, 0)), List.of(60)));

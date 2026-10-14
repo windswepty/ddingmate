@@ -59,9 +59,9 @@ public class LogicClientGameTest implements FabricClientGameTest {
         expectNext(r, "fishing_contest", NOON, at(10, 9, 22, 0));
         expectNext(r, "invest_deadline", NOON, at(10, 14, 2, 59));       // 다음 수요일
         expectNext(r, "maintenance_start", NOON, at(10, 14, 9, 0));
-        expectNext(r, "maintenance_end", NOON, at(10, 14, 15, 0));
-        expectNext(r, "weekly_reset", NOON, at(10, 15, 3, 0));           // 다음 목요일
-        expectNext(r, "weekly_reset", at(10, 8, 2, 0), at(10, 8, 3, 0));
+        check(!r.containsKey("maintenance_end"), "지운 점검 종료 일정이 남음");
+        expectNext(r, "weekly_reset", NOON, at(10, 14, 3, 0));           // 다음 수요일(2026-10 부터)
+        expectNext(r, "weekly_reset", at(10, 7, 2, 0), at(10, 7, 3, 0));
         expectNext(r, "hunter_affinity", NOON, at(11, 1, 3, 0));         // 다음 달 1일
         expectNext(r, "village_reboot", NOON, at(10, 9, 13, 0));         // 마을 7채널: 1·7·13·19시
         check(!r.containsKey("serenity_reset") && !r.containsKey("hunt_reboot"), "지운 세레니티·노크틸라 일정이 남음");
@@ -70,7 +70,7 @@ public class LogicClientGameTest implements FabricClientGameTest {
                 "근거 없는 야생·아일랜드·스폰 재시작 일정이 있음");
         // 채널 0 이면 재시작 일정이 없다
         List<EventRule> none = ScheduleEngine.buildRules(new ScheduleEngine.Channels(0, 0, 0, 0, 0));
-        check(none.size() == 8 && none.stream().noneMatch(e -> e.id().endsWith("_reboot")), "채널 끔인데 재시작 일정이 있음");
+        check(none.size() == 7 && none.stream().noneMatch(e -> e.id().endsWith("_reboot")), "채널 끔인데 재시작 일정이 있음");
         // 모든 채널 번호에서 규칙이 만들어지고 다음 시각이 있다
         for (int ch = 1; ch <= 35; ch++) {
             for (EventRule e : ScheduleEngine.buildRules(new ScheduleEngine.Channels(ch, ch, ch, ch, ch))) {
@@ -100,9 +100,9 @@ public class LogicClientGameTest implements FabricClientGameTest {
         // 끈 일정은 울리지 않음
         check(ScheduleEngine.dueAlerts(rules, e -> !e.id().equals("daily_reset"), EventRule::defaultLeads, at(10, 9, 2, 50), new HashMap<>()).isEmpty(),
                 "끈 일정이 울림");
-        // 0분 알림: 점검 종료 15:00 → 15:00:30 에 울림
-        a = ScheduleEngine.dueAlerts(rules, e -> true, EventRule::defaultLeads, at(10, 14, 15, 0).plusSeconds(30), new HashMap<>());
-        check(a.stream().anyMatch(x -> x.rule().id().equals("maintenance_end") && x.leadMinutes() == 0), "점검 종료 알림 없음: " + a);
+        // 0분 알림: 일일 초기화 03:00 → 03:00:30 에 울림
+        a = ScheduleEngine.dueAlerts(rules, e -> true, e -> List.of(0), at(10, 9, 3, 0).plusSeconds(30), new HashMap<>());
+        check(a.stream().anyMatch(x -> x.rule().id().equals("daily_reset") && x.leadMinutes() == 0), "0분 알림 없음: " + a);
         // 사용자가 정한 알림 시점(3분 전)
         a = ScheduleEngine.dueAlerts(rules, e -> true, e -> List.of(3), at(10, 9, 2, 57), new HashMap<>());
         check(a.size() == 1 && a.get(0).leadMinutes() == 3, "직접 정한 3분 전 알림 오류: " + a);

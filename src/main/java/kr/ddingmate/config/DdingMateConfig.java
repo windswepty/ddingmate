@@ -61,6 +61,8 @@ public final class DdingMateConfig {
         public boolean expandSubMaterials = true;
         /** 열어 본 아이템 저장소 내용도 합산 */
         public boolean includeStorage = true;
+        /** 개수를 세트(64개)로 보여 줌: 80개 → "1세트 16", 40개 → "40" */
+        public boolean showSets = false;
     }
 
     /** 추적하는 장비 하나. key 는 ItemKeys 키, name 은 화면에 보일 이름 */
@@ -90,7 +92,7 @@ public final class DdingMateConfig {
         public Corner corner = Corner.BOTTOM_RIGHT;
     }
 
-    /** 할 일 초기화 시점: 매일 03시, 매주 목요일 03시, 매일 자정 */
+    /** 할 일 초기화 시점: 매일 03시, 매주 수요일 03시, 매일 자정 */
     public enum Reset { DAILY, WEEKLY, MIDNIGHT }
 
     public static final class TodoItem {
@@ -153,6 +155,16 @@ public final class DdingMateConfig {
         public int hunting;  // 사냥 · 고속 영혼 가공기: 영혼 가공 시설
     }
 
+    /** 전문가 탭: 바리스타 주문 도우미·요리 효율 */
+    public static final class Expert {
+        /** 손님 주문 창 옆에 원하는 커피·가진 잔 수·판매 합계 판 */
+        public boolean baristaPanel = true;
+        /** "[세레니티] 커피값이 밥값" 스킬의 커피 판매가 증가(%) — 전문가 창에서 자동으로 읽음 */
+        public int coffeeBonus;
+        /** 요리 효율 순위 기준: true = 시간당 골드, false = 원재료당 골드 */
+        public boolean cookingByTime = false;
+    }
+
     public static final class Playtime {
         /** 접속 1·2·3·4·5·8시간을 넘길 때마다 보상을 받으라고 알림 */
         public boolean enabled = true;
@@ -184,6 +196,8 @@ public final class DdingMateConfig {
     public Map<String, HudPos> hudPos = new LinkedHashMap<>();
     /** HUD 이름 → 편집 화면에서 정한 HUD 별 크기(%). 없으면 100 */
     public Map<String, Integer> hudSizes = new LinkedHashMap<>();
+    /** HUD 이름 → 가로로 늘린 너비(HUD 좌표 px). 내용보다 좁으면 내용 너비 */
+    public Map<String, Integer> hudWidths = new LinkedHashMap<>();
     public HudStyle hudStyle = HudStyle.DARK;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
@@ -211,6 +225,7 @@ public final class DdingMateConfig {
     public Counter counter = new Counter();
     public Durability durability = new Durability();
     public Skills skills = new Skills();
+    public Expert expert = new Expert();
     public Todo todo = new Todo();
     public Craft craft = new Craft();
     public Playtime playtime = new Playtime();
@@ -259,6 +274,8 @@ public final class DdingMateConfig {
         hudScale = Math.max(50, Math.min(100, hudScale));
         if (hudPos == null) hudPos = new LinkedHashMap<>();
         if (hudSizes == null) hudSizes = new LinkedHashMap<>();
+        if (hudWidths == null) hudWidths = new LinkedHashMap<>();
+        hudWidths.values().removeIf(v -> v == null || v <= 0);
         hudSizes.values().removeIf(java.util.Objects::isNull);
         hudSizes.replaceAll((k, v) -> Math.max(50, Math.min(150, v)));
         hudPos.values().removeIf(java.util.Objects::isNull);
@@ -296,6 +313,8 @@ public final class DdingMateConfig {
         });
         durability.warnPercent = Math.max(0, Math.min(90, durability.warnPercent));
         if (skills == null) skills = new Skills();
+        if (expert == null) expert = new Expert();
+        expert.coffeeBonus = Math.max(0, Math.min(100, expert.coffeeBonus));
         if (skills.corner == null) skills.corner = Corner.BOTTOM_RIGHT;
         if (todo == null) todo = new Todo();
         if (todo.corner == null) todo.corner = Corner.TOP_RIGHT;
@@ -339,7 +358,7 @@ public final class DdingMateConfig {
         craft.marine = Math.max(0, Math.min(5, craft.marine));
         craft.hunting = Math.max(0, Math.min(5, craft.hunting));
         // 0.3.0 까지 있던 근거 없는 야생·아일랜드·스폰 재시작 일정 설정은 지운다
-        events.keySet().removeAll(List.of("wild_reboot", "island_reboot", "spawn_reboot", "serenity_reset", "hunt_reboot"));
+        events.keySet().removeAll(List.of("wild_reboot", "island_reboot", "spawn_reboot", "serenity_reset", "hunt_reboot", "maintenance_end"));
         // 채널 재시작 규칙까지 모두 만들 수 있도록 임의 채널로 전체 규칙을 받아 기본 설정을 채운다.
         for (EventRule r : ScheduleEngine.buildRules(new ScheduleEngine.Channels(1, 1, 1, 1, 1))) {
             EventSetting s = events.get(r.id());

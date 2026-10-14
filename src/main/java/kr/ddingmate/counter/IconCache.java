@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -148,6 +149,43 @@ public final class IconCache {
         }
         bundled = out;
         return out;
+    }
+
+    private static final java.util.regex.Pattern GRADE = java.util.regex.Pattern.compile("\\((Common|Normal|Rare|Epic|Legendary|Mythic)\\)");
+    /** 모델 번호 → 등급이 붙은 이름들(icons.json 에서, 예: 2045016 → "라온 (Common)") */
+    private static Map<Integer, List<String>> graded;
+
+    /**
+     * 등급이 이름에 없고 배지 그림으로만 보이는 아이템(보석·귀중품 "라온" 등, 2026-10 실제)의 등급 붙은 이름.
+     * 모델 번호와 등급을 뗀 이름이 둘 다 맞는 것만. 아니면 null
+     */
+    public static String gradedName(ItemStack stack) {
+        var cmd = stack.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+        if (cmd == null || cmd.floats().isEmpty()) return null;
+        if (graded == null) {
+            Map<Integer, List<String>> m = new HashMap<>();
+            try (var in = IconCache.class.getResourceAsStream("/assets/ddingmate/icons.json")) {
+                if (in != null) {
+                    JsonObject root = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+                    for (Map.Entry<String, JsonElement> e : root.entrySet()) {
+                        if (!GRADE.matcher(e.getKey()).find()) continue;
+                        String[] parts = e.getValue().getAsString().split(":");
+                        if (parts.length < 2) continue;
+                        m.computeIfAbsent((int) Float.parseFloat(parts[1]), k -> new ArrayList<>()).add(e.getKey());
+                    }
+                }
+            } catch (IOException | RuntimeException e) {
+                DdingMate.LOG.warn("등급 표를 읽지 못했어요: {}", e.toString());
+            }
+            graded = m;
+        }
+        List<String> names = graded.get((int) (float) cmd.floats().get(0));
+        if (names == null) return null;
+        String base = ItemKeys.normalize(stack.getName().getString());
+        for (String n : names) {
+            if (ItemKeys.normalize(GRADE.matcher(n).replaceAll("")).equals(base)) return n;
+        }
+        return null;
     }
 
     /** "paper:2006004" → 종이 + 모델 번호 2006004, "quartz" → 바닐라 석영 */
