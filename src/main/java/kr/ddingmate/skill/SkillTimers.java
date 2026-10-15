@@ -283,7 +283,7 @@ public final class SkillTimers {
         if (CONFIRMED.add(s.name) || changed) {
             long dur = durationMs(s) / 1000;
             String what = (dur > 0 ? clock(dur) + "/" : "") + clock(cooldown);
-            SkillReport.add("쉬프트 스킬", s.name, s.name + levelText(level) + " " + what, changed);
+            SkillReport.add("쉬프트 스킬", expertOfTool(tool), s.name, s.name + levelText(level) + " " + what, changed);
         }
         return true;
     }
@@ -293,6 +293,17 @@ public final class SkillTimers {
 
     private static String levelText(int level) {
         return level >= 99 ? " (MAX)" : level > 0 ? " (+" + level + ")" : "";
+    }
+
+    /** 스킬 설명의 "…를 들고 쉬프트 우클릭"에 적힌 도구로 어느 전문가 스킬인지(채팅 색 구분용) */
+    static String expertOfTool(String tool) {
+        return switch (tool) {
+            case "pickaxe" -> "채광";
+            case "hoe" -> "재배";
+            case "rod" -> "해양";
+            case "axe", "sword" -> "사냥";
+            default -> "";
+        };
     }
 
     /** "[야생] 곡괭이 나가신다! (+5)" → "곡괭이 나가신다!" */

@@ -91,7 +91,7 @@ public final class PriceSkills {
                 }
                 // 이번 접속에서 처음 읽었거나 값이 바뀌었으면 스킬 확인 채팅(한 번에 모아서)에 넣는다
                 if (CONFIRMED.add(k.name()) || differs) {
-                    kr.ddingmate.skill.SkillReport.add("판매가", k.name(),
+                    kr.ddingmate.skill.SkillReport.add("판매가", k.expert(), k.name(),
                             k.name() + (pct > 0 ? "(" + k.goods() + " +" + (pct == Math.floor(pct) ? String.valueOf((int) pct) : String.valueOf(pct)) + "%)" : " 안 배움"),
                             differs && old != null);
                 }

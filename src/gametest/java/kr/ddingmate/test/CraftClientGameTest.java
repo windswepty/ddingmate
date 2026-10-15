@@ -1384,6 +1384,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 SimpleInventory skw = new SimpleInventory(54);
                 skw.setStack(10, item("[세레니티] 초고속 용광로 (+2)", 1, "전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의",
                         ". 제작 시간이 30% 감소합니다.", "──────────────────", ". [강화 시 스킬 정보]", ". 제작 시간이 40% 감소합니다."));
+                skw.setStack(13, item("[세레니티] 값어치 증명 (+0)", 1,"전문가 스킬 정보", ". 영혼의 판매가가 5% 증가합니다."));
                 skw.setStack(11, item("[세레니티] 주괴 좀 사주괴 (+1)", 1, "전문가 스킬 정보", ". 주괴의 판매가가 5% 증가합니다.", "──────────────────", ". 주괴의 판매가가 7% 증가합니다."));
                 c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(95, c.player.getInventory(), skw),
                         c.player.getInventory(), Text.literal("전문가")));
@@ -1391,9 +1392,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 // 서버는 전문가마다 창을 새로 연다: 창이 바뀌어도 채팅을 나눠 보내지 않고 계속 모은다
-                check(kr.ddingmate.skill.SkillReport.pending() == 2, "첫 창 스킬을 못 모음: " + kr.ddingmate.skill.SkillReport.preview());
+                check(kr.ddingmate.skill.SkillReport.pending() == 3, "첫 창 스킬을 못 모음: " + kr.ddingmate.skill.SkillReport.preview());
                 SimpleInventory skw2 = new SimpleInventory(54);
                 skw2.setStack(12, item("[세레니티] 반짝반짝 눈이 부셔 (+4)", 1, "전문가 스킬 정보", ". 정동석의 판매가가 20% 증가합니다."));
+                skw2.setStack(13, item("[세레니티] 치솟는 생선값 (+2)", 1, "전문가 스킬 정보", ". 물고기의 판매가가 5% 증가합니다."));
                 c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(96, c.player.getInventory(), skw2),
                         c.player.getInventory(), Text.literal("전문가")));
             });
@@ -1403,11 +1405,20 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.skill.SkillReport.pending() >= 3 && pv.contains("제작 시간 · ") && pv.contains("판매가 · ")
                         && pv.contains("초고속 용광로 30%") && pv.contains("주괴 좀 사주괴(주괴 +5%)") && pv.contains("정동석 +20%"),
                         "스킬 창에서 읽은 스킬을 한 메시지로 모으지 않음: " + pv);
-                check(pv.split("\n").length == 3, "종류별로 한 줄씩(머리 + 2줄)이 아님: " + pv);
+                check(pv.split("\n").length == 4 && pv.endsWith("\n  안 배움 · 값어치 증명") && !pv.contains("판매가 · 값어치"),
+                        "종류별 한 줄씩 + 안 배운 스킬은 맨 아래 한 줄이 아님: " + pv);
+                // 전문가마다 글자색: 채광 하늘색, 해양 파랑. 머리줄 범례는 배운 스킬의 전문가만
+                check(kr.ddingmate.skill.SkillReport.debugColor("초고속 용광로") == net.minecraft.util.Formatting.AQUA
+                        && kr.ddingmate.skill.SkillReport.debugColor("주괴 좀 사주괴") == net.minecraft.util.Formatting.AQUA
+                        && kr.ddingmate.skill.SkillReport.debugColor("치솟는 생선값") == net.minecraft.util.Formatting.BLUE,
+                        "전문가별 글자색이 다름: " + kr.ddingmate.skill.SkillReport.debugColor("치솟는 생선값"));
+                check(pv.split("\n")[0].endsWith(" ■채광 ■해양"), "머리줄 전문가 색 범례가 다름: " + pv.split("\n")[0]);
+                check(pv.contains("판매가 · 주괴 좀 사주괴(주괴 +5%), 반짝반짝 눈이 부셔(정동석 +20%), 치솟는 생선값(물고기 +5%)"),
+                        "같은 전문가끼리 모아 보여 주지 않음: " + pv);
                 c.setScreen(null);
             });
             ctx.waitTicks(5);
-            ctx.runOnClient(c -> check(kr.ddingmate.skill.SkillReport.pending() == 3, "창을 닫자마자 보냄(다음 창이 열리는 틈을 안 기다림)"));
+            ctx.runOnClient(c -> check(kr.ddingmate.skill.SkillReport.pending() == 5,"창을 닫자마자 보냄(다음 창이 열리는 틈을 안 기다림)"));
             ctx.waitTicks(kr.ddingmate.skill.SkillReport.IDLE_TICKS + 5);
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.skill.SkillReport.pending() == 0, "창을 모두 닫았는데 스킬 확인 채팅을 안 보냄");

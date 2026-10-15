@@ -69,7 +69,7 @@ public final class ExpertSkills {
         if (skill.get.applyAsInt(c) == level) {
             // 이미 같은 값이어도 이번 접속에서 처음 읽었으면 확인했다고 한 번 알려 준다
             if (CONFIRMED.add(skill.name)) {
-                kr.ddingmate.skill.SkillReport.add("제작 시간", skill.name, skill.name + (level == 0 ? " 안 배움" : " " + pct + "%"), false);
+                kr.ddingmate.skill.SkillReport.add("제작 시간", skill.label, skill.name, skill.name + (level == 0 ? " 안 배움" : " " + pct + "%"), false);
             }
             return false;
         }
@@ -78,7 +78,7 @@ public final class ExpertSkills {
         DdingMate.config().save();
         CraftTimers.skillChanged();
         DdingMate.LOG.info("전문가 스킬 {} → {}레벨({}%)", skill.name, level, pct);
-        kr.ddingmate.skill.SkillReport.add("제작 시간", skill.name, skill.name + (level == 0 ? " 안 배움" : " " + pct + "%"), true);
+        kr.ddingmate.skill.SkillReport.add("제작 시간", skill.label, skill.name, skill.name + (level == 0 ? " 안 배움" : " " + pct + "%"), true);
         return true;
     }
 
