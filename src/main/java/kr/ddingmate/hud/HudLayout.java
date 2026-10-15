@@ -135,6 +135,20 @@ public final class HudLayout {
         return w == null ? 0 : w;
     }
 
+    /** 세로 높이 제한(HUD 좌표 px). 0 이면 제한 없음(화면에 맞춰 알아서) */
+    public static int heightLimit(String id) {
+        Integer h = DdingMate.config().hudHeights.get(id);
+        return h == null ? 0 : Math.max(MIN_HEIGHT, h);
+    }
+
+    /** 세로 높이 제한. 0 이하면 원래대로 */
+    public static void setHeight(String id, int h) {
+        if (h <= 0) DdingMate.config().hudHeights.remove(id);
+        else DdingMate.config().hudHeights.put(id, Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, h)));
+    }
+
+    public static final int MIN_HEIGHT = 40;
+    public static final int MAX_HEIGHT = 1000;
     public static final int MAX_WIDTH = 600;
     public static final int MIN_SIZE = 50;
     public static final int MAX_SIZE = 150;

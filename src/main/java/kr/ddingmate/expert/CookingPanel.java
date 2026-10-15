@@ -127,7 +127,7 @@ public final class CookingPanel {
         if (mineRows.isEmpty()) {
             out.add(new Item(null, null, "인벤토리에 팔 요리가 없어요", "", p.soft(), 0, false, false));
         } else {
-            out.add(new Item(null, null, "가진 요리 팔면", String.format("%,dG", total), p.ink(), p.good(), true, false));
+            out.add(new Item(null, null, "보유 요리 팔면", String.format("%,dG", total), p.ink(), p.good(), true, false));
             mineRows.sort((a, b) -> Long.compare(parse(b.right()), parse(a.right())));
             out.addAll(mineRows.subList(0, Math.min(4, mineRows.size())));
             if (mineRows.size() > 4) out.add(new Item(null, null, "그 밖에 " + (mineRows.size() - 4) + "종", "", p.soft(), 0, false, false));

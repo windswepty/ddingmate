@@ -200,6 +200,12 @@ public final class DdingMate implements ClientModInitializer {
         PlaytimeTracker.tick(client);
         kr.ddingmate.skill.SkillSignals.tick(client); // 스킬 효과가 남은 틱으로 지속 시간 맞추기
         tickCounter++;
+        // 시설 창은 0.1초마다 읽는다: "제작이 완료되었습니다"로 바뀌는 순간을 잡아 완료 시각을 0.1초 안으로 맞춘다
+        if (tickCounter % 2 == 0 && client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?>) {
+            CraftTimers.scanScreen(client);
+        }
+        // 제작 완료 알림은 매 틱 확인(예전: 1초에 한 번이라 평균 0.5초 늦게 울림)
+        if (client.world != null && client.player != null) CraftTimers.tick();
         if (tickCounter % 10 == 0) {
             ServerHud.tick(client); // 오른쪽 위 위치·채널 표시 읽기
             boolean inGame = ServerHud.inGame();
@@ -208,7 +214,6 @@ public final class DdingMate implements ClientModInitializer {
             MaterialCounter.tick(client);
             DurabilityTracker.tick(client);
             PlaytimeTracker.scanScreen(client); // 내가 연 /접속시간 창이면 서버 기록에 맞춘다
-            CraftTimers.scanScreen(client); // 내가 연 시설 창의 남은 제작 시간
             kr.ddingmate.craft.ExpertSkills.scan(client); // 전문가 스킬 창의 "제작 시간이 N% 감소" → 스킬 레벨 자동 설정
             kr.ddingmate.expert.Barista.scan(client); // 손님 주문 창의 커피
             kr.ddingmate.expert.Cooking.scan(client); // 밀키 상점 창의 요리 가격
@@ -226,7 +231,6 @@ public final class DdingMate implements ClientModInitializer {
             Notifier.schedule(a);
         }
         TodoList.tick(now);
-        CraftTimers.tick();
     }
 
     public static DdingMateConfig config() {

@@ -36,6 +36,11 @@ public class HudEditorScreen extends Screen {
     private final Map<String, DdingMateConfig.HudPos> beforePos = new LinkedHashMap<>();
     private final Map<String, Integer> beforeSize = new LinkedHashMap<>();
     private final Map<String, Integer> beforeWidth = new LinkedHashMap<>();
+    private final Map<String, Integer> beforeHeight = new LinkedHashMap<>();
+    /** 아래 가장자리 손잡이로 높이만 바꾸는 중인 HUD(넘치는 줄은 옆 칸으로) */
+    private String heightening;
+    private int tallStartH;
+    private double tallStartY;
     /** 오른쪽 가장자리 손잡이로 너비만 늘리는 중인 HUD */
     private String widening;
     private int wideStartW;
@@ -62,6 +67,7 @@ public class HudEditorScreen extends Screen {
         }
         beforeSize.putAll(cfg.hudSizes);
         beforeWidth.putAll(cfg.hudWidths);
+        beforeHeight.putAll(cfg.hudHeights);
     }
 
     @Override
@@ -93,6 +99,7 @@ public class HudEditorScreen extends Screen {
             DdingMate.config().hudPos.clear();
             DdingMate.config().hudSizes.clear();
             DdingMate.config().hudWidths.clear();
+            DdingMate.config().hudHeights.clear();
         });
         reset.setTooltip(Tooltip.of(Text.literal("모든 HUD 를 원래 자리·크기로 돌려요. [저장]을 눌러야 남아요.")));
         reset.setX(cx + 3);
@@ -112,7 +119,8 @@ public class HudEditorScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         Map<String, HudLayout.Rect> bounds = HudLayout.bounds();
-        String hover = dragging != null ? dragging : resizing != null ? resizing : widening != null ? widening : hit(mouseX, mouseY);
+        String hover = dragging != null ? dragging : resizing != null ? resizing : widening != null ? widening
+                : heightening != null ? heightening : hit(mouseX, mouseY);
         for (Map.Entry<String, HudLayout.Rect> e : bounds.entrySet()) {
             String id = e.getKey();
             HudLayout.Rect r = e.getValue();
@@ -133,8 +141,14 @@ public class HudEditorScreen extends Screen {
                 int ex = r.x() + r.w() - 2, ey = r.y() + r.h() / 2 - EDGE / 2;
                 ctx.fill(ex - 1, ey - 1, ex + 4, ey + EDGE + 1, Theme.BLUE_DEEP);
                 ctx.fill(ex, ey, ex + 3, ey + EDGE, Theme.WHITE);
+                if (tallable(id)) {
+                    // 아래 가장자리 가운데: 높이만 바꾸는 손잡이(넘치는 줄은 옆 칸으로)
+                    int bx = r.x() + r.w() / 2 - EDGE / 2, by = r.y() + r.h() - 2;
+                    ctx.fill(bx - 1, by - 1, bx + EDGE + 1, by + 4, Theme.BLUE_DEEP);
+                    ctx.fill(bx, by, bx + EDGE, by + 3, Theme.WHITE);
+                }
                 String name = HudLayout.NAMES.get(id) + " · " + HudLayout.size(id) + "%"
-                        + (HudLayout.custom(id) ? " · 옮김" : "");
+                        + (HudLayout.custom(id) ? " · 옮김" : "") + (HudLayout.heightLimit(id) > 0 ? " · 높이 고정" : "");
                 int nw = Theme.width(textRenderer, name) + 8;
                 int ly = r.y() >= 13 ? r.y() - 13 : r.y() + r.h() + 2;
                 ctx.fill(r.x(), ly, r.x() + nw, ly + 11, sel ? Theme.BLUE_MID : Theme.SLATE);
@@ -142,7 +156,7 @@ public class HudEditorScreen extends Screen {
             }
         }
         // 아래 가운데 조작 판
-        String help = "끌기: 옮기기 · 휠·모서리: 크기 · 오른쪽 가장자리: 가로로 늘리기 · 오른쪽 클릭: 원래대로 · Esc: 취소";
+        String help = "끌기: 옮기기 · 휠·모서리: 크기 · 오른쪽 가장자리: 가로 · 아래 가장자리: 세로(넘치면 옆으로) · 오른쪽 클릭: 원래대로 · Esc: 취소";
         int hw = Math.max(Theme.width(textRenderer, help) + 16, BUTTON_W * 2 + 22);
         int hx = width / 2 - hw / 2;
         int hy = height - 76;
@@ -175,6 +189,22 @@ public class HudEditorScreen extends Screen {
         return null;
     }
 
+    /** 높이를 정할 수 있는 HUD(줄이 넘치면 옆 칸으로 넘기는 HUD) */
+    private static boolean tallable(String id) {
+        return HudLayout.COUNTER.equals(id);
+    }
+
+    /** 아래 가장자리 가운데 손잡이(높이만 바꾸기) 위인가 */
+    private String bottomAt(double mx, double my) {
+        for (Map.Entry<String, HudLayout.Rect> e : HudLayout.bounds().entrySet()) {
+            if (!tallable(e.getKey())) continue;
+            HudLayout.Rect r = e.getValue();
+            int bx = r.x() + r.w() / 2 - EDGE / 2, by = r.y() + r.h();
+            if (mx >= bx - 2 && mx <= bx + EDGE + 2 && my >= by - 4 && my <= by + 4) return e.getKey();
+        }
+        return null;
+    }
+
     /** 고른(또는 마우스가 올라간) HUD 의 크기 손잡이 위인가 */
     private String handleAt(double mx, double my) {
         for (Map.Entry<String, HudLayout.Rect> e : HudLayout.bounds().entrySet()) {
@@ -189,6 +219,14 @@ public class HudEditorScreen extends Screen {
     public boolean mouseClicked(double mx, double my, int button) {
         if (super.mouseClicked(mx, my, button)) return true;
         if (button == 0) {
+            String t = bottomAt(mx, my);
+            if (t != null && handleAt(mx, my) == null) {
+                selected = t;
+                heightening = t;
+                tallStartH = HudLayout.bounds().get(t).h();
+                tallStartY = my;
+                return true;
+            }
             String w = edgeAt(mx, my);
             if (w != null && handleAt(mx, my) == null) {
                 selected = w;
@@ -214,6 +252,7 @@ public class HudEditorScreen extends Screen {
             HudLayout.reset(id);
             HudLayout.setSize(id, 100);
             HudLayout.setWidth(id, 0);
+            HudLayout.setHeight(id, 0);
             return true;
         }
         if (button == 0) {
@@ -237,6 +276,12 @@ public class HudEditorScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (heightening != null) {
+            // 끈 만큼 높이 제한(HUD 좌표 px). 내용이 이보다 길면 남는 줄은 옆 칸으로 넘어간다
+            int newH = (int) Math.round(tallStartH + (my - tallStartY));
+            HudLayout.setHeight(heightening, Math.max(HudLayout.MIN_HEIGHT, Math.round(newH / HudLayout.scale(heightening))));
+            return true;
+        }
         if (widening != null) {
             // 끈 만큼 상자 너비만 바꾼다(글자 크기는 그대로). 화면 px → HUD 좌표 px
             int newW = (int) Math.round(wideStartW + (mx - wideStartX));
@@ -271,6 +316,7 @@ public class HudEditorScreen extends Screen {
         dragging = null;
         resizing = null;
         widening = null;
+        heightening = null;
         return super.mouseReleased(mx, my, button);
     }
 
@@ -285,6 +331,8 @@ public class HudEditorScreen extends Screen {
             cfg.hudSizes.putAll(beforeSize);
             cfg.hudWidths.clear();
             cfg.hudWidths.putAll(beforeWidth);
+            cfg.hudHeights.clear();
+            cfg.hudHeights.putAll(beforeHeight);
         }
         HudLayout.editing = false;
         if (client != null) client.setScreen(parent);

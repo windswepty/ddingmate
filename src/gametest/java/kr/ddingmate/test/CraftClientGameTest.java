@@ -542,14 +542,17 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 pinv.setStack(1, new ItemStack(Items.COBBLESTONE, 64));
                 c.setScreen(facility(c,
                         item("조약돌 뭉치", 1, "다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 5초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정"),
-                        item("하급 라이프스톤", 1, "세이지 도구 강화에 필요합니다.", "", "  제작 시간 : 1분 0초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정")));
+                        item("하급 라이프스톤", 1, "세이지 도구 강화에 필요합니다.", "", "  제작 시간 : 1분 0초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거"),
+                        item("어빌리티 스톤", 1, "신비로운 힘이 깃들어 있는 스톤입니다.", "", "  제작 시간 : 2분 0초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거")));
             });
             ctx.waitTicks(12);
             ctx.takeScreenshot("facility-1-craftable-panel");
             ctx.runOnClient(c -> {
                 var es = kr.ddingmate.craft.FacilityPanel.entries();
-                check(es.size() == 2 && es.get(0).recipe().name.equals("조약돌 뭉치") && es.get(0).craftable() == 2 && es.get(1).craftable() == 0,
-                        "만들 수 있는 레시피 판이 다름: " + es.stream().map(e -> e.recipe().name + " " + e.craftable()).toList());
+                check(es.size() > 3 && es.stream().allMatch(e -> e.recipe().facility.equals("강화 제작 시설")),
+                        "시설 판이 강화 제작 시설 레시피 전체가 아님: " + es.stream().map(e -> e.recipe().facility + "/" + e.recipe().name).toList());
+                check(es.get(0).recipe().name.equals("조약돌 뭉치") && es.get(0).craftable() == 2 && es.get(1).craftable() == 0,
+                        "보유 재료 순서가 아님: " + es.stream().map(e -> e.recipe().name + " " + e.craftable()).toList());
                 int[] at = kr.ddingmate.craft.FacilityPanel.debugRow(0);
                 check(at != null, "시설 판을 그리지 않음");
                 // 실제 게임과 같은 길: 마우스 누르기 전에 부르는 Fabric 화면 이벤트(띵메이트 판이 받으면 창으로 넘기지 않음)
@@ -557,6 +560,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         .allowMouseClick(c.currentScreen, at[0], at[1], 0);
                 check(!passed, "판을 누른 것이 시설 창으로 넘어감");
                 check(DdingMate.config().counter.pins.get(0).recipe.equals(es.get(0).recipe().id), "누른 레시피를 빈 핀에 넣지 않음: " + DdingMate.config().counter.pins.get(0).recipe);
+                // 오른쪽 클릭: 그 핀을 뺀다
+                boolean passed2 = net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
+                        .allowMouseClick(c.currentScreen, at[0], at[1], 1);
+                check(!passed2 && DdingMate.config().counter.pins.get(0).recipe.isEmpty(), "오른쪽 클릭으로 핀을 빼지 않음: " + DdingMate.config().counter.pins.get(0).recipe);
             });
             ctx.runOnClient(c -> {
                 c.setScreen(null);
@@ -584,6 +591,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 double before = s.listScroll();
                 s.jumpTo("요리");
                 check(s.listScroll() > before, "목차 '요리'를 눌러도 내려가지 않음");
+                check("요리".equals(s.currentSectionLabel()), "누른 목차 '요리'를 강조하지 않음: " + s.currentSectionLabel());
+                // 이미 끝까지 내려가 더 못 움직여도(실제 홈 탭 '제작 중') 누른 분류를 강조한다
+                s.jumpTo("커피 가격");
+                s.jumpTo("요리");
+                check("요리".equals(s.currentSectionLabel()), "다시 눌러도 '요리'가 강조되지 않음");
             });
             ctx.waitTicks(3);
             ctx.takeScreenshot("expert-4-jump-cooking");
@@ -592,6 +604,28 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.Barista.debugClear();
                 kr.ddingmate.expert.Cooking.debugClear();
                 DdingMate.config().expert.coffeeBonus = 0;
+            });
+
+            // 9-000d) 제작 완료 순간: 시설 창이 열린 채 맨 앞 칸이 "제작이 완료되었습니다"로 바뀌면 그 순간이 완료 시각(창 숫자의 1초 끊김과 무관)
+            long[] flip = new long[1];
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                DdingMate.config().craft.mining = 0;
+                CraftTimers.debugLearn("강화 횃불", 30);
+                CraftTimers.onChat(G + "강화 횃불 아이템 1개 제작을 시작했습니다.");
+                c.setScreen(facility(c, queueItem("강화 횃불", 1, "  제작 시간 : 30초")));
+            });
+            ctx.waitTicks(6);
+            ctx.runOnClient(c -> {
+                flip[0] = now();
+                c.setScreen(facility(c, queueItem("강화 횃불", 1, "  제작이 완료되었습니다.", "  클릭 시 아이템을 회수합니다.")));
+            });
+            ctx.waitTicks(6);
+            ctx.runOnClient(c -> {
+                CraftTimers.Job j = CraftTimers.jobs().get(0);
+                check(Math.abs(j.endsAt - flip[0]) < 300, "완료로 바뀐 순간을 완료 시각으로 잡지 않음: " + (j.endsAt - flip[0]) + "ms");
+                c.setScreen(null);
+                CraftTimers.debugClear();
             });
 
             // 9-000a) 앞 제작을 창 값으로 크게(+3초) 다시 맞추면 뒤에 기다리는 제작은 정확히 3초만 옮겨진다

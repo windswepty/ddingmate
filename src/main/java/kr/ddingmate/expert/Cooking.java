@@ -183,11 +183,11 @@ public final class Cooking {
         return byTime ? k.perMinute() : k.perItem();
     }
 
-    /** "금 가루 · 20개 묶음" / "식용 금 가루 · 1개" 처럼 레시피를 가려 주는 이름 */
+    /** "금 가루로 20개씩" / "식용 금 가루로 1개씩" 처럼 레시피를 가려 주는 이름 */
     private static String variantName(RecipeBook.Recipe r) {
         String key = r.materials.stream().map(m -> m.name).filter(n -> !n.equals(r.name.replaceFirst("^황금\\s*", "")))
                 .reduce((a, b) -> b).orElse("");
-        return (key.isEmpty() ? "" : key + " · ") + (r.output > 1 ? r.output + "개 묶음" : "1개");
+        return (key.isEmpty() ? "" : key + "로 ") + r.output + "개씩";
     }
 
     /** 비싼 순(가격을 아는 요리, 이름마다 하나) */

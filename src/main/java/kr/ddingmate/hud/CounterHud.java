@@ -70,7 +70,10 @@ public final class CounterHud {
         boolean left = cfg.corner == DdingMateConfig.Corner.TOP_LEFT || cfg.corner == DdingMateConfig.Corner.BOTTOM_LEFT;
         int limit;
         int customY = HudLayout.customTop(ctx, HudLayout.COUNTER, 60);
-        if (customY >= 0) {
+        int fixedH = HudLayout.heightLimit(HudLayout.COUNTER);
+        if (fixedH > 0) {
+            limit = fixedH; // 편집 화면에서 정한 높이: 넘치는 줄은 옆 칸으로
+        } else if (customY >= 0) {
             limit = sh - customY - 4; // 옮긴 자리 아래로 남은 높이
         } else {
             int safe = top ? sh - HudLayout.bottomGap(left ? DdingMateConfig.Corner.BOTTOM_LEFT : DdingMateConfig.Corner.BOTTOM_RIGHT)
@@ -79,34 +82,30 @@ public final class CounterHud {
             // 첫 핀도 안 들어가면 어차피 옆 줄로 넘어가므로 화면 높이 전체를 쓴다
             if (stack > 0 && pinHeight(views.get(0)) + 4 > limit) limit = safe;
         }
-        limit = Math.max(limit, 60);
+        limit = Math.max(limit, fixedH > 0 ? HudLayout.MIN_HEIGHT : 60);
 
-        List<List<MaterialCounter.PinView>> columns = new ArrayList<>();
-        List<MaterialCounter.PinView> col = new ArrayList<>();
-        int colH = 4;
-        for (MaterialCounter.PinView v : views) {
-            int h = pinHeight(v);
-            if (!col.isEmpty() && colH + h > limit) {
-                columns.add(col);
-                col = new ArrayList<>();
-                colH = 4;
+        // 높이를 정해 두었을 때만 핀 안의 줄까지 옆 칸으로 나눈다(기본은 핀 단위로만 옆 칸). 화면 밖으로 나가면 칸을 조금씩 키운다
+        List<List<Segment>> columns;
+        int n;
+        int[] ws, hs;
+        int totalW, tallest;
+        int vw = HudLayout.vw(ctx);
+        while (true) {
+            columns = layout(views, limit, fixedH > 0);
+            n = columns.size();
+            ws = new int[n];
+            hs = new int[n];
+            totalW = 0;
+            tallest = 0;
+            for (int i = 0; i < n; i++) {
+                String colNote = i == n - 1 ? note : null;
+                ws[i] = columnWidth(tr, cfg, columns.get(i), colNote);
+                hs[i] = columnHeight(columns.get(i), colNote);
+                totalW += ws[i] + (i > 0 ? COLUMN_GAP : 0);
+                tallest = Math.max(tallest, hs[i]);
             }
-            col.add(v);
-            colH += h;
-        }
-        columns.add(col);
-
-        // 칸 여러 개를 하나의 묶음으로 보고 자리를 정한 뒤, 왼쪽부터 나란히 그린다
-        int n = columns.size();
-        int[] ws = new int[n];
-        int[] hs = new int[n];
-        int totalW = 0, tallest = 0;
-        for (int i = 0; i < n; i++) {
-            String colNote = i == n - 1 ? note : null;
-            ws[i] = columnWidth(tr, cfg, columns.get(i), colNote);
-            hs[i] = columnHeight(columns.get(i), colNote);
-            totalW += ws[i] + (i > 0 ? COLUMN_GAP : 0);
-            tallest = Math.max(tallest, hs[i]);
+            if (fixedH <= 0 || n <= 1 || totalW <= vw - 4 || limit > 2000) break;
+            limit += ROW_H * 2;
         }
         // 편집 화면에서 가로로 늘렸으면 마지막 칸을 그만큼 넓힌다
         int wide = HudLayout.widen(HudLayout.COUNTER, totalW);
@@ -118,10 +117,73 @@ public final class CounterHud {
         boolean bottomAlign = !top && !HudLayout.custom(HudLayout.COUNTER);
         int x = o[0];
         for (int i = 0; i < n; i++) {
-            int y = bottomAlign ? o[1] + tallest - hs[i] : o[1];
-            drawColumn(ctx, tr, cfg, columns.get(i), i == n - 1 ? note : null, x, y, ws[i], hs[i], alpha, dark);
+            int h = fixedH > 0 ? tallest : hs[i];
+            int y = bottomAlign ? o[1] + tallest - h : o[1];
+            drawColumn(ctx, tr, cfg, columns.get(i), i == n - 1 ? note : null, x, y, ws[i], h, alpha, dark);
             x += ws[i] + COLUMN_GAP;
         }
+    }
+
+    /**
+     * 칸 하나에 들어가는 핀 조각: 핀의 from~to 번째 줄. continued 면 앞 칸에서 이어지는 조각(제목에 "이어서")
+     */
+    public record Segment(MaterialCounter.PinView view, int from, int to, boolean continued) {
+        public int height() {
+            return ScheduleHud.HEAD_H + 2 + (to - from) * ROW_H + 2;
+        }
+    }
+
+    /**
+     * 핀들을 칸에 나눠 담는다. 핀이 통째로 들어가면 그대로, 남은 자리에 안 들어가면 새 칸에서 시작하고,
+     * 빈 칸에도 안 들어갈 만큼 길면(높이를 줄여 둔 경우) 줄 단위로 잘라 옆 칸으로 이어 붙인다.
+     */
+    public static List<List<Segment>> layout(List<MaterialCounter.PinView> views, int limit, boolean splitRows) {
+        List<List<Segment>> columns = new ArrayList<>();
+        List<Segment> col = new ArrayList<>();
+        int colH = 3;
+        int perHead = ScheduleHud.HEAD_H + 4;
+        for (MaterialCounter.PinView v : views) {
+            int rows = shown(v).size();
+            int whole = perHead + rows * ROW_H;
+            if (!col.isEmpty() && colH + whole > limit && 3 + whole <= limit) {
+                columns.add(col);
+                col = new ArrayList<>();
+                colH = 3;
+            }
+            if (!splitRows) {
+                // 기본: 핀은 통째로(길면 그 칸에서 아래로 넘쳐도 그대로)
+                if (!col.isEmpty() && colH + whole > limit) {
+                    columns.add(col);
+                    col = new ArrayList<>();
+                    colH = 3;
+                }
+                Segment seg = new Segment(v, 0, rows, false);
+                col.add(seg);
+                colH += seg.height();
+                continue;
+            }
+            int from = 0;
+            boolean continued = false;
+            while (from < rows || (rows == 0 && from == 0)) {
+                int room = (limit - colH - perHead) / ROW_H;
+                if (room < 1 && !col.isEmpty()) {
+                    columns.add(col);
+                    col = new ArrayList<>();
+                    colH = 3;
+                    room = (limit - colH - perHead) / ROW_H;
+                }
+                int take = Math.max(1, Math.min(rows - from, room));
+                if (rows == 0) take = 0;
+                Segment seg = new Segment(v, from, from + take, continued);
+                col.add(seg);
+                colH += seg.height();
+                from += take;
+                continued = true;
+                if (rows == 0) break;
+            }
+        }
+        columns.add(col);
+        return columns;
     }
 
     /** HUD 한 줄: 재료 또는 그 아래 펼친 원재료(sub) */
@@ -142,18 +204,19 @@ public final class CounterHud {
         return ScheduleHud.HEAD_H + 2 + shown(v).size() * ROW_H + 2;
     }
 
-    private static int columnHeight(List<MaterialCounter.PinView> pins, String note) {
+    private static int columnHeight(List<Segment> segs, String note) {
         int h = 3;
-        for (MaterialCounter.PinView v : pins) h += pinHeight(v);
+        for (Segment s : segs) h += s.height();
         return h + (note != null ? 12 : 0);
     }
 
     private record Widths(int name, int count, int extra) {}
 
-    private static Widths widths(TextRenderer tr, DdingMateConfig.Counter cfg, List<MaterialCounter.PinView> pins) {
+    private static Widths widths(TextRenderer tr, DdingMateConfig.Counter cfg, List<Segment> segs) {
         int nameW = 0, countW = 0, extraW = 0;
-        for (MaterialCounter.PinView v : pins) {
-            for (Shown sh : shown(v)) {
+        for (Segment sg : segs) {
+            List<Shown> all = shown(sg.view());
+            for (Shown sh : all.subList(sg.from(), sg.to())) {
                 MaterialCounter.Line l = sh.line();
                 nameW = Math.max(nameW, Theme.width(tr, l.name()) + (sh.sub() ? SUB_INDENT : 0));
                 countW = Math.max(countW, Theme.boldWidth(tr, count(l)));
@@ -163,11 +226,11 @@ public final class CounterHud {
         return new Widths(nameW, countW, extraW);
     }
 
-    private static int columnWidth(TextRenderer tr, DdingMateConfig.Counter cfg, List<MaterialCounter.PinView> pins, String note) {
-        Widths w = widths(tr, cfg, pins);
+    private static int columnWidth(TextRenderer tr, DdingMateConfig.Counter cfg, List<Segment> segs, String note) {
+        Widths w = widths(tr, cfg, segs);
         int headW = 0;
-        for (MaterialCounter.PinView v : pins) {
-            headW = Math.max(headW, 16 + Theme.boldWidth(tr, title(v)) + GAP + chipWidth(tr, v));
+        for (Segment sg : segs) {
+            headW = Math.max(headW, 16 + Theme.boldWidth(tr, headTitle(sg)) + GAP + chipWidth(tr, sg.view()));
         }
         int rowInner = ICON + 4 + w.name() + GAP + w.count() + (w.extra() > 0 ? GAP + w.extra() : 0);
         int innerW = Math.max(rowInner, headW);
@@ -179,18 +242,24 @@ public final class CounterHud {
         return Theme.boldWidth(tr, progress(v)) + 8;
     }
 
+    /** 칸 조각의 제목: 앞 칸에서 이어지면 "(이어서)" */
+    private static String headTitle(Segment sg) {
+        return title(sg.view()) + (sg.continued() ? " (이어서)" : "");
+    }
+
     private static void drawColumn(DrawContext ctx, TextRenderer tr, DdingMateConfig.Counter cfg,
-                                   List<MaterialCounter.PinView> views, String note,
+                                   List<Segment> segs, String note,
                                    int x, int y, int boxW, int boxH, int alpha, boolean dark) {
-        Widths w = widths(tr, cfg, views);
+        Widths w = widths(tr, cfg, segs);
         ScheduleHud.panel(ctx, x, y, boxW, boxH, alpha, dark);
         int text = Theme.text(dark);
         int soft = Theme.soft(dark);
         int cy = y;
-        for (MaterialCounter.PinView v : views) {
+        for (Segment sg : segs) {
+            MaterialCounter.PinView v = sg.view();
             ItemStack headIcon = IconCache.forRecipe(v.recipe()); // 제목 옆: 만드는 아이템 모양(첫 재료 아님)
             if (headIcon == null) headIcon = CHEST;
-            ScheduleHud.header(ctx, tr, x, cy, boxW, title(v), headIcon == null ? CHEST : headIcon, dark, alpha);
+            ScheduleHud.header(ctx, tr, x, cy, boxW, headTitle(sg), headIcon, dark, alpha);
             // 진행 꼬리표
             String p = progress(v);
             int chipW = chipWidth(tr, v);
@@ -199,7 +268,7 @@ public final class CounterHud {
             ctx.fill(chipX, cy + 2, chipX + chipW, cy + 3, v.done() ? 0xFF7DD379 : Theme.BLUE);
             Theme.boldText(ctx, tr, p, chipX + 4, cy + 3, Theme.WHITE, false);
             cy += ScheduleHud.HEAD_H + 2;
-            for (Shown sh : shown(v)) {
+            for (Shown sh : shown(v).subList(sg.from(), sg.to())) {
                 MaterialCounter.Line l = sh.line();
                 int base = x + 6;
                 int rx = base + (sh.sub() ? SUB_INDENT : 0);
@@ -226,7 +295,7 @@ public final class CounterHud {
             }
             cy += 2;
         }
-        if (note != null) Theme.textShadow(ctx, tr, note, x + 6, cy + 1, soft, dark);
+        if (note != null) Theme.textShadow(ctx, tr, note, x + 6, y + boxH - 12, soft, dark);
     }
 
     // ---------------------------------------------------------------- 예전 방식(반투명 검은 상자)

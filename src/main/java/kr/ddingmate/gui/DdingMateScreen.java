@@ -111,6 +111,12 @@ public class DdingMateScreen extends Screen {
 
     private final List<Section> sections = new ArrayList<>();
     private final List<SectionButton> sectionButtons = new ArrayList<>();
+    /** 마지막으로 누른 목차와 그때 스크롤 위치(목록 끝이라 더 못 내려가도 누른 분류를 강조) */
+    private Section jumped;
+    private double jumpedScroll = -1;
+    /** 잠깐 반짝이는 머리 줄(누른 목차가 가리키는 줄) */
+    private int flashIndex = -1;
+    private long flashUntil;
 
     public DdingMateScreen(Screen parent) {
         super(Text.literal("띵메이트 설정"));
@@ -302,6 +308,8 @@ public class DdingMateScreen extends Screen {
     private int currentSection() {
         if (sections.isEmpty() || list == null) return -1;
         double scroll = list.getScrollY();
+        if (jumped != null && Math.abs(scroll - jumpedScroll) < 1) return sections.indexOf(jumped);
+        jumped = null;
         if (scroll >= list.getMaxScrollY() - 1 && list.getMaxScrollY() > 0) {
             // 끝까지 내렸으면 화면에 머리 줄이 보이는 마지막 분류
             int visibleTop = (int) scroll / ITEM_H;
@@ -331,6 +339,12 @@ public class DdingMateScreen extends Screen {
     /** 시험용 */
     public double listScroll() {
         return list.getScrollY();
+    }
+
+    /** 시험용: 지금 강조된 목차 이름 */
+    public String currentSectionLabel() {
+        int i = currentSection();
+        return i < 0 ? null : sections.get(i).label();
     }
 
     // ---------------------------------------------------------------- 탭별 내용
@@ -587,7 +601,7 @@ public class DdingMateScreen extends Screen {
         list.pair(tip(toggle("세트 단위로 보기", cc.showSets, v -> cc.showSets = v),
                 "64개를 1세트로 보여 줘요. 예: 토파즈 주괴 80개 → 1세트 16 · 철 블록 40개 → 40"),
                 tip(toggle("시설 창 옆 레시피 판", cc.facilityPanel, v -> cc.facilityPanel = v),
-                        "제작 시설 창을 열면 옆에 가진 재료로 만들 수 있는 레시피와 몇 번 만들 수 있는지 보여 줘요. 줄을 누르면 빈 핀에 넣어요"));
+                        "제작 시설 창을 열면 옆에 보유 재료로 만들 수 있는 레시피와 몇 번 만들 수 있는지 보여 줘요. 왼쪽 클릭은 핀 넣기, 오른쪽 클릭은 핀 빼기"));
 
         list.header("모험 가방", "모험 가방");
         Widgets.Field aliases = new Widgets.Field(rowWidth(), Text.literal("가방 단축어(선택)"));
@@ -771,7 +785,6 @@ public class DdingMateScreen extends Screen {
         list.guide("놓친 알림을 여기서 다시 볼 수 있어요. 소리·팝업을 꺼 둬도 기록은 남아요.");
         list.header("최근 알림 " + entries.size() + "개 · 최대 100개");
         if (entries.isEmpty()) list.note("아직 알림이 없어요.");
-        for (AlertLog.Entry e : entries) list.log(e);
         if (!entries.isEmpty()) {
             list.single(new Widgets.Button(rowWidth(), 20, Text.literal("기록 모두 지우기"), false, b -> {
                 if (!confirmClearLog) {
@@ -784,6 +797,7 @@ public class DdingMateScreen extends Screen {
                 rebuild();
             }));
         }
+        for (AlertLog.Entry e : entries) list.log(e);
     }
 
     private void buildExpert() {
@@ -834,15 +848,17 @@ public class DdingMateScreen extends Screen {
         for (kr.ddingmate.expert.Barista.Order o : orders) {
             boolean fresh = kr.ddingmate.expert.Barista.fresh(o);
             String when = Instant.ofEpochMilli(o.at).atZone(ScheduleEngine.KST).format(LOG_TIME);
-            String label = "(" + o.grade + ") " + o.customer + " · " + when + " 읽음" + (fresh ? "" : " · 03시 전");
+            String label = "(" + o.grade + ") " + o.customer;
             list.single(new InfoRow(coffeeIcon(o.lines.isEmpty() ? "아메리카노" : o.lines.get(0).coffee), label,
                     o.cupsLeft() == 0 ? "주문 완료" : String.format("%,dG 남음", o.remaining),
-                    !fresh ? Theme.TEXT_SOFT : o.cupsLeft() == 0 ? Theme.GREEN_ON_LIGHT : Theme.GOLD_ON_LIGHT, null));
+                    !fresh ? Theme.TEXT_SOFT : o.cupsLeft() == 0 ? Theme.GREEN_ON_LIGHT : Theme.GOLD_ON_LIGHT, null)
+                    .sub(when + " 읽음" + (fresh ? "" : " · 03시 전 주문(합계 제외)")));
             for (kr.ddingmate.expert.Barista.OrderLine l : o.lines) {
                 int mine = have.getOrDefault(l.coffee, 0);
-                String value = l.left() == 0 ? "다 팜" : "가진 " + mine + "잔 · 판매 " + l.sold + "/" + l.want;
-                list.single(new InfoRow(coffeeIcon(l.coffee), "　" + l.coffee + String.format(" · 1잔 %,dG", l.perCup), value,
-                        l.left() == 0 ? Theme.GREEN_ON_LIGHT : !fresh ? Theme.TEXT_SOFT : mine >= l.left() ? Theme.GREEN_ON_LIGHT : Theme.RED_ON_LIGHT, null));
+                String value = l.left() == 0 ? "다 팜" : "보유 " + mine + "잔 · 판매 " + l.sold + "/" + l.want;
+                list.single(new InfoRow(coffeeIcon(l.coffee), "　" + l.coffee, value,
+                        l.left() == 0 ? Theme.GREEN_ON_LIGHT : !fresh ? Theme.TEXT_SOFT : mine >= l.left() ? Theme.GREEN_ON_LIGHT : Theme.RED_ON_LIGHT, null)
+                        .sub("　1잔 " + String.format("%,dG", l.perCup)));
             }
         }
         List<kr.ddingmate.expert.Barista.Need> needs = kr.ddingmate.expert.Barista.needs(have);
@@ -850,12 +866,12 @@ public class DdingMateScreen extends Screen {
             boolean any = false;
             for (kr.ddingmate.expert.Barista.Need n : needs) {
                 if (n.toMake() <= 0) continue;
-                if (!any) list.note("더 만들어야 할 커피(오늘 읽은 주문 − 가진 잔)");
+                if (!any) list.note("더 만들어야 할 커피(오늘 읽은 주문 − 보유 잔)");
                 any = true;
                 list.single(new InfoRow(coffeeIcon(n.coffee()), n.coffee() + " 만들기", n.toMake() + "잔", Theme.RED_ON_LIGHT, null));
             }
             if (!any) list.note("오늘 주문한 커피를 다 갖췄어요. 손님 창에서 판매하면 돼요.");
-            list.single(new InfoRow(new ItemStack(Items.GOLD_NUGGET), "지금 가진 커피로 팔면",
+            list.single(new InfoRow(new ItemStack(Items.GOLD_NUGGET), "보유 커피로 지금 팔면",
                     String.format("%,dG", kr.ddingmate.expert.Barista.sellableNow(needs)), Theme.GREEN_ON_LIGHT, null));
             list.single(new InfoRow(new ItemStack(Items.GOLD_INGOT), "오늘 남은 주문 합계",
                     String.format("%,dG", kr.ddingmate.expert.Barista.remainingTotal()), Theme.GOLD_ON_LIGHT, null));
@@ -893,7 +909,7 @@ public class DdingMateScreen extends Screen {
                     ex.cookingByTime = v;
                     rebuild();
                 }), tip(toggle("밀키 상점 옆에 보기", ex.cookingPanel, v -> ex.cookingPanel = v),
-                "밀키 요리 상점 창을 열면 옆에 효율 좋은 요리·비싼 요리·가진 요리를 팔면 받는 금액을 보여 줘요"));
+                "밀키 요리 상점 창을 열면 옆에 효율 좋은 요리·비싼 요리·보유 요리를 팔면 받는 금액을 보여 줘요"));
         java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
         java.time.ZonedDateTime next = kr.ddingmate.expert.Cooking.nextChange(now);
         List<kr.ddingmate.expert.Cooking.Rank> ranks = kr.ddingmate.expert.Cooking.ranking(ex.cookingByTime);
@@ -911,11 +927,12 @@ public class DdingMateScreen extends Screen {
             double v = ex.cookingByTime ? r.perMinute() : r.perItem();
             String diff = i == 1 ? "최고" : String.format("-%.0f%%", best > 0 ? (best - v) * 100 / best : 0);
             String val = ex.cookingByTime ? String.format("%,.0fG/분", v) : String.format("%.1fG/재료", v);
-            String label = i + ". " + r.recipe().name + " · " + String.format("%,dG", r.price())
-                    + (r.variant().isEmpty() ? "" : " · " + r.variant()) + (r.fresh() ? "" : " (지난 가격)");
+            String label = i + ". " + r.recipe().name;
+            String sub = "판매가 " + String.format("%,dG", r.price()) + (r.variant().isEmpty() ? "" : " · " + r.variant())
+                    + (r.fresh() ? "" : " · 지난 가격");
             ItemStack icon = kr.ddingmate.counter.IconCache.forRecipe(r.recipe());
             list.single(new InfoRow(icon == null ? new ItemStack(Items.BOWL) : icon, label, val + " · " + diff,
-                    !r.fresh() ? Theme.TEXT_SOFT : i == 1 ? Theme.GREEN : Theme.BLUE, null));
+                    !r.fresh() ? Theme.TEXT_SOFT : i == 1 ? Theme.GREEN : Theme.BLUE, null).sub(sub));
         }
         list.note("원재료당 골드 = 판매가 ÷ 베이스·묶음·가공 식재료를 원재료까지 풀어 센 개수. 시간당 골드 = 판매가 ÷ 요리 시간(재배 스킬 반영). "
                 + "황금 요리처럼 만드는 법이 둘이면 더 좋은 쪽 하나만 보여 줘요.");
@@ -1132,12 +1149,17 @@ public class DdingMateScreen extends Screen {
         SectionButton(Section section, int w, int h) {
             super(0, 0, w, h, Text.literal(section.label()));
             this.section = section;
-            setTooltip(Tooltip.of(Text.literal(section.label() + " 로 바로 가기")));
+            setTooltip(Tooltip.of(Text.literal("누르면 '" + section.label() + "' 칸으로 이동")));
         }
 
         @Override
         public void onPress() {
             list.setScrollY(Math.min(list.getMaxScrollY(), (double) section.index() * ITEM_H));
+            // 목록 끝 가까이에 있는 분류는 더 내려갈 수 없어 화면이 그대로일 수 있다 → 누른 분류를 강조하고 그 머리 줄을 반짝인다
+            jumped = section;
+            jumpedScroll = list.getScrollY();
+            flashIndex = section.index();
+            flashUntil = System.currentTimeMillis() + 900;
         }
 
         @Override
@@ -1164,9 +1186,17 @@ public class DdingMateScreen extends Screen {
         private final Tab target;
         /** 항해 줄이면 그 섬 그림("토르엔 항해") */
         private String island;
+        /** 이름 아래 작은 설명(있으면 두 줄로 그린다) */
+        private String sub;
+        private boolean tipSet;
 
         InfoRow island(String jobName) {
             this.island = jobName;
+            return this;
+        }
+
+        InfoRow sub(String text) {
+            this.sub = text == null || text.isEmpty() ? null : text;
             return this;
         }
 
@@ -1192,8 +1222,20 @@ public class DdingMateScreen extends Screen {
             int right = getX() + width - (target != null ? 14 : 6);
             int vw = Theme.boldWidth(textRenderer, value);
             Theme.boldText(ctx, textRenderer, value, right - vw, getY() + 6, valueColor, false);
-            Theme.text(ctx, textRenderer, Theme.ellipsize(textRenderer, label, right - vw - 8 - (getX() + 24)),
-                    getX() + 24, getY() + 6, Theme.TEXT);
+            int room = right - vw - 8 - (getX() + 24);
+            String shownLabel = Theme.ellipsize(textRenderer, label, room);
+            if (sub == null) {
+                Theme.text(ctx, textRenderer, shownLabel, getX() + 24, getY() + 6, Theme.TEXT);
+            } else {
+                Theme.text(ctx, textRenderer, shownLabel, getX() + 24, getY() + 2, Theme.TEXT);
+                Theme.text(ctx, textRenderer, Theme.ellipsize(textRenderer, sub, room), getX() + 24, getY() + 11, Theme.TEXT_SOFT);
+            }
+            // 글자가 잘렸으면 마우스를 올렸을 때 전체를 보여 준다
+            boolean cut = !shownLabel.equals(label) || (sub != null && Theme.width(textRenderer, sub) > room);
+            if (cut && !tipSet && getTooltip() == null) {
+                setTooltip(Tooltip.of(Text.literal(label + (sub == null ? "" : "\n" + sub) + "\n" + value)));
+                tipSet = true;
+            }
             if (target != null) {
                 // 오른쪽 화살표: 누르면 해당 탭으로 이동
                 for (int i = 0; i < 4; i++) {
@@ -1492,6 +1534,12 @@ public class DdingMateScreen extends Screen {
                            int mouseX, int mouseY, boolean hovered, float tickDelta) {
             switch (kind) {
                 case HEADER -> {
+                    long left = flashUntil - System.currentTimeMillis();
+                    if (index == flashIndex && left > 0) {
+                        // 목차로 온 분류: 잠깐 하늘색으로 반짝임
+                        int a = (int) Math.min(200, left * 200 / 600);
+                        ctx.fill(x - 2, y + 4, x + entryWidth + 2, y + 21, Theme.withAlpha(Theme.BLUE_LIGHT, a));
+                    }
                     ctx.fill(x, y + 8, x + 3, y + 17, Theme.BLUE);
                     int split = text.indexOf(" · ");
                     String head = split < 0 ? text : text.substring(0, split);

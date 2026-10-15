@@ -76,6 +76,8 @@ public final class CraftTimers {
          */
         public String queue = "";
         public boolean notified;
+        /** 시설 창에서 이 제작이 맨 앞에서 돌고 있는 것을 마지막으로 본 시각(저장 안 함). 완료로 바뀌는 순간을 잡는 데 쓴다 */
+        transient long seenRunningAt;
     }
 
     /**
@@ -622,9 +624,26 @@ public final class CraftTimers {
                     && learn(job, now - job.startedAt + r.remainingSec * 1000)) {
                 relearned = true;
             }
+            boolean front = cursor <= now + 500;
+            if (r.done && job.seenRunningAt > 0 && now - job.seenRunningAt <= 400) {
+                // 방금(0.1초 전)까지 돌던 맨 앞 제작이 "완료"로 바뀌었다 → 그 사이가 실제 완료 시각(창 숫자 반올림과 무관)
+                long exact = (job.seenRunningAt + now) / 2;
+                job.seenRunningAt = 0;
+                if (!job.synced || Math.abs(job.endsAt - exact) > 50) {
+                    sync(jobs, job, exact);
+                    changed = true;
+                }
+                cursor = Math.max(cursor, job.endsAt);
+                continue;
+            }
+            job.seenRunningAt = !r.done && front ? now : 0;
             long ends = r.done ? Math.min(job.endsAt == 0 ? now : job.endsAt, now)
                     : (r.own ? Math.max(cursor, now) : now) + r.remainingSec * 1000;
-            if (!job.synced || Math.abs(job.endsAt - ends) > 1500) {
+            if (!job.synced && job.derived && !r.done && Math.abs(job.endsAt - ends) <= 1000) {
+                // 시작 메시지 시각 + 서버 규칙으로 계산한 시각이 창의 초 단위 숫자보다 정확하다(창 숫자는 1초 단위로 끊김) → 그대로 두고 확인만
+                job.synced = true;
+                changed = true;
+            } else if (!job.synced || Math.abs(job.endsAt - ends) > 1500) {
                 sync(jobs, job, ends);
                 changed = true;
             }

@@ -424,6 +424,47 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(2);
 
+            // 재료 HUD 높이: 편집 화면에서 높이를 줄이면 넘치는 줄은 옆 칸으로(가로로 길고 세로로 짧은 HUD)
+            int[] tall = new int[2];
+            ctx.runOnClient(c -> {
+                DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(1);
+                pin.recipe = "강화 제작 시설/하급 라이프스톤";
+                pin.crafts = 3;
+                MaterialCounter.tick(c);
+                var views = MaterialCounter.views();
+                var cols = kr.ddingmate.hud.CounterHud.layout(views, 1000, true);
+                check(cols.size() == 1, "높이 제한이 없는데 칸이 나뉨: " + cols.size());
+                var narrow = kr.ddingmate.hud.CounterHud.layout(views, 70, true);
+                int rows = 0;
+                for (var col : narrow) for (var sg : col) rows += sg.to() - sg.from();
+                int all = 0;
+                for (var v : views) all += v.lines().size() + v.lines().stream().mapToInt(l -> l.subs().size()).sum();
+                check(narrow.size() > 1 && rows == all, "낮은 높이에서 줄이 옆 칸으로 안 넘어가거나 줄이 빠짐: " + narrow.size() + "칸 " + rows + "/" + all);
+                check(narrow.stream().skip(1).anyMatch(col -> col.get(0).continued()), "이어지는 칸에 (이어서) 표시가 없음");
+                for (var col : narrow) {
+                    int h = 3;
+                    for (var sg : col) h += sg.height();
+                    check(h <= 70 || col.size() == 1, "칸 높이가 정한 높이를 넘음: " + h);
+                }
+                var r = HudLayout.bounds().get(HudLayout.COUNTER);
+                tall[0] = r == null ? 0 : r.w();
+                tall[1] = r == null ? 0 : r.h();
+                HudLayout.setHeight(HudLayout.COUNTER, 70);
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-2f-counter-short-wide");
+            ctx.runOnClient(c -> {
+                var r = HudLayout.bounds().get(HudLayout.COUNTER);
+                float sc = HudLayout.scale(HudLayout.COUNTER);
+                int screenW = c.getWindow().getScaledWidth();
+                // 정한 높이 안에 들어가거나, 화면 너비가 모자라 그만큼만 키웠으면(화면 밖으로 안 나가게) 맞다
+                check(r != null && (r.h() <= Math.round(70 * sc) + 2 || r.w() >= screenW * 0.8) && r.x() + r.w() <= screenW + 1,
+                        "높이를 줄였는데 HUD 가 낮아지지 않음: " + tall[1] + " → " + (r == null ? null : r.h()) + " (너비 " + tall[0] + " → " + (r == null ? null : r.w()) + ")");
+                HudLayout.setHeight(HudLayout.COUNTER, 0);
+                DdingMate.config().counter.pins.get(1).recipe = "";
+                MaterialCounter.tick(c);
+            });
+
             // 형광 모루(위키 형광 광산 '조합법'): 오르딘 미니 망치 ×2 → 재료 6줄, 하위 재료 보기면 오르딘 큐브 밑에 오르딘
             ctx.runOnClient(c -> {
                 DdingMateConfig.Counter cc = DdingMate.config().counter;

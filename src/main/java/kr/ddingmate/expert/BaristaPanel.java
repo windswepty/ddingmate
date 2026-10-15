@@ -128,7 +128,7 @@ public final class BaristaPanel {
                     ink, o.cupsLeft() == 0 ? p.good() : fresh ? p.accent() : p.soft(), true, here, o.grade, gradeColor(o.grade), false));
             for (Barista.OrderLine l : o.lines) {
                 int mine = have.getOrDefault(l.coffee, 0);
-                String right = l.left() == 0 ? "다 팜" : "가진 " + mine + " · " + l.sold + "/" + l.want;
+                String right = l.left() == 0 ? "다 팜" : "보유 " + mine + " · " + l.sold + "/" + l.want;
                 int color = l.left() == 0 ? p.good() : !fresh ? p.soft() : mine >= l.left() ? p.good() : p.bad();
                 out.add(new Item(icon(l.coffee), l.coffee, right, ink, color, false, here, null, 0, false));
             }

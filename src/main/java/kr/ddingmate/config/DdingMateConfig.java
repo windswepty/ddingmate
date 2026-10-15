@@ -202,6 +202,8 @@ public final class DdingMateConfig {
     public Map<String, Integer> hudSizes = new LinkedHashMap<>();
     /** HUD 이름 → 가로로 늘린 너비(HUD 좌표 px). 내용보다 좁으면 내용 너비 */
     public Map<String, Integer> hudWidths = new LinkedHashMap<>();
+    /** 편집 화면에서 아래 가장자리로 정한 HUD 높이(HUD 좌표 px). 넘치는 줄은 옆 칸으로 */
+    public Map<String, Integer> hudHeights = new LinkedHashMap<>();
     public HudStyle hudStyle = HudStyle.DARK;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
@@ -280,6 +282,8 @@ public final class DdingMateConfig {
         if (hudSizes == null) hudSizes = new LinkedHashMap<>();
         if (hudWidths == null) hudWidths = new LinkedHashMap<>();
         hudWidths.values().removeIf(v -> v == null || v <= 0);
+        if (hudHeights == null) hudHeights = new LinkedHashMap<>();
+        hudHeights.values().removeIf(v -> v == null || v <= 0);
         hudSizes.values().removeIf(java.util.Objects::isNull);
         hudSizes.replaceAll((k, v) -> Math.max(50, Math.min(150, v)));
         hudPos.values().removeIf(java.util.Objects::isNull);
