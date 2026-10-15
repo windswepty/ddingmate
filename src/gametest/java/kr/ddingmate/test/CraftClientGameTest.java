@@ -1378,6 +1378,31 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.craft.CraftTimers.reductionPercent("채광물 가공 시설") == 30, "자동으로 읽은 레벨이 제작 시간에 안 들어감");
                 check(!kr.ddingmate.craft.ExpertSkills.read(item("[세레니티] 코비 타임 (+1)", 1, ". 제작 시간이 10% 감소합니다.")), "다른 스킬을 제작 시간 스킬로 읽음");
                 DdingMate.config().craft.mining = 0;
+                // 21-25) 스킬 창에서 읽은 스킬은 창을 닫을 때 채팅 한 번으로(제작 시간·판매가를 종류별로 묶어서)
+                kr.ddingmate.skill.SkillReport.flush();
+                DdingMate.config().expert.priceSkills.clear();
+                SimpleInventory skw = new SimpleInventory(54);
+                skw.setStack(10, item("[세레니티] 초고속 용광로 (+2)", 1, "전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의",
+                        ". 제작 시간이 30% 감소합니다.", "──────────────────", ". [강화 시 스킬 정보]", ". 제작 시간이 40% 감소합니다."));
+                skw.setStack(11, item("[세레니티] 주괴 좀 사주괴 (+1)", 1, "전문가 스킬 정보", ". 주괴의 판매가가 5% 증가합니다.", "──────────────────", ". 주괴의 판매가가 7% 증가합니다."));
+                skw.setStack(12, item("[세레니티] 반짝반짝 눈이 부셔 (+4)", 1, "전문가 스킬 정보", ". 정동석의 판매가가 20% 증가합니다."));
+                c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(95, c.player.getInventory(), skw),
+                        c.player.getInventory(), Text.literal("전문가")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                String pv = kr.ddingmate.skill.SkillReport.preview();
+                check(kr.ddingmate.skill.SkillReport.pending() >= 3 && pv.contains("제작 시간 · ") && pv.contains("판매가 · ")
+                        && pv.contains("초고속 용광로 30%") && pv.contains("주괴 좀 사주괴(주괴 +5%)") && pv.contains("정동석 +20%"),
+                        "스킬 창에서 읽은 스킬을 한 메시지로 모으지 않음: " + pv);
+                check(pv.split("\n").length == 3, "종류별로 한 줄씩(머리 + 2줄)이 아님: " + pv);
+                c.setScreen(null);
+            });
+            ctx.waitTicks(2);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.skill.SkillReport.pending() == 0, "창을 닫았는데 스킬 확인 채팅을 안 보냄");
+                DdingMate.config().craft.mining = 0;
+                DdingMate.config().expert.priceSkills.clear();
                 // 21-3) 쉬프트 우클릭 스킬(실제 2026-10-09 창 칸, 2026-10 실제 채팅 순서)
                 kr.ddingmate.skill.SkillTimers.debugClear();
                 check(kr.ddingmate.skill.SkillTimers.read(item("[야생] 곡괭이 나가신다! (+5)", 1, "전문가 스킬 정보",
@@ -1388,7 +1413,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.skill.SkillTimers.Skill pick = kr.ddingmate.skill.SkillTimers.debugSkill("곡괭이 나가신다!");
                 check(pick != null && pick.level == 5 && pick.durationSec == 15 && pick.cooldownSec == 180,
                         "지금 레벨 값(15초·180초)이 아님(미리보기 17초·240초를 읽었나?): " + (pick == null ? null : pick.durationSec + "/" + pick.cooldownSec));
-                check(!kr.ddingmate.skill.SkillTimers.read(skill), "제작 시간 스킬을 쉬프트 우클릭 스킬로 읽음");
+                check(!kr.ddingmate.skill.SkillTimers.read(item("[세레니티] 초고속 용광로 (+2)", 1, "전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의",
+                        ". 제작 시간이 30% 감소합니다.")),"제작 시간 스킬을 쉬프트 우클릭 스킬로 읽음");
                 String g = G; // 실제 메시지처럼 앞에 서버 그림 글자
                 long t0 = now();
                 kr.ddingmate.skill.SkillTimers.debugChat(g + "곡괭이 나가신다! 스킬을 활성화했습니다.", t0);

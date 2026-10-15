@@ -209,6 +209,8 @@ public final class DdingMate implements ClientModInitializer {
         if (tickCounter % 2 == 0 && client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?>) {
             CraftTimers.scanScreen(client);
         }
+        // 스킬 창에서 읽은 전문가 스킬은 창을 닫을 때 채팅 한 번으로 모아서 알린다
+        kr.ddingmate.skill.SkillReport.tick(client);
         // 제작 완료 알림은 매 틱 확인(예전: 1초에 한 번이라 평균 0.5초 늦게 울림)
         if (client.world != null && client.player != null) CraftTimers.tick();
         if (tickCounter % 10 == 0) {

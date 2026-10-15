@@ -83,15 +83,25 @@ public final class PriceSkills {
                 // 안 배운 스킬: "(+0)" 이나 잠김
                 if (name.matches(".*\\(\\s*\\+?\\s*0\\s*\\).*") || name.contains("잠김")) pct = 0;
                 Double old = saved.get(k.name());
-                if (old == null || Math.abs(old - pct) > 1e-6) {
+                boolean differs = old == null || Math.abs(old - pct) > 1e-6;
+                if (differs) {
                     saved.put(k.name(), pct);
                     changed = true;
                     DdingMate.LOG.info("판매가 스킬 읽음: {} {}%", k.name(), pct);
+                }
+                // 이번 접속에서 처음 읽었거나 값이 바뀌었으면 스킬 확인 채팅(한 번에 모아서)에 넣는다
+                if (CONFIRMED.add(k.name()) || differs) {
+                    kr.ddingmate.skill.SkillReport.add("판매가", k.name(),
+                            k.name() + (pct > 0 ? "(" + k.goods() + " +" + (pct == Math.floor(pct) ? String.valueOf((int) pct) : String.valueOf(pct)) + "%)" : " 안 배움"),
+                            differs && old != null);
                 }
             }
         }
         if (changed) DdingMate.config().save();
     }
+
+    /** 이번 접속에서 이미 채팅으로 알려 준 판매가 스킬 */
+    private static final java.util.Set<String> CONFIRMED = new java.util.HashSet<>();
 
     /** 이 스킬의 지금 비율(%). 스킬 창을 아직 안 열었으면 -1 */
     public static double pct(String skill) {

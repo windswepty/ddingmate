@@ -282,9 +282,8 @@ public final class SkillTimers {
         // 제작 시간 스킬처럼, 이번 접속에서 처음 읽었거나 값이 바뀌었으면 채팅으로 한 번 알려 준다
         if (CONFIRMED.add(s.name) || changed) {
             long dur = durationMs(s) / 1000;
-            String what = (dur > 0 ? "지속 " + clock(dur) + " · " : "") + "재사용 " + clock(cooldown);
-            kr.ddingmate.notify.Notifier.chat("전문가 스킬 '" + s.name + "'" + levelText(level) + " " + what
-                    + (changed ? " 을 스킬 타이머에 반영했어요." : " 을 확인했어요(이미 반영됨)."));
+            String what = (dur > 0 ? clock(dur) + "/" : "") + clock(cooldown);
+            SkillReport.add("쉬프트 스킬", s.name, s.name + levelText(level) + " " + what, changed);
         }
         return true;
     }
