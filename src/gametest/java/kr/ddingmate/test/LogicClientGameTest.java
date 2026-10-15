@@ -202,6 +202,48 @@ public class LogicClientGameTest implements FabricClientGameTest {
         check(RecipeBook.keysFor("구리 블록").contains("v:minecraft:copper_block"), "구리 블록 바닐라 연결 없음");
         check(RecipeBook.keysFor("코룸 주괴").equals(Set.of("n:코룸주괴")), "서버 아이템 키 오류");
         check(RecipeBook.recipeFor("조약돌 뭉치") != null, "조약돌 뭉치 레시피를 찾지 못함");
+        // 2026-10-15 재료 이름 전수 점검: 위키 표 오타를 실제 아이템 이름으로, 줄여 쓴 바닐라 이름은 바닐라로 센다
+        for (RecipeBook.Recipe r : RecipeBook.all()) {
+            for (RecipeBook.Material m : r.materials) {
+                for (String typo : List.of("깃철", "광물 생성기", "플래티늄", "스켈레톤 심장")) {
+                    check(!m.name.contains(typo), "재료 이름 오타가 남음: " + r.id + " " + m.name);
+                }
+                check(!m.name.equals("곰 발바닥"), "곰의 발바닥이 '곰 발바닥'으로 남음: " + r.id);
+                // 모드 그림 표가 바닐라 아이템(모델 번호 없음)인 재료는 바닐라 아이템으로도 세야 한다
+                ItemStack icon = kr.ddingmate.counter.IconCache.fromTable(m.name);
+                if (icon != null && !icon.isOf(Items.PAPER) && icon.get(DataComponentTypes.CUSTOM_MODEL_DATA) == null) {
+                    check(RecipeBook.keysFor(m.name).stream().anyMatch(k -> k.startsWith("v:")),
+                            "바닐라 그림인데 바닐라 아이템으로 세지 않음: " + m.name + " (" + r.id + ")");
+                }
+            }
+        }
+        for (String[] v : new String[][]{{"철", "minecraft:iron_ingot"}, {"석영", "minecraft:quartz"}, {"경험치병", "minecraft:experience_bottle"},
+                {"슬라임 볼", "minecraft:slime_ball"}, {"토끼 발", "minecraft:rabbit_foot"}, {"주크 박스", "minecraft:jukebox"}}) {
+            check(RecipeBook.keysFor(v[0]).contains(ItemKeys.vanillaKey(v[1])), v[0] + " 이 " + v[1] + " 로 세지지 않음");
+        }
+        check(RecipeBook.keysFor("플래티넘 주괴").contains(ItemKeys.nameKey("플래티늄 주괴")), "플래티늄 주괴(다른 이름)를 세지 않음");
+        check(RecipeBook.keysFor("고독한 영혼 가죽").contains(ItemKeys.nameKey("고독한 영혼의 가죽")), "고독한 영혼의 가죽(다른 이름)을 세지 않음");
+        RecipeBook.Recipe glove = RecipeBook.recipeFor("활기찬 가죽 지갑");
+        check(glove != null && glove.id.equals("가죽 공방/활기찬 가죽 장갑"), "옛 이름 활기찬 가죽 지갑으로 장갑 레시피를 못 찾음: " + (glove == null ? null : glove.id));
+        check("가죽 공방".equals(RecipeBook.facilityOf("활기찬 가죽 지갑")), "옛 이름으로 시설을 못 찾음");
+        check(RecipeBook.get("영혼 가공 시설/영혼 불꽃").materials.stream().anyMatch(m -> m.name.equals("스켈레톤의 심장")), "영혼 불꽃 재료가 스켈레톤의 심장이 아님");
+        // 옛 레시피 id 로 핀해 둔 설정은 새 id 로 옮긴다
+        DdingMateConfig cfg = DdingMate.config();
+        String keep = cfg.counter.pins.get(2).recipe;
+        cfg.counter.pins.get(2).recipe = "가죽 공방/활기찬 가죽 지갑";
+        cfg.sanitize();
+        check(cfg.counter.pins.get(2).recipe.equals("가죽 공방/활기찬 가죽 장갑"), "옛 핀 id 를 옮기지 않음: " + cfg.counter.pins.get(2).recipe);
+        // 위키에서 섞여 들어온 보이지 않는 글자(BOM 등)는 레시피 자료에 없어야 하고, 예전 id 로 핀한 것은 옮긴다
+        for (RecipeBook.Recipe r : RecipeBook.all()) {
+            StringBuilder all = new StringBuilder(r.id).append(r.name);
+            for (RecipeBook.Material m : r.materials) all.append(m.name);
+            check(all.toString().chars().noneMatch(ch -> ch == 0xFEFF || ch == 0x200B || ch == 0x00A0), "보이지 않는 글자가 든 레시피: " + r.id);
+        }
+        cfg.counter.pins.get(2).recipe = "도구 제작 시설/﻿형광 모루 모듈";
+        cfg.sanitize();
+        check(cfg.counter.pins.get(2).recipe.equals("도구 제작 시설/형광 모루 모듈") && RecipeBook.get(cfg.counter.pins.get(2).recipe) != null,
+                "BOM 섞인 옛 핀 id 를 옮기지 않음");
+        cfg.counter.pins.get(2).recipe = keep;
     }
 
     // ---------------------------------------------------------------- 설정 저장

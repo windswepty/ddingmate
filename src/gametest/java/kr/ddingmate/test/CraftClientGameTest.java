@@ -1002,7 +1002,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         || kr.ddingmate.counter.RecipeBook.recipeFor(n) == null), "대표 그림이 없는 레시피가 있음");
                 ItemStack lantern = kr.ddingmate.counter.IconCache.forMaterial("영혼 램프");
                 check(lantern != null && lantern.isOf(Items.SOUL_LANTERN), "영혼 램프가 영혼 랜턴 그림이 아님: " + lantern);
-                look("활기찬 가죽 지갑", Items.PAPER, 2059103f);
+                look("활기찬 가죽 장갑", Items.PAPER, 2059103f);
                 // 21) 자동 수납 알림 "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" → 저장소 재고 2
                 kr.ddingmate.counter.BagTracker.onOverlay("[아이템 저장소] 조약돌 1개 수납! (2/5,000)");
                 check(kr.ddingmate.counter.BagTracker.storageTotals().getOrDefault("v:minecraft:cobblestone", -1) == 2,

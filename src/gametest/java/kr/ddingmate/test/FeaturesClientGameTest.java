@@ -483,7 +483,28 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         .map(e -> (net.minecraft.client.gui.widget.PressableWidget) e).findFirst().orElseThrow().onPress();
                 DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(1);
                 check(pin.recipe.equals("형광 모루/오르딘 미니 망치"), "오르딘 큐브가 있는데 추천 맨 위가 오르딘 미니 망치가 아님: " + pin.recipe);
+                // 실제로 세는지: 위키가 '철'로 줄여 쓴 철 주괴(바닐라), 이름이 두 가지인 플래티넘 주괴(서버 아이템)
+                var pinv = c.player.getInventory();
+                pinv.setStack(0, new ItemStack(Items.IRON_INGOT, 8));
+                ItemStack platinum = new ItemStack(Items.PAPER, 3);
+                platinum.set(DataComponentTypes.CUSTOM_NAME, Text.literal("플래티늄 주괴"));
+                pinv.setStack(1, platinum);
+                pin.recipe = "도구 제작 시설/육식 동물 덫 x2";
+                pin.crafts = 1;
+                MaterialCounter.tick(c);
+                MaterialCounter.Line iron = MaterialCounter.views().get(1).lines().stream().filter(l -> l.name().equals("철")).findFirst().orElseThrow();
+                check(iron.inventory() == 8 && iron.done(), "철 주괴 8개를 '철'로 세지 않음: " + iron);
+                pin.recipe = "채광물 가공 시설/(Rare) 제피르 라이터";
+                MaterialCounter.tick(c);
+                MaterialCounter.Line pl = MaterialCounter.views().get(1).lines().stream().filter(l -> l.name().equals("플래티넘 주괴")).findFirst().orElseThrow();
+                check(pl.inventory() == 3, "플래티늄 주괴라는 이름의 아이템을 플래티넘 주괴로 세지 않음: " + pl);
+                platinum.set(DataComponentTypes.CUSTOM_NAME, Text.literal("플래티넘 주괴"));
+                MaterialCounter.tick(c);
+                pl = MaterialCounter.views().get(1).lines().stream().filter(l -> l.name().equals("플래티넘 주괴")).findFirst().orElseThrow();
+                check(pl.inventory() == 3, "플래티넘 주괴를 세지 않음: " + pl);
                 pin.recipe = "";
+                MaterialCounter.tick(c);
+                pinv.setStack(1, ItemStack.EMPTY);
                 c.player.getInventory().setStack(0, ItemStack.EMPTY);
                 c.setScreen(null);
             });

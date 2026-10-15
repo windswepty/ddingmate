@@ -9,6 +9,7 @@
   "거미 눈": "minecraft:spider_eye",
   "거미줄": "minecraft:cobweb",
   "거북 인갑": "minecraft:turtle_scute",
+  "경험치병": "minecraft:experience_bottle",
   "구리 블록": "minecraft:copper_block",
   "구리 주괴": "minecraft:copper_ingot",
   "금 검": "minecraft:golden_sword",
@@ -74,6 +75,7 @@
   "뾰족한 점적석": "minecraft:pointed_dripstone",
   "사과": "minecraft:apple",
   "사탕수수": "minecraft:sugar_cane",
+  "석영": "minecraft:quartz",
   "석재 절단기": "minecraft:stonecutter",
   "석탄": "minecraft:coal",
   "석탄 블록": "minecraft:coal_block",
@@ -87,6 +89,7 @@
   "숯": "minecraft:charcoal",
   "스컬크 촉매": "minecraft:sculk_catalyst",
   "스테이크": "minecraft:cooked_beef",
+  "슬라임 볼": "minecraft:slime_ball",
   "시계": "minecraft:clock",
   "신호기": "minecraft:beacon",
   "실": "minecraft:string",
@@ -130,6 +133,7 @@
   "제작대": "minecraft:crafting_table",
   "조약돌": "minecraft:cobblestone",
   "종이": "minecraft:paper",
+  "주크 박스": "minecraft:jukebox",
   "죽은 거품 산호 블록": "minecraft:dead_bubble_coral_block",
   "죽은 관 산호 블록": "minecraft:dead_tube_coral_block",
   "죽은 뇌 산호 블록": "minecraft:dead_brain_coral_block",
@@ -141,6 +145,7 @@
   "참나무 보트": "minecraft:oak_boat",
   "참나무 잎": "minecraft:oak_leaves",
   "참나무 판자": "minecraft:oak_planks",
+  "철": "minecraft:iron_ingot",
   "철 곡괭이": "minecraft:iron_pickaxe",
   "철 문": "minecraft:iron_door",
   "철 블록": "minecraft:iron_block",
@@ -154,6 +159,7 @@
   "쿠키": "minecraft:cookie",
   "키 작은 잔디": "minecraft:short_grass",
   "테라코타": "minecraft:terracotta",
+  "토끼 발": "minecraft:rabbit_foot",
   "토끼발": "minecraft:rabbit_foot",
   "통": "minecraft:barrel",
   "튀긴 후렴과": "minecraft:popped_chorus_fruit",
@@ -169,6 +175,32 @@
   "흑암": "minecraft:blackstone",
   "흑요석": "minecraft:obsidian",
   "흙": "minecraft:dirt"
+ },
+ "aliases": {
+  "플래티넘 주괴": [
+   "플래티늄 주괴"
+  ],
+  "고독한 영혼 가죽": [
+   "고독한 영혼의 가죽"
+  ],
+  "신비한 영혼 가죽": [
+   "신비한 영혼의 가죽"
+  ],
+  "활기찬 영혼 가죽": [
+   "활기찬 영혼의 가죽"
+  ],
+  "특이한 영혼 가죽": [
+   "특이한 영혼의 가죽"
+  ],
+  "화끈한 영혼 가죽": [
+   "화끈한 영혼의 가죽"
+  ],
+  "곰 발바닥 주머니": [
+   "곰의 발바닥 주머니"
+  ],
+  "활기찬 가죽 장갑": [
+   "활기찬 가죽 지갑"
+  ]
  },
  "recipes": [
   {
@@ -835,7 +867,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 1
     }
    ],
@@ -853,7 +885,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 2
     },
     {
@@ -875,7 +907,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 4
     },
     {
@@ -905,7 +937,7 @@
      "count": 5
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 32
     },
     {
@@ -1035,7 +1067,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 1
     }
    ]
@@ -1052,7 +1084,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 2
     },
     {
@@ -1073,7 +1105,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 4
     },
     {
@@ -1102,7 +1134,7 @@
      "count": 5
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 32
     },
     {
@@ -1231,7 +1263,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 1
     }
    ],
@@ -1249,7 +1281,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 2
     },
     {
@@ -1271,7 +1303,7 @@
      "count": 1
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 4
     },
     {
@@ -1301,7 +1333,7 @@
      "count": 5
     },
     {
-     "name": "플래티늄 주괴",
+     "name": "플래티넘 주괴",
      "count": 32
     },
     {
@@ -1601,7 +1633,7 @@
      "count": 1
     },
     {
-     "name": "스켈레톤 심장",
+     "name": "스켈레톤의 심장",
      "count": 1
     },
     {
@@ -1809,7 +1841,7 @@
      "count": 8
     },
     {
-     "name": "칠면조의 깃철",
+     "name": "칠면조의 깃털",
      "count": 8
     },
     {
@@ -2859,7 +2891,7 @@
    "output": 1,
    "materials": [
     {
-     "name": "하급 광물 생성기",
+     "name": "하급 광채 생성기",
      "count": 1
     },
     {
@@ -2893,7 +2925,7 @@
    "output": 1,
    "materials": [
     {
-     "name": "중급 광물 생성기",
+     "name": "중급 광채 생성기",
      "count": 1
     },
     {
@@ -3028,10 +3060,10 @@
    "time": 900
   },
   {
-   "id": "도구 제작 시설/﻿형광 광산 모듈",
+   "id": "도구 제작 시설/형광 광산 모듈",
    "facility": "도구 제작 시설",
    "category": "모듈",
-   "name": "﻿형광 광산 모듈",
+   "name": "형광 광산 모듈",
    "output": 1,
    "materials": [
     {
@@ -3053,10 +3085,10 @@
    ]
   },
   {
-   "id": "도구 제작 시설/﻿형광 모루 모듈",
+   "id": "도구 제작 시설/형광 모루 모듈",
    "facility": "도구 제작 시설",
    "category": "모듈",
-   "name": "﻿형광 모루 모듈",
+   "name": "형광 모루 모듈",
    "output": 1,
    "materials": [
     {
@@ -6446,7 +6478,7 @@
    "output": 1,
    "materials": [
     {
-     "name": "곰 발바닥",
+     "name": "곰의 발바닥",
      "count": 64
     }
    ]
@@ -8148,10 +8180,10 @@
    ]
   },
   {
-   "id": "가죽 공방/활기찬 가죽 지갑",
+   "id": "가죽 공방/활기찬 가죽 장갑",
    "facility": "가죽 공방",
    "category": "가죽 명품",
-   "name": "활기찬 가죽 지갑",
+   "name": "활기찬 가죽 장갑",
    "output": 1,
    "materials": [
     {

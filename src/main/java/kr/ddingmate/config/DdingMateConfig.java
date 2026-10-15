@@ -298,6 +298,10 @@ public final class DdingMateConfig {
         while (counter.pins.size() > PIN_COUNT) counter.pins.remove(counter.pins.size() - 1);
         for (Pin p : counter.pins) {
             if (p.recipe == null) p.recipe = "";
+            // 위키 2026-10-15 이름 수정: 활기찬 가죽 지갑 → 장갑
+            if (p.recipe.equals("가죽 공방/활기찬 가죽 지갑")) p.recipe = "가죽 공방/활기찬 가죽 장갑";
+            // 위키에서 옮길 때 섞여 들어온 보이지 않는 글자(BOM)를 레시피 이름에서 지웠다(형광 광산·모루 모듈)
+            p.recipe = p.recipe.replace("\uFEFF", "");
             p.crafts = Math.max(1, Math.min(9999, p.crafts));
         }
         if (durability == null) durability = new Durability();
