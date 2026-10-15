@@ -223,6 +223,7 @@ public final class DdingMate implements ClientModInitializer {
             kr.ddingmate.expert.Barista.scan(client); // 손님 주문 창의 커피
             kr.ddingmate.expert.Cooking.scan(client); // 밀키 상점 창의 요리 가격
             kr.ddingmate.expert.ShopPrices.scan(client); // 로니·샤키·포스·픽스·카이 상점 창의 판매품 가격
+            kr.ddingmate.expert.PriceSkills.scan(client); // /전문가 스킬 창의 판매가 스킬 증가율
             kr.ddingmate.craft.FacilityPanel.scan(client); // 제작 시설 창: 가진 재료로 만들 수 있는 레시피
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)

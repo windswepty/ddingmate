@@ -169,6 +169,8 @@ public final class DdingMateConfig {
         public boolean cookingPanel = true;
         /** 판매품 상점(로니·샤키·포스·픽스·카이) 창 옆에 보유 판매품과 팔면 받는 금액 판 */
         public boolean shopPanel = true;
+        /** 판매가 전문가 스킬(이름 → 지금 증가율 %). /전문가 스킬 창에서 자동으로 읽음 */
+        public Map<String, Double> priceSkills = new LinkedHashMap<>();
     }
 
     public static final class Playtime {
@@ -285,6 +287,7 @@ public final class DdingMateConfig {
         if (hudWidths == null) hudWidths = new LinkedHashMap<>();
         hudWidths.values().removeIf(v -> v == null || v <= 0);
         if (hudHeights == null) hudHeights = new LinkedHashMap<>();
+        if (expert != null && expert.priceSkills == null) expert.priceSkills = new LinkedHashMap<>();
         hudHeights.values().removeIf(v -> v == null || v <= 0);
         hudSizes.values().removeIf(java.util.Objects::isNull);
         hudSizes.replaceAll((k, v) -> Math.max(50, Math.min(150, v)));

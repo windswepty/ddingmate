@@ -826,6 +826,52 @@ public class DdingMateScreen extends Screen {
         buildBarista();
         buildCooking();
         buildWares();
+        buildPriceSkills();
+    }
+
+    /** 판매가를 올려 주는 전문가 스킬: 지금 비율(스킬 창에서 읽음)과 바뀐 판매가 예시 */
+    private void buildPriceSkills() {
+        list.header("스킬 판매가 · 전문가 스킬로 바뀌는 판매가", "스킬 판매가");
+        list.note("/전문가 → 각 전문가 스킬 보기 창을 한 번 열면 배운 비율을 읽어요. 상점 칸의 '나의 판매가'를 보면 그 값을 먼저 써요.");
+        for (kr.ddingmate.expert.PriceSkills.Skill k : kr.ddingmate.expert.PriceSkills.SKILLS) {
+            double pct = k.name().equals("커피값이 밥값") ? cfg.expert.coffeeBonus : kr.ddingmate.expert.PriceSkills.pct(k.name());
+            if (k.name().equals("커피값이 밥값") && pct == 0 && kr.ddingmate.expert.PriceSkills.pct(k.name()) < 0) pct = -1;
+            String levels = k.levels().length == 0 ? "" : " · 레벨별 " + String.join("/", java.util.Arrays.stream(k.levels())
+                    .mapToObj(v -> v == Math.floor(v) ? String.valueOf((int) v) : String.valueOf(v)).toList()) + "%";
+            String value = pct < 0 ? "스킬 창 열면 표시" : pct == 0 ? "안 배움" : "+" + fmtPct(pct) + "%";
+            list.single(new InfoRow(expertIcon(k.expert()), "[" + k.expert() + "] " + k.name() + " · " + k.goods(), value,
+                    pct > 0 ? Theme.GREEN_ON_LIGHT : Theme.TEXT_SOFT, null).sub(k.note() + levels));
+            if (pct <= 0) continue;
+            // 바뀐 판매가 예시
+            List<String[]> ex = new ArrayList<>();
+            if (k.group() != null && !k.group().equals("귀중품")) {
+                int shown = 0;
+                for (kr.ddingmate.expert.ShopPrices.Ware w : kr.ddingmate.expert.ShopPrices.WARES) {
+                    if (!k.group().equals(kr.ddingmate.expert.ShopPrices.group(w)) || shown >= 3) continue;
+                    ex.add(new String[]{w.name(), kr.ddingmate.expert.ShopPrices.money(w.min(), w.max()),
+                            kr.ddingmate.expert.ShopPrices.money(Math.round(w.min() * (1 + pct / 100)), Math.round(w.max() * (1 + pct / 100)))});
+                    shown++;
+                }
+            } else if (kr.ddingmate.expert.PriceSkills.EXAMPLES.containsKey(k.goods())) {
+                for (Object[] o : kr.ddingmate.expert.PriceSkills.EXAMPLES.get(k.goods())) {
+                    int base = (Integer) o[1];
+                    ex.add(new String[]{(String) o[0], String.format("%,dG", base), String.format("%,dG", Math.round(base * (1 + pct / 100)))});
+                }
+            } else if (k.goods().equals("커피")) {
+                ex.add(new String[]{"아메리카노", "45,999G", String.format("%,dG", Math.round(45_999 * (1 + pct / 100)))});
+                ex.add(new String[]{"오로라 아인슈페너", "160,998G", String.format("%,dG", Math.round(160_998 * (1 + pct / 100)))});
+            }
+            for (String[] e : ex) {
+                ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(e[0]);
+                list.single(new InfoRow(icon == null ? new ItemStack(Items.PAPER) : icon, "　" + e[0], e[2], Theme.GOLD_ON_LIGHT, null)
+                        .sub("　기본 " + e[1] + " → +" + fmtPct(pct) + "%"));
+            }
+        }
+        list.note("위키 채광·재배·해양·사냥 전문가 문서 전수 조사(2026-10-15). 귀중품은 아이템마다 적힌 가격에 이미 반영돼 있어요. 형광 제련품·연금품·꽃·향장품·가죽 명품·원혼을 올려 주는 스킬은 위키에 없어요.");
+    }
+
+    private static String fmtPct(double v) {
+        return v == Math.floor(v) ? String.valueOf((int) v) : String.valueOf(v);
     }
 
     /** 채광·해양·사냥·재배(꽃) 전문가: 보유한 판매품과 팔면 받는 금액(상점 창에서 본 가격 → 위키 매입가표) */
@@ -866,8 +912,9 @@ public class DdingMateScreen extends Screen {
         String base = o.ware().fixed() || o.fromShop() ? String.format("%,dG", o.base())
                 : kr.ddingmate.expert.ShopPrices.money(o.ware().min(), o.ware().max()) + "(품질)";
         if (o.bonus() > 0) {
+            String from = kr.ddingmate.expert.ShopPrices.ratioSource(o.ware());
             return "1개 기본 " + base + " → 나의 판매가 " + String.format("%,dG", o.each()) + " (+" + o.bonus() + "%"
-                    + (o.fromShop() ? ")" : ", 같은 종류에서 본 스킬 배율)");
+                    + (o.fromShop() ? ")" : from.equals("스킬 창") ? ", 스킬 창에서 읽은 비율)" : ", 같은 종류에서 본 스킬 배율)");
         }
         return "1개 " + base + (o.fromShop() ? " · 상점에서 본 값" : " · 위키 표(상점 창을 열면 스킬 반영가로 바뀌어요)");
     }

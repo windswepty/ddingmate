@@ -141,6 +141,7 @@ public final class ShopPrices {
             // 가방·상자에 판매품이 들어 있는 것만으로는 상점이 아니다: 가격이 적힌 칸만 센다
             if (p == null) continue;
             hits.merge(w.shop(), 1, Integer::sum);
+            if (group(w).equals("귀중품")) continue; // 귀중품은 아이템마다 값이 달라(가치에 따라) 하나로 기억하지 않는다
             Map<String, int[]> mine = seen(true);
             int[] old = mine.get(w.name());
             if (old == null || old[0] != p[0] || old[1] != p[1]) {
@@ -178,15 +179,13 @@ public final class ShopPrices {
     static int[] prices(ItemStack s) {
         var lore = s.get(DataComponentTypes.LORE);
         if (lore == null) return null;
-        int base = -1, mine = -1, any = -1;
+        int base = -1, mine = -1;
         for (Text t : lore.lines()) {
             String l = ItemKeys.stripGlyphs(t.getString());
             Matcher m;
             if ((m = MINE.matcher(l)).find()) mine = num(m.group(1));
             else if ((m = BASE.matcher(l)).find()) base = num(m.group(1));
-            else if (any < 0 && (m = PRICE.matcher(l)).find() && PRICE_HINT.matcher(l).find()) any = num(m.group(1));
         }
-        if (base <= 0) base = any;
         if (base <= 0 && mine <= 0) return null;
         if (base <= 0) base = mine;
         if (mine <= 0) mine = base;
@@ -213,7 +212,7 @@ public final class ShopPrices {
     }
 
     /** 판매품 묶음(같은 묶음은 전문가 스킬 배율이 같다고 본다): 주괴·정동석·귀중품·제련품·영혼·원혼·가죽 명품·꽃·향장품·연금품·공예품 */
-    static String group(Ware w) {
+    public static String group(Ware w) {
         String n = w.name();
         if (n.endsWith("주괴")) return "주괴";
         if (n.endsWith("정동석")) return "정동석";
@@ -236,17 +235,45 @@ public final class ShopPrices {
     /** 같은 상점·같은 묶음에서 본 (나의 판매가 ÷ 판매가격) 평균. 본 게 없으면 1 */
     public static double groupRatio(Ware w) {
         Map<String, int[]> mine = seen(false);
-        if (mine == null) return 1;
         String g = group(w);
         double sum = 0;
         int n = 0;
-        for (Ware o : WARES) {
+        for (Ware o : mine == null ? List.<Ware>of() : WARES) {
             int[] p = mine.get(o.name());
             if (p == null || p[0] <= 0 || !o.shop().equals(w.shop()) || !group(o).equals(g)) continue;
             sum += (double) p[1] / p[0];
             n++;
         }
-        return n == 0 ? 1 : sum / n;
+        if (n > 0) return sum / n;
+        // 상점에서 같은 종류를 못 봤으면 /전문가 스킬 창에서 읽은 판매가 스킬 비율
+        PriceSkills.Skill k = PriceSkills.forGroup(g);
+        double pct = k == null ? -1 : PriceSkills.pct(k.name());
+        return pct > 0 ? 1 + pct / 100.0 : 1;
+    }
+
+    /** 예상 배율이 어디서 왔는지: "상점" / "스킬 창" / "" */
+    public static String ratioSource(Ware w) {
+        Map<String, int[]> mine = seen(false);
+        String g = group(w);
+        if (mine != null) {
+            for (Ware o : WARES) if (mine.containsKey(o.name()) && o.shop().equals(w.shop()) && group(o).equals(g)) return "상점";
+        }
+        PriceSkills.Skill k = PriceSkills.forGroup(g);
+        return k != null && PriceSkills.pct(k.name()) > 0 ? "스킬 창" : "";
+    }
+
+    private static final Set<String> DIAG = new HashSet<>();
+
+    /** 진단: 상점 판에 보유 판매품이 하나도 안 잡히면 인벤토리 아이템 키를 한 번 남긴다(로그에만) */
+    static void diagnose(MinecraftClient client, String shop) {
+        if (client.player == null || !DIAG.add(shop)) return;
+        List<String> keys = new ArrayList<>();
+        var inv = client.player.getInventory();
+        for (int i = 0; i < inv.size() && keys.size() < 20; i++) {
+            ItemStack s = inv.getStack(i);
+            if (!s.isEmpty()) keys.add(ItemKeys.keyOf(s) + "×" + s.getCount());
+        }
+        DdingMate.LOG.info("상점 판 보유 판매품 없음({}): 인벤토리 {}칸 {}", shop, keys.size(), keys);
     }
 
     // ---------------------------------------------------------------- 보유 판매품
@@ -341,7 +368,10 @@ public final class ShopPrices {
             Store s = GSON.fromJson(r, Store.class);
             if (s != null && s.accounts != null) {
                 s.accounts.values().removeIf(java.util.Objects::isNull);
-                for (Map<String, int[]> m : s.accounts.values()) m.values().removeIf(v -> v == null || v.length != 2 || v[0] <= 0 || v[1] <= 0);
+                for (Map<String, int[]> m : s.accounts.values()) {
+                    m.values().removeIf(v -> v == null || v.length != 2 || v[0] <= 0 || v[1] <= 0);
+                    m.keySet().removeIf(k -> k.startsWith("(")); // 예전 판(5bbce7f)이 귀중품 한 개 값을 상점 가격으로 저장했던 것
+                }
                 store = s;
             }
         } catch (java.io.IOException | RuntimeException e) {

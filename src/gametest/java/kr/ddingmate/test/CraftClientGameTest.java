@@ -626,6 +626,31 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(mine.size() == 1 && mine.get(0).count() == 10 && mine.get(0).high() == 35_000, "채광 판매품 값이 다름: " + mine);
                 var sea = kr.ddingmate.expert.ShopPrices.owned(c, "해양", null);
                 check(sea.size() == 1 && sea.get(0).low() == 175_000 && sea.get(0).high() == 350_000, "공예품 범위가 다름: " + sea);
+                // 전문가 스킬 창: 판매가 스킬의 지금 비율을 읽는다 → 상점에서 못 본 정동석에 쓴다
+                DdingMate.config().expert.priceSkills.clear();
+                SimpleInventory sk = new SimpleInventory(54);
+                sk.setStack(10, item("[세레니티] 반짝반짝 눈이 부셔 (+4)", 1, "정동석의 판매가가 20% 증가합니다.", "상점과 무역에서 계산되어 보입니다.", "────────", "다음 레벨: 30%"));
+                sk.setStack(11, item("[세레니티] 값어치 증명 (+0)", 1, "영혼의 판매가가 5% 증가합니다."));
+                c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(94, c.player.getInventory(), sk),
+                        c.player.getInventory(), Text.literal("전문가")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.expert.PriceSkills.pct("반짝반짝 눈이 부셔") == 20 && kr.ddingmate.expert.PriceSkills.pct("값어치 증명") == 0,
+                        "판매가 스킬 비율을 못 읽음: " + DdingMate.config().expert.priceSkills);
+                c.player.getInventory().setStack(5, item("세렌트 정동석", 1, "정동석"));
+                var geo = kr.ddingmate.expert.ShopPrices.owned(c, "채광", null).stream().filter(o -> o.ware().name().equals("세렌트 정동석")).findFirst().orElseThrow();
+                check(geo.each() == 9_720 && "스킬 창".equals(kr.ddingmate.expert.ShopPrices.ratioSource(geo.ware())),
+                        "스킬 창 비율(+20%)을 안 본 정동석에 쓰지 않음: " + geo);
+                c.player.getInventory().setStack(5, ItemStack.EMPTY);
+                // 보석함 창: 귀중품 칸의 "가격 : 16,227골드"는 그 아이템 값이지 상점 가격이 아니다
+                c.setScreen(facility(c, item("(Rare) 실바니움 만년필", 1, "귀중품 가치 : 4,414", "가격 : 16,227골드"),
+                        item("(Common) 키론 오르골", 1, "가격 : 10,971골드"), item("(Rare) 라온 만화경", 1, "가격 : 9,000골드")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.expert.ShopPrices.openShop() == null, "보석함 창을 상점으로 봄");
+                DdingMate.config().expert.priceSkills.clear();
                 // 가방처럼 가격 없는 칸뿐이면 상점이 아니다
                 c.setScreen(facility(c, item("코룸 주괴", 64, "재료"), item("리프톤 주괴", 64, "재료"), item("세렌트 주괴", 64, "재료")));
             });

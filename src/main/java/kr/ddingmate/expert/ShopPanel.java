@@ -42,6 +42,7 @@ public final class ShopPanel {
         SidePanel.frame(ctx, tr, x, y, w, h, p, new ItemStack(Items.GOLD_INGOT), title);
         int cy = y + SidePanel.HEAD_H + 5;
         if (owned.isEmpty()) {
+            ShopPrices.diagnose(client, shop);
             Theme.text(ctx, tr, "이 상점에 팔 물건이 없어요", x + 6, cy + 1, p.soft());
             cy += ROW;
         }
