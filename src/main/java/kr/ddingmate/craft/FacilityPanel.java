@@ -107,6 +107,8 @@ public final class FacilityPanel {
 
     public static void render(DrawContext ctx, Screen screen, int mouseX, int mouseY) {
         pw = 0;
+        tip = null;
+        if (detail == null) detailRect = new int[4];
         if (entries.isEmpty() || !DdingMate.config().counter.facilityPanel) return;
         MinecraftClient client = MinecraftClient.getInstance();
         TextRenderer tr = client.textRenderer;
@@ -116,9 +118,10 @@ public final class FacilityPanel {
         int w = Theme.boldWidth(tr, title) + 26;
         for (int i = 0; i < shown; i++) {
             Entry e = entries.get(i);
-            w = Math.max(w, 13 + Theme.width(tr, e.recipe().displayName()) + 8 + Theme.boldWidth(tr, right(e)) + 14);
+            int pinW = pinnedIndex(e.recipe()) >= 0 ? Theme.width(tr, "[핀] ") : 0;
+            w = Math.max(w, 13 + pinW + Theme.itemNameWidth(tr, e.recipe().displayName()) + 8 + Theme.boldWidth(tr, right(e)) + 14);
         }
-        w = Math.max(132, Math.min(150, w));
+        w = Math.max(132, Math.min(SidePanel.maxWidth(screen.width), w));
         String foot = "클릭: 핀 넣기 / 한 번 더: 빼기";
         String foot2 = "쉬프트+클릭: 레시피 보기 / 닫기";
         int h = SidePanel.HEAD_H + 5 + shown * ROW + 4 + (entries.size() > shown ? 11 : 0) + 12 + 10;
@@ -142,8 +145,9 @@ public final class FacilityPanel {
             String r = right(e);
             int rw = Theme.boldWidth(tr, r);
             boolean pinned = pinnedIndex(e.recipe()) >= 0;
-            String name = Theme.ellipsize(tr, (pinned ? "[핀] " : "") + e.recipe().displayName(), w - 6 - 13 - rw - 12);
-            Theme.text(ctx, tr, name, x + 19, cy + 2, pinned ? p.accent() : e.craftable() > 0 ? p.ink() : p.soft());
+            Theme.Drawn d = Theme.itemName(ctx, tr, pinned ? "[핀] " : "", e.recipe().displayName(), x + 19, cy + 2,
+                    w - 6 - 13 - rw - 12, pinned ? p.accent() : e.craftable() > 0 ? p.ink() : p.soft());
+            if (hover && d.cut()) tip = e.recipe().displayName();
             Theme.boldText(ctx, tr, r, x + w - 7 - rw, cy + 2, e.craftable() > 0 ? p.good() : p.soft(), false);
             cy += ROW;
         }
@@ -162,20 +166,68 @@ public final class FacilityPanel {
         ctx.getMatrices().pop();
         lw = 0;
         if (expanded) renderList(ctx, screen, tr, p, mouseX, mouseY);
-        if (detail != null) renderDetail(ctx, screen, tr, p, x, y + h + 3, w);
+        if (detail != null) {
+            int dh = detailHeight(detail);
+            int dx = x, dy = y + h + 3, dw = w;
+            if (dy + dh > screen.height - 2) {
+                if (y - dh - 3 >= 2) {
+                    dy = y - dh - 3;
+                } else {
+                    // 위아래 어디에도 안 들어가면 상자 창 왼쪽 빈자리에(작은 판은 옮기지 않는다: 줄이 커서 밑에서 움직이면
+                    // 같은 자리를 다시 쉬프트+클릭해도 닫히지 않고 다른 레시피가 열린다). 전체 목록 판과 겹치면 레시피 판이 위,
+                    // 그 자리의 클릭·툴팁은 레시피 판 몫이다
+                    int room = screen.width / 2 - 92 - 6;
+                    dw = Math.max(110, Math.min(w, room));
+                    dx = Math.max(2, screen.width / 2 - 92 - 4 - dw);
+                    dy = Math.max(2, Math.min(y, screen.height - 2 - dh));
+                }
+            }
+            renderDetail(ctx, screen, tr, p, dx, dy, dw);
+        }
+        // 이름이 … 로 잘린 줄에 마우스를 올리면 서버 이름 그대로 보여 준다
+        if (tip != null) {
+            ctx.getMatrices().push();
+            ctx.getMatrices().translate(0, 0, 310);
+            ctx.drawTooltip(tr, net.minecraft.text.Text.literal(tip), mouseX, mouseY);
+            ctx.getMatrices().pop();
+        }
     }
 
+    /** 이번 프레임에 마우스를 올린 잘린 이름(전체) */
+    private static String tip;
+
     /** 쉬프트+클릭한 레시피의 재료: 판 바로 아래(자리가 없으면 위)에 재료마다 보유/필요 */
+    /** 마지막으로 그린 레시피 판 안인가 */
+    private static boolean inDetail(double mx, double my) {
+        int[] d = detailRect;
+        return detail != null && d[2] > 0 && mx >= d[0] && mx < d[0] + d[2] && my >= d[1] && my < d[1] + d[3];
+    }
+
+    private static int detailHeight(RecipeBook.Recipe r) {
+        return SidePanel.HEAD_H + 5 + r.materials.size() * ROW + 4 + 12 + 4;
+    }
+
+    /** 시험용: 마지막으로 그린 레시피 판 자리 {x, y, w, h} */
+    public static int[] debugDetailRect() {
+        return detailRect.clone();
+    }
+
+    private static int[] detailRect = new int[4];
+
+    /** 시험용: 마지막으로 그린 작은 판 자리 {x, y, w, h} */
+    public static int[] debugPanelRect() {
+        return new int[]{px, py, pw, ph};
+    }
+
     private static void renderDetail(DrawContext ctx, Screen screen, TextRenderer tr, SidePanel.Palette p, int x, int y, int w) {
         RecipeBook.Recipe r = detail;
-        int rows = r.materials.size();
-        int h = SidePanel.HEAD_H + 5 + rows * ROW + 4 + 12 + 4;
-        if (y + h > screen.height - 2) y = Math.max(2, py - h - 3);
+        int h = detailHeight(r);
+        detailRect = new int[]{x, y, w, h};
         ctx.getMatrices().push();
         ctx.getMatrices().translate(0, 0, 300);
         ItemStack out = IconCache.forRecipe(r);
         SidePanel.frame(ctx, tr, x, y, w, h, p, out == null ? new ItemStack(Items.CRAFTING_TABLE) : out,
-                Theme.ellipsize(tr, r.displayName(), w - 26, true));
+                Theme.ellipsize(tr, Theme.compactGrade(r.displayName()), w - 26, true));
         int cy = y + SidePanel.HEAD_H + 5;
         int i = 0;
         for (RecipeBook.Material m : r.materials) {
@@ -239,15 +291,17 @@ public final class FacilityPanel {
         listTop = cy;
         for (int i = scroll; i < Math.min(entries.size(), scroll + listRows); i++) {
             Entry e = entries.get(i);
-            boolean hover = mouseX >= x + 3 && mouseX < x + w - 3 && mouseY >= cy - 1 && mouseY < cy - 1 + ROW;
+            boolean hover = mouseX >= x + 3 && mouseX < x + w - 3 && mouseY >= cy - 1 && mouseY < cy - 1 + ROW
+                    && !inDetail(mouseX, mouseY);
             SidePanel.rowBg(ctx, x + 3, cy - 1, w - 6, ROW, p, i, hover);
             ItemStack icon = IconCache.forRecipe(e.recipe());
             if (icon != null) Theme.item(ctx, icon, x + 6, cy, 10);
             String r = right(e);
             int rw = Theme.boldWidth(tr, r);
             boolean pinned = pinnedIndex(e.recipe()) >= 0;
-            String name = Theme.ellipsize(tr, (pinned ? "[핀] " : "") + e.recipe().displayName(), w - 6 - 13 - rw - 12);
-            Theme.text(ctx, tr, name, x + 19, cy + 2, pinned ? p.accent() : e.craftable() > 0 ? p.ink() : p.soft());
+            Theme.Drawn d = Theme.itemName(ctx, tr, pinned ? "[핀] " : "", e.recipe().displayName(), x + 19, cy + 2,
+                    w - 6 - 13 - rw - 12, pinned ? p.accent() : e.craftable() > 0 ? p.ink() : p.soft());
+            if (hover && d.cut()) tip = e.recipe().displayName();
             Theme.boldText(ctx, tr, r, x + w - 7 - rw, cy + 2, e.craftable() > 0 ? p.good() : p.soft(), false);
             cy += ROW;
         }
@@ -278,6 +332,10 @@ public final class FacilityPanel {
     /** 판 안을 눌렀으면 처리하고 true(창으로는 넘기지 않음). 왼쪽: 핀 넣기, 오른쪽: 핀 빼기 */
     public static boolean click(double mouseX, double mouseY, int button) {
         if (button != 0 && button != 1) return false;
+        if (inDetail(mouseX, mouseY)) {
+            if (net.minecraft.client.gui.screen.Screen.hasShiftDown()) detail = null;
+            return true;
+        }
         // 전체 목록 판
         if (expanded && lw > 0 && mouseX >= lx && mouseX < lx + lw && mouseY >= ly && mouseY < ly + lh) {
             if (mouseY < ly + SidePanel.HEAD_H && mouseX >= lx + lw - 14) {

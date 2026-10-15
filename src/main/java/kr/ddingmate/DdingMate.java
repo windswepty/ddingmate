@@ -184,9 +184,9 @@ public final class DdingMate implements ClientModInitializer {
         if (kr.ddingmate.expert.Barista.kind() != kr.ddingmate.expert.Barista.Kind.NONE) {
             kr.ddingmate.expert.BaristaPanel.render(ctx, screen);
         } else if (kr.ddingmate.expert.Cooking.shopOpen()) {
-            kr.ddingmate.expert.CookingPanel.render(ctx, screen);
+            kr.ddingmate.expert.CookingPanel.render(ctx, screen, mouseX, mouseY);
         } else if (kr.ddingmate.expert.ShopPrices.openShop() != null) {
-            kr.ddingmate.expert.ShopPanel.render(ctx, screen);
+            kr.ddingmate.expert.ShopPanel.render(ctx, screen, mouseX, mouseY);
         } else {
             kr.ddingmate.craft.FacilityPanel.render(ctx, screen, mouseX, mouseY);
         }

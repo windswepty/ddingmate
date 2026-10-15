@@ -47,6 +47,14 @@ public final class SidePanel {
         return new int[]{x, y};
     }
 
+    /**
+     * 판 너비 상한: 기본 150, 화면이 넓어 창 오른쪽에 남는 자리가 있으면 그만큼(최대 210) 넓혀 긴 이름을 줄이지 않는다.
+     * 좁은 화면(854×480 등)에서는 판이 창을 더 덮지 않도록 150 그대로다
+     */
+    public static int maxWidth(int screenW) {
+        return Math.max(150, Math.min(210, screenW - 2 - (screenW / 2 + 104)));
+    }
+
     /** 판 몸통 + 머리 띠(아이콘 + 굵은 제목) */
     public static void frame(DrawContext ctx, TextRenderer tr, int x, int y, int w, int h, Palette p, ItemStack icon, String title) {
         Theme.outline(ctx, x, y, w, h, p.outline());

@@ -24,7 +24,7 @@ public final class ShopPanel {
     private static final int ROW = 11;
     private static final int MAX_ROWS = 9;
 
-    public static void render(DrawContext ctx, Screen screen) {
+    public static void render(DrawContext ctx, Screen screen, int mouseX, int mouseY) {
         String shop = ShopPrices.openShop();
         if (shop == null || !DdingMate.config().expert.shopPanel) return;
         MinecraftClient client = MinecraftClient.getInstance();
@@ -33,7 +33,15 @@ public final class ShopPanel {
         List<ShopPrices.Owned> owned = ShopPrices.owned(client, null, shop);
         String title = shop + " · 보유 판매품";
         int rows = Math.min(MAX_ROWS, owned.size());
-        int w = 146;
+        // 이름이 길면(귀중품 등) 화면에 자리가 있는 만큼 넓힌다
+        int w = Math.max(146, Theme.boldWidth(tr, title) + 26);
+        for (int i = 0; i < rows; i++) {
+            ShopPrices.Owned o = owned.get(i);
+            int need = 19 + Theme.itemNameWidth(tr, o.ware().name() + " ×" + o.count())
+                    + (o.bonus() > 0 ? Theme.width(tr, " +" + o.bonus() + "%") : 0) + 12 + Theme.boldWidth(tr, ShopPrices.money(o.low(), o.high())) + 7;
+            w = Math.max(w, need);
+        }
+        w = Math.min(w, SidePanel.maxWidth(screen.width));
         int h = SidePanel.HEAD_H + 5 + Math.max(1, rows) * ROW + (owned.size() > rows ? ROW : 0) + 5 + 12 + 4 + 10;
         int[] at = SidePanel.place(screen.width, screen.height, w, h);
         int x = at[0], y = at[1];
@@ -41,6 +49,7 @@ public final class ShopPanel {
         ctx.getMatrices().translate(0, 0, 300);
         SidePanel.frame(ctx, tr, x, y, w, h, p, new ItemStack(Items.GOLD_INGOT), title);
         int cy = y + SidePanel.HEAD_H + 5;
+        String tip = null;
         if (owned.isEmpty()) {
             ShopPrices.diagnose(client, shop);
             Theme.text(ctx, tr, "이 상점에 팔 물건이 없어요", x + 6, cy + 1, p.soft());
@@ -54,9 +63,10 @@ public final class ShopPanel {
             int rw = Theme.boldWidth(tr, right);
             String bonus = o.bonus() > 0 ? " +" + o.bonus() + "%" : "";
             int bw = Theme.width(tr, bonus);
-            String name = Theme.ellipsize(tr, o.ware().name() + " ×" + o.count(), w - 6 - 13 - rw - 12 - bw);
-            Theme.text(ctx, tr, name, x + 19, cy + 1, p.ink());
-            if (!bonus.isEmpty()) Theme.text(ctx, tr, bonus, x + 19 + Theme.width(tr, name), cy + 1, p.good());
+            // 등급은 짧은 색 글자(레어·전설…)로, 그래도 길면 … 로 줄이고 마우스를 올리면 전체 이름
+            Theme.Drawn d = Theme.itemName(ctx, tr, "", o.ware().name() + " ×" + o.count(), x + 19, cy + 1, w - 6 - 13 - rw - 12 - bw, p.ink());
+            if (d.cut() && mouseX >= x + 3 && mouseX < x + w - 3 && mouseY >= cy - 1 && mouseY < cy - 1 + ROW) tip = o.ware().name() + " ×" + o.count();
+            if (!bonus.isEmpty()) Theme.text(ctx, tr, bonus, d.end(), cy + 1, p.good());
             Theme.boldText(ctx, tr, right, x + w - 7 - rw, cy + 1, o.fromShop() || o.ware().fixed() ? p.accent() : p.soft(), false);
             cy += ROW;
         }
@@ -71,5 +81,11 @@ public final class ShopPanel {
         Theme.boldText(ctx, tr, sum, x + w - 7 - Theme.boldWidth(tr, sum), cy + 6, p.good(), false);
         Theme.text(ctx, tr, "나의 판매가(전문가 스킬 반영) 기준", x + 6, cy + 17, p.soft());
         ctx.getMatrices().pop();
+        if (tip != null) {
+            ctx.getMatrices().push();
+            ctx.getMatrices().translate(0, 0, 310);
+            ctx.drawTooltip(tr, net.minecraft.text.Text.literal(tip), mouseX, mouseY);
+            ctx.getMatrices().pop();
+        }
     }
 }

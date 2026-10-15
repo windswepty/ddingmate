@@ -34,7 +34,7 @@ public final class ExpertSkills {
 
     private static final List<Skill> SKILLS = List.of(
             new Skill("초고속 용광로", "채광", false, c -> c.mining, (c, v) -> c.mining = v),
-            new Skill("불 더 올려", "재배", false, c -> c.farming, (c, v) -> c.farming = v),
+            new Skill("불 더 올려!", "재배", false, c -> c.farming, (c, v) -> c.farming = v),
             new Skill("물 흐르듯 술술", "해양", true, c -> c.marine, (c, v) -> c.marine = v),
             new Skill("고속 영혼 가공기", "사냥", false, c -> c.hunting, (c, v) -> c.hunting = v));
 

@@ -157,11 +157,28 @@ public class HudEditorScreen extends Screen {
         }
         // 아래 가운데 조작 판
         String help = "끌기: 옮기기 · 휠·모서리: 크기 · 오른쪽 가장자리: 가로 · 아래 가장자리: 세로(넘치면 옆으로) · 오른쪽 클릭: 원래대로 · Esc: 취소";
-        int hw = Math.max(Theme.width(textRenderer, help) + 16, BUTTON_W * 2 + 22);
+        // 화면보다 길면 여러 줄로 나누고 판을 위로 늘린다(예전: 854×480 에서 양쪽 끝이 잘렸다)
+        List<String> helpLines = new ArrayList<>();
+        int room = Math.max(BUTTON_W * 2, width - 28);
+        for (String part : help.split(" · ")) {
+            int last = helpLines.size() - 1;
+            if (last >= 0 && Theme.width(textRenderer, helpLines.get(last) + " · " + part) <= room) {
+                helpLines.set(last, helpLines.get(last) + " · " + part);
+            } else {
+                helpLines.add(part);
+            }
+        }
+        int lineW = 0;
+        for (String l : helpLines) lineW = Math.max(lineW, Theme.width(textRenderer, l));
+        int extra = (helpLines.size() - 1) * 10;
+        int hw = Math.min(width - 4, Math.max(lineW + 16, BUTTON_W * 2 + 22));
         int hx = width / 2 - hw / 2;
-        int hy = height - 76;
-        Theme.window(ctx, hx, hy, hw, 72);
-        Theme.text(ctx, textRenderer, help, width / 2 - Theme.width(textRenderer, help) / 2, hy + 6, Theme.TEXT_SOFT);
+        int hy = height - 76 - extra;
+        Theme.window(ctx, hx, hy, hw, 72 + extra);
+        for (int i = 0; i < helpLines.size(); i++) {
+            String l = helpLines.get(i);
+            Theme.text(ctx, textRenderer, l, width / 2 - Theme.width(textRenderer, l) / 2, hy + 6 + i * 10, Theme.TEXT_SOFT);
+        }
         String sel = selected == null ? "HUD 를 눌러 고르세요" : HudLayout.NAMES.get(selected);
         Theme.boldText(ctx, textRenderer, sel, width / 2 - 6 - Theme.boldWidth(textRenderer, sel), height - 48, Theme.INK, false);
         if (selected != null) {

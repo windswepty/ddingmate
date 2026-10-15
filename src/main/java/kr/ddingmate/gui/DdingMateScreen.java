@@ -389,7 +389,12 @@ public class DdingMateScreen extends Screen {
         Widgets.Toggle avoid = toggle("서버 HUD 피하기", cfg.avoidServerHud, v -> cfg.avoidServerHud = v);
         avoid.setTooltip(Tooltip.of(Text.literal("구석 HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.")));
         list.pair(size, avoid);
-        list.pair(toggle("띵타이쿤 글꼴(갈무리)", cfg.galmuriFont, v -> cfg.galmuriFont = v), null);
+        list.pair(toggle("띵타이쿤 글꼴(갈무리)", cfg.galmuriFont, v -> {
+            cfg.galmuriFont = v;
+            // 설명 줄은 만들 때 글꼴 너비로 미리 나눠 두므로, 글꼴이 바뀌면 다시 만든다(안 그러면 줄이 칸 밖으로 나간다)
+            savedScroll = list.getScrollY();
+            clearAndInit();
+        }), null);
         Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 설정"), true, b -> {
             savedScroll = list.getScrollY();
             client.setScreen(new HudEditorScreen(this));
@@ -1552,13 +1557,19 @@ public class DdingMateScreen extends Screen {
             return new int[]{getRowLeft() - 2, top - 1, getRowWidth() + 4, 23};
         }
 
+        /** 줄 칸 하나(높이 24)에는 두 줄까지만 들어간다: 더 길면 두 줄씩 나눠 여러 칸으로(예전: 세 줄째가 다음 칸과 겹쳤다) */
         void note(String text) {
-            addEntry(new Row(List.of(), text, RowKind.NOTE));
+            List<String> lines = Theme.wrap(textRenderer, text, rowWidth() - 4);
+            for (int i = 0; i < lines.size(); i += 2) {
+                addEntry(new Row(List.of(), String.join("\n", lines.subList(i, Math.min(lines.size(), i + 2))), RowKind.NOTE));
+            }
         }
 
-        /** 탭 맨 위 안내 상자: 이 탭에서 무엇을 하는지 한두 줄로 */
+        /** 탭 맨 위 안내 상자: 이 탭에서 무엇을 하는지 한두 줄로(두 줄이 넘으면 나머지는 상자 아래 설명 칸으로) */
         void guide(String text) {
-            addEntry(new Row(List.of(), text, RowKind.GUIDE));
+            List<String> lines = Theme.wrap(textRenderer, text, rowWidth() - 30);
+            addEntry(new Row(List.of(), String.join("\n", lines.subList(0, Math.min(2, lines.size()))), RowKind.GUIDE));
+            if (lines.size() > 2) note(String.join(" ", lines.subList(2, lines.size())));
         }
 
         void single(ClickableWidget w) {
@@ -1662,12 +1673,15 @@ public class DdingMateScreen extends Screen {
                     ctx.fill(x + 1, y + 2, x + 4, y + 22, Theme.BLUE);
                     Theme.tile(ctx, x + 8, y + 6, 12, 12, Theme.Tile.BLUE, false);
                     Theme.boldText(ctx, textRenderer, "i", x + 13, y + 8, Theme.WHITE, false);
-                    ctx.drawWrappedText(textRenderer, Theme.body(text), x + 25, y + 4 + (Theme.width(textRenderer, text) > entryWidth - 30 ? 0 : 4),
-                            entryWidth - 30, Theme.INK, false);
+                    String[] lines = text.split("\n");
+                    for (int i = 0; i < lines.length; i++) {
+                        Theme.text(ctx, textRenderer, lines[i], x + 25, y + (lines.length > 1 ? 4 : 8) + i * 10, Theme.INK);
+                    }
                     return;
                 }
                 case NOTE -> {
-                    ctx.drawWrappedText(textRenderer, Theme.body(text), x + 2, y + 4, entryWidth - 4, Theme.TEXT_SOFT, false);
+                    String[] lines = text.split("\n");
+                    for (int i = 0; i < lines.length; i++) Theme.text(ctx, textRenderer, lines[i], x + 2, y + 4 + i * 10, Theme.TEXT_SOFT);
                     return;
                 }
                 case LOG -> {

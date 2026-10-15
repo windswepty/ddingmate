@@ -162,6 +162,90 @@ public final class Theme {
         return s.substring(0, end) + "…";
     }
 
+    // ---------------------------------------------------------------- 아이템 이름(좁은 판)
+
+    /** 서버 아이템 이름 앞의 등급 "(Legendary) 실바니움 만년필", "(Common)넬트 천체관측기" */
+    private static final java.util.regex.Pattern GRADE =
+            java.util.regex.Pattern.compile("^\\((Common|Normal|Rare|Epic|Legendary|Mythic)\\)\\s*");
+    /** 등급의 짧은 표기(위키의 요리·물고기 등급 표기와 같은 말) */
+    private static final java.util.Map<String, String> GRADE_KO = java.util.Map.of(
+            "Common", "커먼", "Normal", "노멀", "Rare", "레어", "Epic", "에픽", "Legendary", "전설", "Mythic", "신화");
+    private static final java.util.Map<String, Integer> GRADE_COLOR = java.util.Map.of(
+            "커먼", 0xFF5E6573, "노멀", 0xFF2E7D32, "레어", 0xFF1F5FBF, "에픽", 0xFF7B3FB5, "전설", 0xFFB06400, "신화", 0xFFC0392B);
+
+    /** "(Legendary) 실바니움 만년필" → "전설 실바니움 만년필"(등급이 없으면 그대로). 판 제목처럼 한 색으로 쓸 때 */
+    public static String compactGrade(String name) {
+        java.util.regex.Matcher m = GRADE.matcher(name);
+        return m.find() ? GRADE_KO.get(m.group(1)) + " " + name.substring(m.end()) : name;
+    }
+
+    /** 그린 결과: 끝난 x 와 … 로 줄였는지(줄였으면 마우스를 올렸을 때 전체 이름을 보여 준다) */
+    public record Drawn(int end, boolean cut) {}
+
+    /**
+     * 좁은 판의 아이템 이름: 앞의 등급을 짧은 색 글자(레어·전설…)로 바꿔 그리고, 그래도 길면 뒤를 … 로 줄인다.
+     * prefix 는 이름 앞에 같은 색으로 붙이는 글("[핀] ")
+     */
+    public static Drawn itemName(DrawContext ctx, TextRenderer tr, String prefix, String name, int x, int y, int maxW, int color) {
+        java.util.regex.Matcher m = GRADE.matcher(name);
+        String grade = null, rest = name;
+        if (m.find()) {
+            grade = GRADE_KO.get(m.group(1));
+            rest = name.substring(m.end());
+        }
+        int cx = x;
+        if (!prefix.isEmpty()) {
+            text(ctx, tr, prefix, cx, y, color);
+            cx += width(tr, prefix);
+        }
+        if (grade != null) {
+            text(ctx, tr, grade, cx, y, GRADE_COLOR.get(grade));
+            cx += width(tr, grade) + 3;
+        }
+        String shown = ellipsize(tr, rest, Math.max(0, x + maxW - cx));
+        text(ctx, tr, shown, cx, y, color);
+        return new Drawn(cx + width(tr, shown), !shown.equals(rest));
+    }
+
+    /** itemName 으로 그렸을 때의 너비(줄이지 않았을 때) */
+    public static int itemNameWidth(TextRenderer tr, String name) {
+        java.util.regex.Matcher m = GRADE.matcher(name);
+        return m.find() ? width(tr, GRADE_KO.get(m.group(1))) + 3 + width(tr, name.substring(m.end())) : width(tr, name);
+    }
+
+    /** 글을 너비에 맞춰 여러 줄로(띄어쓰기에서 끊고, 한 낱말이 너무 길면 글자 단위로, 줄바꿈 글자는 그대로 줄을 나눈다) */
+    public static java.util.List<String> wrap(TextRenderer tr, String s, int maxWidth) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (String para : s.split("\n")) out.addAll(wrapLine(tr, para, maxWidth));
+        return out;
+    }
+
+    private static java.util.List<String> wrapLine(TextRenderer tr, String s, int maxWidth) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        for (String word : s.split(" ")) {
+            String cand = line.isEmpty() ? word : line + " " + word;
+            if (width(tr, cand) <= maxWidth) {
+                line.setLength(0);
+                line.append(cand);
+                continue;
+            }
+            if (!line.isEmpty()) out.add(line.toString());
+            line.setLength(0);
+            // 낱말 하나가 줄보다 길면 글자 단위로 자른다
+            for (int cp : word.codePoints().toArray()) {
+                String next = line + new String(Character.toChars(cp));
+                if (width(tr, next) > maxWidth && !line.isEmpty()) {
+                    out.add(line.toString());
+                    line.setLength(0);
+                }
+                line.appendCodePoint(cp);
+            }
+        }
+        if (!line.isEmpty()) out.add(line.toString());
+        return out;
+    }
+
     // ---------------------------------------------------------------- 창
 
     /** 둥근 모서리(2칸) 외곽선 */

@@ -15,6 +15,8 @@ public class DdingMateToast implements Toast {
 
     private final String title;
     private final String body;
+    /** 본문을 너비에 맞춰 나눈 줄(최대 3줄, 넘치면 마지막 줄을 … 로). 예전에는 한 줄이라 "시설에서…" 처럼 잘렸다 */
+    private final java.util.List<String> lines;
     private final ItemStack icon;
     private final int accent;
     private Visibility visibility = Visibility.SHOW;
@@ -25,6 +27,23 @@ public class DdingMateToast implements Toast {
         this.body = body;
         this.icon = icon;
         this.accent = accent;
+        this.lines = wrapBody(net.minecraft.client.MinecraftClient.getInstance().textRenderer, body);
+    }
+
+    static final int MAX_LINES = 3;
+
+    static java.util.List<String> wrapBody(TextRenderer tr, String body) {
+        if (body == null || body.isEmpty()) return java.util.List.of();
+        java.util.List<String> all = Theme.wrap(tr, body, WIDTH - 36);
+        if (all.size() <= MAX_LINES) return all;
+        java.util.List<String> out = new java.util.ArrayList<>(all.subList(0, MAX_LINES));
+        out.set(MAX_LINES - 1, Theme.ellipsize(tr, out.get(MAX_LINES - 1) + " " + all.get(MAX_LINES), WIDTH - 36));
+        return out;
+    }
+
+    /** 시험용: 본문이 몇 줄로 나뉘는지 */
+    public java.util.List<String> lines() {
+        return lines;
     }
 
     @Override
@@ -39,13 +58,14 @@ public class DdingMateToast implements Toast {
 
     @Override
     public void draw(DrawContext ctx, TextRenderer tr, long startTime) {
-        Theme.window(ctx, 0, 0, WIDTH, HEIGHT);
-        ctx.fill(2, 2, 5, HEIGHT - 4, accent);
+        int h = getHeight();
+        Theme.window(ctx, 0, 0, WIDTH, h);
+        ctx.fill(2, 2, 5, h - 4, accent);
         Theme.slot(ctx, 8, 7, 18);
         Theme.item(ctx, icon, 9, 8, 16);
         int textW = WIDTH - 36;
         Theme.boldText(ctx, tr, Theme.ellipsize(tr, title, textW, true), 31, 7, Theme.lerp(accent, 0xFF000000, 0.35), false);
-        Theme.text(ctx, tr, Theme.ellipsize(tr, body, textW), 31, 18, Theme.TEXT_SOFT);
+        for (int i = 0; i < lines.size(); i++) Theme.text(ctx, tr, lines.get(i), 31, 18 + i * 10, Theme.TEXT_SOFT);
     }
 
     @Override
@@ -55,6 +75,6 @@ public class DdingMateToast implements Toast {
 
     @Override
     public int getHeight() {
-        return HEIGHT;
+        return HEIGHT + Math.max(0, lines.size() - 1) * 10;
     }
 }

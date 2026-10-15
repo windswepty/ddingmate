@@ -39,7 +39,7 @@ public final class CookingPanel {
         }
     }
 
-    public static void render(DrawContext ctx, Screen screen) {
+    public static void render(DrawContext ctx, Screen screen, int mouseX, int mouseY) {
         if (!DdingMate.config().expert.cookingPanel || !Cooking.shopOpen()) return;
         MinecraftClient client = MinecraftClient.getInstance();
         TextRenderer tr = client.textRenderer;
@@ -55,7 +55,7 @@ public final class CookingPanel {
             int rw = it.right().isEmpty() ? 0 : Theme.boldWidth(tr, it.right()) + 8;
             w = Math.max(w, lw + rw + 14);
         }
-        w = Math.max(128, Math.min(150, w));
+        w = Math.max(128, Math.min(SidePanel.maxWidth(screen.width), w));
         int h = SidePanel.HEAD_H + 6 + 4;
         for (Item it : items) h += it.divider() ? 5 : ROW;
         int[] at = SidePanel.place(screen.width, screen.height, w, h);
@@ -65,6 +65,7 @@ public final class CookingPanel {
         ctx.getMatrices().translate(0, 0, 300);
         SidePanel.frame(ctx, tr, x, y, w, h, p, new ItemStack(Items.BOWL), title);
         int cy = y + SidePanel.HEAD_H + 5;
+        String tip = null;
         for (Item it : items) {
             if (it.divider()) {
                 SidePanel.divider(ctx, x + 5, cy + 2, w - 10, p);
@@ -84,12 +85,20 @@ public final class CookingPanel {
             }
             int rw = it.right().isEmpty() ? 0 : Theme.boldWidth(tr, it.right());
             String left = Theme.ellipsize(tr, it.left(), x + w - 8 - rw - 4 - tx, it.bold());
+            // 잘린 요리 이름은 마우스를 올리면 전체 이름
+            if (!left.equals(it.left()) && mouseX >= x + 3 && mouseX < x + w - 3 && mouseY >= cy - 1 && mouseY < cy - 1 + ROW) tip = it.left();
             if (it.bold()) Theme.boldText(ctx, tr, left, tx, cy + 1, it.leftColor(), false);
             else Theme.text(ctx, tr, left, tx, cy + 1, it.leftColor());
             if (rw > 0) Theme.boldText(ctx, tr, it.right(), x + w - 7 - rw, cy + 1, it.rightColor(), false);
             cy += ROW;
         }
         ctx.getMatrices().pop();
+        if (tip != null) {
+            ctx.getMatrices().push();
+            ctx.getMatrices().translate(0, 0, 310);
+            ctx.drawTooltip(tr, net.minecraft.text.Text.literal(tip), mouseX, mouseY);
+            ctx.getMatrices().pop();
+        }
     }
 
     private static List<Item> items(MinecraftClient client, SidePanel.Palette p) {

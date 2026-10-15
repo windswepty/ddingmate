@@ -116,6 +116,8 @@ public final class ShopPrices {
 
     /** 상점 창에서 본 가격: 이름 → {판매가격(기본), 나의 판매가(스킬 반영)}. 계정별로 저장 */
     private static final class Store {
+        /** 기록 형식 판. 2 = 포스 "판매가 :" 를 기본가로 읽는 판(c0bbd0a) 이후 */
+        int version;
         Map<String, Map<String, int[]>> accounts = new LinkedHashMap<>();
         /** 귀중품 "이름|가치" → 그 귀중품의 가격(보석함 창에서 본 값). 계정별 */
         Map<String, Map<String, Integer>> valuables = new LinkedHashMap<>();
@@ -424,8 +426,11 @@ public final class ShopPrices {
         return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ddingmate-shop.json");
     }
 
+    private static final int VERSION = 2;
+
     private static void load() {
         store = new Store();
+        store.version = VERSION;
         java.nio.file.Path p = path();
         if (!java.nio.file.Files.exists(p)) return;
         try (java.io.Reader r = java.nio.file.Files.newBufferedReader(p, java.nio.charset.StandardCharsets.UTF_8)) {
@@ -437,7 +442,14 @@ public final class ShopPrices {
                     m.keySet().removeIf(k -> k.startsWith("(")); // 예전 판(5bbce7f)이 귀중품 한 개 값을 상점 가격으로 저장했던 것
                     // 예전 판이 무역 창 묶음 값(코룸 주괴 24개 89,082골드)을 한 개 값으로 저장했던 것
                     m.entrySet().removeIf(e -> WARES.stream().anyMatch(w -> w.name().equals(e.getKey()) && !plausible(w, e.getValue())));
+                    // c0bbd0a 전 판은 포스 칸의 "판매가 : 824,662 골드"를 못 읽어 나의 판매가를 기본가로도 저장했다
+                    // (실제: 흑진주 시계 865,895/865,895). 다음에 포스 창을 열 때까지 스킬 배율이 0%로 계산되므로 버린다
+                    if (s.version < 2) {
+                        m.entrySet().removeIf(e -> e.getValue()[0] == e.getValue()[1]
+                                && WARES.stream().anyMatch(w -> w.name().equals(e.getKey()) && w.shop().equals("포스")));
+                    }
                 }
+                s.version = VERSION;
                 store = s;
             }
         } catch (java.io.IOException | RuntimeException e) {
@@ -460,8 +472,15 @@ public final class ShopPrices {
     }
 
     /** 시험용 */
+    public static void debugReload() {
+        store = null;
+        load();
+    }
+
+    /** 시험용 */
     public static void debugClear() {
         store = new Store();
+        store.version = VERSION;
         openShop = null;
     }
 }

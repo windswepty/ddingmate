@@ -27,7 +27,7 @@ final class Tutorial {
 
     static final List<Step> STEPS = List.of(
             new Step(DdingMateScreen.Tab.HOME, false, null, "띵메이트에 오신 걸 환영해요!",
-                    "띵타이쿤을 더 편하게 해 주는 도우미예요. 기능을 하나씩 자세히 소개할게요(약 2분). 바로 쓰고 싶으면 [건너뛰기]를 누르세요. 키보드 Enter·→ 로 넘기고 ← 로 돌아가요."),
+                    "띵타이쿤을 더 편하게 해 주는 도우미예요. 기능을 하나씩 자세히 소개할게요(오른쪽 위에 지금 몇 번째인지 나와요). 바로 쓰고 싶으면 [건너뛰기]를 누르세요. 키보드 Enter·→ 로 넘기고 ← 로 돌아가요."),
             new Step(DdingMateScreen.Tab.HOME, true, null, "홈",
                     "다음 일정, 오늘 접속 시간·받을 보상, 할 일 진행, 재료·장비 현황을 한눈에 봐요. 줄을 누르면 그 기능의 탭으로 바로 가요."),
             new Step(DdingMateScreen.Tab.NOTIFY, true, null, "알림 방식 탭",

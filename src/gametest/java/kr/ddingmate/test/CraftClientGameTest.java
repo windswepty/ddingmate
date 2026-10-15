@@ -609,17 +609,52 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(3);
             ctx.takeScreenshot("facility-2-full-list");
             // 쉬프트+클릭: 판 아래에 그 레시피의 재료(보유/필요) 판, 쉬프트+우클릭: 닫기
+            int[] panelBefore = new int[4];
             ctx.runOnClient(c -> {
                 var es = kr.ddingmate.craft.FacilityPanel.entries();
                 net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
                         .allowMouseClick(c.currentScreen, kr.ddingmate.craft.FacilityPanel.debugMore()[0], kr.ddingmate.craft.FacilityPanel.debugMore()[1], 0);
+                System.arraycopy(kr.ddingmate.craft.FacilityPanel.debugPanelRect(), 0, panelBefore, 0, 4);
                 kr.ddingmate.craft.FacilityPanel.debugDetail(es.get(0).recipe());
             });
             ctx.waitTicks(3);
             ctx.takeScreenshot("facility-3-recipe-detail");
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.craft.FacilityPanel.detail() != null && !kr.ddingmate.craft.FacilityPanel.expanded(), "레시피 판이 안 열리거나 전체 목록이 안 닫힘");
+                // 레시피 판은 보유 재료 판을 덮지 않고 화면 안에(예전: 아래에 자리가 없으면 위로 올라가 판을 덮었다)
+                int[] d = kr.ddingmate.craft.FacilityPanel.debugDetailRect(), pr = kr.ddingmate.craft.FacilityPanel.debugPanelRect();
+                boolean overlap = d[0] < pr[0] + pr[2] && pr[0] < d[0] + d[2] && d[1] < pr[1] + pr[3] && pr[1] < d[1] + d[3];
+                check(!overlap, "레시피 판이 보유 재료 판을 덮음: " + Arrays.toString(d) + " / " + Arrays.toString(pr));
+                check(d[0] >= 0 && d[1] >= 0 && d[0] + d[2] <= c.getWindow().getScaledWidth() && d[1] + d[3] <= c.getWindow().getScaledHeight(),
+                        "레시피 판이 화면 밖: " + Arrays.toString(d));
+                // 레시피 판을 열어도 작은 판은 제자리(줄이 커서 밑에서 움직이면 같은 자리를 다시 눌러 닫을 수 없다)
+                check(Arrays.equals(pr, panelBefore), "레시피 판을 열자 작은 판이 움직임: " + Arrays.toString(panelBefore) + " → " + Arrays.toString(pr));
+                // 레시피 판 위를 누르면 레시피 판 몫(아래 가려진 줄을 핀에 넣지 않음)
+                String pinsBefore = DdingMate.config().counter.pins.stream().map(x -> x.recipe).toList().toString();
+                net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
+                        .allowMouseClick(c.currentScreen, d[0] + d[2] / 2, d[1] + d[3] / 2, 0);
+                check(pinsBefore.equals(DdingMate.config().counter.pins.stream().map(x -> x.recipe).toList().toString())
+                        && kr.ddingmate.craft.FacilityPanel.detail() != null, "레시피 판 위 클릭이 아래로 넘어감");
                 kr.ddingmate.craft.FacilityPanel.debugDetail(null);
+                // 좁은 판의 서버 등급 이름은 위키 표기(커먼·노멀·레어·에픽·전설·신화)로 줄인다
+                check(kr.ddingmate.ui.Theme.compactGrade("(Legendary) 실바니움 만년필").equals("전설 실바니움 만년필")
+                                && kr.ddingmate.ui.Theme.compactGrade("(Common)넬트 천체관측기").equals("커먼 넬트 천체관측기")
+                                && kr.ddingmate.ui.Theme.compactGrade("코룸 주괴").equals("코룸 주괴"),
+                        "등급 줄임이 다름: " + kr.ddingmate.ui.Theme.compactGrade("(Common)넬트 천체관측기"));
+                // 판 너비 상한: 좁은 화면(427칸)은 150 그대로, 넓은 화면은 창을 덮지 않는 만큼(최대 210)
+                check(kr.ddingmate.ui.SidePanel.maxWidth(427) == 150 && kr.ddingmate.ui.SidePanel.maxWidth(960) == 210
+                        && kr.ddingmate.ui.SidePanel.maxWidth(600) == 194,
+                        "판 너비 상한이 다름");
+                // 줄 나누기: 모든 줄이 너비 안, 글자는 하나도 빠지지 않는다
+                String longText = "제작을 시작하면 알아서 등록돼요. 시설 창을 한 번 열면 레시피의 \"제작 시간\"을 배워서, 넣은 순서대로 하나씩 끝나는 시각을 계산해요.";
+                var lines = kr.ddingmate.ui.Theme.wrap(c.textRenderer, longText, 120);
+                check(lines.size() > 2 && lines.stream().allMatch(l -> kr.ddingmate.ui.Theme.width(c.textRenderer, l) <= 120)
+                        && String.join(" ", lines).equals(longText), "줄 나누기가 너비를 넘거나 글자를 잃음: " + lines);
+                // 팝업 본문이 길면 줄을 나눠 다 보여 준다(예전: "시설에서…" 로 잘림)
+                var toast = new kr.ddingmate.ui.DdingMateToast("제작 완료: 조약돌 뭉치 ×7 [5]", "넣어 둔 5번이 모두 끝났어요 · 시설에서 꺼내 가세요",
+                        new ItemStack(Items.PAPER), 0xFF4FB54A);
+                check(toast.lines().size() == 2 && String.join(" ", toast.lines()).equals("넣어 둔 5번이 모두 끝났어요 · 시설에서 꺼내 가세요")
+                        && toast.getHeight() == 42, "팝업 본문 줄 나누기가 다름: " + toast.lines() + " h=" + toast.getHeight());
             });
             // 다른 전문가 판매 시세: 로니 상점 창(가격 적힌 칸 3개 이상) → 보유 판매품과 모두 팔면 받는 금액
             ctx.runOnClient(c -> {
@@ -716,6 +751,31 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(orgel.exact() && orgel.high() == 10_971, "귀중품에 적힌 가격(10,971골드)을 쓰지 않음: " + orgel);
             });
             ctx.takeScreenshot("shop-1-roni-panel");
+            // 예전 판(c0bbd0a 전)이 포스 칸의 나의 판매가를 기본가로도 저장한 기록(실제: 흑진주 시계 865,895/865,895)은 읽을 때 버린다
+            ctx.runOnClient(c -> {
+                try {
+                    Path shopFile = FabricLoader.getInstance().getConfigDir().resolve("ddingmate-shop.json");
+                    String key = kr.ddingmate.skill.SkillTimers.accountKey();
+                    String body = "{\"accounts\":{\"" + key + "\":{\"흑진주 시계\":[865895,865895],\"자개 부채\":[243746,255933],\"코룸 주괴\":[3500,3675]}}}";
+                    Files.writeString(shopFile, body, StandardCharsets.UTF_8);
+                    kr.ddingmate.expert.ShopPrices.debugReload();
+                    var pearl = kr.ddingmate.expert.ShopPrices.WARES.stream().filter(x -> x.name().equals("흑진주 시계")).findFirst().orElseThrow();
+                    var fan = kr.ddingmate.expert.ShopPrices.WARES.stream().filter(x -> x.name().equals("자개 부채")).findFirst().orElseThrow();
+                    var ingot = kr.ddingmate.expert.ShopPrices.WARES.stream().filter(x -> x.name().equals("코룸 주괴")).findFirst().orElseThrow();
+                    int[] p1 = kr.ddingmate.expert.ShopPrices.priceFor(pearl);
+                    check(p1[0] == 1_000_000 && Math.abs(p1[1] - Math.round(1_000_000 * 255_933.0 / 243_746)) <= 1, "예전 판의 포스 기록(기본가=나의 판매가)을 버리지 않음: " + Arrays.toString(p1));
+                    check(kr.ddingmate.expert.ShopPrices.priceFor(fan)[0] == 243_746 && kr.ddingmate.expert.ShopPrices.priceFor(ingot)[1] == 3_675,
+                            "멀쩡한 기록까지 버림");
+                    // 새 판(version 2)이 저장한 것은 기본가=나의 판매가여도(스킬 안 배움) 그대로
+                    Files.writeString(shopFile, "{\"version\":2,\"accounts\":{\"" + key + "\":{\"흑진주 시계\":[824662,824662]}}}", StandardCharsets.UTF_8);
+                    kr.ddingmate.expert.ShopPrices.debugReload();
+                    check(kr.ddingmate.expert.ShopPrices.priceFor(pearl)[0] == 824_662, "새 판 기록을 버림");
+                    Files.deleteIfExists(shopFile);
+                    kr.ddingmate.expert.ShopPrices.debugClear();
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 for (int i = 0; i < 3; i++) DdingMate.config().counter.pins.get(i).recipe = keepPins[i];
