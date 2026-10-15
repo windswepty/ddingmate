@@ -107,13 +107,18 @@ public final class ShopPrices {
      * 서버가 전문가 스킬을 반영해 계산한 값(코룸 정동석 7,200 → 8,640, +20%). 귀중품은 아이템마다 "가격 : 16,227골드"
      * (귀중품 가치·전문가 배율 반영, 보석함 일괄 판매 안내)가 따로 적혀 있다.
      */
-    private static final Pattern BASE = Pattern.compile("판매\\s*가격\\s*:?\\s*([\\d,]+)");
+    /** 로니 "판매가격 : 3,500 골드", 포스 "판매가 : 824,662 골드 (↑796,645)" */
+    private static final Pattern BASE = Pattern.compile("판매\\s*가격?\\s*:?\\s*([\\d,]+)");
+    /** 귀중품 설명 "귀중품 가치 : 4,414" — 같은 귀중품의 가격("가격 : 16,227골드")을 다른 창에서도 쓰려고 함께 기억 */
+    private static final Pattern WORTH = Pattern.compile("귀중품\\s*가치\\s*:?\\s*([\\d,]+)");
     private static final Pattern MINE = Pattern.compile("나의\\s*판매가\\s*:?\\s*([\\d,]+)");
     private static final Pattern ITEM_PRICE = Pattern.compile("^\\s*가격\\s*:?\\s*([\\d,]+)\\s*(?:골드|G)");
 
     /** 상점 창에서 본 가격: 이름 → {판매가격(기본), 나의 판매가(스킬 반영)}. 계정별로 저장 */
     private static final class Store {
         Map<String, Map<String, int[]>> accounts = new LinkedHashMap<>();
+        /** 귀중품 "이름|가치" → 그 귀중품의 가격(보석함 창에서 본 값). 계정별 */
+        Map<String, Map<String, Integer>> valuables = new LinkedHashMap<>();
     }
 
     private static Store store;
@@ -132,6 +137,18 @@ public final class ShopPrices {
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) return;
         Map<String, Integer> hits = new LinkedHashMap<>();
         boolean changed = false;
+        // 보석함처럼 귀중품마다 가격이 적힌 창: 내 인벤토리 칸까지 "이름|가치 → 가격"을 기억한다
+        for (Slot slot : screen.getScreenHandler().slots) {
+            if (!slot.hasStack()) continue;
+            ItemStack s = slot.getStack();
+            Ware w = wareOf(s);
+            if (w == null || !group(w).equals("귀중품")) continue;
+            int own = ownPrice(s), worth = worth(s);
+            if (own <= 0 || worth <= 0) continue;
+            Map<String, Integer> vm = valuables(true);
+            Integer old = vm.put(w.name() + "|" + worth, own);
+            if (old == null || old != own) changed = true;
+        }
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
             ItemStack s = slot.getStack();
@@ -139,7 +156,7 @@ public final class ShopPrices {
             if (w == null) continue;
             int[] p = prices(s);
             // 가방·상자에 판매품이 들어 있는 것만으로는 상점이 아니다: 가격이 적힌 칸만 센다
-            if (p == null) continue;
+            if (p == null || !plausible(w, p)) continue;
             hits.merge(w.shop(), 1, Integer::sum);
             if (group(w).equals("귀중품")) continue; // 귀중품은 아이템마다 값이 달라(가치에 따라) 하나로 기억하지 않는다
             Map<String, int[]> mine = seen(true);
@@ -187,9 +204,26 @@ public final class ShopPrices {
             else if ((m = BASE.matcher(l)).find()) base = num(m.group(1));
         }
         if (base <= 0 && mine <= 0) return null;
+        if (trade(lore.lines())) return null;
         if (base <= 0) base = mine;
         if (mine <= 0) mine = base;
         return new int[]{base, mine};
+    }
+
+    /** 무역 창 칸(실제 포스 무역: "- 판매 수량 : 24개", "무역 물품을 판매합니다")인가 */
+    private static boolean trade(List<Text> lines) {
+        for (Text t : lines) {
+            String l = ItemKeys.stripGlyphs(t.getString());
+            if (l.contains("판매 수량") || l.contains("무역 물품") || l.matches(".*\\d+%\\s*가격.*")) return true;
+        }
+        return false;
+    }
+
+    /** 표의 값과 너무 다르면(다른 창의 묶음 값 등) 상점 가격으로 쓰지 않는다. 범위 판매품은 표 범위의 0.5~3배 */
+    static boolean plausible(Ware w, int[] p) {
+        if (w.max() <= 0) return true;
+        double lo = Math.max(1, w.min()) * 0.5, hi = w.max() * 3.0;
+        return p[0] >= lo && p[0] <= hi && p[1] >= lo && p[1] <= hi * 1.6;
     }
 
     /** 내 인벤토리 귀중품처럼 아이템 설명에 그 아이템만의 가격("가격 : 16,227골드")이 있으면 그 값, 없으면 -1 */
@@ -198,6 +232,17 @@ public final class ShopPrices {
         if (lore == null) return -1;
         for (Text t : lore.lines()) {
             Matcher m = ITEM_PRICE.matcher(ItemKeys.stripGlyphs(t.getString()));
+            if (m.find()) return num(m.group(1));
+        }
+        return -1;
+    }
+
+    /** 귀중품 설명의 "귀중품 가치 : N" (없으면 -1) */
+    static int worth(ItemStack s) {
+        var lore = s.get(DataComponentTypes.LORE);
+        if (lore == null) return -1;
+        for (Text t : lore.lines()) {
+            Matcher m = WORTH.matcher(ItemKeys.stripGlyphs(t.getString()));
             if (m.find()) return num(m.group(1));
         }
         return -1;
@@ -302,6 +347,12 @@ public final class ShopPrices {
             Ware w = wareOf(s);
             if (w == null) continue;
             int own = ownPrice(s);
+            if (own <= 0 && group(w).equals("귀중품")) {
+                // 로니 창처럼 가격 줄이 없는 창: 보석함 창에서 본 같은 귀중품(이름·가치가 같은 것)의 가격
+                Map<String, Integer> vm = valuables(false);
+                Integer remembered = vm == null ? null : vm.get(w.name() + "|" + worth(s));
+                if (remembered != null) own = remembered;
+            }
             if (own <= 0) continue;
             long[] e = exact.computeIfAbsent(w.name(), k -> new long[2]);
             e[0] += s.getCount();
@@ -356,6 +407,19 @@ public final class ShopPrices {
         return m;
     }
 
+    private static Map<String, Integer> valuables(boolean create) {
+        if (store == null) load();
+        if (store.valuables == null) store.valuables = new LinkedHashMap<>();
+        String key = kr.ddingmate.skill.SkillTimers.accountKey();
+        if (key == null) key = "test";
+        Map<String, Integer> m = store.valuables.get(key);
+        if (m == null && create) {
+            m = new LinkedHashMap<>();
+            store.valuables.put(key, m);
+        }
+        return m;
+    }
+
     private static java.nio.file.Path path() {
         return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ddingmate-shop.json");
     }
@@ -371,6 +435,8 @@ public final class ShopPrices {
                 for (Map<String, int[]> m : s.accounts.values()) {
                     m.values().removeIf(v -> v == null || v.length != 2 || v[0] <= 0 || v[1] <= 0);
                     m.keySet().removeIf(k -> k.startsWith("(")); // 예전 판(5bbce7f)이 귀중품 한 개 값을 상점 가격으로 저장했던 것
+                    // 예전 판이 무역 창 묶음 값(코룸 주괴 24개 89,082골드)을 한 개 값으로 저장했던 것
+                    m.entrySet().removeIf(e -> WARES.stream().anyMatch(w -> w.name().equals(e.getKey()) && !plausible(w, e.getValue())));
                 }
                 store = s;
             }

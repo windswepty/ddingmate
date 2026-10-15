@@ -658,6 +658,35 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.expert.ShopPrices.openShop() == null, "보석함 창을 상점으로 봄");
                 DdingMate.config().expert.priceSkills.clear();
+                // 보석함에서 본 귀중품 가격은 기억해 두고, 가격 줄이 없는 창(로니)에서도 같은 귀중품(이름·가치)에 쓴다
+                c.player.getInventory().setStack(6, item("(Rare) 실바니움 만년필", 1, "값진 보석으로 만든 귀중품입니다.", "귀중품 가치 : 4,414"));
+            });
+            ctx.runOnClient(c -> {
+                c.setScreen(facility(c, item("(Rare) 실바니움 만년필", 1, "귀중품 가치 : 4,414", "가격 : 16,227골드")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                var pen = kr.ddingmate.expert.ShopPrices.owned(c, "채광", null).stream()
+                        .filter(o -> o.ware().name().equals("(Rare) 실바니움 만년필")).findFirst().orElseThrow();
+                check(pen.exact() && pen.high() == 16_227, "보석함에서 본 귀중품 가격(16,227골드)을 다른 창에서 안 씀: " + pen);
+                c.player.getInventory().setStack(6, ItemStack.EMPTY);
+                // 포스 칸 "판매가 : 824,662 골드 (↑796,645)" / "나의 판매가 : 865,895 골드", 무역 칸(판매 수량·묶음 값)은 상점 가격이 아니다
+                c.setScreen(facility(c,
+                        item("흑진주 시계", 1, "해양 아이템 판매 정보", "- 판매가 : 824,662 골드 (↑796,645)", "- 나의 판매가 : 865,895 골드", "(우) 판매 (쉬프트) 모두 판매"),
+                        item("자개 부채", 1, "- 판매가 : 243,746 골드", "- 나의 판매가 : 255,933 골드"),
+                        item("분홍 헤어핀", 1, "- 판매가 : 214,495 골드", "- 나의 판매가 : 225,220 골드"),
+                        item("코룸 주괴", 24, "- 판매 수량 : 24개", "- 판매 가격 : 89,082골드 (101%가격)", "쉬프트 클릭하여 무역 물품을 판매합니다.")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check("포스".equals(kr.ddingmate.expert.ShopPrices.openShop()), "포스 상점 창으로 알아보지 못함");
+                var w = kr.ddingmate.expert.ShopPrices.WARES.stream().filter(x -> x.name().equals("흑진주 시계")).findFirst().orElseThrow();
+                int[] p = kr.ddingmate.expert.ShopPrices.priceFor(w);
+                check(p[0] == 824_662 && p[1] == 865_895, "포스 판매가·나의 판매가를 다르게 읽음: " + p[0] + "/" + p[1]);
+                var ingot = kr.ddingmate.expert.ShopPrices.WARES.stream().filter(x -> x.name().equals("코룸 주괴")).findFirst().orElseThrow();
+                check(kr.ddingmate.expert.ShopPrices.priceFor(ingot)[0] < 10_000, "무역 칸 묶음 값(89,082골드)을 코룸 주괴 한 개 값으로 저장함: "
+                        + kr.ddingmate.expert.ShopPrices.priceFor(ingot)[0]);
                 // 가방처럼 가격 없는 칸뿐이면 상점이 아니다
                 c.setScreen(facility(c, item("코룸 주괴", 64, "재료"), item("리프톤 주괴", 64, "재료"), item("세렌트 주괴", 64, "재료")));
             });
