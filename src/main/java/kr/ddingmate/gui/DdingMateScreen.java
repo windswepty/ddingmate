@@ -825,6 +825,49 @@ public class DdingMateScreen extends Screen {
 
         buildBarista();
         buildCooking();
+        buildWares();
+    }
+
+    /** 채광·해양·사냥·재배(꽃) 전문가: 보유한 판매품과 팔면 받는 금액(상점 창에서 본 가격 → 위키 매입가표) */
+    private void buildWares() {
+        DdingMateConfig.Expert ex = cfg.expert;
+        list.header("판매 시세 · 채광·해양·사냥·꽃 보유 판매품", "판매 시세");
+        list.pair(tip(toggle("상점 창 옆에 보기", ex.shopPanel, v -> ex.shopPanel = v),
+                "로니·샤키·포스·픽스·카이 상점 창을 열면 옆에 보유 판매품과 모두 팔면 받는 금액을 보여 줘요"), null);
+        String[][] experts = {{"채광", "로니 · 주괴·정동석·귀중품·형광 제련품"}, {"해양", "샤키 · 연금품 / 포스 · 공예품"},
+                {"사냥", "픽스 · 영혼·원혼·가죽 명품"}, {"재배", "카이 · 꽃·향장품"}};
+        long[] all = new long[2];
+        for (String[] e : experts) {
+            List<kr.ddingmate.expert.ShopPrices.Owned> owned = client == null ? List.of()
+                    : kr.ddingmate.expert.ShopPrices.owned(client, e[0], null);
+            long[] t = kr.ddingmate.expert.ShopPrices.total(owned);
+            all[0] += t[0];
+            all[1] += t[1];
+            list.single(new InfoRow(expertIcon(e[0]), e[0] + " 판매품", owned.isEmpty() ? "보유 없음" : kr.ddingmate.expert.ShopPrices.money(t[0], t[1]),
+                    owned.isEmpty() ? Theme.TEXT_SOFT : Theme.GOLD_ON_LIGHT, null).sub(e[1]));
+            for (int i = 0; i < Math.min(6, owned.size()); i++) {
+                kr.ddingmate.expert.ShopPrices.Owned o = owned.get(i);
+                ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(o.ware().name());
+                list.single(new InfoRow(icon == null ? new ItemStack(Items.PAPER) : icon, "　" + o.ware().name() + " ×" + o.count(),
+                        kr.ddingmate.expert.ShopPrices.money(o.low(), o.high()), Theme.GREEN_ON_LIGHT, null)
+                        .sub("　1개 " + (o.ware().fixed() || o.fromShop() ? String.format("%,dG", o.each())
+                                : kr.ddingmate.expert.ShopPrices.money(o.ware().min(), o.ware().max()) + " (품질에 따라)")
+                                + (o.fromShop() ? " · 상점에서 본 값" : " · 위키 표")));
+            }
+            if (owned.size() > 6) list.note("　그 밖에 " + (owned.size() - 6) + "종");
+        }
+        list.single(new InfoRow(new ItemStack(Items.GOLD_INGOT), "보유 판매품 모두 팔면", kr.ddingmate.expert.ShopPrices.money(all[0], all[1]),
+                Theme.GOLD_ON_LIGHT, null));
+        list.note("보유 개수는 인벤토리 + 열어 본 가방·아이템 저장소. 가격은 상점 창에서 본 값을 먼저 쓰고, 못 봤으면 위키 [상점가] 매입가표예요.");
+    }
+
+    private static ItemStack expertIcon(String expert) {
+        return new ItemStack(switch (expert) {
+            case "채광" -> Items.IRON_PICKAXE;
+            case "해양" -> Items.FISHING_ROD;
+            case "사냥" -> Items.IRON_SWORD;
+            default -> Items.IRON_HOE;
+        });
     }
 
     /** 제작 줄 아이콘: 항해는 배(섬 그림을 알면 그 그림을 대신 그린다), 그 밖은 만드는 아이템 → 작업대 */

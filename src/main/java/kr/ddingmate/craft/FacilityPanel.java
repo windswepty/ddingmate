@@ -39,13 +39,17 @@ public final class FacilityPanel {
     private static final int ROW = 12;
     private static final int MAX_ROWS = 8;
 
-    /** 판 한 줄: 레시피, 만들 수 있는 횟수, 다 모인 재료 종류 수 */
-    public record Entry(RecipeBook.Recipe recipe, int craftable, int ready) {}
+    /** 판 한 줄: 레시피, 만들 수 있는 횟수, 다 모인 재료 종류 수, 하나라도 가진 재료 종류 수 */
+    public record Entry(RecipeBook.Recipe recipe, int craftable, int ready, int owned) {}
 
     private static List<Entry> entries = List.of();
     private static int shown;
     /** 마지막으로 그린 자리(누르기 판정) */
     private static int px, py, pw, ph, rowsTop;
+    /** "그 밖에 N개"를 눌러 연 전체 목록 판 */
+    private static boolean expanded;
+    private static int scroll;
+    private static int lx, ly, lw, lh, listTop, listRows, moreY;
 
     public static List<Entry> entries() {
         return entries;
@@ -80,11 +84,19 @@ public final class FacilityPanel {
         List<Entry> out = new ArrayList<>();
         for (RecipeBook.Recipe r : RecipeBook.all()) {
             if (!r.facility.equals(facility) || r.materials.isEmpty()) continue;
-            out.add(new Entry(r, MaterialCounter.craftable(counts, r), MaterialCounter.materialsReady(counts, r)));
+            int owned = 0;
+            for (RecipeBook.Material m : r.materials) if (MaterialCounter.have(counts, m.name) > 0) owned++;
+            // 재료를 하나도 안 가진 레시피는 추천하지 않는다
+            if (owned == 0) continue;
+            out.add(new Entry(r, MaterialCounter.craftable(counts, r), MaterialCounter.materialsReady(counts, r), owned));
         }
-        out.sort((a, b) -> a.craftable() != b.craftable() ? Integer.compare(b.craftable(), a.craftable())
-                : Double.compare((double) b.ready() / b.recipe().materials.size(), (double) a.ready() / a.recipe().materials.size()));
+        out.sort((a, b) -> {
+            if (a.craftable() != b.craftable()) return Integer.compare(b.craftable(), a.craftable());
+            int c = Double.compare((double) b.ready() / b.recipe().materials.size(), (double) a.ready() / a.recipe().materials.size());
+            return c != 0 ? c : Double.compare((double) b.owned() / b.recipe().materials.size(), (double) a.owned() / a.recipe().materials.size());
+        });
         entries = out;
+        if (out.size() <= MAX_ROWS) expanded = false;
     }
 
     public static void render(DrawContext ctx, Screen screen, int mouseX, int mouseY) {
@@ -128,13 +140,76 @@ public final class FacilityPanel {
             Theme.boldText(ctx, tr, r, x + w - 7 - rw, cy + 2, e.craftable() > 0 ? p.good() : p.soft(), false);
             cy += ROW;
         }
+        moreY = -1;
         if (entries.size() > shown) {
-            Theme.text(ctx, tr, "그 밖에 " + (entries.size() - shown) + "개", x + 6, cy + 2, p.soft());
+            moreY = cy;
+            boolean hover = mouseX >= x + 3 && mouseX < x + w - 3 && mouseY >= cy && mouseY < cy + 11;
+            String more = expanded ? "전체 목록 닫기" : "그 밖에 " + (entries.size() - shown) + "개 · 눌러서 모두 보기";
+            Theme.text(ctx, tr, Theme.ellipsize(tr, more, w - 12), x + 6, cy + 2, hover ? p.ink() : p.accent());
+            if (hover) ctx.fill(x + 6, cy + 10, x + 6 + Math.min(w - 12, Theme.width(tr, more)), cy + 11, p.accent());
             cy += 11;
         }
         SidePanel.divider(ctx, x + 5, cy + 2, w - 10, p);
         Theme.text(ctx, tr, foot, x + 6, cy + 5, p.soft());
         ctx.getMatrices().pop();
+        lw = 0;
+        if (expanded) renderList(ctx, screen, tr, p, mouseX, mouseY);
+    }
+
+    /** 전체 목록 판: 창 왼쪽에 크게. 휠로 넘기고, 줄은 작은 판과 똑같이 왼쪽 클릭 핀 넣기 · 오른쪽 클릭 핀 빼기 */
+    private static void renderList(DrawContext ctx, Screen screen, TextRenderer tr, SidePanel.Palette p, int mouseX, int mouseY) {
+        int mid = screen.width / 2;
+        int w = Math.max(132, Math.min(200, mid - 92 - 6));
+        int x = Math.max(2, mid - 92 - 4 - w);
+        int y = 6;
+        int h = screen.height - 12;
+        String title = "만들 수 있는 레시피 " + entries.size() + "개";
+        listRows = Math.max(1, (h - SidePanel.HEAD_H - 5 - 16) / ROW);
+        scroll = Math.max(0, Math.min(scroll, Math.max(0, entries.size() - listRows)));
+        lx = x;
+        ly = y;
+        lw = w;
+        lh = h;
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(0, 0, 300);
+        SidePanel.frame(ctx, tr, x, y, w, h, p, new ItemStack(Items.CRAFTING_TABLE), title);
+        // 닫기(×)
+        boolean hoverX = mouseX >= x + w - 14 && mouseX < x + w - 2 && mouseY >= y + 2 && mouseY < y + SidePanel.HEAD_H;
+        Theme.boldText(ctx, tr, "×", x + w - 11, y + 4, hoverX ? Theme.GOLD : p.headerText(), false);
+        int cy = y + SidePanel.HEAD_H + 5;
+        listTop = cy;
+        for (int i = scroll; i < Math.min(entries.size(), scroll + listRows); i++) {
+            Entry e = entries.get(i);
+            boolean hover = mouseX >= x + 3 && mouseX < x + w - 3 && mouseY >= cy - 1 && mouseY < cy - 1 + ROW;
+            SidePanel.rowBg(ctx, x + 3, cy - 1, w - 6, ROW, p, i, hover);
+            ItemStack icon = IconCache.forRecipe(e.recipe());
+            if (icon != null) Theme.item(ctx, icon, x + 6, cy, 10);
+            String r = right(e);
+            int rw = Theme.boldWidth(tr, r);
+            boolean pinned = pinnedIndex(e.recipe()) >= 0;
+            String name = Theme.ellipsize(tr, (pinned ? "[핀] " : "") + e.recipe().displayName(), w - 6 - 13 - rw - 12);
+            Theme.text(ctx, tr, name, x + 19, cy + 2, pinned ? p.accent() : e.craftable() > 0 ? p.ink() : p.soft());
+            Theme.boldText(ctx, tr, r, x + w - 7 - rw, cy + 2, e.craftable() > 0 ? p.good() : p.soft(), false);
+            cy += ROW;
+        }
+        // 넘길 수 있으면 오른쪽에 위치 막대
+        if (entries.size() > listRows) {
+            int trackTop = listTop - 1, trackH = listRows * ROW;
+            int th = Math.max(8, trackH * listRows / entries.size());
+            int ty = trackTop + (trackH - th) * scroll / Math.max(1, entries.size() - listRows);
+            ctx.fill(x + w - 3, trackTop, x + w - 2, trackTop + trackH, Theme.withAlpha(p.soft(), 80));
+            ctx.fill(x + w - 3, ty, x + w - 2, ty + th, p.accent());
+        }
+        Theme.text(ctx, tr, entries.size() > listRows ? "휠: 넘기기 · ×: 닫기" : "×: 닫기", x + 6, y + h - 12, p.soft());
+        ctx.getMatrices().pop();
+    }
+
+    /** 전체 목록 판 위에서 휠을 굴렸으면 넘기고 true */
+    public static boolean scrolled(double mouseX, double mouseY, double vertical) {
+        if (!expanded || lw <= 0) return false;
+        if (mouseX < lx || mouseX >= lx + lw || mouseY < ly || mouseY >= ly + lh) return false;
+        scroll = Math.max(0, Math.min(Math.max(0, entries.size() - listRows), scroll + (vertical > 0 ? -3 : 3)));
+        return true;
     }
 
     private static String right(Entry e) {
@@ -143,8 +218,28 @@ public final class FacilityPanel {
 
     /** 판 안을 눌렀으면 처리하고 true(창으로는 넘기지 않음). 왼쪽: 핀 넣기, 오른쪽: 핀 빼기 */
     public static boolean click(double mouseX, double mouseY, int button) {
-        if (pw <= 0 || (button != 0 && button != 1)) return false;
+        if (button != 0 && button != 1) return false;
+        // 전체 목록 판
+        if (expanded && lw > 0 && mouseX >= lx && mouseX < lx + lw && mouseY >= ly && mouseY < ly + lh) {
+            if (mouseY < ly + SidePanel.HEAD_H && mouseX >= lx + lw - 14) {
+                expanded = false;
+                return true;
+            }
+            int i = (int) Math.floor((mouseY - (listTop - 1)) / ROW);
+            if (mouseY >= listTop - 1 && i >= 0 && i < listRows && scroll + i < entries.size()) {
+                RecipeBook.Recipe r = entries.get(scroll + i).recipe();
+                if (button == 0) pin(r);
+                else unpin(r);
+            }
+            return true;
+        }
+        if (pw <= 0) return false;
         if (mouseX < px || mouseX >= px + pw || mouseY < py || mouseY >= py + ph) return false;
+        if (moreY >= 0 && mouseY >= moreY && mouseY < moreY + 11 && button == 0) {
+            expanded = !expanded;
+            scroll = 0;
+            return true;
+        }
         int i = (int) Math.floor((mouseY - (rowsTop - 1)) / ROW);
         if (mouseY >= rowsTop - 1 && i >= 0 && i < shown) {
             if (button == 0) pin(entries.get(i).recipe());
@@ -218,6 +313,16 @@ public final class FacilityPanel {
         List<DdingMateConfig.Pin> pins = DdingMate.config().counter.pins;
         for (int i = 0; i < pins.size(); i++) if (r.id.equals(pins.get(i).recipe)) return i;
         return -1;
+    }
+
+    /** 시험용: "그 밖에 N개" 줄 가운데(없으면 null) */
+    public static int[] debugMore() {
+        return pw <= 0 || moreY < 0 ? null : new int[]{px + pw / 2, moreY + 5};
+    }
+
+    /** 시험용 */
+    public static boolean expanded() {
+        return expanded;
     }
 
     /** 시험용: i번째 줄 가운데 화면 좌표(아직 안 그렸으면 null) */

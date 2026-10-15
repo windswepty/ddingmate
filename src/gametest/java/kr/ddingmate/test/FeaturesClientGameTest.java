@@ -426,26 +426,23 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
 
             // 재료 HUD 높이: 편집 화면에서 높이를 줄이면 넘치는 줄은 옆 칸으로(가로로 길고 세로로 짧은 HUD)
             int[] tall = new int[2];
+            String[] keepPin0 = new String[1];
             ctx.runOnClient(c -> {
                 DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(1);
                 pin.recipe = "강화 제작 시설/하급 라이프스톤";
                 pin.crafts = 3;
                 MaterialCounter.tick(c);
                 var views = MaterialCounter.views();
-                var cols = kr.ddingmate.hud.CounterHud.layout(views, 1000, true);
-                check(cols.size() == 1, "높이 제한이 없는데 칸이 나뉨: " + cols.size());
-                var narrow = kr.ddingmate.hud.CounterHud.layout(views, 70, true);
-                int rows = 0;
-                for (var col : narrow) for (var sg : col) rows += sg.to() - sg.from();
-                int all = 0;
-                for (var v : views) all += v.lines().size() + v.lines().stream().mapToInt(l -> l.subs().size()).sum();
-                check(narrow.size() > 1 && rows == all, "낮은 높이에서 줄이 옆 칸으로 안 넘어가거나 줄이 빠짐: " + narrow.size() + "칸 " + rows + "/" + all);
-                check(narrow.stream().skip(1).anyMatch(col -> col.get(0).continued()), "이어지는 칸에 (이어서) 표시가 없음");
-                for (var col : narrow) {
-                    int h = 3;
-                    for (var sg : col) h += sg.height();
-                    check(h <= 70 || col.size() == 1, "칸 높이가 정한 높이를 넘음: " + h);
+                // 높이 제한이 넉넉하면 핀마다 한 칸, 낮으면 같은 사각형 안에서 줄이 옆 칸으로(제목은 한 번, "이어서" 없음)
+                var roomy = kr.ddingmate.hud.CounterHud.blocks(views, 1000, false);
+                check(roomy.stream().allMatch(b -> b.cols() == 1), "높이가 넉넉한데 옆 칸으로 나뉨");
+                var narrow = kr.ddingmate.hud.CounterHud.blocks(views, 70, false);
+                check(narrow.size() == views.size(), "핀 하나가 사각형 여러 개로 나뉨: " + narrow.size() + "/" + views.size());
+                for (var b : narrow) {
+                    int rows = b.view().lines().size() + b.view().lines().stream().mapToInt(l -> l.subs().size()).sum();
+                    check(b.cols() * b.perCol() >= rows && (b.cols() - 1) * b.perCol() < rows, "칸 수가 줄 수와 안 맞음: " + b);
                 }
+                check(narrow.stream().anyMatch(b -> b.cols() > 1), "낮은 높이에서 줄이 옆 칸으로 안 넘어감");
                 var r = HudLayout.bounds().get(HudLayout.COUNTER);
                 tall[0] = r == null ? 0 : r.w();
                 tall[1] = r == null ? 0 : r.h();
@@ -460,8 +457,31 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 // 정한 높이 안에 들어가거나, 화면 너비가 모자라 그만큼만 키웠으면(화면 밖으로 안 나가게) 맞다
                 check(r != null && (r.h() <= Math.round(70 * sc) + 2 || r.w() >= screenW * 0.8) && r.x() + r.w() <= screenW + 1,
                         "높이를 줄였는데 HUD 가 낮아지지 않음: " + tall[1] + " → " + (r == null ? null : r.h()) + " (너비 " + tall[0] + " → " + (r == null ? null : r.w()) + ")");
+            });
+            // 실제처럼 왼쪽 위로 옮겨 둔 모습도 남긴다(채팅·다른 HUD 와 안 겹치게)
+            ctx.runOnClient(c -> {
+                var r = HudLayout.bounds().get(HudLayout.COUNTER);
+                if (r != null) HudLayout.setPos(HudLayout.COUNTER, 4, 60, r.w(), r.h(), c.getWindow().getScaledWidth(), c.getWindow().getScaledHeight());
+                DdingMate.config().hudEnabled = false;
+                // 핀 하나만: 사각형 하나 안에서 재료 줄이 옆 칸으로
+                keepPin0[0] = DdingMate.config().counter.pins.get(0).recipe;
+                DdingMate.config().counter.pins.get(0).recipe = "";
+                MaterialCounter.tick(c);
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                // 핀 하나로 바뀐 크기로 다시 맨 위에 붙인다
+                var r = HudLayout.bounds().get(HudLayout.COUNTER);
+                if (r != null) HudLayout.setPos(HudLayout.COUNTER, 4, 4, r.w(), r.h(), c.getWindow().getScaledWidth(), c.getWindow().getScaledHeight());
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-2g-counter-short-wide-moved");
+            ctx.runOnClient(c -> {
                 HudLayout.setHeight(HudLayout.COUNTER, 0);
                 DdingMate.config().counter.pins.get(1).recipe = "";
+                HudLayout.reset(HudLayout.COUNTER);
+                DdingMate.config().hudEnabled = true;
+                DdingMate.config().counter.pins.get(0).recipe = keepPin0[0];
                 MaterialCounter.tick(c);
             });
 

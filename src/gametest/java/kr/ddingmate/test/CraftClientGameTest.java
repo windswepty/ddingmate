@@ -549,9 +549,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.takeScreenshot("facility-1-craftable-panel");
             ctx.runOnClient(c -> {
                 var es = kr.ddingmate.craft.FacilityPanel.entries();
-                check(es.size() > 3 && es.stream().allMatch(e -> e.recipe().facility.equals("강화 제작 시설")),
-                        "시설 판이 강화 제작 시설 레시피 전체가 아님: " + es.stream().map(e -> e.recipe().facility + "/" + e.recipe().name).toList());
-                check(es.get(0).recipe().name.equals("조약돌 뭉치") && es.get(0).craftable() == 2 && es.get(1).craftable() == 0,
+                check(!es.isEmpty() && es.stream().allMatch(e -> e.recipe().facility.equals("강화 제작 시설") && e.owned() > 0),
+                        "시설 판이 강화 제작 시설의 보유 재료 레시피가 아님: " + es.stream().map(e -> e.recipe().facility + "/" + e.recipe().name + " " + e.owned()).toList());
+                check(es.stream().noneMatch(e -> e.recipe().name.equals("하급 라이프스톤") || e.recipe().name.equals("어빌리티 스톤")),
+                        "재료가 하나도 없는 레시피(고정 칸 하급 라이프스톤 등)를 추천함");
+                check(es.get(0).recipe().name.equals("조약돌 뭉치") && es.get(0).craftable() == 2 && es.stream().skip(1).allMatch(e -> e.craftable() == 0),
                         "보유 재료 순서가 아님: " + es.stream().map(e -> e.recipe().name + " " + e.craftable()).toList());
                 int[] at = kr.ddingmate.craft.FacilityPanel.debugRow(0);
                 check(at != null, "시설 판을 그리지 않음");
@@ -565,6 +567,59 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         .allowMouseClick(c.currentScreen, at[0], at[1], 1);
                 check(!passed2 && DdingMate.config().counter.pins.get(0).recipe.isEmpty(), "오른쪽 클릭으로 핀을 빼지 않음: " + DdingMate.config().counter.pins.get(0).recipe);
             });
+            // 재료가 많아 추천이 8개를 넘으면 "그 밖에 N개"를 눌러 전체 목록 판을 연다
+            ctx.runOnClient(c -> {
+                var pinv = c.player.getInventory();
+                int k = 2;
+                for (var it : new net.minecraft.item.Item[]{Items.COPPER_BLOCK, Items.REDSTONE_BLOCK, Items.IRON_BLOCK, Items.GOLD_BLOCK, Items.DIAMOND,
+                        Items.EMERALD, Items.LAPIS_BLOCK, Items.COAL_BLOCK, Items.DEEPSLATE, Items.NETHERITE_INGOT}) pinv.setStack(k++, new ItemStack(it, 8));
+                for (String n : new String[]{"토파즈 주괴", "사파이어 주괴", "플래티넘 주괴", "스킬 펄스", "강화 횃불", "코룸"}) pinv.setStack(k++, item(n, 8, "재료"));
+                // 귀중품이 많은 채광물 가공 시설 창(고정 칸에 코룸 주괴)
+                c.setScreen(facility(c, item("코룸 주괴", 1, "", "  제작 시간 : 20초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                var es = kr.ddingmate.craft.FacilityPanel.entries();
+                DdingMate.LOG.info("시설 판 추천 {}개: {}", es.size(), es.stream().map(e -> e.recipe().name).toList());
+                check(es.size() > 8, "재료를 많이 가졌는데 추천이 8개 이하: " + es.size());
+                if (es.size() > 8) {
+                    int[] more = kr.ddingmate.craft.FacilityPanel.debugMore();
+                    check(more != null, "추천이 8개를 넘는데 '그 밖에 N개'가 없음");
+                    net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
+                            .allowMouseClick(c.currentScreen, more[0], more[1], 0);
+                    check(kr.ddingmate.craft.FacilityPanel.expanded(), "'그 밖에 N개'를 눌러도 전체 목록이 안 열림");
+                }
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("facility-2-full-list");
+            // 다른 전문가 판매 시세: 로니 상점 창(가격 적힌 칸 3개 이상) → 보유 판매품과 모두 팔면 받는 금액
+            ctx.runOnClient(c -> {
+                kr.ddingmate.expert.ShopPrices.debugClear();
+                var pinv = c.player.getInventory();
+                for (int i = 0; i < pinv.size(); i++) pinv.setStack(i, ItemStack.EMPTY);
+                pinv.setStack(0, item("코룸 주괴", 10, "재료"));
+                pinv.setStack(1, item("사슴의 영혼", 4, "영혼"));
+                pinv.setStack(2, item("자개 부채", 1, "공예품"));
+                var mine = kr.ddingmate.expert.ShopPrices.owned(c, "채광", null);
+                check(mine.size() == 1 && mine.get(0).count() == 10 && mine.get(0).high() == 35_000, "채광 판매품 값이 다름: " + mine);
+                var sea = kr.ddingmate.expert.ShopPrices.owned(c, "해양", null);
+                check(sea.size() == 1 && sea.get(0).low() == 175_000 && sea.get(0).high() == 350_000, "공예품 범위가 다름: " + sea);
+                // 가방처럼 가격 없는 칸뿐이면 상점이 아니다
+                c.setScreen(facility(c, item("코룸 주괴", 64, "재료"), item("리프톤 주괴", 64, "재료"), item("세렌트 주괴", 64, "재료")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.expert.ShopPrices.openShop() == null, "가격 없는 창을 상점으로 봄");
+                c.setScreen(facility(c, item("코룸 주괴", 1, "판매 가격 : 3,600G"), item("리프톤 주괴", 1, "판매 가격 : 3,750G"),
+                        item("세렌트 주괴", 1, "판매 가격 : 4,000G"), item("코룸 정동석", 1, "판매 가격 : 7,200G")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check("로니".equals(kr.ddingmate.expert.ShopPrices.openShop()), "로니 상점 창으로 알아보지 못함: " + kr.ddingmate.expert.ShopPrices.openShop());
+                var mine = kr.ddingmate.expert.ShopPrices.owned(c, "채광", null);
+                check(mine.get(0).fromShop() && mine.get(0).high() == 36_000, "상점에서 본 가격(3,600G)을 쓰지 않음: " + mine);
+            });
+            ctx.takeScreenshot("shop-1-roni-panel");
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 for (int i = 0; i < 3; i++) DdingMate.config().counter.pins.get(i).recipe = keepPins[i];
@@ -581,7 +636,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(3);
             ctx.runOnClient(c -> {
                 kr.ddingmate.gui.DdingMateScreen s = (kr.ddingmate.gui.DdingMateScreen) c.currentScreen;
-                check(s.sectionLabels().containsAll(List.of("제작 시간", "스킬", "바리스타", "커피 가격", "요리")), "전문가 탭 목차가 다름: " + s.sectionLabels());
+                check(s.sectionLabels().containsAll(List.of("제작 시간", "스킬", "바리스타", "커피 가격", "요리", "판매 시세")), "전문가 탭 목차가 다름: " + s.sectionLabels());
                 s.jumpTo("바리스타");
             });
             ctx.waitTicks(3);

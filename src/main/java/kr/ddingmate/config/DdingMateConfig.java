@@ -167,6 +167,8 @@ public final class DdingMateConfig {
         public boolean cookingByTime = false;
         /** 밀키 요리 상점 창 옆에 효율·비싼 요리·가진 요리 판매 합계 판 */
         public boolean cookingPanel = true;
+        /** 판매품 상점(로니·샤키·포스·픽스·카이) 창 옆에 보유 판매품과 팔면 받는 금액 판 */
+        public boolean shopPanel = true;
     }
 
     public static final class Playtime {
