@@ -73,6 +73,9 @@ public final class IconCache {
         ensureLoaded();
         String key = ItemKeys.keyOf(stack);
         if (key.isEmpty() || key.equals("n:") || key.startsWith("v:")) return; // 바닐라 아이템은 이름으로 바로 그릴 수 있다
+        // 이름이 붙은 채로 본 서버 아이템: 모델 번호 → 아이템 키를 기억(이름 없이 오는 때 알아보기)
+        String model = modelOf(stack);
+        if (model != null && ItemKeys.hasName(stack)) LEARNED_MODEL.putIfAbsent(model, key);
         boolean known = SEEN.containsKey(key);
         if (known && (weak || !WEAK.contains(key))) return;
         if (!known && SEEN.size() >= MAX) return;
@@ -132,6 +135,44 @@ public final class IconCache {
      * 한 번도 본 적 없는 재료도 처음부터 그림이 나온다. 그림 자체는 서버 리소스팩이 그린다.
      */
     private static Map<String, ItemStack> bundled;
+    /** 모델(아이템 종류#모델 번호) → 아이템 키. 모드에 넣어 둔 표에서 만든 것 */
+    private static Map<String, String> bundledModel;
+    /** 이름이 붙은 채로 본 아이템에서 배운 모델 → 아이템 키 */
+    private static final Map<String, String> LEARNED_MODEL = new HashMap<>();
+
+    /** "paper#2037005" 처럼 아이템 종류와 모델 번호. 모델 번호가 없으면 null */
+    static String modelOf(ItemStack stack) {
+        var cmd = stack.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+        if (cmd == null || cmd.floats().isEmpty()) return null;
+        return Registries.ITEM.getId(stack.getItem()).getPath() + "#" + (int) (float) cmd.floats().get(0);
+    }
+
+    /**
+     * 이름 없이 온 서버 아이템(실제 2026-10-15: 상점 창에서 인벤토리 아이템 툴팁이 "종이")을 모델 번호로 알아본다.
+     * 이름이 붙은 채로 본 적 있는 모양 → 모드 표 순. 같은 모양에 이름이 여럿이면(오타 별칭 등) 레시피에 쓰는 이름을 고른다. 모르면 null
+     */
+    public static String keyForModel(ItemStack stack) {
+        String model = modelOf(stack);
+        if (model == null) return null;
+        String learned = LEARNED_MODEL.get(model);
+        if (learned != null) return learned;
+        if (bundledModel == null) {
+            java.util.Set<String> used = new HashSet<>();
+            for (RecipeBook.Recipe r : RecipeBook.all()) {
+                used.add(ItemKeys.nameKey(r.name));
+                for (RecipeBook.Material m : r.materials) used.add(ItemKeys.nameKey(m.name));
+            }
+            Map<String, String> out = new HashMap<>();
+            for (Map.Entry<String, ItemStack> e : bundled().entrySet()) {
+                String m = modelOf(e.getValue());
+                if (m == null) continue;
+                String old = out.get(m);
+                if (old == null || (!used.contains(old) && used.contains(e.getKey()))) out.put(m, e.getKey());
+            }
+            bundledModel = out;
+        }
+        return bundledModel.get(model);
+    }
 
     private static Map<String, ItemStack> bundled() {
         if (bundled != null) return bundled;
@@ -303,6 +344,8 @@ public final class IconCache {
                 ItemStack.CODEC.parse(ops, e.getValue()).result().ifPresent(s -> {
                     SEEN.put(key, s);
                     WEAK.add(key); // 이번에 인벤토리에서 다시 보면 최신 모양으로 바꾼다
+                    String model = modelOf(s);
+                    if (model != null && key.startsWith("n:")) LEARNED_MODEL.putIfAbsent(model, key);
                 });
             }
         } catch (IOException | RuntimeException e) {

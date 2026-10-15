@@ -401,6 +401,13 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 ItemStack terraon = kr.ddingmate.counter.IconCache.forMaterial("테라온 (Normal)");
                 var tcmd = terraon == null ? null : terraon.get(DataComponentTypes.CUSTOM_MODEL_DATA);
                 check(tcmd != null && tcmd.floats().get(0) == 2045008f, "테라온 그림이 2번 묶음(2045008)이 아님: " + tcmd);
+                // 이름 없이 온 서버 아이템(실제: 상점 창에서 툴팁이 "종이")은 모델 번호로 알아본다
+                ItemStack bare = new ItemStack(Items.PAPER);
+                bare.set(DataComponentTypes.CUSTOM_MODEL_DATA,
+                        new net.minecraft.component.type.CustomModelDataComponent(List.of(2037005f), List.of(), List.of(), List.of()));
+                check(kr.ddingmate.counter.ItemKeys.keyOf(bare).equals(kr.ddingmate.counter.ItemKeys.nameKey("토파즈 주괴")),
+                        "이름 없는 토파즈 주괴(모델 2037005)를 못 알아봄: " + kr.ddingmate.counter.ItemKeys.keyOf(bare));
+                check(kr.ddingmate.counter.ItemKeys.keyOf(new ItemStack(Items.PAPER)).equals("v:minecraft:paper"), "그냥 종이를 다른 아이템으로 봄");
                 // 세트 단위 보기
                 DdingMate.config().counter.showSets = true;
                 check(kr.ddingmate.hud.CounterHud.amount(80).equals("1세트 16") && kr.ddingmate.hud.CounterHud.amount(40).equals("40")

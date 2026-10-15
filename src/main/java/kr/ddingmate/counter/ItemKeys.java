@@ -92,7 +92,15 @@ public final class ItemKeys {
             String graded = IconCache.gradedName(stack);
             return nameKey(graded != null ? graded : stack.getName().getString());
         }
+        // 이름 없이 모델 번호만 있는 서버 아이템(툴팁이 "종이")은 모델 번호로 알아본다
+        String byModel = IconCache.keyForModel(stack);
+        if (byModel != null) return byModel;
         return vanillaKey(Registries.ITEM.getId(stack.getItem()).toString());
+    }
+
+    /** 서버가 이름을 붙인 아이템인가 */
+    public static boolean hasName(ItemStack stack) {
+        return renamed(stack);
     }
 
     public static void add(Map<String, Integer> counts, ItemStack stack) {
