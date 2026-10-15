@@ -592,6 +592,19 @@ public class CraftClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(3);
             ctx.takeScreenshot("facility-2-full-list");
+            // 쉬프트+클릭: 판 아래에 그 레시피의 재료(보유/필요) 판, 쉬프트+우클릭: 닫기
+            ctx.runOnClient(c -> {
+                var es = kr.ddingmate.craft.FacilityPanel.entries();
+                net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
+                        .allowMouseClick(c.currentScreen, kr.ddingmate.craft.FacilityPanel.debugMore()[0], kr.ddingmate.craft.FacilityPanel.debugMore()[1], 0);
+                kr.ddingmate.craft.FacilityPanel.debugDetail(es.get(0).recipe());
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("facility-3-recipe-detail");
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.craft.FacilityPanel.detail() != null && !kr.ddingmate.craft.FacilityPanel.expanded(), "레시피 판이 안 열리거나 전체 목록이 안 닫힘");
+                kr.ddingmate.craft.FacilityPanel.debugDetail(null);
+            });
             // 다른 전문가 판매 시세: 로니 상점 창(가격 적힌 칸 3개 이상) → 보유 판매품과 모두 팔면 받는 금액
             ctx.runOnClient(c -> {
                 kr.ddingmate.expert.ShopPrices.debugClear();

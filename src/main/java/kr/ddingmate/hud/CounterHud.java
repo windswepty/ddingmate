@@ -71,9 +71,7 @@ public final class CounterHud {
         int limit;
         int customY = HudLayout.customTop(ctx, HudLayout.COUNTER, 60);
         int fixedH = HudLayout.heightLimit(HudLayout.COUNTER);
-        if (fixedH > 0) {
-            limit = fixedH; // 편집 화면에서 정한 높이: 넘치는 줄은 옆 칸으로
-        } else if (customY >= 0) {
+        if (customY >= 0) {
             limit = sh - customY - 4; // 옮긴 자리 아래로 남은 높이
         } else {
             int safe = top ? sh - HudLayout.bottomGap(left ? DdingMateConfig.Corner.BOTTOM_LEFT : DdingMateConfig.Corner.BOTTOM_RIGHT)
@@ -82,9 +80,11 @@ public final class CounterHud {
             // 첫 핀도 안 들어가면 어차피 옆 줄로 넘어가므로 화면 높이 전체를 쓴다
             if (stack > 0 && pinHeight(views.get(0)) + 4 > limit) limit = safe;
         }
-        limit = Math.max(limit, fixedH > 0 ? HudLayout.MIN_HEIGHT : 60);
+        limit = Math.max(limit, 60);
         if (fixedH > 0) {
-            drawBlocks(ctx, tr, cfg, views, note, limit, top, alpha, dark);
+            // 정한 높이는 핀 하나의 사각형 높이: 넘치는 재료 줄은 그 사각형 안에서 옆 칸으로.
+            // 핀끼리는 아래에 자리가 있으면 아래로 쌓고(limit = 화면에 남은 높이), 없을 때만 옆으로
+            drawBlocks(ctx, tr, cfg, views, note, Math.max(HudLayout.MIN_HEIGHT, fixedH), limit, top, alpha, dark);
             return;
         }
 
@@ -137,71 +137,106 @@ public final class CounterHud {
     }
 
     private static void drawBlocks(DrawContext ctx, TextRenderer tr, DdingMateConfig.Counter cfg, List<MaterialCounter.PinView> views,
-                                   String note, int limit, boolean top, int alpha, boolean dark) {
+                                   String note, int pinH, int screenLimit, boolean top, int alpha, boolean dark) {
         int vw = HudLayout.vw(ctx);
+        int n = views.size();
         List<Block> blocks;
-        int[] ws, hs, subW;
+        int[] bw = new int[n], bh = new int[n], subW = new int[n];
+        List<List<Integer>> cols;
+        int[] colW;
         int totalW, tallest;
-        // 화면 밖으로 나갈 만큼 넓어지면 높이를 조금씩 늘려 다시 나눈다
+        // 화면 밖으로 나갈 만큼 넓어지면 핀 높이를 조금씩 늘려 다시 나눈다
         while (true) {
-            blocks = blocks(views, limit, note != null);
-            int n = blocks.size();
-            ws = new int[n];
-            hs = new int[n];
-            subW = new int[n];
-            totalW = 0;
-            tallest = 0;
+            blocks = blocks(views, pinH, false);
             for (int i = 0; i < n; i++) {
                 Block b = blocks.get(i);
                 Segment whole = new Segment(b.view(), 0, shown(b.view()).size(), false);
                 Widths w = widths(tr, cfg, List.of(whole));
                 subW[i] = ICON + 4 + w.name() + GAP + w.count() + (w.extra() > 0 ? GAP + w.extra() : 0);
                 int headW = 16 + Theme.boldWidth(tr, title(b.view())) + GAP + chipWidth(tr, b.view());
-                int inner = Math.max(headW, b.cols() * subW[i] + (b.cols() - 1) * SUB_GAP);
-                if (note != null && i == n - 1) inner = Math.max(inner, Theme.width(tr, note));
-                ws[i] = inner + 12;
-                int rows = Math.min(shown(b.view()).size(), b.perCol());
-                hs[i] = 3 + ScheduleHud.HEAD_H + 4 + rows * ROW_H + (note != null && i == n - 1 ? 12 : 0);
-                totalW += ws[i] + (i > 0 ? COLUMN_GAP : 0);
-                tallest = Math.max(tallest, hs[i]);
+                bw[i] = Math.max(headW, b.cols() * subW[i] + (b.cols() - 1) * SUB_GAP) + 12;
+                bh[i] = 3 + ScheduleHud.HEAD_H + 4 + Math.min(shown(b.view()).size(), b.perCol()) * ROW_H;
             }
-            if (totalW <= vw - 4 || limit > 2000) break;
-            limit += ROW_H * 2;
+            // 사각형을 위에서 아래로 쌓고, 화면에 남은 높이를 넘으면 옆 줄로
+            cols = new ArrayList<>();
+            List<Integer> col = new ArrayList<>();
+            int colH = 0;
+            int noteH = note != null ? 12 : 0;
+            for (int i = 0; i < n; i++) {
+                int need = bh[i] + (col.isEmpty() ? 0 : 2);
+                if (!col.isEmpty() && colH + need + noteH > screenLimit) {
+                    cols.add(col);
+                    col = new ArrayList<>();
+                    colH = 0;
+                    need = bh[i];
+                }
+                col.add(i);
+                colH += need;
+            }
+            cols.add(col);
+            colW = new int[cols.size()];
+            totalW = 0;
+            tallest = 0;
+            for (int c = 0; c < cols.size(); c++) {
+                int h = 0;
+                for (int i : cols.get(c)) {
+                    colW[c] = Math.max(colW[c], bw[i]);
+                    h += bh[i] + (h > 0 ? 2 : 0);
+                }
+                if (c == cols.size() - 1 && note != null) {
+                    colW[c] = Math.max(colW[c], Theme.width(tr, note) + 12);
+                    h += noteH;
+                }
+                totalW += colW[c] + (c > 0 ? COLUMN_GAP : 0);
+                tallest = Math.max(tallest, h);
+            }
+            if (totalW <= vw - 4 || pinH > 2000) break;
+            pinH += ROW_H * 2;
         }
         int wide = HudLayout.widen(HudLayout.COUNTER, totalW);
         if (wide > totalW) {
-            ws[ws.length - 1] += wide - totalW;
+            colW[colW.length - 1] += wide - totalW;
             totalW = wide;
         }
         int[] o = HudLayout.place(ctx, HudLayout.COUNTER, cfg.corner, totalW, tallest);
         boolean bottomAlign = !top && !HudLayout.custom(HudLayout.COUNTER);
-        int x = o[0];
         int text = Theme.text(dark);
         int soft = Theme.soft(dark);
-        for (int i = 0; i < blocks.size(); i++) {
-            Block b = blocks.get(i);
-            MaterialCounter.PinView v = b.view();
-            int h = tallest; // 나란한 사각형은 높이를 맞춘다
-            int y = bottomAlign ? o[1] + tallest - h : o[1];
-            ScheduleHud.panel(ctx, x, y, ws[i], h, alpha, dark);
-            ItemStack headIcon = IconCache.forRecipe(v.recipe());
-            ScheduleHud.header(ctx, tr, x, y, ws[i], title(v), headIcon == null ? CHEST : headIcon, dark, alpha);
-            drawChip(ctx, tr, v, x, y, ws[i]);
-            Segment whole = new Segment(v, 0, shown(v).size(), false);
-            Widths w = widths(tr, cfg, List.of(whole));
-            List<Shown> rows = shown(v);
-            for (int k = 0; k < rows.size(); k++) {
-                int col = k / b.perCol();
-                int cy = y + ScheduleHud.HEAD_H + 2 + (k % b.perCol()) * ROW_H;
-                drawRow(ctx, tr, cfg, rows.get(k), w, x + col * (subW[i] + SUB_GAP), cy, k % b.perCol() == 0, text, soft, alpha, dark);
+        int x = o[0];
+        for (int c = 0; c < cols.size(); c++) {
+            List<Integer> col = cols.get(c);
+            int colH = 0;
+            for (int i : col) colH += bh[i] + (colH > 0 ? 2 : 0);
+            boolean last = c == cols.size() - 1;
+            if (last && note != null) colH += 12;
+            int y = bottomAlign ? o[1] + tallest - colH : o[1];
+            for (int k = 0; k < col.size(); k++) {
+                int i = col.get(k);
+                Block b = blocks.get(i);
+                MaterialCounter.PinView v = b.view();
+                boolean noteHere = last && note != null && k == col.size() - 1;
+                int h = bh[i] + (noteHere ? 12 : 0);
+                ScheduleHud.panel(ctx, x, y, colW[c], h, alpha, dark);
+                ItemStack headIcon = IconCache.forRecipe(v.recipe());
+                ScheduleHud.header(ctx, tr, x, y, colW[c], title(v), headIcon == null ? CHEST : headIcon, dark, alpha);
+                drawChip(ctx, tr, v, x, y, colW[c]);
+                Segment whole = new Segment(v, 0, shown(v).size(), false);
+                Widths w = widths(tr, cfg, List.of(whole));
+                List<Shown> rows = shown(v);
+                for (int r = 0; r < rows.size(); r++) {
+                    int sc = r / b.perCol();
+                    int cy = y + ScheduleHud.HEAD_H + 2 + (r % b.perCol()) * ROW_H;
+                    drawRow(ctx, tr, cfg, rows.get(r), w, x + sc * (subW[i] + SUB_GAP), cy, r % b.perCol() == 0, text, soft, alpha, dark);
+                }
+                // 옆 칸 사이 옅은 세로선
+                for (int sc = 1; sc < b.cols(); sc++) {
+                    int lx = x + 6 + sc * (subW[i] + SUB_GAP) - SUB_GAP / 2;
+                    ctx.fill(lx, y + ScheduleHud.HEAD_H + 4, lx + 1, y + bh[i] - 3, Theme.withAlpha(soft, 70));
+                }
+                if (noteHere) Theme.textShadow(ctx, tr, note, x + 6, y + h - 12, soft, dark);
+                y += h + 2;
             }
-            // 옆 칸 사이 옅은 세로선
-            for (int c = 1; c < b.cols(); c++) {
-                int lx = x + 6 + c * (subW[i] + SUB_GAP) - SUB_GAP / 2;
-                ctx.fill(lx, y + ScheduleHud.HEAD_H + 4, lx + 1, y + h - (note != null && i == blocks.size() - 1 ? 14 : 3), Theme.withAlpha(soft, 70));
-            }
-            if (note != null && i == blocks.size() - 1) Theme.textShadow(ctx, tr, note, x + 6, y + h - 12, soft, dark);
-            x += ws[i] + COLUMN_GAP;
+            x += colW[c] + COLUMN_GAP;
         }
     }
 

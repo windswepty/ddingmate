@@ -455,7 +455,9 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 float sc = HudLayout.scale(HudLayout.COUNTER);
                 int screenW = c.getWindow().getScaledWidth();
                 // 정한 높이 안에 들어가거나, 화면 너비가 모자라 그만큼만 키웠으면(화면 밖으로 안 나가게) 맞다
-                check(r != null && (r.h() <= Math.round(70 * sc) + 2 || r.w() >= screenW * 0.8) && r.x() + r.w() <= screenW + 1,
+                // 핀마다 사각형 높이가 정한 높이(70) 안이고, 핀끼리는 아래로 쌓여 화면 안에 들어간다
+                int screenH = c.getWindow().getScaledHeight();
+                check(r != null && r.x() + r.w() <= screenW + 1 && r.y() + r.h() <= screenH + 1 && r.h() > Math.round(70 * sc) - 2,
                         "높이를 줄였는데 HUD 가 낮아지지 않음: " + tall[1] + " → " + (r == null ? null : r.h()) + " (너비 " + tall[0] + " → " + (r == null ? null : r.w()) + ")");
             });
             // 실제처럼 왼쪽 위로 옮겨 둔 모습도 남긴다(채팅·다른 HUD 와 안 겹치게)

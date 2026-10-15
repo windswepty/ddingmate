@@ -50,6 +50,10 @@ public final class FacilityPanel {
     private static boolean expanded;
     private static int scroll;
     private static int lx, ly, lw, lh, listTop, listRows, moreY;
+    /** 쉬프트+클릭으로 연 레시피(아래 판에 재료를 보여 줌). 쉬프트+오른쪽 클릭으로 닫는다 */
+    private static RecipeBook.Recipe detail;
+    /** 마지막으로 센 보유 개수(레시피 판에 씀) */
+    private static Map<String, Integer> lastCounts = Map.of();
 
     public static List<Entry> entries() {
         return entries;
@@ -78,9 +82,11 @@ public final class FacilityPanel {
         String facility = facilities.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
         if (facility == null) {
             entries = List.of();
+            detail = null;
             return;
         }
         Map<String, Integer> counts = MaterialCounter.availableCounts(client);
+        lastCounts = counts;
         List<Entry> out = new ArrayList<>();
         for (RecipeBook.Recipe r : RecipeBook.all()) {
             if (!r.facility.equals(facility) || r.materials.isEmpty()) continue;
@@ -113,8 +119,9 @@ public final class FacilityPanel {
             w = Math.max(w, 13 + Theme.width(tr, e.recipe().displayName()) + 8 + Theme.boldWidth(tr, right(e)) + 14);
         }
         w = Math.max(132, Math.min(150, w));
-        String foot = "왼쪽: 핀 넣기 · 오른쪽: 핀 빼기";
-        int h = SidePanel.HEAD_H + 5 + shown * ROW + 4 + (entries.size() > shown ? 11 : 0) + 12;
+        String foot = "클릭: 핀 넣기 · 우클릭: 핀 빼기";
+        String foot2 = "쉬프트+클릭: 레시피 · 쉬프트+우클릭: 닫기";
+        int h = SidePanel.HEAD_H + 5 + shown * ROW + 4 + (entries.size() > shown ? 11 : 0) + 12 + 10;
         int[] at = SidePanel.place(screen.width, screen.height, w, h);
         int x = at[0], y = at[1];
         px = x;
@@ -150,10 +157,53 @@ public final class FacilityPanel {
             cy += 11;
         }
         SidePanel.divider(ctx, x + 5, cy + 2, w - 10, p);
-        Theme.text(ctx, tr, foot, x + 6, cy + 5, p.soft());
+        Theme.text(ctx, tr, Theme.ellipsize(tr, foot, w - 12), x + 6, cy + 5, p.soft());
+        Theme.text(ctx, tr, Theme.ellipsize(tr, foot2, w - 12), x + 6, cy + 15, p.soft());
         ctx.getMatrices().pop();
         lw = 0;
         if (expanded) renderList(ctx, screen, tr, p, mouseX, mouseY);
+        if (detail != null) renderDetail(ctx, screen, tr, p, x, y + h + 3, w);
+    }
+
+    /** 쉬프트+클릭한 레시피의 재료: 판 바로 아래(자리가 없으면 위)에 재료마다 보유/필요 */
+    private static void renderDetail(DrawContext ctx, Screen screen, TextRenderer tr, SidePanel.Palette p, int x, int y, int w) {
+        RecipeBook.Recipe r = detail;
+        int rows = r.materials.size();
+        int h = SidePanel.HEAD_H + 5 + rows * ROW + 4 + 12 + 4;
+        if (y + h > screen.height - 2) y = Math.max(2, py - h - 3);
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(0, 0, 300);
+        ItemStack out = IconCache.forRecipe(r);
+        SidePanel.frame(ctx, tr, x, y, w, h, p, out == null ? new ItemStack(Items.CRAFTING_TABLE) : out,
+                Theme.ellipsize(tr, r.displayName(), w - 26, true));
+        int cy = y + SidePanel.HEAD_H + 5;
+        int i = 0;
+        for (RecipeBook.Material m : r.materials) {
+            int have = MaterialCounter.have(lastCounts, m.name);
+            SidePanel.rowBg(ctx, x + 3, cy - 1, w - 6, ROW, p, i++, false);
+            ItemStack icon = IconCache.forMaterial(m.name);
+            if (icon != null) Theme.item(ctx, icon, x + 6, cy, 10);
+            String right = have + "/" + m.count;
+            int rw = Theme.boldWidth(tr, right);
+            Theme.text(ctx, tr, Theme.ellipsize(tr, m.name, w - 6 - 13 - rw - 12), x + 19, cy + 2, have > 0 ? p.ink() : p.soft());
+            Theme.boldText(ctx, tr, right, x + w - 7 - rw, cy + 2, have >= m.count ? p.good() : have > 0 ? p.accent() : p.bad(), false);
+            cy += ROW;
+        }
+        SidePanel.divider(ctx, x + 5, cy + 2, w - 10, p);
+        int can = MaterialCounter.craftable(lastCounts, r);
+        String sum = can > 0 ? "지금 " + can + "번 만들 수 있어요" : "재료가 모자라요";
+        Theme.text(ctx, tr, Theme.ellipsize(tr, sum, w - 12), x + 6, cy + 6, can > 0 ? p.good() : p.soft());
+        ctx.getMatrices().pop();
+    }
+
+    /** 쉬프트를 누른 채 누르면 레시피 판 열기(왼쪽)/닫기(오른쪽), 아니면 핀 넣기/빼기 */
+    private static void act(RecipeBook.Recipe r, int button) {
+        if (net.minecraft.client.gui.screen.Screen.hasShiftDown()) {
+            detail = button == 0 ? r : null;
+            return;
+        }
+        if (button == 0) pin(r);
+        else unpin(r);
     }
 
     /** 전체 목록 판: 창 왼쪽에 크게. 휠로 넘기고, 줄은 작은 판과 똑같이 왼쪽 클릭 핀 넣기 · 오른쪽 클릭 핀 빼기 */
@@ -227,9 +277,7 @@ public final class FacilityPanel {
             }
             int i = (int) Math.floor((mouseY - (listTop - 1)) / ROW);
             if (mouseY >= listTop - 1 && i >= 0 && i < listRows && scroll + i < entries.size()) {
-                RecipeBook.Recipe r = entries.get(scroll + i).recipe();
-                if (button == 0) pin(r);
-                else unpin(r);
+                act(entries.get(scroll + i).recipe(), button);
             }
             return true;
         }
@@ -241,10 +289,8 @@ public final class FacilityPanel {
             return true;
         }
         int i = (int) Math.floor((mouseY - (rowsTop - 1)) / ROW);
-        if (mouseY >= rowsTop - 1 && i >= 0 && i < shown) {
-            if (button == 0) pin(entries.get(i).recipe());
-            else unpin(entries.get(i).recipe());
-        }
+        if (mouseY >= rowsTop - 1 && i >= 0 && i < shown) act(entries.get(i).recipe(), button);
+        else if (button == 1 && net.minecraft.client.gui.screen.Screen.hasShiftDown()) detail = null;
         return true;
     }
 
@@ -318,6 +364,16 @@ public final class FacilityPanel {
     /** 시험용: "그 밖에 N개" 줄 가운데(없으면 null) */
     public static int[] debugMore() {
         return pw <= 0 || moreY < 0 ? null : new int[]{px + pw / 2, moreY + 5};
+    }
+
+    /** 시험용: 지금 연 레시피 판 */
+    public static RecipeBook.Recipe detail() {
+        return detail;
+    }
+
+    /** 시험용: 쉬프트를 누른 것처럼 레시피 판 열기/닫기 */
+    public static void debugDetail(RecipeBook.Recipe r) {
+        detail = r;
     }
 
     /** 시험용 */
