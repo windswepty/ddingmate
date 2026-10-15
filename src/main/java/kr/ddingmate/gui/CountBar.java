@@ -20,12 +20,13 @@ final class CountBar {
     static final int MAX = 9999;
     static final int FIELD_W = 52;
     static final int SMALL_W = 20;
-    static final int QUICK_W = 30;
+    static final int QUICK_W = 28;
     static final int MODE_W = 92;
 
     private final IntConsumer onValue;
     private final Widgets.Field field;
     private final List<ClickableWidget> widgets = new ArrayList<>();
+    private ClickableWidget mode;
     private int value;
     private boolean updating;
 
@@ -76,11 +77,22 @@ final class CountBar {
                     v -> v ? "개 얻기" : "번 만들기", onMode::accept);
             mode.setTooltip(Tooltip.of(Text.literal("번 만들기: 숫자만큼 제작해요\n개 얻기: 결과물이 숫자만큼 나오도록 제작 횟수를 알아서 계산해요")));
             widgets.add(mode);
+            this.mode = mode;
         }
     }
 
     List<ClickableWidget> widgets() {
         return widgets;
+    }
+
+    /** 숫자 조절 단추들만(번 만들기/개 얻기 선택 빼고) */
+    List<ClickableWidget> countWidgets() {
+        return mode == null ? widgets : widgets.subList(0, widgets.size() - 1);
+    }
+
+    /** 번 만들기/개 얻기 선택(한 번에 하나 나오는 레시피면 null) */
+    ClickableWidget mode() {
+        return mode;
     }
 
     int value() {

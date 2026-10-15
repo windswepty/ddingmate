@@ -63,6 +63,8 @@ public final class DdingMateConfig {
         public boolean includeStorage = true;
         /** 개수를 세트(64개)로 보여 줌: 80개 → "1세트 16", 40개 → "40" */
         public boolean showSets = false;
+        /** 제작 시설 창 옆에 가진 재료로 만들 수 있는 레시피 판(누르면 핀) */
+        public boolean facilityPanel = true;
     }
 
     /** 추적하는 장비 하나. key 는 ItemKeys 키, name 은 화면에 보일 이름 */
@@ -163,6 +165,8 @@ public final class DdingMateConfig {
         public int coffeeBonus;
         /** 요리 효율 순위 기준: true = 시간당 골드, false = 원재료당 골드 */
         public boolean cookingByTime = false;
+        /** 밀키 요리 상점 창 옆에 효율·비싼 요리·가진 요리 판매 합계 판 */
+        public boolean cookingPanel = true;
     }
 
     public static final class Playtime {

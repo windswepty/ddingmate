@@ -59,9 +59,19 @@ public final class Cooking {
     private static final Set<String> LOGGED = new HashSet<>();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
-    /** 순위 한 줄 */
+    /**
+     * 순위 한 줄. 같은 요리를 만드는 레시피가 여럿이면(황금 요리: 식용 금 가루 1개짜리·금 가루 묶음) 기준이 더 좋은 쪽 하나만 넣고
+     * variant 에 어떤 레시피인지 적는다(하나뿐이면 빈 글자)
+     */
     public record Rank(RecipeBook.Recipe recipe, int price, boolean fresh, int rawItems, long craftSec,
-                       double perItem, double perMinute) {}
+                       double perItem, double perMinute, String variant) {}
+
+    /** 지금 열린 창이 요리를 사 주는 상점인가(요리 가격이 3개 이상 보이는 창) */
+    private static boolean shopOpen;
+
+    public static boolean shopOpen() {
+        return shopOpen;
+    }
 
     /** 요리 레시피(요리 제작 시설·황금 요리 제작 시설의 "… 요리") */
     public static List<RecipeBook.Recipe> dishes() {
@@ -74,7 +84,11 @@ public final class Cooking {
 
     /** 10틱마다: 열린 창이 요리를 사 주는 상점이면 요리별 가격을 읽는다 */
     public static void scan(MinecraftClient client) {
-        if (!(client.currentScreen instanceof GenericContainerScreen screen)) return;
+        if (!(client.currentScreen instanceof GenericContainerScreen screen)) {
+            shopOpen = false;
+            return;
+        }
+        int found = 0;
         Map<String, String> names = new LinkedHashMap<>();
         for (RecipeBook.Recipe r : dishes()) names.put(ItemKeys.normalize(r.name), r.name);
         boolean changed = false;
@@ -85,6 +99,7 @@ public final class Cooking {
             if (dish == null) continue;
             int price = priceOf(s);
             if (price <= 0) continue;
+            found++;
             if (LOGGED.size() < 40 && LOGGED.add(dish + price)) DdingMate.LOG.info("요리 가격 읽음: {} {}G", dish, price);
             Seen old = store().prices.get(dish);
             if (old == null || old.price != price || !fresh(old.at)) {
@@ -95,6 +110,7 @@ public final class Cooking {
                 changed = true;
             }
         }
+        shopOpen = found >= 3;
         if (changed) save();
     }
 
@@ -142,7 +158,9 @@ public final class Cooking {
 
     /** 순위: 가격을 아는 요리만, perMinute 또는 perItem 높은 순 */
     public static List<Rank> ranking(boolean byTime) {
-        List<Rank> out = new ArrayList<>();
+        Map<String, Rank> best = new LinkedHashMap<>();
+        Map<String, Integer> variants = new LinkedHashMap<>();
+        for (RecipeBook.Recipe r : dishes()) variants.merge(r.name, 1, Integer::sum);
         for (RecipeBook.Recipe r : dishes()) {
             Seen s = store().prices.get(r.name);
             if (s == null) continue;
@@ -151,10 +169,61 @@ public final class Cooking {
             if (sec <= 1 && r.time > 0) sec = r.time;
             double perItem = raw > 0 ? (double) s.price * r.output / raw : 0;
             double perMinute = (double) s.price * r.output * 60.0 / sec;
-            out.add(new Rank(r, s.price, fresh(s.at), raw, sec, perItem, perMinute));
+            String variant = variants.get(r.name) > 1 ? variantName(r) : "";
+            Rank k = new Rank(r, s.price, fresh(s.at), raw, sec, perItem, perMinute, variant);
+            Rank old = best.get(r.name);
+            if (old == null || metric(k, byTime) > metric(old, byTime)) best.put(r.name, k);
         }
-        out.sort(Comparator.comparingDouble((Rank k) -> byTime ? -k.perMinute() : -k.perItem()));
+        List<Rank> out = new ArrayList<>(best.values());
+        out.sort(Comparator.comparingDouble((Rank k) -> -metric(k, byTime)));
         return out;
+    }
+
+    private static double metric(Rank k, boolean byTime) {
+        return byTime ? k.perMinute() : k.perItem();
+    }
+
+    /** "금 가루 · 20개 묶음" / "식용 금 가루 · 1개" 처럼 레시피를 가려 주는 이름 */
+    private static String variantName(RecipeBook.Recipe r) {
+        String key = r.materials.stream().map(m -> m.name).filter(n -> !n.equals(r.name.replaceFirst("^황금\\s*", "")))
+                .reduce((a, b) -> b).orElse("");
+        return (key.isEmpty() ? "" : key + " · ") + (r.output > 1 ? r.output + "개 묶음" : "1개");
+    }
+
+    /** 비싼 순(가격을 아는 요리, 이름마다 하나) */
+    public static List<Rank> byPrice() {
+        List<Rank> out = new ArrayList<>(ranking(false));
+        out.sort(Comparator.comparingInt((Rank k) -> -k.price()));
+        return out;
+    }
+
+    /** 인벤토리에 있는 요리: 이름 → 개수 */
+    public static Map<String, Integer> inventoryDishes(MinecraftClient client) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        if (client.player == null) return out;
+        Map<String, String> names = new LinkedHashMap<>();
+        for (RecipeBook.Recipe r : dishes()) names.put(ItemKeys.normalize(r.name), r.name);
+        var inv = client.player.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (s.isEmpty()) continue;
+            String dish = names.get(ItemKeys.normalize(s.getName().getString()));
+            if (dish != null) out.merge(dish, s.getCount(), Integer::sum);
+        }
+        return out;
+    }
+
+    /** 마지막으로 읽은 판매가(모르면 -1) */
+    public static int priceOf(String dish) {
+        Seen s = store().prices.get(dish);
+        return s == null ? -1 : s.price;
+    }
+
+    /** 이름이 다른 요리 수 */
+    public static int dishCount() {
+        Set<String> n = new HashSet<>();
+        for (RecipeBook.Recipe r : dishes()) n.add(r.name);
+        return n.size();
     }
 
     /** 원재료 개수: 다른 레시피로 만드는 재료(베이스·묶음·치즈 조각 등)는 그 재료까지 풀어서 센다 */
@@ -174,9 +243,9 @@ public final class Cooking {
 
     /** 가격을 아는 요리 수 / 전체 */
     public static int knownCount() {
-        int k = 0;
-        for (RecipeBook.Recipe r : dishes()) if (store().prices.containsKey(r.name)) k++;
-        return k;
+        Set<String> k = new HashSet<>();
+        for (RecipeBook.Recipe r : dishes()) if (store().prices.containsKey(r.name)) k.add(r.name);
+        return k.size();
     }
 
     // ---------------------------------------------------------------- 저장
@@ -221,6 +290,12 @@ public final class Cooking {
     /** 시험용 */
     public static void debugClear() {
         store = new Store();
+        shopOpen = false;
+    }
+
+    /** 시험용 */
+    public static void debugShop(boolean open) {
+        shopOpen = open;
     }
 
     private static Path path() {

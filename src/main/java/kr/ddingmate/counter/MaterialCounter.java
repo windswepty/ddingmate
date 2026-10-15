@@ -132,6 +132,34 @@ public final class MaterialCounter {
         return new Line(line.name(), line.inventory(), line.bags(), line.storage(), line.need(), List.copyOf(subs));
     }
 
+    /** 인벤토리 + (설정에 따라) 기록된 가방 + 아이템 저장소를 합친 개수: 아이템 키 → 개수 */
+    public static Map<String, Integer> availableCounts(MinecraftClient client) {
+        DdingMateConfig.Counter cfg = DdingMate.config().counter;
+        Map<String, Integer> all = new HashMap<>(inventoryCounts(client));
+        if (cfg.includeBags) BagTracker.totals().forEach((k, v) -> all.merge(k, v, Integer::sum));
+        if (cfg.includeStorage) BagTracker.storageTotals().forEach((k, v) -> all.merge(k, v, Integer::sum));
+        return all;
+    }
+
+    /** 재료 이름으로 센 개수(다른 이름·바닐라 아이템 포함) */
+    public static int have(Map<String, Integer> counts, String materialName) {
+        return sum(counts, RecipeBook.keysFor(materialName));
+    }
+
+    /** 이 레시피를 지금 몇 번 만들 수 있나(재료마다 가진 수 ÷ 필요 수의 최솟값) */
+    public static int craftable(Map<String, Integer> counts, RecipeBook.Recipe r) {
+        int best = Integer.MAX_VALUE;
+        for (RecipeBook.Material m : r.materials) best = Math.min(best, have(counts, m.name) / Math.max(1, m.count));
+        return r.materials.isEmpty() ? 0 : best;
+    }
+
+    /** 가진 재료 종류 수(필요 수를 다 채운 재료만) */
+    public static int materialsReady(Map<String, Integer> counts, RecipeBook.Recipe r) {
+        int n = 0;
+        for (RecipeBook.Material m : r.materials) if (have(counts, m.name) >= m.count) n++;
+        return n;
+    }
+
     /** 인벤토리 36칸 + 왼손 + 지금 마우스로 집고 있는 아이템 (옮기는 도중에 숫자가 튀지 않게) */
     static Map<String, Integer> inventoryCounts(MinecraftClient client) {
         Map<String, Integer> counts = new HashMap<>();

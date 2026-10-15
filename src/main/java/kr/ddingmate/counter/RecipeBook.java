@@ -125,6 +125,21 @@ public final class RecipeBook {
                 .replaceFirst("\\s*\\(조합\\s*\\d+\\)\\s*$", ""));
     }
 
+    /**
+     * 시설 창 레시피 칸(이름 + 아이템 개수)에 해당하는 레시피. 등급 표시·"(조합 N)" 은 떼고 비교하고,
+     * 한 번에 여러 개 나오는 레시피는 칸의 아이템 개수(= 결과 개수)가 같은 것을 고른다. 모르면 null
+     */
+    public static Recipe forWindowSlot(String name, int count) {
+        String key = ItemKeys.normalize(canonicalName(name));
+        Recipe any = null;
+        for (Recipe r : all) {
+            if (!ItemKeys.normalize(r.name).equals(key) && !plainKey(r.name).equals(key)) continue;
+            if (r.output == Math.max(1, count)) return r;
+            if (any == null) any = r;
+        }
+        return any;
+    }
+
     /** 이 이름의 아이템을 만드는 시설 이름(이름 비교는 너그럽게). 모르면 null */
     public static String facilityOf(String outputName) {
         Recipe r = recipeFor(outputName);

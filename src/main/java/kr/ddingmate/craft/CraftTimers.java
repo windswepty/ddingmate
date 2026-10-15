@@ -713,7 +713,7 @@ public final class CraftTimers {
         DdingMate.LOG.info("제작 시간 읽음: {}{}", name, sb);
     }
 
-    private static String cleanName(String name) {
+    public static String cleanName(String name) {
         String n = Formatting.strip(name);
         return (n == null ? name : n).replaceFirst("(\\s*\\[\\+\\d+\\])+\\s*$", "").trim();
     }

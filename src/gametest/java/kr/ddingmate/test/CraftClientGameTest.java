@@ -440,6 +440,160 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.Cooking.debugClear();
             });
 
+            // 9-000c) 2026-10-15 실제 서버 손님 창: 별 아이콘 설명에 주문이 적혀 있다(창에 커피 아이템은 없음)
+            ctx.runOnClient(c -> {
+                kr.ddingmate.expert.Barista.debugClear();
+                DdingMate.config().expert.coffeeBonus = 1;
+                var b = kr.ddingmate.expert.Barista.debugRead(star("[ (B등급) 빈센트의 주문 ]", "", "빈센트의 주문을 확인할 수 있습니다.",
+                        "요구하는 고급 커피를 판매해 보세요.", "", "  - 우드 라떼 [판매 0/2개] : 183,900골드", "", "남은 판매 가격 : 183,900골드"));
+                check(b != null && b.customer.equals("빈센트") && b.grade.equals("B") && b.lines.size() == 1, "빈센트 주문을 못 읽음: " + b);
+                var line = b.lines.get(0);
+                check(line.coffee.equals("우드 라떼") && line.want == 2 && line.sold == 0 && line.perCup == 91_950 && b.remaining == 183_900,
+                        "우드 라떼 주문 값이 다름: " + line.coffee + " " + line.sold + "/" + line.want + " " + line.perCup + " / " + b.remaining);
+                // 이미 1잔 판 주문: 줄 가격 합 = 남은 판매 가격이면 남은 잔 기준 → 한 잔 40,888G
+                var s2 = kr.ddingmate.expert.Barista.debugRead(star("[ (C등급) 샐리의 주문 ]", "  - 블랙 커피 [판매 1/3개] : 81,776골드",
+                        "  - 카페 모카 [판매 0/1개] : 30,666골드", "남은 판매 가격 : 112,442골드"));
+                check(s2 != null && s2.lines.size() == 2 && s2.lines.get(0).perCup == 40_888 && s2.lines.get(0).left() == 2,
+                        "판매한 잔이 있는 주문의 한 잔 값이 다름: " + (s2 == null ? null : s2.lines.get(0).perCup));
+                check(kr.ddingmate.expert.Barista.orders().size() == 2 && kr.ddingmate.expert.Barista.orders().get(0).customer.equals("샐리"),
+                        "손님 순서(샐리 → 빈센트)가 아님");
+                var needs = kr.ddingmate.expert.Barista.needs(java.util.Map.of("우드 라떼", 1, "블랙 커피", 5));
+                var wood = needs.stream().filter(n -> n.coffee().equals("우드 라떼")).findFirst().orElseThrow();
+                var black = needs.stream().filter(n -> n.coffee().equals("블랙 커피")).findFirst().orElseThrow();
+                check(wood.toMake() == 1 && black.toMake() == 0 && black.left() == 2, "만들 커피 계산이 다름: " + needs);
+                check(kr.ddingmate.expert.Barista.sellableNow(needs) == 91_950 + 2 * 40_888, "지금 팔 수 있는 금액이 다름: " + kr.ddingmate.expert.Barista.sellableNow(needs));
+                check(kr.ddingmate.expert.Barista.remainingTotal() == 183_900 + 112_442, "남은 주문 합계가 다름");
+                // 03시 전에 읽은 주문은 합계에서 뺀다
+                kr.ddingmate.expert.Barista.debugAge("샐리", now() - 2L * 24 * 3600_000);
+                check(kr.ddingmate.expert.Barista.remainingTotal() == 183_900, "지난 주문을 합계에 넣음");
+                kr.ddingmate.expert.Barista.debugAge("샐리", now());
+                // 실제 창처럼: 별 아이콘만 있는 창 + 인벤토리에 우드 라떼 1잔
+                var pinv = c.player.getInventory();
+                for (int i = 0; i < pinv.size(); i++) pinv.setStack(i, ItemStack.EMPTY);
+                pinv.setStack(0, item("우드 라떼", 1, "에픽 등급 커피"));
+                ItemStack vincent = star("[ (B등급) 빈센트의 주문 ]", "", "빈센트의 주문을 확인할 수 있습니다.",
+                        "요구하는 고급 커피를 판매해 보세요.", "", "  - 우드 라떼 [판매 0/2개] : 183,900골드", "", "남은 판매 가격 : 183,900골드");
+                SimpleInventory inv = new SimpleInventory(54);
+                inv.setStack(22, vincent);
+                c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(91, c.player.getInventory(), inv),
+                        c.player.getInventory(), Text.literal("빈센트")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> check(kr.ddingmate.expert.Barista.kind() == kr.ddingmate.expert.Barista.Kind.CUSTOMER
+                    && "빈센트".equals(kr.ddingmate.expert.Barista.currentCustomer()), "손님 창으로 알아보지 못함: " + kr.ddingmate.expert.Barista.kind()));
+            ctx.takeScreenshot("barista-1-customer-panel");
+            // 인스턴트 커피 손님 창: 가진 잔 수 × 20,000G
+            ctx.runOnClient(c -> {
+                c.player.getInventory().setStack(1, item("인스턴트 커피", 3, "커피"));
+                SimpleInventory inv = new SimpleInventory(54);
+                inv.setStack(22, item("인스턴트 커피", 1, "손님에게 판매할 수 있는 커피입니다."));
+                c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(92, c.player.getInventory(), inv),
+                        c.player.getInventory(), Text.literal("손님")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> check(kr.ddingmate.expert.Barista.kind() == kr.ddingmate.expert.Barista.Kind.INSTANT, "인스턴트 커피 창으로 알아보지 못함"));
+            ctx.takeScreenshot("barista-2-instant-panel");
+            // 밀키 상점: 같은 황금 요리를 만드는 법이 둘이어도 순위에는 한 번만
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                kr.ddingmate.expert.Cooking.debugClear();
+                kr.ddingmate.expert.Cooking.debugPrice("황금 토마토 파인애플 피자", 1270, now());
+                kr.ddingmate.expert.Cooking.debugPrice("황금 딥 크림 빠네", 3369, now());
+                kr.ddingmate.expert.Cooking.debugPrice("토마토 스파게티", 394, now());
+                kr.ddingmate.expert.Cooking.debugPrice("딥 크림 빠네", 2003, now());
+                var ranks = kr.ddingmate.expert.Cooking.ranking(false);
+                check(ranks.stream().filter(r -> r.recipe().name.equals("황금 토마토 파인애플 피자")).count() == 1,
+                        "같은 요리가 순위에 두 번 나옴: " + ranks.stream().map(r -> r.recipe().name).toList());
+                check(ranks.stream().filter(r -> r.recipe().name.equals("황금 토마토 파인애플 피자")).allMatch(r -> !r.variant().isEmpty()),
+                        "어느 만드는 법인지 표시가 없음");
+                check(kr.ddingmate.expert.Cooking.dishCount() == 30, "요리 수가 30이 아님: " + kr.ddingmate.expert.Cooking.dishCount());
+                check(kr.ddingmate.expert.Cooking.byPrice().get(0).recipe().name.equals("황금 딥 크림 빠네"), "가장 비싼 요리가 다름");
+                c.player.getInventory().setStack(2, item("딥 크림 빠네", 5, "요리"));
+                SimpleInventory inv = new SimpleInventory(54);
+                inv.setStack(10, item("토마토 스파게티", 1, "판매 가격 : 394G"));
+                inv.setStack(11, item("딥 크림 빠네", 1, "판매 가격 : 2,003G"));
+                inv.setStack(12, item("황금 딥 크림 빠네", 1, "판매 가격 : 3,369G"));
+                c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(93, c.player.getInventory(), inv),
+                        c.player.getInventory(), Text.literal("밀키")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.expert.Cooking.shopOpen(), "요리 상점 창으로 알아보지 못함");
+                check(kr.ddingmate.expert.Cooking.inventoryDishes(c).getOrDefault("딥 크림 빠네", 0) == 5, "인벤토리 요리를 세지 못함");
+            });
+            ctx.takeScreenshot("cooking-3-shop-panel");
+            // 제작 시설 창: 가진 재료로 만들 수 있는 레시피 판, 누르면 빈 핀에 넣는다
+            String[] keepPins = new String[3];
+            boolean[] keepSum = new boolean[2];
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                keepSum[0] = DdingMate.config().counter.includeBags;
+                keepSum[1] = DdingMate.config().counter.includeStorage;
+                DdingMate.config().counter.includeBags = false; // 앞 시험에서 기록한 가방·저장소 조약돌은 빼고 센다
+                DdingMate.config().counter.includeStorage = false;
+                var pins = DdingMate.config().counter.pins;
+                for (int i = 0; i < 3; i++) {
+                    keepPins[i] = pins.get(i).recipe;
+                    pins.get(i).recipe = "";
+                }
+                var pinv = c.player.getInventory();
+                for (int i = 0; i < pinv.size(); i++) pinv.setStack(i, ItemStack.EMPTY);
+                pinv.setStack(0, new ItemStack(Items.COBBLESTONE, 64));
+                pinv.setStack(1, new ItemStack(Items.COBBLESTONE, 64));
+                c.setScreen(facility(c,
+                        item("조약돌 뭉치", 1, "다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 5초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정"),
+                        item("하급 라이프스톤", 1, "세이지 도구 강화에 필요합니다.", "", "  제작 시간 : 1분 0초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정")));
+            });
+            ctx.waitTicks(12);
+            ctx.takeScreenshot("facility-1-craftable-panel");
+            ctx.runOnClient(c -> {
+                var es = kr.ddingmate.craft.FacilityPanel.entries();
+                check(es.size() == 2 && es.get(0).recipe().name.equals("조약돌 뭉치") && es.get(0).craftable() == 2 && es.get(1).craftable() == 0,
+                        "만들 수 있는 레시피 판이 다름: " + es.stream().map(e -> e.recipe().name + " " + e.craftable()).toList());
+                int[] at = kr.ddingmate.craft.FacilityPanel.debugRow(0);
+                check(at != null, "시설 판을 그리지 않음");
+                // 실제 게임과 같은 길: 마우스 누르기 전에 부르는 Fabric 화면 이벤트(띵메이트 판이 받으면 창으로 넘기지 않음)
+                boolean passed = net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
+                        .allowMouseClick(c.currentScreen, at[0], at[1], 0);
+                check(!passed, "판을 누른 것이 시설 창으로 넘어감");
+                check(DdingMate.config().counter.pins.get(0).recipe.equals(es.get(0).recipe().id), "누른 레시피를 빈 핀에 넣지 않음: " + DdingMate.config().counter.pins.get(0).recipe);
+            });
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                for (int i = 0; i < 3; i++) DdingMate.config().counter.pins.get(i).recipe = keepPins[i];
+                DdingMate.config().counter.includeBags = keepSum[0];
+                DdingMate.config().counter.includeStorage = keepSum[1];
+                var pinv = c.player.getInventory();
+                for (int i = 0; i < pinv.size(); i++) pinv.setStack(i, ItemStack.EMPTY);
+                // 전문가 탭: 오른쪽 목차로 바리스타·요리 칸에 바로 간다
+                kr.ddingmate.expert.Cooking.debugPrice("토마토 스파게티", 394, now());
+                kr.ddingmate.gui.DdingMateScreen s = new kr.ddingmate.gui.DdingMateScreen(null);
+                c.setScreen(s);
+                s.openTab(9);
+            });
+            ctx.waitTicks(3);
+            ctx.runOnClient(c -> {
+                kr.ddingmate.gui.DdingMateScreen s = (kr.ddingmate.gui.DdingMateScreen) c.currentScreen;
+                check(s.sectionLabels().containsAll(List.of("제작 시간", "스킬", "바리스타", "커피 가격", "요리")), "전문가 탭 목차가 다름: " + s.sectionLabels());
+                s.jumpTo("바리스타");
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("expert-3-jump-barista");
+            ctx.runOnClient(c -> {
+                kr.ddingmate.gui.DdingMateScreen s = (kr.ddingmate.gui.DdingMateScreen) c.currentScreen;
+                double before = s.listScroll();
+                s.jumpTo("요리");
+                check(s.listScroll() > before, "목차 '요리'를 눌러도 내려가지 않음");
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("expert-4-jump-cooking");
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                kr.ddingmate.expert.Barista.debugClear();
+                kr.ddingmate.expert.Cooking.debugClear();
+                DdingMate.config().expert.coffeeBonus = 0;
+            });
+
             // 9-000a) 앞 제작을 창 값으로 크게(+3초) 다시 맞추면 뒤에 기다리는 제작은 정확히 3초만 옮겨진다
             //         (예전 결함: 두 번째를 맞출 때 세 번째를 또 옮겨 6초 밀림. 2026-10-10 시험 진단으로 발견)
             long[] base = new long[4];
@@ -1265,6 +1419,14 @@ public class CraftClientGameTest implements FabricClientGameTest {
 
     private static ItemStack item(String name, int count, String... lore) {
         ItemStack s = new ItemStack(Items.PAPER, Math.min(count, 64));
+        s.set(DataComponentTypes.CUSTOM_NAME, Text.literal(name));
+        s.set(DataComponentTypes.LORE, new LoreComponent(lines(lore)));
+        return s;
+    }
+
+    /** 바리스타 손님 창의 별 아이콘(이름 + 설명) */
+    private static ItemStack star(String name, String... lore) {
+        ItemStack s = new ItemStack(Items.NETHER_STAR);
         s.set(DataComponentTypes.CUSTOM_NAME, Text.literal(name));
         s.set(DataComponentTypes.LORE, new LoreComponent(lines(lore)));
         return s;

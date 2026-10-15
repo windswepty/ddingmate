@@ -77,11 +77,13 @@ public final class DdingMate implements ClientModInitializer {
                 "key.ddingmate.open_settings", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, "category.ddingmate"));
 
         ClientTickEvents.END_CLIENT_TICK.register(DdingMate::onTick);
-        // 손님 주문 창 옆에 바리스타 도우미 판
+        // 서버 창 옆 도우미 판: 바리스타 손님 창 → 카페 판, 밀키 요리 상점 → 부엌 판, 제작 시설 → 가진 재료로 만들기 판
         net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> {
-            if (screen instanceof net.minecraft.client.gui.screen.ingame.GenericContainerScreen) {
-                net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterRender(screen).register(
-                        (s, ctx, mx, my, delta) -> kr.ddingmate.expert.BaristaPanel.render(ctx, s));
+            if (screen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?>) {
+                net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterRender(screen).register(DdingMate::renderSidePanel);
+                net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register(
+                        (s, mx, my, button) -> kr.ddingmate.expert.Barista.kind() != kr.ddingmate.expert.Barista.Kind.NONE
+                                || kr.ddingmate.expert.Cooking.shopOpen() || !kr.ddingmate.craft.FacilityPanel.click(mx, my, button));
             }
         });
         // 서버 리소스팩을 받거나 바꾸면 섬 그림 글꼴을 다시 읽는다
@@ -173,6 +175,18 @@ public final class DdingMate implements ClientModInitializer {
         }
     }
 
+    /** 한 창에는 판 하나만: 바리스타 → 요리 상점 → 제작 시설 순 */
+    private static void renderSidePanel(net.minecraft.client.gui.screen.Screen screen, net.minecraft.client.gui.DrawContext ctx,
+                                        int mouseX, int mouseY, float delta) {
+        if (kr.ddingmate.expert.Barista.kind() != kr.ddingmate.expert.Barista.Kind.NONE) {
+            kr.ddingmate.expert.BaristaPanel.render(ctx, screen);
+        } else if (kr.ddingmate.expert.Cooking.shopOpen()) {
+            kr.ddingmate.expert.CookingPanel.render(ctx, screen);
+        } else {
+            kr.ddingmate.craft.FacilityPanel.render(ctx, screen, mouseX, mouseY);
+        }
+    }
+
     private static void onTick(MinecraftClient client) {
         while (toggleHudKey.wasPressed()) {
             config.hudEnabled = !config.hudEnabled;
@@ -198,6 +212,7 @@ public final class DdingMate implements ClientModInitializer {
             kr.ddingmate.craft.ExpertSkills.scan(client); // 전문가 스킬 창의 "제작 시간이 N% 감소" → 스킬 레벨 자동 설정
             kr.ddingmate.expert.Barista.scan(client); // 손님 주문 창의 커피
             kr.ddingmate.expert.Cooking.scan(client); // 밀키 상점 창의 요리 가격
+            kr.ddingmate.craft.FacilityPanel.scan(client); // 제작 시설 창: 가진 재료로 만들 수 있는 레시피
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
             if (client.world != null) kr.ddingmate.counter.IconCache.tick(client); // 열어 본 창의 아이템 모양을 기억

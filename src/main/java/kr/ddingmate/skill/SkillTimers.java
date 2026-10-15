@@ -454,7 +454,7 @@ public final class SkillTimers {
         return map;
     }
 
-    private static String accountKey() {
+    public static String accountKey() {
         MinecraftClient client = MinecraftClient.getInstance();
         UUID id = client.player != null ? client.player.getUuid() : null;
         if (id == null) return null;
