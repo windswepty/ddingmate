@@ -1,5 +1,5 @@
 {
- "source": "https://wiki.ddingtycoon.kr/ko 제작 시설·가공 시설·추가 조합법(대형 제작대)·바리스타·플로리스트·영혼 명품 문서 (2026-10-09 기준)",
+ "source": "https://wiki.ddingtycoon.kr/ko 제작 시설·가공 시설·추가 조합법(대형 제작대)·바리스타·플로리스트·영혼 명품·형광 광산 문서 (2026-10-09 기준)",
  "vanilla": {
   "가문비나무 잎": "minecraft:spruce_leaves",
   "가스트 눈물": "minecraft:ghast_tear",
@@ -17,6 +17,7 @@
   "금 블록": "minecraft:gold_block",
   "금 주괴": "minecraft:gold_ingot",
   "깃털": "minecraft:feather",
+  "꽁꽁 언 얼음": "minecraft:packed_ice",
   "꿀 블록": "minecraft:honey_block",
   "나침반": "minecraft:compass",
   "낚싯대": "minecraft:fishing_rod",
@@ -92,6 +93,7 @@
   "심층암": "minecraft:deepslate",
   "심층암 조약돌": "minecraft:cobbled_deepslate",
   "썩은 살점": "minecraft:rotten_flesh",
+  "안산암": "minecraft:andesite",
   "앵무조개 껍데기": "minecraft:nautilus_shell",
   "양귀비": "minecraft:poppy",
   "양동이": "minecraft:bucket",
@@ -112,6 +114,7 @@
   "유리병": "minecraft:glass_bottle",
   "유리판": "minecraft:glass_pane",
   "응회암": "minecraft:tuff",
+  "이끼 블록": "minecraft:moss_block",
   "익힌 닭고기": "minecraft:cooked_chicken",
   "익힌 대구": "minecraft:cooked_cod",
   "익힌 돼지고기": "minecraft:cooked_porkchop",
@@ -150,6 +153,7 @@
   "코코아 콩": "minecraft:cocoa_beans",
   "쿠키": "minecraft:cookie",
   "키 작은 잔디": "minecraft:short_grass",
+  "테라코타": "minecraft:terracotta",
   "토끼발": "minecraft:rabbit_foot",
   "통": "minecraft:barrel",
   "튀긴 후렴과": "minecraft:popped_chorus_fruit",
@@ -8223,6 +8227,171 @@
     {
      "name": "현무암",
      "count": 32
+    }
+   ]
+  },
+  {
+   "id": "형광 모루/오르딘 미니 망치",
+   "facility": "형광 모루",
+   "category": "형광 제련품",
+   "name": "오르딘 미니 망치",
+   "output": 1,
+   "materials": [
+    {
+     "name": "오르딘 큐브",
+     "count": 1
+    },
+    {
+     "name": "사파이어 블록",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 1
+    },
+    {
+     "name": "다이아몬드",
+     "count": 4
+    },
+    {
+     "name": "철 블록",
+     "count": 2
+    },
+    {
+     "name": "안산암",
+     "count": 32
+    }
+   ]
+  },
+  {
+   "id": "형광 모루/루미트 강철 방패",
+   "facility": "형광 모루",
+   "category": "형광 제련품",
+   "name": "루미트 강철 방패",
+   "output": 1,
+   "materials": [
+    {
+     "name": "루미트 큐브",
+     "count": 1
+    },
+    {
+     "name": "토파즈 블록",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 1
+    },
+    {
+     "name": "꽁꽁 언 얼음",
+     "count": 8
+    },
+    {
+     "name": "청금석 블록",
+     "count": 8
+    },
+    {
+     "name": "응회암",
+     "count": 32
+    }
+   ]
+  },
+  {
+   "id": "형광 모루/크레온 장인 석궁",
+   "facility": "형광 모루",
+   "category": "형광 제련품",
+   "name": "크레온 장인 석궁",
+   "output": 1,
+   "materials": [
+    {
+     "name": "크레온 큐브",
+     "count": 1
+    },
+    {
+     "name": "플래티넘 블록",
+     "count": 1
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 2
+    },
+    {
+     "name": "테라코타",
+     "count": 16
+    },
+    {
+     "name": "금 블록",
+     "count": 2
+    },
+    {
+     "name": "레드스톤 블록",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "형광 모루/벨릭 사냥 스피어",
+   "facility": "형광 모루",
+   "category": "형광 제련품",
+   "name": "벨릭 사냥 스피어",
+   "output": 1,
+   "materials": [
+    {
+     "name": "벨릭 큐브",
+     "count": 1
+    },
+    {
+     "name": "토파즈 블록",
+     "count": 3
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 3
+    },
+    {
+     "name": "네더 석영",
+     "count": 32
+    },
+    {
+     "name": "네더랙",
+     "count": 32
+    },
+    {
+     "name": "석탄 블록",
+     "count": 8
+    }
+   ]
+  },
+  {
+   "id": "형광 모루/세르칸 초승달 단검",
+   "facility": "형광 모루",
+   "category": "형광 제련품",
+   "name": "세르칸 초승달 단검",
+   "output": 1,
+   "materials": [
+    {
+     "name": "세르칸 큐브",
+     "count": 1
+    },
+    {
+     "name": "플래티넘 블록",
+     "count": 5
+    },
+    {
+     "name": "스킬 펄스",
+     "count": 5
+    },
+    {
+     "name": "에메랄드",
+     "count": 2
+    },
+    {
+     "name": "이끼 블록",
+     "count": 24
+    },
+    {
+     "name": "구리 블록",
+     "count": 16
     }
    ]
   }

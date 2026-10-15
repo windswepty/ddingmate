@@ -366,8 +366,8 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                     }
                     check(RecipePickerScreen.matches(r, ItemKeys.normalize(r.name)), "검색으로 못 찾음: " + r.id);
                 }
-                check(RecipeBook.all().size() >= 373, "레시피 수가 줄어듦: " + RecipeBook.all().size());
-                check(facilities.size() == 16, "시설 수가 16개가 아님: " + facilities);
+                check(RecipeBook.all().size() >= 378, "레시피 수가 줄어듦: " + RecipeBook.all().size());
+                check(facilities.size() == 17, "시설 수가 17개가 아님: " + facilities);
                 pin.recipe = keep;
                 pin.crafts = keepCrafts;
                 MaterialCounter.tick(c);
@@ -416,6 +416,76 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 MaterialCounter.tick(c);
                 check(MaterialCounter.views().get(1).lines().get(0).need() == 33, "번 만들기 기준 필요 새우가 33 이 아님");
                 pin.recipe = "";
+            });
+            ctx.waitTicks(2);
+
+            // 형광 모루(위키 형광 광산 '조합법'): 오르딘 미니 망치 ×2 → 재료 6줄, 하위 재료 보기면 오르딘 큐브 밑에 오르딘
+            ctx.runOnClient(c -> {
+                DdingMateConfig.Counter cc = DdingMate.config().counter;
+                boolean keepExpand = cc.expandSubMaterials;
+                cc.expandSubMaterials = true;
+                DdingMateConfig.Pin pin = cc.pins.get(1);
+                pin.recipe = "형광 모루/오르딘 미니 망치";
+                pin.crafts = 2;
+                pin.byOutput = false;
+                MaterialCounter.tick(c);
+                MaterialCounter.PinView v = MaterialCounter.views().get(1);
+                check(v.recipe().id.equals(pin.recipe) && v.lines().size() == 6, "형광 모루 핀 재료 줄이 6개가 아님: " + v.lines());
+                java.util.Map<String, MaterialCounter.Line> by = new java.util.HashMap<>();
+                for (MaterialCounter.Line l : v.lines()) by.put(l.name(), l);
+                check(by.get("오르딘 큐브").need() == 2 && by.get("사파이어 블록").need() == 2 && by.get("스킬 펄스").need() == 2
+                        && by.get("다이아몬드").need() == 8 && by.get("철 블록").need() == 4 && by.get("안산암").need() == 64,
+                        "오르딘 미니 망치 ×2 필요 개수 오류: " + v.lines());
+                check(by.get("오르딘 큐브").subs().stream().anyMatch(s -> s.name().equals("오르딘") && s.need() == 2),
+                        "오르딘 큐브 하위 재료(오르딘 2)가 없음: " + by.get("오르딘 큐브").subs());
+                for (String[] r : new String[][]{{"루밀리아 디퓨저 ★", "플로리스트 제조"}, {"오르딘 미니 망치", "형광 모루"}, {"루미트 강철 방패", "형광 모루"},
+                        {"크레온 장인 석궁", "형광 모루"}, {"벨릭 사냥 스피어", "형광 모루"}, {"세르칸 초승달 단검", "형광 모루"}}) {
+                    RecipeBook.Recipe rr = RecipeBook.recipeFor(r[0]);
+                    check(rr != null && rr.facility.equals(r[1]), r[0] + " 레시피 시설이 " + r[1] + " 이 아님: " + (rr == null ? null : rr.facility));
+                }
+                check(RecipeBook.get("형광 모루/세르칸 초승달 단검").materials.stream().anyMatch(m -> m.name.equals("이끼 블록") && m.count == 24),
+                        "세르칸 초승달 단검 재료(이끼 블록 24) 오류");
+                // 그림: 제련품·광물 블록은 서버 그림(종이 모델 번호), 안산암·꽁꽁 언 얼음·테라코타·이끼 블록은 바닐라
+                Object[][] icons = {{"오르딘 미니 망치", 2058101f}, {"크레온 장인 석궁", 2058102f}, {"벨릭 사냥 스피어", 2058103f},
+                        {"세르칸 초승달 단검", 2058104f}, {"루미트 강철 방패", 2058105f},
+                        {"플래티넘 블록", 6001009f}, {"사파이어 블록", 6001011f}, {"토파즈 블록", 6001013f}};
+                for (Object[] o : icons) {
+                    ItemStack s = kr.ddingmate.counter.IconCache.forMaterial((String) o[0]);
+                    var data = s == null ? null : s.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+                    check(s != null && s.isOf(Items.PAPER) && data != null && data.floats().get(0) == (float) o[1], o[0] + " 그림 오류: " + data);
+                }
+                check(kr.ddingmate.counter.IconCache.forMaterial("안산암").isOf(Items.ANDESITE)
+                        && kr.ddingmate.counter.IconCache.forMaterial("꽁꽁 언 얼음").isOf(Items.PACKED_ICE)
+                        && kr.ddingmate.counter.IconCache.forMaterial("테라코타").isOf(Items.TERRACOTTA)
+                        && kr.ddingmate.counter.IconCache.forMaterial("이끼 블록").isOf(Items.MOSS_BLOCK), "바닐라 블록 그림 오류");
+                check(RecipeBook.keysFor("꽁꽁 언 얼음").contains("v:minecraft:packed_ice"), "꽁꽁 언 얼음 바닐라 연결 없음");
+                cc.expandSubMaterials = keepExpand;
+                pin.recipe = "";
+                pin.crafts = 1;
+                MaterialCounter.tick(c);
+                // 인벤토리에 오르딘 큐브(실제 서버 아이템: 종이 2058051)만 있으면 레시피 고르기 맨 위가 오르딘 미니 망치
+                var pinv = c.player.getInventory();
+                for (int i = 0; i < pinv.size(); i++) pinv.setStack(i, ItemStack.EMPTY);
+                ItemStack cube = new ItemStack(Items.PAPER);
+                cube.set(DataComponentTypes.CUSTOM_NAME, Text.literal("오르딘 큐브"));
+                cube.set(DataComponentTypes.CUSTOM_MODEL_DATA,
+                        new net.minecraft.component.type.CustomModelDataComponent(List.of(2058051f), List.of(), List.of(), List.of()));
+                pinv.setStack(0, cube);
+                c.setScreen(new RecipePickerScreen(null, 1));
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-2e-anvil-suggest");
+            ctx.runOnClient(c -> {
+                ElementListWidget<?> list = (ElementListWidget<?>) c.currentScreen.children().stream()
+                        .filter(e -> e instanceof ElementListWidget<?>).findFirst().orElseThrow();
+                ((net.minecraft.client.gui.ParentElement) list.children().get(0)).children().stream()
+                        .filter(e -> e instanceof net.minecraft.client.gui.widget.PressableWidget)
+                        .map(e -> (net.minecraft.client.gui.widget.PressableWidget) e).findFirst().orElseThrow().onPress();
+                DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(1);
+                check(pin.recipe.equals("형광 모루/오르딘 미니 망치"), "오르딘 큐브가 있는데 추천 맨 위가 오르딘 미니 망치가 아님: " + pin.recipe);
+                pin.recipe = "";
+                c.player.getInventory().setStack(0, ItemStack.EMPTY);
+                c.setScreen(null);
             });
             ctx.waitTicks(2);
 
