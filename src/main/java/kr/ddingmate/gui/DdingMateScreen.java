@@ -500,7 +500,7 @@ public class DdingMateScreen extends Screen {
             list.single(pick);
             RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
             if (r != null) {
-                // 핀 아래 줄: 만들 개수 [−] 숫자 [+] [+10] [+64] (+ 번 만들기/개 얻기)
+                // 핀 아래 줄: 만들 개수 [−64] [−10] [−] 숫자 [+] [+10] [+64] (+ 번 만들기/개 얻기)
                 CountBar bar = new CountBar(pin.crafts, pin.byOutput, r.output > 1,
                         v -> pin.crafts = v, v -> pin.byOutput = v);
                 list.labeledRow("만들 개수", bar.widgets());

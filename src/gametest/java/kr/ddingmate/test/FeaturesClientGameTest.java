@@ -373,7 +373,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 MaterialCounter.tick(c);
             });
 
-            // 만들 개수: 레시피 고르기에서 [+64]·[+10]·[−] 로 75 를 만든 뒤 하급 라이프스톤을 누르면 ×75 로 핀
+            // 만들 개수: 레시피 고르기에서 [−64]·[+64]·[+10]·[−10]·[−] 로 75 를 만든 뒤 하급 라이프스톤을 누르면 ×75 로 핀
             ctx.runOnClient(c -> {
                 DdingMateConfig.Pin pin = DdingMate.config().counter.pins.get(1);
                 pin.recipe = "";
@@ -383,10 +383,15 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(3);
             ctx.runOnClient(c -> {
+                press(c, "−64"); // 1 에서 줄여도 1 아래로 내려가지 않는다
                 press(c, "+64");
                 press(c, "+10");
                 press(c, "+");
                 press(c, "−");
+                press(c, "+64");
+                press(c, "−64"); // 139 → 75
+                press(c, "−10");
+                press(c, "+10"); // 65 → 75
                 ElementListWidget<?> list = (ElementListWidget<?>) c.currentScreen.children().stream()
                         .filter(e -> e instanceof ElementListWidget<?>).findFirst().orElseThrow();
                 c.currentScreen.children().stream().filter(e -> e instanceof net.minecraft.client.gui.widget.TextFieldWidget)

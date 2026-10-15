@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 /**
- * 만들 개수 조절 묶음: [−] 숫자 [+] [+10] [+64] (+ 한 번에 여러 개 나오는 레시피면 "번 만들기 / 개 얻기" 선택).
+ * 만들 개수 조절 묶음: [−64] [−10] [−] 숫자 [+] [+10] [+64] (+ 한 번에 여러 개 나오는 레시피면 "번 만들기 / 개 얻기" 선택).
  * 재료 탭의 핀 줄과 레시피 고르기 화면에서 함께 쓴다.
  */
 final class CountBar {
@@ -36,6 +36,10 @@ final class CountBar {
         this.value = clamp(value);
         this.onValue = onValue;
 
+        Widgets.Button minusStack = new Widgets.Button(QUICK_W, 20, Text.literal("−64"), false, b -> set(this.value - 64));
+        minusStack.setTooltip(Tooltip.of(Text.literal("1세트(64개) 줄이기")));
+        Widgets.Button minusTen = new Widgets.Button(QUICK_W, 20, Text.literal("−10"), false, b -> set(this.value - 10));
+        minusTen.setTooltip(Tooltip.of(Text.literal("10개 줄이기")));
         Widgets.Button minus = new Widgets.Button(SMALL_W, 20, Text.literal("−"), false, b -> set(this.value - 1));
         minus.setTooltip(Tooltip.of(Text.literal("1개 줄이기")));
         field = new Widgets.Field(FIELD_W, Text.literal("만들 개수"));
@@ -60,6 +64,8 @@ final class CountBar {
         ten.setTooltip(Tooltip.of(Text.literal("10개 늘리기")));
         Widgets.Button stack = new Widgets.Button(QUICK_W, 20, Text.literal("+64"), false, b -> set(this.value + 64));
         stack.setTooltip(Tooltip.of(Text.literal("1세트(64개) 늘리기")));
+        widgets.add(minusStack);
+        widgets.add(minusTen);
         widgets.add(minus);
         widgets.add(field);
         widgets.add(plus);
