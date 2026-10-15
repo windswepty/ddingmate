@@ -118,16 +118,18 @@ public final class Cooking {
     static int priceOf(ItemStack s) {
         var lore = s.get(DataComponentTypes.LORE);
         if (lore == null) return -1;
-        int any = -1;
+        int any = -1, hinted = -1;
         for (Text t : lore.lines()) {
             String l = ItemKeys.stripGlyphs(t.getString());
             Matcher m = PRICE.matcher(l);
             if (!m.find()) continue;
             int v = Integer.parseInt(m.group(1).replace(",", ""));
-            if (PRICE_HINT.matcher(l).find()) return v;
+            // "나의 판매가"(전문가 스킬 반영)가 있으면 그 값이 실제로 받는 돈
+            if (l.matches(".*나의\\s*판매가.*")) return v;
+            if (PRICE_HINT.matcher(l).find() && hinted < 0) hinted = v;
             if (any < 0) any = v;
         }
-        return any;
+        return hinted > 0 ? hinted : any;
     }
 
     /** 이 시각에 읽은 가격이 아직 지금 가격인가(그 뒤로 가격이 안 바뀜) */

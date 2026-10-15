@@ -119,8 +119,8 @@ public final class FacilityPanel {
             w = Math.max(w, 13 + Theme.width(tr, e.recipe().displayName()) + 8 + Theme.boldWidth(tr, right(e)) + 14);
         }
         w = Math.max(132, Math.min(150, w));
-        String foot = "클릭: 핀 넣기 · 우클릭: 핀 빼기";
-        String foot2 = "쉬프트+클릭: 레시피 · 쉬프트+우클릭: 닫기";
+        String foot = "클릭: 핀 넣기 / 한 번 더: 빼기";
+        String foot2 = "쉬프트+클릭: 레시피 보기 / 닫기";
         int h = SidePanel.HEAD_H + 5 + shown * ROW + 4 + (entries.size() > shown ? 11 : 0) + 12 + 10;
         int[] at = SidePanel.place(screen.width, screen.height, w, h);
         int x = at[0], y = at[1];
@@ -199,10 +199,19 @@ public final class FacilityPanel {
     /** 쉬프트를 누른 채 누르면 레시피 판 열기(왼쪽)/닫기(오른쪽), 아니면 핀 넣기/빼기 */
     private static void act(RecipeBook.Recipe r, int button) {
         if (net.minecraft.client.gui.screen.Screen.hasShiftDown()) {
-            detail = button == 0 ? r : null;
+            // 쉬프트+클릭: 레시피 판 열기, 같은 레시피를 한 번 더 누르면 닫기(쉬프트+우클릭도 닫기)
+            detail = button == 0 && detail != r ? r : null;
             return;
         }
-        if (button == 0) pin(r);
+        // 클릭: 핀 넣기, 이미 핀이면 빼기(우클릭은 늘 빼기)
+        if (button == 0 && pinnedIndex(r) < 0) pin(r);
+        else unpin(r);
+    }
+
+    /** 시험용: 쉬프트 없이 / 쉬프트 누르고 누른 것처럼 */
+    public static void debugAct(RecipeBook.Recipe r, int button, boolean shift) {
+        if (shift) detail = button == 0 && detail != r ? r : null;
+        else if (button == 0 && pinnedIndex(r) < 0) pin(r);
         else unpin(r);
     }
 

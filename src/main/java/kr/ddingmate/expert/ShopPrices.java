@@ -102,8 +102,22 @@ public final class ShopPrices {
 
     private static final Pattern PRICE = Pattern.compile("([\\d,]+)\\s*(?:G\\b|골드)");
     private static final Pattern PRICE_HINT = Pattern.compile("판매|매입|가격|가치");
-    /** 상점 창에서 본 실제 가격: 이름 → 가격 */
-    private static final Map<String, Integer> seen = new LinkedHashMap<>();
+    /**
+     * 상점 창 칸의 실제 문구(2026-10-15 로니): "판매가격 : 3,500 골드" / "나의 판매가 : 3,675 골드" — 나의 판매가는
+     * 서버가 전문가 스킬을 반영해 계산한 값(코룸 정동석 7,200 → 8,640, +20%). 귀중품은 아이템마다 "가격 : 16,227골드"
+     * (귀중품 가치·전문가 배율 반영, 보석함 일괄 판매 안내)가 따로 적혀 있다.
+     */
+    private static final Pattern BASE = Pattern.compile("판매\\s*가격\\s*:?\\s*([\\d,]+)");
+    private static final Pattern MINE = Pattern.compile("나의\\s*판매가\\s*:?\\s*([\\d,]+)");
+    private static final Pattern ITEM_PRICE = Pattern.compile("^\\s*가격\\s*:?\\s*([\\d,]+)\\s*(?:골드|G)");
+
+    /** 상점 창에서 본 가격: 이름 → {판매가격(기본), 나의 판매가(스킬 반영)}. 계정별로 저장 */
+    private static final class Store {
+        Map<String, Map<String, int[]>> accounts = new LinkedHashMap<>();
+    }
+
+    private static Store store;
+    private static final com.google.gson.Gson GSON = new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final Set<String> LOGGED = new HashSet<>();
     /** 지금 열린 창이 판매품 상점이면 그 NPC, 아니면 null */
     private static String openShop;
@@ -117,21 +131,27 @@ public final class ShopPrices {
         openShop = null;
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) return;
         Map<String, Integer> hits = new LinkedHashMap<>();
+        boolean changed = false;
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
             ItemStack s = slot.getStack();
             Ware w = wareOf(s);
             if (w == null) continue;
-            int price = priceOf(s);
+            int[] p = prices(s);
             // 가방·상자에 판매품이 들어 있는 것만으로는 상점이 아니다: 가격이 적힌 칸만 센다
-            if (price > 0) hits.merge(w.shop(), 1, Integer::sum);
-            if (price > 0) {
-                Integer old = seen.put(w.name(), price);
-                if ((old == null || old != price) && LOGGED.size() < 60 && LOGGED.add(w.name() + price)) {
-                    DdingMate.LOG.info("상점 가격 읽음: {} {} {}G", w.shop(), w.name(), price);
+            if (p == null) continue;
+            hits.merge(w.shop(), 1, Integer::sum);
+            Map<String, int[]> mine = seen(true);
+            int[] old = mine.get(w.name());
+            if (old == null || old[0] != p[0] || old[1] != p[1]) {
+                mine.put(w.name(), p);
+                changed = true;
+                if (LOGGED.size() < 80 && LOGGED.add(w.name() + p[0] + "/" + p[1])) {
+                    DdingMate.LOG.info("상점 가격 읽음: {} {} 판매가격 {}G · 나의 판매가 {}G", w.shop(), w.name(), p[0], p[1]);
                 }
             }
         }
+        if (changed) save();
         openShop = hits.entrySet().stream().filter(e -> e.getValue() >= 3).max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey).orElse(null);
     }
@@ -154,47 +174,127 @@ public final class ShopPrices {
         return byKey;
     }
 
-    /** 칸 설명에서 가격: "판매·매입·가격·가치" 줄의 "1,234G"를 먼저, 없으면 첫 "…G" */
-    static int priceOf(ItemStack s) {
+    /** 칸 설명의 {판매가격, 나의 판매가}. 나의 판매가가 없으면 판매가격과 같게, 판매가격이 없으면 "판매·가격" 줄의 첫 "…골드". 가격이 없으면 null */
+    static int[] prices(ItemStack s) {
         var lore = s.get(DataComponentTypes.LORE);
-        if (lore == null) return -1;
-        int any = -1;
+        if (lore == null) return null;
+        int base = -1, mine = -1, any = -1;
         for (Text t : lore.lines()) {
             String l = ItemKeys.stripGlyphs(t.getString());
-            Matcher m = PRICE.matcher(l);
-            if (!m.find()) continue;
-            int v;
-            try {
-                v = Integer.parseInt(m.group(1).replace(",", ""));
-            } catch (NumberFormatException e) {
-                continue;
-            }
-            if (PRICE_HINT.matcher(l).find()) return v;
-            if (any < 0) any = v;
+            Matcher m;
+            if ((m = MINE.matcher(l)).find()) mine = num(m.group(1));
+            else if ((m = BASE.matcher(l)).find()) base = num(m.group(1));
+            else if (any < 0 && (m = PRICE.matcher(l)).find() && PRICE_HINT.matcher(l).find()) any = num(m.group(1));
         }
-        return any;
+        if (base <= 0) base = any;
+        if (base <= 0 && mine <= 0) return null;
+        if (base <= 0) base = mine;
+        if (mine <= 0) mine = base;
+        return new int[]{base, mine};
+    }
+
+    /** 내 인벤토리 귀중품처럼 아이템 설명에 그 아이템만의 가격("가격 : 16,227골드")이 있으면 그 값, 없으면 -1 */
+    static int ownPrice(ItemStack s) {
+        var lore = s.get(DataComponentTypes.LORE);
+        if (lore == null) return -1;
+        for (Text t : lore.lines()) {
+            Matcher m = ITEM_PRICE.matcher(ItemKeys.stripGlyphs(t.getString()));
+            if (m.find()) return num(m.group(1));
+        }
+        return -1;
+    }
+
+    private static int num(String s) {
+        try {
+            return Integer.parseInt(s.replace(",", ""));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    /** 판매품 묶음(같은 묶음은 전문가 스킬 배율이 같다고 본다): 주괴·정동석·귀중품·제련품·영혼·원혼·가죽 명품·꽃·향장품·연금품·공예품 */
+    static String group(Ware w) {
+        String n = w.name();
+        if (n.endsWith("주괴")) return "주괴";
+        if (n.endsWith("정동석")) return "정동석";
+        if (n.startsWith("(")) return "귀중품";
+        if (w.shop().equals("로니")) return "제련품";
+        if (n.endsWith("의 영혼")) return "영혼";
+        if (n.endsWith("의 원혼")) return "원혼";
+        if (n.contains("가죽")) return "가죽 명품";
+        if (w.shop().equals("카이")) return n.matches(".*(앰플|디퓨저|캔들|퍼퓸|오일).*") ? "향장품" : "꽃";
+        return w.shop().equals("샤키") ? "연금품" : "공예품";
+    }
+
+    /** 이 판매품의 {기본가, 나의 판매가}: 상점에서 본 값 → 같은 묶음에서 본 배율 × 표 → 표. 공예품처럼 범위면 최고가 기준 */
+    public static int[] priceFor(Ware w) {
+        Map<String, int[]> mine = seen(false);
+        if (mine != null && mine.containsKey(w.name())) return mine.get(w.name());
+        return new int[]{w.max(), (int) Math.round(w.max() * groupRatio(w))};
+    }
+
+    /** 같은 상점·같은 묶음에서 본 (나의 판매가 ÷ 판매가격) 평균. 본 게 없으면 1 */
+    public static double groupRatio(Ware w) {
+        Map<String, int[]> mine = seen(false);
+        if (mine == null) return 1;
+        String g = group(w);
+        double sum = 0;
+        int n = 0;
+        for (Ware o : WARES) {
+            int[] p = mine.get(o.name());
+            if (p == null || p[0] <= 0 || !o.shop().equals(w.shop()) || !group(o).equals(g)) continue;
+            sum += (double) p[1] / p[0];
+            n++;
+        }
+        return n == 0 ? 1 : sum / n;
     }
 
     // ---------------------------------------------------------------- 보유 판매품
 
-    /** 보유한 판매품 한 줄: 개수, 한 개 값(상점에서 본 값 → 표), 합계 범위 */
-    public record Owned(Ware ware, int count, int each, boolean fromShop, long low, long high) {}
+    /**
+     * 보유한 판매품 한 줄: 개수, 한 개 기본가·나의 판매가, 상점에서 본 값인지, 합계 범위(나의 판매가 기준).
+     * 인벤토리 귀중품처럼 아이템마다 가격이 적힌 것은 그 값을 더한다(exact)
+     */
+    public record Owned(Ware ware, int count, int base, int each, boolean fromShop, long low, long high, boolean exact) {
+        /** 전문가 스킬로 늘어난 비율(%) */
+        public int bonus() {
+            return base <= 0 || exact ? 0 : (int) Math.round((each - base) * 100.0 / base);
+        }
+    }
 
     /** 이 전문가(또는 상점)의 판매품 중 보유한 것, 값이 큰 순 */
     public static List<Owned> owned(MinecraftClient client, String expert, String shop) {
         List<Owned> out = new ArrayList<>();
         if (client.player == null) return out;
         Map<String, Integer> counts = MaterialCounter.availableCounts(client);
+        // 인벤토리에서 아이템마다 가격이 적힌 것(귀중품): 이름 → {개수, 가격 합}
+        Map<String, long[]> exact = new LinkedHashMap<>();
+        var inv = client.player.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            Ware w = wareOf(s);
+            if (w == null) continue;
+            int own = ownPrice(s);
+            if (own <= 0) continue;
+            long[] e = exact.computeIfAbsent(w.name(), k -> new long[2]);
+            e[0] += s.getCount();
+            e[1] += (long) own * s.getCount();
+        }
+        Map<String, int[]> mine = seen(false);
         for (Ware w : WARES) {
             if (expert != null && !w.expert().equals(expert)) continue;
             if (shop != null && !w.shop().equals(shop)) continue;
             int n = MaterialCounter.have(counts, w.name());
             if (n <= 0) continue;
-            Integer real = seen.get(w.name());
-            int each = real != null ? real : w.max();
-            long low = real != null ? (long) real * n : (long) w.min() * n;
-            long high = real != null ? (long) real * n : (long) w.max() * n;
-            out.add(new Owned(w, n, each, real != null, low, high));
+            int[] p = priceFor(w);
+            boolean fromShop = mine != null && mine.containsKey(w.name());
+            long[] e = exact.get(w.name());
+            int rest = n - (e == null ? 0 : (int) Math.min(n, e[0]));
+            long known = e == null ? 0 : e[1];
+            long low = known + (fromShop || w.fixed() ? (long) p[1] * rest : Math.round(w.min() * groupRatio(w)) * rest);
+            long high = known + (long) p[1] * rest;
+            int each = e != null && rest == 0 ? (int) (e[1] / Math.max(1, e[0])) : p[1];
+            out.add(new Owned(w, n, p[0], each, fromShop, low, high, e != null));
         }
         out.sort((a, b) -> Long.compare(b.high(), a.high()));
         return out;
@@ -215,6 +315,49 @@ public final class ShopPrices {
         return lo == hi ? String.format("%,dG", hi) : String.format("%,d~%,dG", lo, hi);
     }
 
+    // ---------------------------------------------------------------- 저장
+
+    private static Map<String, int[]> seen(boolean create) {
+        if (store == null) load();
+        String key = kr.ddingmate.skill.SkillTimers.accountKey();
+        if (key == null) key = "test";
+        Map<String, int[]> m = store.accounts.get(key);
+        if (m == null && create) {
+            m = new LinkedHashMap<>();
+            store.accounts.put(key, m);
+        }
+        return m;
+    }
+
+    private static java.nio.file.Path path() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ddingmate-shop.json");
+    }
+
+    private static void load() {
+        store = new Store();
+        java.nio.file.Path p = path();
+        if (!java.nio.file.Files.exists(p)) return;
+        try (java.io.Reader r = java.nio.file.Files.newBufferedReader(p, java.nio.charset.StandardCharsets.UTF_8)) {
+            Store s = GSON.fromJson(r, Store.class);
+            if (s != null && s.accounts != null) {
+                s.accounts.values().removeIf(java.util.Objects::isNull);
+                for (Map<String, int[]> m : s.accounts.values()) m.values().removeIf(v -> v == null || v.length != 2 || v[0] <= 0 || v[1] <= 0);
+                store = s;
+            }
+        } catch (java.io.IOException | RuntimeException e) {
+            DdingMate.LOG.warn("상점 가격 기록을 읽지 못했어요: {}", p, e);
+        }
+    }
+
+    private static void save() {
+        try {
+            java.nio.file.Files.createDirectories(path().getParent());
+            java.nio.file.Files.writeString(path(), GSON.toJson(store), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            DdingMate.LOG.error("상점 가격 기록 저장 실패", e);
+        }
+    }
+
     /** 시험용 */
     public static void debugShop(String shop) {
         openShop = shop;
@@ -222,7 +365,7 @@ public final class ShopPrices {
 
     /** 시험용 */
     public static void debugClear() {
-        seen.clear();
+        store = new Store();
         openShop = null;
     }
 }

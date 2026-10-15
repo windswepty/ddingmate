@@ -850,15 +850,26 @@ public class DdingMateScreen extends Screen {
                 ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(o.ware().name());
                 list.single(new InfoRow(icon == null ? new ItemStack(Items.PAPER) : icon, "　" + o.ware().name() + " ×" + o.count(),
                         kr.ddingmate.expert.ShopPrices.money(o.low(), o.high()), Theme.GREEN_ON_LIGHT, null)
-                        .sub("　1개 " + (o.ware().fixed() || o.fromShop() ? String.format("%,dG", o.each())
-                                : kr.ddingmate.expert.ShopPrices.money(o.ware().min(), o.ware().max()) + " (품질에 따라)")
-                                + (o.fromShop() ? " · 상점에서 본 값" : " · 위키 표")));
+                        .sub("　" + waresDetail(o)));
             }
             if (owned.size() > 6) list.note("　그 밖에 " + (owned.size() - 6) + "종");
         }
         list.single(new InfoRow(new ItemStack(Items.GOLD_INGOT), "보유 판매품 모두 팔면", kr.ddingmate.expert.ShopPrices.money(all[0], all[1]),
                 Theme.GOLD_ON_LIGHT, null));
-        list.note("보유 개수는 인벤토리 + 열어 본 가방·아이템 저장소. 가격은 상점 창에서 본 값을 먼저 쓰고, 못 봤으면 위키 [상점가] 매입가표예요.");
+        list.note("보유 개수는 인벤토리 + 열어 본 가방·아이템 저장소. 가격은 상점 칸의 '나의 판매가'(서버가 전문가 스킬을 반영한 값)를 먼저 쓰고, "
+                + "못 본 물건은 같은 종류에서 본 스킬 배율을 위키 [상점가] 매입가에 곱해요. 귀중품은 아이템마다 적힌 가격을 그대로 더해요.");
+    }
+
+    /** "1개 기본 7,200G → 나의 판매가 8,640G (+20%)" 처럼 어디서 온 값인지 */
+    private static String waresDetail(kr.ddingmate.expert.ShopPrices.Owned o) {
+        if (o.exact()) return "아이템마다 적힌 가격(귀중품 가치·전문가 배율 반영)을 더한 값";
+        String base = o.ware().fixed() || o.fromShop() ? String.format("%,dG", o.base())
+                : kr.ddingmate.expert.ShopPrices.money(o.ware().min(), o.ware().max()) + "(품질)";
+        if (o.bonus() > 0) {
+            return "1개 기본 " + base + " → 나의 판매가 " + String.format("%,dG", o.each()) + " (+" + o.bonus() + "%"
+                    + (o.fromShop() ? ")" : ", 같은 종류에서 본 스킬 배율)");
+        }
+        return "1개 " + base + (o.fromShop() ? " · 상점에서 본 값" : " · 위키 표(상점 창을 열면 스킬 반영가로 바뀌어요)");
     }
 
     private static ItemStack expertIcon(String expert) {

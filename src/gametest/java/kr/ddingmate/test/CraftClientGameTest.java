@@ -566,6 +566,15 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 boolean passed2 = net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
                         .allowMouseClick(c.currentScreen, at[0], at[1], 1);
                 check(!passed2 && DdingMate.config().counter.pins.get(0).recipe.isEmpty(), "오른쪽 클릭으로 핀을 빼지 않음: " + DdingMate.config().counter.pins.get(0).recipe);
+                // 클릭 한 번 = 핀, 한 번 더 = 핀 빼기 / 쉬프트+클릭 한 번 = 레시피, 한 번 더 = 닫기
+                kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, false);
+                check(DdingMate.config().counter.pins.get(0).recipe.equals(es.get(0).recipe().id), "클릭으로 핀이 안 들어감");
+                kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, false);
+                check(DdingMate.config().counter.pins.get(0).recipe.isEmpty(), "핀 상태에서 한 번 더 눌러도 안 빠짐");
+                kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, true);
+                check(kr.ddingmate.craft.FacilityPanel.detail() == es.get(0).recipe(), "쉬프트+클릭으로 레시피가 안 열림");
+                kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, true);
+                check(kr.ddingmate.craft.FacilityPanel.detail() == null, "쉬프트+클릭 한 번 더 해도 레시피가 안 닫힘");
             });
             // 재료가 많아 추천이 8개를 넘으면 "그 밖에 N개"를 눌러 전체 목록 판을 연다
             ctx.runOnClient(c -> {
@@ -623,14 +632,27 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.expert.ShopPrices.openShop() == null, "가격 없는 창을 상점으로 봄");
-                c.setScreen(facility(c, item("코룸 주괴", 1, "판매 가격 : 3,600G"), item("리프톤 주괴", 1, "판매 가격 : 3,750G"),
-                        item("세렌트 주괴", 1, "판매 가격 : 4,000G"), item("코룸 정동석", 1, "판매 가격 : 7,200G")));
+                // 실제 로니 칸 문구(2026-10-15): "판매가격 : 3,500 골드" / "나의 판매가 : 3,675 골드"(전문가 스킬 반영)
+                c.setScreen(facility(c, item("코룸 주괴", 1, "세레니티의 커먼 등급 주괴입니다.", "판매가격 : 3,500 골드", "나의 판매가 : 3,675 골드", "(우) 판매 (쉬프트) 모두 판매"),
+                        item("리프톤 주괴", 1, "판매가격 : 3,750 골드", "나의 판매가 : 3,938 골드"),
+                        item("세렌트 주괴", 1, "판매가격 : 4,000 골드", "나의 판매가 : 4,200 골드"),
+                        item("코룸 정동석", 1, "판매가격 : 7,200 골드", "나의 판매가 : 8,640 골드")));
+                // 상점 창에 안 보인 리프톤 정동석, 아이템마다 가격이 적힌 귀중품
+                c.player.getInventory().setStack(3, item("리프톤 정동석", 2, "리프톤 광석에서 나온 정동석입니다."));
+                c.player.getInventory().setStack(4, item("(Common) 키론 오르골", 1, "값진 보석으로 만든 귀중품입니다.", "귀중품 가치 : 1,756", "가격 : 10,971골드"));
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 check("로니".equals(kr.ddingmate.expert.ShopPrices.openShop()), "로니 상점 창으로 알아보지 못함: " + kr.ddingmate.expert.ShopPrices.openShop());
                 var mine = kr.ddingmate.expert.ShopPrices.owned(c, "채광", null);
-                check(mine.get(0).fromShop() && mine.get(0).high() == 36_000, "상점에서 본 가격(3,600G)을 쓰지 않음: " + mine);
+                var ingot = mine.stream().filter(o -> o.ware().name().equals("코룸 주괴")).findFirst().orElseThrow();
+                check(ingot.fromShop() && ingot.each() == 3_675 && ingot.high() == 36_750 && ingot.bonus() == 5,
+                        "나의 판매가(3,675G, +5%)를 쓰지 않음: " + ingot);
+                var geode = mine.stream().filter(o -> o.ware().name().equals("리프톤 정동석")).findFirst().orElseThrow();
+                check(!geode.fromShop() && geode.each() == 9_180 && geode.bonus() == 20,
+                        "같은 종류(정동석)에서 본 스킬 배율 1.2 를 안 본 정동석에 곱하지 않음: " + geode);
+                var orgel = mine.stream().filter(o -> o.ware().name().equals("(Common) 키론 오르골")).findFirst().orElseThrow();
+                check(orgel.exact() && orgel.high() == 10_971, "귀중품에 적힌 가격(10,971골드)을 쓰지 않음: " + orgel);
             });
             ctx.takeScreenshot("shop-1-roni-panel");
             ctx.runOnClient(c -> {

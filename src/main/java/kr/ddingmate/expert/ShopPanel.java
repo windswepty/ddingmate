@@ -34,7 +34,7 @@ public final class ShopPanel {
         String title = shop + " · 보유 판매품";
         int rows = Math.min(MAX_ROWS, owned.size());
         int w = 146;
-        int h = SidePanel.HEAD_H + 5 + Math.max(1, rows) * ROW + (owned.size() > rows ? ROW : 0) + 5 + 12 + 4;
+        int h = SidePanel.HEAD_H + 5 + Math.max(1, rows) * ROW + (owned.size() > rows ? ROW : 0) + 5 + 12 + 4 + 10;
         int[] at = SidePanel.place(screen.width, screen.height, w, h);
         int x = at[0], y = at[1];
         ctx.getMatrices().push();
@@ -51,8 +51,11 @@ public final class ShopPanel {
             Theme.item(ctx, icon == null ? new ItemStack(Items.PAPER) : icon, x + 6, cy - 1, 10);
             String right = ShopPrices.money(o.low(), o.high());
             int rw = Theme.boldWidth(tr, right);
-            String name = Theme.ellipsize(tr, o.ware().name() + " ×" + o.count(), w - 6 - 13 - rw - 12);
+            String bonus = o.bonus() > 0 ? " +" + o.bonus() + "%" : "";
+            int bw = Theme.width(tr, bonus);
+            String name = Theme.ellipsize(tr, o.ware().name() + " ×" + o.count(), w - 6 - 13 - rw - 12 - bw);
             Theme.text(ctx, tr, name, x + 19, cy + 1, p.ink());
+            if (!bonus.isEmpty()) Theme.text(ctx, tr, bonus, x + 19 + Theme.width(tr, name), cy + 1, p.good());
             Theme.boldText(ctx, tr, right, x + w - 7 - rw, cy + 1, o.fromShop() || o.ware().fixed() ? p.accent() : p.soft(), false);
             cy += ROW;
         }
@@ -65,6 +68,7 @@ public final class ShopPanel {
         String sum = ShopPrices.money(t[0], t[1]);
         Theme.boldText(ctx, tr, "모두 팔면", x + 6, cy + 6, p.ink(), false);
         Theme.boldText(ctx, tr, sum, x + w - 7 - Theme.boldWidth(tr, sum), cy + 6, p.good(), false);
+        Theme.text(ctx, tr, "나의 판매가(전문가 스킬 반영) 기준", x + 6, cy + 17, p.soft());
         ctx.getMatrices().pop();
     }
 }
