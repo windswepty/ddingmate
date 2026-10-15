@@ -2,7 +2,7 @@ package kr.ddingmate.skill;
 
 import kr.ddingmate.notify.Notifier;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -13,8 +13,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * /전문가 스킬 창에서 읽은 스킬을 모아 두었다가, 창을 닫으면(또는 다른 창으로 넘어가면) 채팅 한 번에 정리해 알려 준다.
- * 예전에는 스킬마다 한 줄씩 채팅이 나왔다. 제작 시간·쉬프트 스킬·판매가 스킬을 종류별로 묶는다.
+ * /전문가 스킬 창에서 읽은 스킬을 모아 두었다가, 창을 모두 닫으면 채팅 한 번에 정리해 알려 준다.
+ * 서버는 전문가마다 창을 새로 열어서(2026-10-15 실제), 창이 바뀌어도 계속 모으고 상자 창이 없는 상태가
+ * 잠깐 이어질 때 내보낸다. 제작 시간·쉬프트 스킬·판매가 스킬을 종류별로 묶는다.
  */
 public final class SkillReport {
 
@@ -26,9 +27,9 @@ public final class SkillReport {
     private record Entry(String category, String text, boolean changed) {}
 
     private static final Map<String, Entry> PENDING = new LinkedHashMap<>();
-    /** 모으기 시작한 창(이 창이 닫히면 알린다) */
-    private static Screen window;
-    private static long firstAt;
+    /** 상자 창이 없는 상태가 이만큼(틱) 이어지면 알린다. 창이 바뀔 때 서버가 잠깐 닫았다 여는 틈은 넘긴다 */
+    public static final int IDLE_TICKS = 30;
+    private static int idle;
 
     /**
      * @param name    스킬 이름(같은 스킬은 마지막 값으로 덮어씀)
@@ -38,24 +39,24 @@ public final class SkillReport {
     public static void add(String category, String name, String text, boolean changed) {
         Entry old = PENDING.get(name);
         PENDING.put(name, new Entry(category, text, changed || (old != null && old.changed())));
-        if (window == null) {
-            window = MinecraftClient.getInstance().currentScreen;
-            firstAt = System.currentTimeMillis();
-        }
+        idle = 0;
     }
 
-    /** 매 틱: 모은 창이 닫혔거나 바뀌었으면(혹은 30초가 지나면) 한 번에 알린다 */
+    /** 매 틱: 상자 창(스킬 창)을 모두 닫고 잠깐 지나면 한 번에 알린다 */
     public static void tick(MinecraftClient client) {
         if (PENDING.isEmpty()) return;
-        if (window != null && client.currentScreen == window && System.currentTimeMillis() - firstAt < 30_000) return;
-        flush();
+        if (client.currentScreen instanceof HandledScreen<?>) {
+            idle = 0;
+            return;
+        }
+        if (++idle >= IDLE_TICKS) flush();
     }
 
     public static void flush() {
         if (PENDING.isEmpty()) return;
         Notifier.chat(message());
         PENDING.clear();
-        window = null;
+        idle = 0;
     }
 
     /** 시험용: 지금 모아 둔 것을 채팅 글로 */

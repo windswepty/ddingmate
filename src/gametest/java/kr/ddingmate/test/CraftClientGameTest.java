@@ -1385,8 +1385,16 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 skw.setStack(10, item("[세레니티] 초고속 용광로 (+2)", 1, "전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의",
                         ". 제작 시간이 30% 감소합니다.", "──────────────────", ". [강화 시 스킬 정보]", ". 제작 시간이 40% 감소합니다."));
                 skw.setStack(11, item("[세레니티] 주괴 좀 사주괴 (+1)", 1, "전문가 스킬 정보", ". 주괴의 판매가가 5% 증가합니다.", "──────────────────", ". 주괴의 판매가가 7% 증가합니다."));
-                skw.setStack(12, item("[세레니티] 반짝반짝 눈이 부셔 (+4)", 1, "전문가 스킬 정보", ". 정동석의 판매가가 20% 증가합니다."));
                 c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(95, c.player.getInventory(), skw),
+                        c.player.getInventory(), Text.literal("전문가")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                // 서버는 전문가마다 창을 새로 연다: 창이 바뀌어도 채팅을 나눠 보내지 않고 계속 모은다
+                check(kr.ddingmate.skill.SkillReport.pending() == 2, "첫 창 스킬을 못 모음: " + kr.ddingmate.skill.SkillReport.preview());
+                SimpleInventory skw2 = new SimpleInventory(54);
+                skw2.setStack(12, item("[세레니티] 반짝반짝 눈이 부셔 (+4)", 1, "전문가 스킬 정보", ". 정동석의 판매가가 20% 증가합니다."));
+                c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(96, c.player.getInventory(), skw2),
                         c.player.getInventory(), Text.literal("전문가")));
             });
             ctx.waitTicks(12);
@@ -1398,9 +1406,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(pv.split("\n").length == 3, "종류별로 한 줄씩(머리 + 2줄)이 아님: " + pv);
                 c.setScreen(null);
             });
-            ctx.waitTicks(2);
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> check(kr.ddingmate.skill.SkillReport.pending() == 3, "창을 닫자마자 보냄(다음 창이 열리는 틈을 안 기다림)"));
+            ctx.waitTicks(kr.ddingmate.skill.SkillReport.IDLE_TICKS + 5);
             ctx.runOnClient(c -> {
-                check(kr.ddingmate.skill.SkillReport.pending() == 0, "창을 닫았는데 스킬 확인 채팅을 안 보냄");
+                check(kr.ddingmate.skill.SkillReport.pending() == 0, "창을 모두 닫았는데 스킬 확인 채팅을 안 보냄");
                 DdingMate.config().craft.mining = 0;
                 DdingMate.config().expert.priceSkills.clear();
                 // 21-3) 쉬프트 우클릭 스킬(실제 2026-10-09 창 칸, 2026-10 실제 채팅 순서)
