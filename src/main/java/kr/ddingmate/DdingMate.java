@@ -84,6 +84,7 @@ public final class DdingMate implements ClientModInitializer {
                 net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register(
                         (s, mx, my, button) -> kr.ddingmate.expert.Barista.kind() != kr.ddingmate.expert.Barista.Kind.NONE
                                 || kr.ddingmate.expert.Cooking.shopOpen() || kr.ddingmate.expert.ShopPrices.openShop() != null
+                                || !kr.ddingmate.expert.ShopPrices.jewels().isEmpty()
                                 || !kr.ddingmate.craft.FacilityPanel.click(mx, my, button));
                 net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register(
                         (s, mx, my, h2, v) -> !kr.ddingmate.craft.FacilityPanel.scrolled(mx, my, v));
@@ -187,6 +188,8 @@ public final class DdingMate implements ClientModInitializer {
             kr.ddingmate.expert.CookingPanel.render(ctx, screen, mouseX, mouseY);
         } else if (kr.ddingmate.expert.ShopPrices.openShop() != null) {
             kr.ddingmate.expert.ShopPanel.render(ctx, screen, mouseX, mouseY);
+        } else if (!kr.ddingmate.expert.ShopPrices.jewels().isEmpty()) {
+            kr.ddingmate.expert.JewelPanel.render(ctx, screen, mouseX, mouseY);
         } else {
             kr.ddingmate.craft.FacilityPanel.render(ctx, screen, mouseX, mouseY);
         }

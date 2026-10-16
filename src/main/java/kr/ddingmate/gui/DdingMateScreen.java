@@ -201,7 +201,15 @@ public class DdingMateScreen extends Screen {
         tutorial = new Tutorial(this::switchTab, t -> {
             TabButton b = tabButtons.get(t);
             return b == null ? null : new int[]{b.getX(), b.getY(), b.getWidth(), b.getHeight()};
-        }, key -> list == null ? null : list.focus(key), this::endTutorial);
+        }, key -> {
+            // "바로 가기": 오른쪽 목차 단추 묶음 전체
+            if (key.equals("바로 가기")) {
+                if (sectionButtons.isEmpty()) return null;
+                SectionButton first = sectionButtons.get(0), last = sectionButtons.get(sectionButtons.size() - 1);
+                return new int[]{first.getX(), first.getY(), first.getWidth(), last.getY() + last.getHeight() - first.getY()};
+            }
+            return list == null ? null : list.focus(key);
+        }, this::endTutorial);
         tutorial.start();
     }
 
@@ -896,7 +904,7 @@ public class DdingMateScreen extends Screen {
         DdingMateConfig.Expert ex = cfg.expert;
         list.header("판매 시세 · 채광·해양·사냥·꽃 보유 판매품", "판매 시세");
         list.pair(tip(toggle("상점 창 옆에 보기", ex.shopPanel, v -> ex.shopPanel = v),
-                "로니·샤키·포스·픽스·카이 상점 창을 열면 옆에 보유 판매품과 모두 팔면 받는 금액을 보여 줘요"), null);
+                "로니·샤키·포스·픽스·카이 상점 창을 열면 옆에 보유 판매품과 모두 팔면 받는 금액을, 보석함 판매 창에서는 귀중품 가격 합계를 보여 줘요"), null);
         String[][] experts = {{"채광", "로니 · 주괴·정동석·귀중품·형광 제련품"}, {"해양", "샤키 · 연금품 / 포스 · 공예품"},
                 {"사냥", "픽스 · 영혼·원혼·가죽 명품"}, {"재배", "카이 · 꽃·향장품"}};
         long[] all = new long[2];

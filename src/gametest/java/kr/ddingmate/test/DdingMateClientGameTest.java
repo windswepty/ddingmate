@@ -86,12 +86,12 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
             }
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
-                // 처음으로 돌아가 재료 탭 첫 단계(16단계)까지
+                // 처음으로 돌아가 재료 탭 첫 단계(17단계)까지
                 for (int i = 0; i < 40; i++) s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, 0, 0);
                 if (s.tutorialStep() != 0) throw new AssertionError("처음 단계로 돌아가지 않음");
-                for (int i = 0; i < 15; i++) s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER, 0, 0);
-                if (s.tutorialStep() != 15 || s.tabIndex() != 5) {
-                    throw new AssertionError("16단계(재료 탭)가 아님: 단계 " + s.tutorialStep() + ", 탭 " + s.tabIndex());
+                for (int i = 0; i < 16; i++) s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER, 0, 0);
+                if (s.tutorialStep() != 16 || s.tabIndex() != 5) {
+                    throw new AssertionError("17단계(재료 탭)가 아님: 단계 " + s.tutorialStep() + ", 탭 " + s.tabIndex());
                 }
             });
             ctx.waitTicks(3);
@@ -103,10 +103,10 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
                 s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, 0, 0);
-                if (s.tutorialStep() != 14 || s.tabIndex() != 4) throw new AssertionError("이전 단계로 가지 않음");
+                if (s.tutorialStep() != 15 || s.tabIndex() != 4) throw new AssertionError("이전 단계로 가지 않음");
                 // 튜토리얼 중에는 아래 창이 눌리지 않는다(탭 단추를 눌러도 그대로)
                 s.mouseClicked(1, 1, 0);
-                if (s.tutorialStep() != 14) throw new AssertionError("튜토리얼 밖을 눌렀는데 단계가 바뀜");
+                if (s.tutorialStep() != 15) throw new AssertionError("튜토리얼 밖을 눌렀는데 단계가 바뀜");
                 for (int i = 0; i < 60 && s.tutorialActive(); i++) s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER, 0, 0);
                 if (s.tutorialActive() || !DdingMate.config().tutorialDone || s.tabIndex() != 0) {
                     throw new AssertionError("튜토리얼을 끝까지 넘겼는데 끝나지 않음");

@@ -692,6 +692,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(12);
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.expert.ShopPrices.openShop() == null, "보석함 창을 상점으로 봄");
+                // 보석함 창: 귀중품마다 적힌 가격을 모아 귀중품 판에(보석함에 넣은 것 합계)
+                var jw = kr.ddingmate.expert.ShopPrices.jewels();
+                check(jw.size() == 1 && jw.get(0).inBox() && jw.get(0).price() == 16_227 && jw.get(0).name().equals("(Rare) 실바니움 만년필"),
+                        "보석함 귀중품 가격을 못 모음: " + jw);
                 DdingMate.config().expert.priceSkills.clear();
                 // 보석함에서 본 귀중품 가격은 기억해 두고, 가격 줄이 없는 창(로니)에서도 같은 귀중품(이름·가치)에 쓴다
                 c.player.getInventory().setStack(6, item("(Rare) 실바니움 만년필", 1, "값진 보석으로 만든 귀중품입니다.", "귀중품 가치 : 4,414"));

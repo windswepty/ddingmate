@@ -136,9 +136,11 @@ public final class ShopPrices {
     /** 10틱마다: 창에 가격이 적힌 판매품이 3개 이상 보이면 그 상점 창으로 보고, 칸에 적힌 가격을 기억한다 */
     public static void scan(MinecraftClient client) {
         openShop = null;
+        jewels = List.of();
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) return;
         Map<String, Integer> hits = new LinkedHashMap<>();
         boolean changed = false;
+        List<Jewel> found = new ArrayList<>();
         // 보석함처럼 귀중품마다 가격이 적힌 창: 내 인벤토리 칸까지 "이름|가치 → 가격"을 기억한다
         for (Slot slot : screen.getScreenHandler().slots) {
             if (!slot.hasStack()) continue;
@@ -147,6 +149,7 @@ public final class ShopPrices {
             if (w == null || !group(w).equals("귀중품")) continue;
             int own = ownPrice(s), worth = worth(s);
             if (own <= 0 || worth <= 0) continue;
+            found.add(new Jewel(w.name(), s.getCount(), own, !(slot.inventory instanceof PlayerInventory)));
             Map<String, Integer> vm = valuables(true);
             Integer old = vm.put(w.name() + "|" + worth, own);
             if (old == null || old != own) changed = true;
@@ -174,6 +177,25 @@ public final class ShopPrices {
         if (changed) save();
         openShop = hits.entrySet().stream().filter(e -> e.getValue() >= 3).max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey).orElse(null);
+        // 귀중품마다 "가격 : N골드"가 적힌 창(실제: 보석함 판매 창, 2026-10-16)이면 귀중품 판에 보여 준다
+        if (openShop == null) {
+            found.sort(java.util.Comparator.comparing((Jewel j) -> !j.inBox()).thenComparing(j -> -(long) j.price() * j.count()));
+            jewels = List.copyOf(found);
+        }
+    }
+
+    /** 보석함 창의 귀중품 한 칸: 이름, 개수, 칸에 적힌 가격(1개), 보석함 칸(위 창)에 넣은 것인가 */
+    public record Jewel(String name, int count, int price, boolean inBox) {
+        public long total() {
+            return (long) price * count;
+        }
+    }
+
+    /** 지금 열린 창이 귀중품 가격이 적힌 창이면 그 귀중품들(보석함에 넣은 것 먼저), 아니면 빈 목록 */
+    private static List<Jewel> jewels = List.of();
+
+    public static List<Jewel> jewels() {
+        return jewels;
     }
 
     /** 아이템이 표의 판매품이면 그 판매품(등급 귀중품은 모델 번호로 등급을 알아본 이름으로 맞춘다) */
