@@ -862,6 +862,7 @@ public class DdingMateScreen extends Screen {
             }
             for (String[] e : ex) {
                 ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(e[0]);
+                if (icon == null) icon = exampleIcon(e[0]);
                 list.single(new InfoRow(icon == null ? new ItemStack(Items.PAPER) : icon, "　" + e[0], e[2], Theme.GOLD_ON_LIGHT, null)
                         .sub("　기본 " + e[1] + " → +" + fmtPct(pct) + "%"));
             }
@@ -871,6 +872,23 @@ public class DdingMateScreen extends Screen {
 
     private static String fmtPct(double v) {
         return v == Math.floor(v) ? String.valueOf((int) v) : String.valueOf(v);
+    }
+
+    /**
+     * 예시 줄("커먼 물고기", "평범한 수렵물")은 실제 아이템이 아니라 서버 그림을 모른다: 바닐라 물고기·수렵 그림으로 대신한다.
+     * 물고기는 등급이 올라갈수록 대구 → 연어 → 열대어 → 복어 → 열대어 양동이
+     */
+    private static ItemStack exampleIcon(String name) {
+        if (name.endsWith("물고기")) {
+            if (name.startsWith("커먼")) return new ItemStack(Items.COD);
+            if (name.startsWith("노멀")) return new ItemStack(Items.SALMON);
+            if (name.startsWith("에픽")) return new ItemStack(Items.TROPICAL_FISH);
+            if (name.startsWith("전설")) return new ItemStack(Items.PUFFERFISH);
+            if (name.startsWith("신화")) return new ItemStack(Items.TROPICAL_FISH_BUCKET);
+            return new ItemStack(Items.COD);
+        }
+        if (name.endsWith("수렵물")) return new ItemStack(Items.LEATHER);
+        return null;
     }
 
     /** 채광·해양·사냥·재배(꽃) 전문가: 보유한 판매품과 팔면 받는 금액(상점 창에서 본 가격 → 위키 매입가표) */
