@@ -313,6 +313,8 @@ public final class DdingMateConfig {
             if (p.recipe == null) p.recipe = "";
             // 위키 2026-10-15 이름 수정: 활기찬 가죽 지갑 → 장갑
             if (p.recipe.equals("가죽 공방/활기찬 가죽 지갑")) p.recipe = "가죽 공방/활기찬 가죽 장갑";
+            // 게임 레시피북 표기(2026-10-16 확인): 그린트리 → 그린 트리 프라페
+            if (p.recipe.equals("바리스타 · 커피 머신/그린트리 프라페")) p.recipe = "바리스타 · 커피 머신/그린 트리 프라페";
             // 위키에서 옮길 때 섞여 들어온 보이지 않는 글자(BOM)를 레시피 이름에서 지웠다(형광 광산·모루 모듈)
             p.recipe = p.recipe.replace("\uFEFF", "");
             p.crafts = Math.max(1, Math.min(9999, p.crafts));

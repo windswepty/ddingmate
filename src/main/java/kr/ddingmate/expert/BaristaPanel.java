@@ -119,7 +119,9 @@ public final class BaristaPanel {
         for (Barista.Order o : orders) {
             boolean fresh = Barista.fresh(o);
             if (!fresh && !staleShown) {
-                out.add(new Item(null, "03시 전에 읽은 주문 · 다시 열면 맞춰요", "", p.soft(), 0, false, false, null, 0, false));
+                // 한 줄이면 판 너비를 넘어 "다시 열면 …" 으로 잘렸다(2026-10-16 인게임)
+                out.add(new Item(null, "03시 전에 읽은 주문이에요", "", p.soft(), 0, false, false, null, 0, false));
+                out.add(new Item(null, "손님 창을 다시 열면 맞춰요", "", p.soft(), 0, false, false, null, 0, false));
                 staleShown = true;
             }
             boolean here = o.customer.equals(Barista.currentCustomer());
