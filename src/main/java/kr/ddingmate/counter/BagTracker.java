@@ -56,6 +56,8 @@ public final class BagTracker {
 
     static final class Bag {
         long seenAt;
+        /** 번호를 모른 채(명령어·눌린 번호 단추 없이) 내용으로 짐작해 붙인 번호인가. 진짜 번호를 알면 자리를 옮길 수 있다 */
+        boolean guessed;
         List<String> slots = new ArrayList<>();
         Map<String, Integer> counts = new HashMap<>();
     }
@@ -63,6 +65,8 @@ public final class BagTracker {
     static final class Account {
         List<String> titles = new ArrayList<>();
         Map<String, Bag> bags = new TreeMap<>();
+        /** 가방 창 제목의 번호 단추 수 = 가진 가방 수(0 이면 아직 모름). 이보다 큰 번호의 기록은 있을 수 없다 */
+        int bagCount;
         /** 아이템 저장소. 슬롯마다 보관 개수를 설명 문구에서 읽는다 */
         Bag storage;
     }
@@ -82,6 +86,10 @@ public final class BagTracker {
     private static int openTicks;
     private static boolean openIsBag;
     private static int openBag;
+    /** 지금 연 가방의 번호가 짐작한 번호인가(기록할 때 함께 남긴다) */
+    private static boolean openGuessed;
+    /** resolveBag 이 마지막으로 정한 번호가 짐작한 번호인가 */
+    private static boolean resolvedGuessed;
     private static boolean openIsStorage;
     private static int ticks;
 
@@ -167,7 +175,12 @@ public final class BagTracker {
     static final Identifier BAG_BUTTON_FONT = Identifier.of(DDING_NS, "bag/ui/button");
 
     /** bagUi: 가방 관련 창인가, bag: 가방 내용 창인가, number: 눌린 번호 단추(모르면 0) */
-    public record TitleSignal(boolean bagUi, boolean bag, int number) {}
+    /** buttons: 제목의 번호 단추 중 가장 큰 번호(= 가진 가방 수, 단추가 없으면 0) */
+    public record TitleSignal(boolean bagUi, boolean bag, int number, int buttons) {
+        public TitleSignal(boolean bagUi, boolean bag, int number) {
+            this(bagUi, bag, number, 0);
+        }
+    }
 
     public static TitleSignal readTitle(Text title) {
         boolean[] ui = {false};
@@ -187,15 +200,15 @@ public final class BagTracker {
                     if (c >= '뀁' && c <= '뀉') {
                         number[0] = c - '뀀';
                         pressed[0]++;
-                        buttons[0]++;
+                        buttons[0] = Math.max(buttons[0], c - '뀀');
                     } else if (c >= 'ꀁ' && c <= 'ꀉ') {
-                        buttons[0]++;
+                        buttons[0] = Math.max(buttons[0], c - 'ꀀ');
                     }
                 }
             }
             return Optional.empty();
         }, Style.EMPTY);
-        return new TitleSignal(ui[0], bag[0], pressed[0] == 1 ? number[0] : 0);
+        return new TitleSignal(ui[0], bag[0], pressed[0] == 1 ? number[0] : 0, buttons[0]);
     }
 
     /** 창이 열리고 내용이 도착한 뒤 가방인지, 몇 번인지 정한다. */
@@ -213,8 +226,13 @@ public final class BagTracker {
         }
         if (sig.bagUi()) {
             if (sig.bag()) {
+                // 가방 창 제목의 가장 큰 번호 단추 = 가진 가방 수: 그보다 큰 번호의 기록(예전 판이 같은 가방을 다른 번호로 남긴 것)은 지운다.
+                // 가방 목록 창 등 다른 창의 단추는 믿지 않는다
+                if (sig.buttons() > 0) learnBagCount(acc, Math.max(sig.buttons(), sig.number()));
                 openIsBag = true;
-                openBag = resolveBag(acc, slots, sig.number() > 0 ? sig.number() : pending ? pendingBag : 0, true);
+                int known = sig.number() > 0 ? sig.number() : pending ? pendingBag : sig.buttons() == 1 ? 1 : 0;
+                openBag = resolveBag(acc, slots, known, true);
+                openGuessed = resolvedGuessed;
             }
             pendingBag = 0;
             return;
@@ -235,6 +253,7 @@ public final class BagTracker {
                 }
                 openIsBag = true;
                 openBag = resolveBag(acc, slots, pendingBag, true);
+                openGuessed = resolvedGuessed;
             }
             pendingBag = 0;
             return;
@@ -243,6 +262,7 @@ public final class BagTracker {
             // 제목만 보고 가방이라 짐작한 창: 이미 기록한 가방과 맞을 때만 쓰고, 새 가방 기록은 만들지 않는다
             openIsBag = true;
             openBag = resolveBag(acc, slots, 0, false);
+            openGuessed = resolvedGuessed;
         }
     }
 
@@ -255,6 +275,7 @@ public final class BagTracker {
         Inventory inv = screen.getScreenHandler().getInventory();
         int size = containerSize(screen);
         for (int i = 0; i < size; i++) ItemKeys.add(bag.counts, inv.getStack(i));
+        bag.guessed = openGuessed;
         acc.bags.put(String.valueOf(number), bag);
         dirty = true;
     }
@@ -468,6 +489,7 @@ public final class BagTracker {
      * known(명령어 /ㄱ2 등으로 안 번호)이 있으면 그 번호로 자리를 바로잡는다. 처음 보는 가방이면 빈 번호로 새로 기록한다.
      */
     static int resolveBag(Account acc, List<String> slots, int known, boolean allowNew) {
+        resolvedGuessed = false;
         String exact = null;
         long exactSeen = -1;
         for (Map.Entry<String, Bag> e : acc.bags.entrySet()) {
@@ -485,18 +507,55 @@ public final class BagTracker {
                 if (atKnown != null) acc.bags.put(exact, atKnown);
                 acc.bags.put(k, moved);
                 dirty = true;
-            } else if (exact == null && atKnown != null && similarity(slots, atKnown.slots) < MATCH_THRESHOLD) {
-                // 그 번호 자리의 기록이 전혀 다른 가방 것이면(번호를 몰라 잘못 둔 것) 지우지 말고 빈 번호로 옮겨 둔다
+            } else if (exact == null && atKnown != null && atKnown.guessed && similarity(slots, atKnown.slots) < MATCH_THRESHOLD
+                    && !allEmpty(atKnown.slots) && fits(acc, freeNumber(acc, known))) {
+                // 그 번호 자리의 기록이 번호를 몰라 짐작해 둔 다른 가방 것이면 지우지 말고 빈 번호로 옮겨 둔다.
+                // 번호를 알고 남긴 기록이면 같은 가방이 내용만 바뀐 것이라 그대로 덮어쓴다
+                // (예전 판: 이것도 옮겨서 2번 가방의 지난 내용이 "4번 가방"으로 남아 같은 물건을 두 번 셌다, 2026-10-16 실제)
                 acc.bags.remove(k);
                 acc.bags.put(String.valueOf(freeNumber(acc, known)), atKnown);
                 dirty = true;
             }
             return known;
         }
-        if (exact != null) return Integer.parseInt(exact);
+        if (exact != null) {
+            resolvedGuessed = acc.bags.get(exact).guessed;
+            return Integer.parseInt(exact);
+        }
         int best = bestMatch(acc, slots);
-        if (best > 0) return best;
-        return allowNew ? freeNumber(acc, 0) : 0;
+        if (best > 0) {
+            resolvedGuessed = acc.bags.get(String.valueOf(best)).guessed;
+            return best;
+        }
+        // 처음 보는 내용: 빈 창(내용이 아직 안 온 창)이거나 가진 가방 수를 넘는 번호면 새로 기록하지 않는다
+        // (예전 판: 빈 창이 "3번 가방"으로 남았다)
+        if (!allowNew || allEmpty(slots)) return 0;
+        int n = freeNumber(acc, 0);
+        if (!fits(acc, n)) return 0;
+        resolvedGuessed = true;
+        return n;
+    }
+
+    private static boolean allEmpty(List<String> slots) {
+        for (String s : slots) if (!s.isEmpty()) return false;
+        return true;
+    }
+
+    /** 가진 가방 수를 알면 그 안의 번호인가 */
+    private static boolean fits(Account acc, int number) {
+        return acc.bagCount <= 0 || number <= acc.bagCount;
+    }
+
+    /** 가방 창 제목에서 가진 가방 수를 알았다: 그보다 큰 번호의 기록을 지운다 */
+    static void learnBagCount(Account acc, int count) {
+        if (count <= 0 || count > 9) return;
+        // 가방은 늘기만 한다: 더 작게 읽혀도 줄이지 않는다(제목 일부만 온 창 등으로 기록을 잃지 않게)
+        if (count > acc.bagCount) {
+            acc.bagCount = count;
+            dirty = true;
+        }
+        int limit = acc.bagCount;
+        if (acc.bags.keySet().removeIf(k -> Integer.parseInt(k) > limit)) dirty = true;
     }
 
     /** 시험용 */
@@ -519,8 +578,29 @@ public final class BagTracker {
             Bag b = new Bag();
             b.slots = new ArrayList<>(e.getValue());
             b.seenAt = t++;
+            b.guessed = true;
             acc.bags.put(e.getKey(), b);
         }
+        int n = resolveBag(acc, slots, known, true);
+        bags.clear();
+        acc.bags.forEach((k, v) -> bags.put(k, v.slots));
+        return n;
+    }
+
+    /**
+     * 시험용: 번호를 알고 남긴 기록(guessed=false)들과 가진 가방 수(bagCount, 0 = 모름)로 정한 번호.
+     * bags 는 바뀐 기록으로 고쳐 쓴다
+     */
+    public static int debugResolveKnown(Map<String, List<String>> bags, List<String> slots, int known, int bagCount) {
+        Account acc = new Account();
+        long t = 1;
+        for (Map.Entry<String, List<String>> e : bags.entrySet()) {
+            Bag b = new Bag();
+            b.slots = new ArrayList<>(e.getValue());
+            b.seenAt = t++;
+            acc.bags.put(e.getKey(), b);
+        }
+        if (bagCount > 0) learnBagCount(acc, bagCount);
         int n = resolveBag(acc, slots, known, true);
         bags.clear();
         acc.bags.forEach((k, v) -> bags.put(k, v.slots));

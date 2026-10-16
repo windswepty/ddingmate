@@ -167,6 +167,28 @@ public class LogicClientGameTest implements FabricClientGameTest {
         // 그 번호 자리에 전혀 다른 가방 기록이 있으면 지우지 않고 빈 번호로 옮긴다(합계에서 사라지지 않게)
         check(BagTracker.debugResolve(bags, c3, 2) == 2 && bags.containsValue(a) && !bags.containsKey("2") && bags.size() == 2,
                 "그 번호 자리의 다른 가방 기록을 옮기지 않음: " + bags);
+        // 번호를 알고 남긴 2번 가방 기록은, 다시 열었을 때 내용이 많이 바뀌었어도 같은 가방이라 덮어쓴다
+        // (예전 판: 지난 내용을 빈 번호로 옮겨 "4번 가방"이 생기고 같은 물건을 두 번 셌다, 2026-10-16 실제)
+        java.util.Map<String, List<String>> known = new java.util.TreeMap<>();
+        known.put("1", a);
+        known.put("2", List.of("n:(Rare)실바니움만년필*1", "", ""));
+        check(BagTracker.debugResolveKnown(known, List.of("n:어빌리티스톤*5", "n:애플쿠키*9", "n:(Rare)실바니움만년필*1"), 2, 0) == 2
+                && known.size() == 2, "번호를 아는 가방의 지난 내용을 다른 번호로 남김: " + known);
+        // 번호를 모르는 빈 창(내용이 아직 안 온 창)은 새 가방으로 기록하지 않는다(예전 판: 빈 "3번 가방")
+        check(BagTracker.debugResolveKnown(known, java.util.Collections.nCopies(54, ""), 0, 0) == 0 && known.size() == 2,
+                "빈 창을 새 가방으로 기록함: " + known);
+        // 가방 창 제목의 번호 단추가 2개면 가방은 2개: 3번 이상 기록은 지우고, 새 번호도 만들지 않는다
+        known.put("3", c3);
+        known.put("4", List.of("v:minecraft:stone*1"));
+        check(BagTracker.debugResolveKnown(known, List.of("v:minecraft:dirt*9", "", ""), 0, 2) == 0
+                && known.keySet().equals(java.util.Set.of("1", "2")), "가진 가방 수보다 큰 번호 기록이 남거나 새로 생김: " + known);
+        // 제목에서 가진 가방 수 읽기: 1번 눌림 + 안 눌린 2·3번 단추 = 가방 3개
+        String ns = "e94a3c2f-10aa-4d92-9ed0-c73f74fef20e";
+        net.minecraft.text.Text title3 = net.minecraft.text.Text.empty()
+                .append(net.minecraft.text.Text.literal("ꀁ").setStyle(net.minecraft.text.Style.EMPTY.withFont(net.minecraft.util.Identifier.of(ns, "bag/ui/main"))))
+                .append(net.minecraft.text.Text.literal("뀁ꀂꀃ").setStyle(net.minecraft.text.Style.EMPTY.withFont(net.minecraft.util.Identifier.of(ns, "bag/ui/button"))));
+        BagTracker.TitleSignal sig3 = BagTracker.readTitle(title3);
+        check(sig3.bag() && sig3.number() == 1 && sig3.buttons() == 3, "제목의 가방 번호·단추 수를 다르게 읽음: " + sig3);
         // 장식 칸(이름 없는 칸)이 많은 창은 가방이 아니다(실제: 이런 창이 "3번 가방"으로 잡힘)
         java.util.List<String> deco = new java.util.ArrayList<>(java.util.Collections.nCopies(54, ""));
         for (int i = 18; i < 54; i++) deco.set(i, "n:*1");
