@@ -97,29 +97,102 @@ public final class MaterialCounter {
         views = out;
     }
 
+    /**
+     * 핀 하나의 재료 줄. 같은 아이템이 여러 줄에 나오면(예: 해구 파동의 코어 ★★ 의 세 결정이 모두 켈프 더미를 씀)
+     * 가진 개수를 위 줄부터 필요한 만큼 나눠 준다: 첫 줄이 다 차면 남은 것이 다음 줄로 간다.
+     * 다 나눠 주고 남은 것은 그 아이템을 쓰는 마지막 줄에 얹어 여유분이 보이게 한다.
+     * (예전: 줄마다 가진 개수 전체를 세어, 4세트 57개로 세 줄이 모두 "다 모음"으로 보였다 — 2026-10-16 사용자 요청)
+     */
     static PinView view(int index, DdingMateConfig.Pin pin, RecipeBook.Recipe r, Map<String, Integer> inv,
                         Map<String, Integer> bags, Map<String, Integer> storage, boolean expand) {
+        Pool pool = new Pool(inv, bags, storage);
         List<Line> lines = new ArrayList<>();
         for (RecipeBook.Material m : r.materials) {
-            Line line = line(m.name, m.count * craftsOf(pin, r), inv, bags, storage, List.of());
-            if (expand && !line.done()) line = withSubs(line, r, inv, bags, storage);
+            Line line = pool.line(m.name, m.count * craftsOf(pin, r));
+            if (expand && !line.done()) line = withSubs(line, r, pool);
             lines.add(line);
         }
-        return new PinView(index, pin, r, lines);
+        return new PinView(index, pin, r, pool.giveRest(lines));
     }
 
-    private static Line line(String name, int need, Map<String, Integer> inv, Map<String, Integer> bags,
-                             Map<String, Integer> storage, List<Line> subs) {
-        Set<String> keys = RecipeBook.keysFor(name);
-        return new Line(name, sum(inv, keys), sum(bags, keys), sum(storage, keys), need, subs);
+    /** 시험용: 레시피 id 를 crafts 번 만들 때의 재료 줄(하위 재료 펼침). have 는 재료 이름 → 인벤토리 개수 */
+    public static List<Line> debugLines(String recipeId, int crafts, Map<String, Integer> have) {
+        RecipeBook.Recipe r = RecipeBook.get(recipeId);
+        DdingMateConfig.Pin pin = new DdingMateConfig.Pin();
+        pin.recipe = recipeId;
+        pin.crafts = crafts;
+        Map<String, Integer> inv = new HashMap<>();
+        have.forEach((name, n) -> inv.merge(RecipeBook.keysFor(name).iterator().next(), n, Integer::sum));
+        return view(0, pin, r, inv, Map.of(), Map.of(), true).lines();
+    }
+
+    /** 핀 하나 안에서 가진 개수를 줄마다 나눠 주는 통(인벤토리 → 가방 → 저장소 순서로 꺼낸다) */
+    static final class Pool {
+        private final Map<String, Integer> inv, bags, storage;
+
+        Pool(Map<String, Integer> inv, Map<String, Integer> bags, Map<String, Integer> storage) {
+            this.inv = new HashMap<>(inv);
+            this.bags = new HashMap<>(bags);
+            this.storage = new HashMap<>(storage);
+        }
+
+        /** 필요한 만큼(남은 것 안에서) 꺼내 줄을 만든다 */
+        Line line(String name, int need) {
+            Set<String> keys = RecipeBook.keysFor(name);
+            int a = take(inv, keys, need);
+            int b = take(bags, keys, need - a);
+            int c = take(storage, keys, need - a - b);
+            return new Line(name, a, b, c, need, List.of());
+        }
+
+        /** 다 나눠 주고 남은 것을 그 아이템을 쓰는 마지막 줄에 얹는다(하위 재료 줄 포함, 아래쪽이 마지막) */
+        List<Line> giveRest(List<Line> lines) {
+            Map<String, int[]> last = new HashMap<>(); // 이름 → {윗줄 번호, 하위 줄 번호(-1 = 윗줄 자신)}
+            for (int i = 0; i < lines.size(); i++) {
+                last.put(lines.get(i).name(), new int[]{i, -1});
+                List<Line> subs = lines.get(i).subs();
+                for (int j = 0; j < subs.size(); j++) last.put(subs.get(j).name(), new int[]{i, j});
+            }
+            List<Line> out = new ArrayList<>(lines);
+            for (Map.Entry<String, int[]> e : last.entrySet()) {
+                Set<String> keys = RecipeBook.keysFor(e.getKey());
+                int a = take(inv, keys, Integer.MAX_VALUE);
+                int b = take(bags, keys, Integer.MAX_VALUE);
+                int c = take(storage, keys, Integer.MAX_VALUE);
+                if (a + b + c == 0) continue;
+                int i = e.getValue()[0], j = e.getValue()[1];
+                Line top = out.get(i);
+                if (j < 0) {
+                    out.set(i, new Line(top.name(), top.inventory() + a, top.bags() + b, top.storage() + c, top.need(), top.subs()));
+                } else {
+                    List<Line> subs = new ArrayList<>(top.subs());
+                    Line sub = subs.get(j);
+                    subs.set(j, new Line(sub.name(), sub.inventory() + a, sub.bags() + b, sub.storage() + c, sub.need(), sub.subs()));
+                    out.set(i, new Line(top.name(), top.inventory(), top.bags(), top.storage(), top.need(), List.copyOf(subs)));
+                }
+            }
+            return out;
+        }
+
+        private static int take(Map<String, Integer> from, Set<String> keys, int max) {
+            int got = 0;
+            for (String k : keys) {
+                if (got >= max) break;
+                int have = from.getOrDefault(k, 0);
+                int n = Math.min(have, max - got);
+                if (n <= 0) continue;
+                from.put(k, have - n);
+                got += n;
+            }
+            return got;
+        }
     }
 
     /**
      * 모자란 재료가 레시피로 만들 수 있는 것이면(예: 조약돌 뭉치 = 조약돌 64개), 모자란 만큼 만들 때 필요한 원재료를 붙인다.
      * 한 단계만 펼치고, 자기 자신을 다시 만드는 레시피는 건너뛴다.
      */
-    private static Line withSubs(Line line, RecipeBook.Recipe parent, Map<String, Integer> inv,
-                                 Map<String, Integer> bags, Map<String, Integer> storage) {
+    private static Line withSubs(Line line, RecipeBook.Recipe parent, Pool pool) {
         RecipeBook.Recipe sub = RecipeBook.recipeFor(line.name());
         if (sub == null || sub.id.equals(parent.id) || sub.materials.isEmpty()) return line;
         int shortage = line.need() - line.have();
@@ -127,7 +200,7 @@ public final class MaterialCounter {
         List<Line> subs = new ArrayList<>();
         for (RecipeBook.Material m : sub.materials) {
             if (m.name.equals(line.name())) return line;
-            subs.add(line(m.name, m.count * crafts, inv, bags, storage, List.of()));
+            subs.add(pool.line(m.name, m.count * crafts));
         }
         return new Line(line.name(), line.inventory(), line.bags(), line.storage(), line.need(), List.copyOf(subs));
     }

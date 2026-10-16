@@ -189,6 +189,20 @@ public class LogicClientGameTest implements FabricClientGameTest {
                 .append(net.minecraft.text.Text.literal("뀁ꀂꀃ").setStyle(net.minecraft.text.Style.EMPTY.withFont(net.minecraft.util.Identifier.of(ns, "bag/ui/button"))));
         BagTracker.TitleSignal sig3 = BagTracker.readTitle(title3);
         check(sig3.bag() && sig3.number() == 1 && sig3.buttons() == 3, "제목의 가방 번호·단추 수를 다르게 읽음: " + sig3);
+        // 같은 하위 재료가 여러 줄에 나오면 가진 개수를 위 줄부터 나눠 준다(2026-10-16 실제: 해구 파동의 코어 ★★ ×100,
+        // 켈프 더미 4세트 57개 = 313개로 세 결정의 켈프 더미 줄(각 3세트 8 = 200개)이 모두 "다 모음"으로 보였다)
+        String core = "정밀 연금 제작 시설/해구 파동의 코어 ★★";
+        java.util.List<Integer> kelp = new java.util.ArrayList<>();
+        for (kr.ddingmate.counter.MaterialCounter.Line l : kr.ddingmate.counter.MaterialCounter.debugLines(core, 100, java.util.Map.of("켈프 더미", 313))) {
+            for (kr.ddingmate.counter.MaterialCounter.Line sub : l.subs()) if (sub.name().equals("켈프 더미")) kelp.add(sub.have());
+        }
+        check(kelp.equals(List.of(200, 113, 0)), "켈프 더미를 위 줄부터 나눠 주지 않음: " + kelp);
+        // 다 나눠 주고 남은 것은 마지막 줄에(여유분이 보이게): 700개 → 200, 200, 300
+        kelp.clear();
+        for (kr.ddingmate.counter.MaterialCounter.Line l : kr.ddingmate.counter.MaterialCounter.debugLines(core, 100, java.util.Map.of("켈프 더미", 700))) {
+            for (kr.ddingmate.counter.MaterialCounter.Line sub : l.subs()) if (sub.name().equals("켈프 더미")) kelp.add(sub.have());
+        }
+        check(kelp.equals(List.of(200, 200, 300)), "남은 켈프 더미가 마지막 줄에 안 감: " + kelp);
         // 장식 칸(이름 없는 칸)이 많은 창은 가방이 아니다(실제: 이런 창이 "3번 가방"으로 잡힘)
         java.util.List<String> deco = new java.util.ArrayList<>(java.util.Collections.nCopies(54, ""));
         for (int i = 18; i < 54; i++) deco.set(i, "n:*1");

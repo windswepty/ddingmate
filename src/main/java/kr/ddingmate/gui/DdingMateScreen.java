@@ -1440,7 +1440,26 @@ public class DdingMateScreen extends Screen {
         }
     }
 
-    /** 핀 칸: 번호 꼬리표 + 재료 아이콘 몇 개 + 레시피 이름. 누르면 레시피 고르기 화면 */
+    /** 핀 비우기(레시피 고르기 창의 [핀 비우기]와 같고, 만들 개수도 처음으로) */
+    static void clearPin(DdingMateConfig.Pin pin) {
+        pin.recipe = "";
+        pin.crafts = 1;
+        pin.byOutput = false;
+        DdingMate.config().save();
+    }
+
+    /** 시험용: 핀 칸 자리를 화면에서 우클릭(설정 목록을 거쳐 칸까지 가는 실제 경로) */
+    public boolean debugRightClickPin(int index) {
+        if (list == null) return false;
+        for (Row r : list.children()) {
+            for (ClickableWidget w : r.widgets) {
+                if (w instanceof PinButton b && b.index == index) return mouseClicked(b.getX() + 4, b.getY() + 4, 1);
+            }
+        }
+        return false;
+    }
+
+    /** 핀 칸: 번호 꼬리표 + 재료 아이콘 몇 개 + 레시피 이름. 누르면 레시피 고르기 화면, 우클릭하면 핀 빼기 */
     private class PinButton extends PressableWidget {
         private final int index;
         private final DdingMateConfig.Pin pin;
@@ -1455,7 +1474,7 @@ public class DdingMateScreen extends Screen {
             if (r != null) {
                 setTooltip(Tooltip.of(Text.literal(r.facility + " · [" + r.category + "]\n"
                         + String.join("\n", r.materials.stream().map(m -> m.name + " " + m.count + "개").toList())
-                        + "\n\n눌러서 다른 레시피 고르기")));
+                        + "\n\n눌러서 다른 레시피 고르기 · 우클릭: 핀 빼기")));
             } else {
                 setTooltip(Tooltip.of(Text.literal("눌러서 레시피 고르기")));
             }
@@ -1464,6 +1483,18 @@ public class DdingMateScreen extends Screen {
         @Override
         public void onPress() {
             action.accept(this);
+        }
+
+        /** 우클릭: 레시피 고르기 창에 들어가지 않고 바로 핀을 뺀다 */
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (button == 1 && active && visible && isMouseOver(mouseX, mouseY) && RecipeBook.get(pin.recipe) != null) {
+                clearPin(pin);
+                playDownSound(MinecraftClient.getInstance().getSoundManager());
+                rebuild();
+                return true;
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
         }
 
         @Override

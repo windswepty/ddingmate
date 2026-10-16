@@ -158,6 +158,20 @@ public class CounterClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("counter-4-settings");
+            // 핀 칸 우클릭: 레시피 고르기 창에 안 들어가고 바로 핀을 뺀다(다시 넣어 두고 이어서 시험)
+            ctx.runOnClient(c -> {
+                var pin = DdingMate.config().counter.pins.get(0);
+                String keep = pin.recipe;
+                int keepCrafts = pin.crafts;
+                check(!keep.isEmpty(), "시험 준비: 1번 핀이 비어 있음");
+                boolean used = ((DdingMateScreen) c.currentScreen).debugRightClickPin(0);
+                check(used && pin.recipe.isEmpty() && c.currentScreen instanceof DdingMateScreen,
+                        "핀 칸을 우클릭해도 핀이 안 빠짐(또는 다른 창이 열림): " + used + " / " + pin.recipe);
+                pin.recipe = keep;
+                pin.crafts = keepCrafts;
+                ((DdingMateScreen) c.currentScreen).openTab(5);
+            });
+            ctx.waitTicks(3);
             ctx.runOnClient(c -> c.currentScreen.children().stream()
                     .filter(e -> e instanceof ElementListWidget<?>)
                     .forEach(e -> ((ElementListWidget<?>) e).setScrollY(10000)));
