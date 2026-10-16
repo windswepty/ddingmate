@@ -215,7 +215,7 @@ public final class DdingMateConfig {
     public int hudScale = 100;
     /** 서버 HUD(위쪽 재화 바·날짜/채널, 왼쪽 아래 채팅창)를 피해서 구석 HUD 를 놓음 */
     public boolean avoidServerHud = true;
-    /** 설정 화면·HUD·팝업을 갈무리 글꼴(띵타이쿤과 같은 글꼴)로 그릴지 */
+    /** 예전 판의 글꼴 설정(지금은 늘 갈무리 글꼴, 끄는 설정 없음). 예전 설정 파일을 읽을 때만 남겨 둔다 */
     public boolean galmuriFont = true;
     public Corner hudCorner = Corner.TOP_LEFT;
     public int hudLines = 4;

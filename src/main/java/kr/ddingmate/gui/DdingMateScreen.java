@@ -389,12 +389,6 @@ public class DdingMateScreen extends Screen {
         Widgets.Toggle avoid = toggle("서버 HUD 피하기", cfg.avoidServerHud, v -> cfg.avoidServerHud = v);
         avoid.setTooltip(Tooltip.of(Text.literal("구석 HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.")));
         list.pair(size, avoid);
-        list.pair(toggle("띵타이쿤 글꼴(갈무리)", cfg.galmuriFont, v -> {
-            cfg.galmuriFont = v;
-            // 설명 줄은 만들 때 글꼴 너비로 미리 나눠 두므로, 글꼴이 바뀌면 다시 만든다(안 그러면 줄이 칸 밖으로 나간다)
-            savedScroll = list.getScrollY();
-            clearAndInit();
-        }), null);
         Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 설정"), true, b -> {
             savedScroll = list.getScrollY();
             client.setScreen(new HudEditorScreen(this));

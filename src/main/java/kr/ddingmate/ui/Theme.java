@@ -106,7 +106,9 @@ public final class Theme {
     // ---------------------------------------------------------------- 글꼴
 
     private static boolean galmuri() {
-        return DdingMate.config() == null || DdingMate.config().galmuriFont;
+        // 늘 갈무리: 모든 칸 너비를 갈무리 기준으로 맞춰 두어서, 바닐라 글꼴로 그리면 글자가 겹치고 잘린다(2026-10-16 인게임).
+        // 예전 설정 파일의 galmuriFont=false 도 무시한다
+        return true;
     }
 
     public static MutableText body(String s) {
