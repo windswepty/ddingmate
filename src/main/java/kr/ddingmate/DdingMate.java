@@ -101,6 +101,7 @@ public final class DdingMate implements ClientModInitializer {
                     @Override
                     public void reload(net.minecraft.resource.ResourceManager manager) {
                         kr.ddingmate.craft.IslandIcons.clearFonts();
+                        Notifier.onResourceReload();
                     }
                 });
         // 같은 구석이면 등록한 순서대로 쌓인다: 일정 → 할 일 → 재료 → 내구도
@@ -111,6 +112,7 @@ public final class DdingMate implements ClientModInitializer {
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> Notifier.onJoin());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             ServerHud.reset();
             wasInGame = false;
@@ -196,6 +198,7 @@ public final class DdingMate implements ClientModInitializer {
     }
 
     private static void onTick(MinecraftClient client) {
+        Notifier.tick(client);
         while (toggleHudKey.wasPressed()) {
             config.hudEnabled = !config.hudEnabled;
             config.save();

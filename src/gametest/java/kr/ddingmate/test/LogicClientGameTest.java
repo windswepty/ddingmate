@@ -203,6 +203,12 @@ public class LogicClientGameTest implements FabricClientGameTest {
             for (kr.ddingmate.counter.MaterialCounter.Line sub : l.subs()) if (sub.name().equals("켈프 더미")) kelp.add(sub.have());
         }
         check(kelp.equals(List.of(200, 200, 300)), "남은 켈프 더미가 마지막 줄에 안 감: " + kelp);
+        // 접속 직후 팝업은 서버 리소스팩 적용이 끝난 뒤에(아이콘이 종이로 보이지 않게, 2026-10-16 실제)
+        check(!kr.ddingmate.notify.Notifier.debugReady(true, 1_000, false, 0), "접속 1초 뒤, 리소스팩 전인데 팝업을 띄움");
+        check(!kr.ddingmate.notify.Notifier.debugReady(true, 3_000, true, 500), "리소스를 다시 읽은 직후인데 팝업을 띄움");
+        check(kr.ddingmate.notify.Notifier.debugReady(true, 5_000, true, 2_000), "리소스팩 적용이 끝났는데 팝업을 미룸");
+        check(kr.ddingmate.notify.Notifier.debugReady(true, 16_000, false, 0), "리소스팩 없는 서버에서 15초가 지나도 팝업을 미룸");
+        check(kr.ddingmate.notify.Notifier.debugReady(false, 0, false, 0), "혼자 하기에서 팝업을 미룸");
         // 장식 칸(이름 없는 칸)이 많은 창은 가방이 아니다(실제: 이런 창이 "3번 가방"으로 잡힘)
         java.util.List<String> deco = new java.util.ArrayList<>(java.util.Collections.nCopies(54, ""));
         for (int i = 18; i < 54; i++) deco.set(i, "n:*1");

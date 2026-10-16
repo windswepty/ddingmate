@@ -96,6 +96,77 @@ public final class Notifier {
                 SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), new ItemStack(Items.CLOCK), Theme.GOLD, true);
     }
 
+    // ---------------------------------------------------------------- 접속 직후 팝업 미루기
+
+    /**
+     * 접속 직후에는 서버 리소스팩(띵타이쿤 아이템 그림)을 받아 적용하는 중이라, 이때 뜬 팝업은 아이콘이 그림 없는 종이로 보인다
+     * (2026-10-16 실제: 접속하자마자 "제작 완료" 팝업 두 개가 종이 아이콘). 리소스팩 적용이 끝날 때까지 팝업만 미뤘다가 띄운다.
+     * 소리·채팅은 바로 낸다.
+     */
+    private record Held(String title, String body, ItemStack icon, int accent) {}
+
+    private static final java.util.List<Held> HELD = new java.util.ArrayList<>();
+    private static long joinedAt;
+    private static long lastReloadAt;
+    private static boolean reloadedSinceJoin;
+    /** 리소스팩이 없는 서버면 이만큼 기다린 뒤 띄운다 */
+    static final long NO_PACK_WAIT_MS = 15_000;
+    /** 리소스를 다시 읽은 직후 그림이 자리 잡을 시간 */
+    static final long AFTER_RELOAD_MS = 1_500;
+
+    /** 서버에 접속했을 때 */
+    public static void onJoin() {
+        joinedAt = System.currentTimeMillis();
+        reloadedSinceJoin = false;
+    }
+
+    /** 리소스(리소스팩)를 다시 읽었을 때 */
+    public static void onResourceReload() {
+        lastReloadAt = System.currentTimeMillis();
+        if (joinedAt > 0) reloadedSinceJoin = true;
+    }
+
+    /** 지금 팝업을 띄워도 아이콘이 제대로 보이나 */
+    static boolean toastReady(MinecraftClient client) {
+        if (client.getOverlay() != null) return false; // 리소스 다시 읽는 중
+        if (client.currentScreen instanceof net.minecraft.client.gui.screen.DownloadingTerrainScreen
+                || client.currentScreen instanceof net.minecraft.client.gui.screen.ProgressScreen) return false;
+        long now = System.currentTimeMillis();
+        if (now - lastReloadAt < AFTER_RELOAD_MS) return false;
+        // 혼자 하기(내장 서버)에는 서버 리소스팩이 없다
+        if (client.getCurrentServerEntry() == null || joinedAt == 0) return true;
+        return reloadedSinceJoin || now - joinedAt >= NO_PACK_WAIT_MS;
+    }
+
+    /** 매 틱: 미뤄 둔 팝업을 띄울 수 있으면 띄운다 */
+    public static void tick(MinecraftClient client) {
+        if (HELD.isEmpty() || client.player == null || !toastReady(client)) return;
+        for (Held h : HELD) client.getToastManager().add(new DdingMateToast(h.title(), h.body(), h.icon(), h.accent()));
+        HELD.clear();
+    }
+
+    /** 시험용 */
+    public static int heldCount() {
+        return HELD.size();
+    }
+
+    /** 시험용: 접속 직후·리소스 다시 읽기 상태를 흉내 낸다(joinedAgoMs 전에 접속, reloaded = 그 뒤에 리소스를 다시 읽었나) */
+    public static boolean debugReady(boolean remote, long joinedAgoMs, boolean reloaded, long reloadAgoMs) {
+        long now = System.currentTimeMillis();
+        long keepJoin = joinedAt, keepReload = lastReloadAt;
+        boolean keepFlag = reloadedSinceJoin;
+        joinedAt = now - joinedAgoMs;
+        lastReloadAt = reloaded ? now - reloadAgoMs : 0;
+        reloadedSinceJoin = reloaded;
+        boolean ready;
+        if (now - lastReloadAt < AFTER_RELOAD_MS) ready = false;
+        else ready = !remote || reloadedSinceJoin || now - joinedAt >= NO_PACK_WAIT_MS;
+        joinedAt = keepJoin;
+        lastReloadAt = keepReload;
+        reloadedSinceJoin = keepFlag;
+        return ready;
+    }
+
     public static void test() {
         notify("테스트", "테스트 알림", "소리·팝업·채팅이 이렇게 나와요", SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(),
                 new ItemStack(Items.BELL), Theme.BLUE, false);
@@ -111,7 +182,8 @@ public final class Notifier {
             client.getSoundManager().play(PositionedSoundInstance.master(sound, 1.0f, cfg.soundVolume));
         }
         if (cfg.toastEnabled) {
-            client.getToastManager().add(new DdingMateToast(title, body, icon, accent));
+            if (toastReady(client)) client.getToastManager().add(new DdingMateToast(title, body, icon, accent));
+            else HELD.add(new Held(title, body, icon, accent));
         }
         if (cfg.chatEnabled || alwaysChat) {
             chat(Text.literal(title).formatted(Formatting.YELLOW)
