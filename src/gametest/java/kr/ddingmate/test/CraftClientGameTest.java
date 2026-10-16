@@ -780,6 +780,31 @@ public class CraftClientGameTest implements FabricClientGameTest {
                     throw new RuntimeException(e);
                 }
             });
+            // 상점에는 인벤토리에 든 것만 판다: 예전 가방 기록에 남은 같은 물건은 세지 않는다
+            // (2026-10-16 실제: 가방에서 꺼낸 만년필 1개를 가방 기록과 인벤토리에서 두 번 세어 2개로 보였다)
+            ctx.runOnClient(c -> {
+                DdingMate.config().counter.includeBags = true;
+                var pinv = c.player.getInventory();
+                for (int i = 0; i < pinv.size(); i++) pinv.setStack(i, ItemStack.EMPTY);
+                SimpleInventory bag = new SimpleInventory(54);
+                bag.setStack(53, item("(Rare) 실바니움 만년필", 1, "값진 보석으로 만든 귀중품입니다.", "귀중품 가치 : 4,414"));
+                kr.ddingmate.counter.BagTracker.onOutgoing("ㄱ1");
+                c.setScreen(new GenericContainerScreen(GenericContainerScreenHandler.createGeneric9x6(97, c.player.getInventory(), bag),
+                        c.player.getInventory(), Text.literal("모험 가방")));
+            });
+            ctx.waitTicks(20);
+            ctx.runOnClient(c -> c.setScreen(null));
+            ctx.waitTicks(15);
+            ctx.runOnClient(c -> {
+                c.player.getInventory().setStack(1, item("(Rare) 실바니움 만년필", 1, "값진 보석으로 만든 귀중품입니다.", "귀중품 가치 : 4,414"));
+                int all = kr.ddingmate.counter.MaterialCounter.have(kr.ddingmate.counter.MaterialCounter.availableCounts(c), "(Rare) 실바니움 만년필");
+                var pen = kr.ddingmate.expert.ShopPrices.owned(c, "채광", null).stream()
+                        .filter(o -> o.ware().name().equals("(Rare) 실바니움 만년필")).findFirst().orElseThrow();
+                check(all == 2, "시험 준비: 가방 기록이 안 됨(" + all + ")");
+                check(pen.count() == 1, "판매 시세가 가방 기록까지 세어 인벤토리보다 많음: " + pen.count() + "개");
+                c.player.getInventory().setStack(1, ItemStack.EMPTY);
+                kr.ddingmate.counter.BagTracker.clearCurrent();
+            });
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 for (int i = 0; i < 3; i++) DdingMate.config().counter.pins.get(i).recipe = keepPins[i];

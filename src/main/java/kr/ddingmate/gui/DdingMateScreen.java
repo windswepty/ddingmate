@@ -927,7 +927,7 @@ public class DdingMateScreen extends Screen {
         }
         list.single(new InfoRow(new ItemStack(Items.GOLD_INGOT), "보유 판매품 모두 팔면", kr.ddingmate.expert.ShopPrices.money(all[0], all[1]),
                 Theme.GOLD_ON_LIGHT, null));
-        list.note("보유 개수는 인벤토리 + 열어 본 가방·아이템 저장소. 가격은 상점 칸의 '나의 판매가'(서버가 전문가 스킬을 반영한 값)를 먼저 쓰고, "
+        list.note("보유 개수는 지금 인벤토리에 든 것만(상점에는 인벤토리에서만 팔 수 있어서 가방·저장소는 빼요). 가격은 상점 칸의 '나의 판매가'(서버가 전문가 스킬을 반영한 값)를 먼저 쓰고, "
                 + "못 본 물건은 같은 종류에서 본 스킬 배율을 위키 [상점가] 매입가에 곱해요. 귀중품은 아이템마다 적힌 가격을 그대로 더해요.");
     }
 

@@ -161,7 +161,7 @@ public final class MaterialCounter {
     }
 
     /** 인벤토리 36칸 + 왼손 + 지금 마우스로 집고 있는 아이템 (옮기는 도중에 숫자가 튀지 않게) */
-    static Map<String, Integer> inventoryCounts(MinecraftClient client) {
+    public static Map<String, Integer> inventoryCounts(MinecraftClient client) {
         Map<String, Integer> counts = new HashMap<>();
         PlayerInventory inv = client.player.getInventory();
         for (int i = 0; i < PlayerInventory.MAIN_SIZE; i++) ItemKeys.add(counts, inv.getStack(i));
@@ -169,6 +169,16 @@ public final class MaterialCounter {
         ItemStack cursor = client.player.currentScreenHandler.getCursorStack();
         ItemKeys.add(counts, cursor);
         return counts;
+    }
+
+    /** inventoryCounts 가 세는 칸과 같은 칸들(인벤토리 36칸 + 왼손 + 마우스로 집은 것) */
+    public static java.util.List<ItemStack> inventoryStacks(MinecraftClient client) {
+        java.util.List<ItemStack> out = new java.util.ArrayList<>();
+        PlayerInventory inv = client.player.getInventory();
+        for (int i = 0; i < PlayerInventory.MAIN_SIZE; i++) out.add(inv.getStack(i));
+        out.add(inv.getStack(PlayerInventory.OFF_HAND_SLOT));
+        out.add(client.player.currentScreenHandler.getCursorStack());
+        return out;
     }
 
     private static int sum(Map<String, Integer> counts, Set<String> keys) {

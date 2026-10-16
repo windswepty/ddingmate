@@ -362,12 +362,12 @@ public final class ShopPrices {
     public static List<Owned> owned(MinecraftClient client, String expert, String shop) {
         List<Owned> out = new ArrayList<>();
         if (client.player == null) return out;
-        Map<String, Integer> counts = MaterialCounter.availableCounts(client);
-        // 인벤토리에서 아이템마다 가격이 적힌 것(귀중품): 이름 → {개수, 가격 합}
+        // 상점에는 인벤토리에 든 것만 팔 수 있다: 가방·저장소 기록은 세지 않는다
+        // (2026-10-16 실제: 가방에서 꺼낸 만년필을 예전 가방 기록과 인벤토리에서 두 번 세어 2개·26,433G 로 보였다)
+        Map<String, Integer> counts = MaterialCounter.inventoryCounts(client);
+        // 인벤토리에서 아이템마다 가격이 적힌 것(귀중품): 이름 → {개수, 가격 합}. counts 와 같은 칸만 본다
         Map<String, long[]> exact = new LinkedHashMap<>();
-        var inv = client.player.getInventory();
-        for (int i = 0; i < inv.size(); i++) {
-            ItemStack s = inv.getStack(i);
+        for (ItemStack s : MaterialCounter.inventoryStacks(client)) {
             Ware w = wareOf(s);
             if (w == null) continue;
             int own = ownPrice(s);
