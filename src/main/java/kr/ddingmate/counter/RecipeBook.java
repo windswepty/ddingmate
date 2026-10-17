@@ -75,6 +75,7 @@ public final class RecipeBook {
                 }
                 byOutput = out;
                 all = List.copyOf(d.recipes);
+                INSTANT.clear();
                 vanilla = Map.copyOf(d.vanilla);
                 aliases = d.aliases == null ? Map.of() : Map.copyOf(d.aliases);
                 Map<String, String> canon = new LinkedHashMap<>();
@@ -139,6 +140,31 @@ public final class RecipeBook {
         }
         return any;
     }
+
+    /** 넣자마자 만들어지는(기다리는 시간이 없는) 시설: 커피·대형 제작대·형광 모루(미니게임) */
+    static final Set<String> INSTANT_FACILITIES = Set.of("바리스타 · 믹서기", "바리스타 · 커피 머신", "대형 제작대", "형광 모루");
+
+    /**
+     * 바로 만들어지는 아이템인가: 이 이름을 만드는 레시피가 모두 바로 만드는 시설의 것이면 true.
+     * 기다리는 시설에서도 만드는 이름(예: 반짝 광택제)이나 레시피에 없는 이름은 false
+     */
+    public static boolean isInstant(String name) {
+        if (name == null) return false;
+        String key = ItemKeys.normalize(canonicalName(name));
+        if (key.isEmpty()) return false;
+        return INSTANT.computeIfAbsent(key, k -> {
+            boolean any = false;
+            for (Recipe r : all) {
+                if (!ItemKeys.normalize(r.name).equals(k) && !plainKey(r.name).equals(k)) continue;
+                if (!INSTANT_FACILITIES.contains(r.facility)) return false;
+                any = true;
+            }
+            return any;
+        });
+    }
+
+    /** isInstant 결과(매 틱 부르므로 이름마다 한 번만 계산) */
+    private static final java.util.Map<String, Boolean> INSTANT = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** 이 이름의 아이템을 만드는 시설 이름(이름 비교는 너그럽게). 모르면 null */
     public static String facilityOf(String outputName) {

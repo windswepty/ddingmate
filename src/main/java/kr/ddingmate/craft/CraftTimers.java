@@ -235,6 +235,8 @@ public final class CraftTimers {
     static final long BUTTON_FRESH_MS = 15_000;
 
     private static void start(String name, int count, long now) {
+        // 커피처럼 바로 만들어지는 아이템은 기다릴 게 없다
+        if (kr.ddingmate.counter.RecipeBook.isInstant(name)) return;
         List<Job> jobs = jobsForWrite();
         if (jobs == null) return;
         Job j = new Job();
@@ -548,6 +550,9 @@ public final class CraftTimers {
             }
             String key = ItemKeys.normalize(name);
             if (key.isEmpty()) continue;
+            // 바로 만들어지는 아이템(커피 등) 칸에 적힌 시간은 제작 시간이 아니다
+            // (2026-10-16 실제: 커피 머신 창의 커피 칸 남은 기간이 "카페 모카 114시간 55분" 제작 중으로 HUD 에 떴다)
+            if (kr.ddingmate.counter.RecipeBook.isInstant(name)) continue;
             logOnce(name, lore.lines());
             if (r.recipe) {
                 // 레시피 칸: 1개 만드는 데 걸리는 시간(스킬 전)만 배운다(제작 중인 것으로 등록하지 않는다).
@@ -924,7 +929,8 @@ public final class CraftTimers {
         List<Job> jobs = jobsForWrite();
         if (jobs == null) return;
         long now = System.currentTimeMillis();
-        boolean changed = false;
+        // 예전 판이 남긴 바로 만들어지는 아이템(커피 등) 제작 줄은 지운다
+        boolean changed = jobs.removeIf(j -> !j.separate && kr.ddingmate.counter.RecipeBook.isInstant(j.name));
         Map<String, Job> finished = new LinkedHashMap<>();
         for (Job j : jobs) {
             if (done(j, now) && !j.notified && (j.synced || j.derived || j.separate)) {

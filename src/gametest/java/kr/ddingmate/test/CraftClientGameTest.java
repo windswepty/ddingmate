@@ -656,6 +656,26 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(toast.lines().size() == 2 && String.join(" ", toast.lines()).equals("넣어 둔 5번이 모두 끝났어요 · 시설에서 꺼내 가세요")
                         && toast.getHeight() == 42, "팝업 본문 줄 나누기가 다름: " + toast.lines() + " h=" + toast.getHeight());
             });
+            // 바로 만들어지는 아이템(커피·대형 제작대·형광 모루)은 제작 타이머에 넣지 않는다
+            // (2026-10-16 실제: 커피 머신 창의 커피 칸 남은 기간이 "카페 모카 114시간 55분" 제작 중으로 HUD 에 떴다)
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.counter.RecipeBook.isInstant("카페 모카") && kr.ddingmate.counter.RecipeBook.isInstant("그린 트리 프라페")
+                                && kr.ddingmate.counter.RecipeBook.isInstant("오르딘 미니 망치") && kr.ddingmate.counter.RecipeBook.isInstant("바다의 심장"),
+                        "커피·형광 모루·대형 제작대 아이템을 바로 만드는 것으로 안 봄");
+                check(!kr.ddingmate.counter.RecipeBook.isInstant("강화 횃불") && !kr.ddingmate.counter.RecipeBook.isInstant("반짝 광택제")
+                                && !kr.ddingmate.counter.RecipeBook.isInstant("코룸 주괴") && !kr.ddingmate.counter.RecipeBook.isInstant("없는 아이템"),
+                        "기다리는 제작(또는 모르는 이름)을 바로 만드는 것으로 봄");
+                CraftTimers.onChat(G + "카페 모카 아이템 1개 제작을 시작했습니다.");
+                check(CraftTimers.groups().stream().noneMatch(g -> g.name().equals("카페 모카")), "커피 제작 시작 메시지로 제작 타이머에 넣음");
+                c.setScreen(facility(c, item("카페 모카", 1, "레시피북으로 활성화된 커피입니다.", "남은 시간 : 4일 18시간 55분"),
+                        item("아메리카노", 1, "남은 시간 : 5일 0시간")));
+            });
+            ctx.waitTicks(6);
+            ctx.runOnClient(c -> {
+                check(CraftTimers.groups().stream().noneMatch(g -> g.name().equals("카페 모카") || g.name().equals("아메리카노")),
+                        "커피 칸의 남은 기간을 제작 중으로 넣음: " + CraftTimers.groups());
+                c.setScreen(null);
+            });
             // 다른 전문가 판매 시세: 로니 상점 창(가격 적힌 칸 3개 이상) → 보유 판매품과 모두 팔면 받는 금액
             ctx.runOnClient(c -> {
                 kr.ddingmate.expert.ShopPrices.debugClear();
