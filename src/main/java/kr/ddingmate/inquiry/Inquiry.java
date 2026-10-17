@@ -56,6 +56,8 @@ public final class Inquiry {
     private static long lastSentAt;
     private static boolean sending;
     private static String endpoint;
+    /** 문의가 오면 멘션할 디스코드 사용자 ID(없으면 멘션 안 함) */
+    private static String mentionId;
     private static boolean endpointLoaded;
     /** 시험용: 정해 두면 인터넷으로 보내지 않고 이 함수에 보낼 내용(JSON)을 넘겨 HTTP 상태 번호를 받는다 */
     private static Function<String, Integer> testSender;
@@ -70,6 +72,9 @@ public final class Inquiry {
                     p.load(new java.io.InputStreamReader(in, StandardCharsets.UTF_8));
                     String url = p.getProperty("url", "").trim();
                     if (url.startsWith("https://")) endpoint = url;
+                    // 문의가 오면 개발자를 멘션해 알림이 가게(디스코드 사용자 ID, 숫자만)
+                    String id = p.getProperty("mention", "").trim();
+                    if (id.matches("\\d{15,21}")) mentionId = id;
                 }
             } catch (Exception e) {
                 DdingMate.LOG.warn("문의 보낼 곳을 읽지 못했어요", e);
@@ -183,8 +188,15 @@ public final class Inquiry {
     public static String payload(Category category, String text, Info i, java.util.List<String> files) {
         JsonObject root = new JsonObject();
         root.addProperty("username", "띵메이트 문의");
+        // 멘션은 개발자 한 사람만 울린다: 문의 내용에 @everyone·다른 사람 멘션이 있어도 울리지 않게 parse 는 비우고 users 만 허락
         JsonObject mentions = new JsonObject();
         mentions.add("parse", new JsonArray());
+        if (mentionId != null) {
+            JsonArray users = new JsonArray();
+            users.add(mentionId);
+            mentions.add("users", users);
+            root.addProperty("content", "<@" + mentionId + "> 새 문의가 들어왔어요 · " + category.label);
+        }
         root.add("allowed_mentions", mentions);
         JsonObject embed = new JsonObject();
         embed.addProperty("title", cut("[" + category.label + "] " + i.name(), 256));
@@ -326,6 +338,14 @@ public final class Inquiry {
         else DdingMate.LOG.warn("문의를 보내지 못했어요: HTTP {}", status);
         done.accept(new Result(false, status == 429 ? "잠시 뒤에 다시 보내 주세요(보낸 문의가 많아요)"
                 : err != null ? "보내지 못했어요. 인터넷 연결을 확인해 주세요" : "보내지 못했어요(오류 " + status + ")"));
+    }
+
+    /** 시험용: 멘션할 사용자 ID 를 바꾼다(null 이면 멘션 안 함), 원래 값을 돌려준다 */
+    public static String debugMention(String id) {
+        endpoint();
+        String old = mentionId;
+        mentionId = id;
+        return old;
     }
 
     /** 시험용 */

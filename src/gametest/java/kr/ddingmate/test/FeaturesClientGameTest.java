@@ -775,6 +775,19 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 com.google.gson.JsonObject j = com.google.gson.JsonParser.parseString(sent[0]).getAsJsonObject();
                 com.google.gson.JsonObject e = j.getAsJsonArray("embeds").get(0).getAsJsonObject();
                 check(j.getAsJsonObject("allowed_mentions").getAsJsonArray("parse").isEmpty(), "멘션(@everyone)을 막지 않음");
+                // 개발자 멘션: 정해 두면 그 한 사람만 울리고(내용 속 @everyone 은 그대로 막힘), 안 정하면 멘션 없음
+                String keepMention = kr.ddingmate.inquiry.Inquiry.debugMention("123456789012345678");
+                String withMention = kr.ddingmate.inquiry.Inquiry.payload(kr.ddingmate.inquiry.Inquiry.Category.BUG, "내용 @everyone",
+                        kr.ddingmate.inquiry.Inquiry.info(c));
+                com.google.gson.JsonObject jm = com.google.gson.JsonParser.parseString(withMention).getAsJsonObject();
+                check(jm.get("content").getAsString().startsWith("<@123456789012345678>")
+                                && jm.getAsJsonObject("allowed_mentions").getAsJsonArray("users").toString().equals("[\"123456789012345678\"]")
+                                && jm.getAsJsonObject("allowed_mentions").getAsJsonArray("parse").isEmpty(),
+                        "개발자 멘션이 다름: " + withMention);
+                kr.ddingmate.inquiry.Inquiry.debugMention(null);
+                check(!kr.ddingmate.inquiry.Inquiry.payload(kr.ddingmate.inquiry.Inquiry.Category.BUG, "내용", kr.ddingmate.inquiry.Inquiry.info(c)).contains("\"content\""),
+                        "멘션할 사람이 없는데 멘션함");
+                kr.ddingmate.inquiry.Inquiry.debugMention(keepMention);
                 check(e.get("title").getAsString().startsWith("[버그 제보] ") && e.get("description").getAsString().contains("구리 블록"),
                         "문의 분류·내용이 다름: " + sent[0]);
                 String fields = e.getAsJsonArray("fields").toString();
