@@ -301,6 +301,7 @@ async function discord(env, method, path, payload, files = [], names = []) {
     init.body = JSON.stringify(payload);
   }
   const res = await fetch(API + path, init);
+  console.log("discord", method, path, res.status);
   let body = null;
   try {
     body = await res.json();
