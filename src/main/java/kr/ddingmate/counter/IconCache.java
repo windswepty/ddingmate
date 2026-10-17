@@ -279,6 +279,14 @@ public final class IconCache {
     /** 재료 이름으로 아이콘 찾기. 본 적 있는 아이템 → 모드에 넣어 둔 표 → 바닐라 아이템 → null */
     public static ItemStack forMaterial(String materialName) {
         ensureLoaded();
+        // 바닐라 아이템인 재료(구리 블록 = minecraft:copper_block 등)는 그 바닐라 그림이 맞다. 같은 이름의 다른 칸에서 배운 그림은 쓰지 않는다
+        // (2026-10-17 실제: 서버 창의 "구리 블록" 칸(산화된 구리 격자)을 배워 재료 HUD 에 청록색 그림이 떴다)
+        for (String key : RecipeBook.keysFor(materialName)) {
+            if (!key.startsWith("v:")) continue;
+            Identifier id = Identifier.tryParse(key.substring(2));
+            Item item = id == null ? Items.AIR : Registries.ITEM.get(id);
+            if (item != Items.AIR) return new ItemStack(item);
+        }
         for (String key : RecipeBook.keysFor(materialName)) {
             ItemStack s = SEEN.get(key);
             if (s != null) return s;

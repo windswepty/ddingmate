@@ -197,6 +197,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 a.set(DataComponentTypes.ITEM_MODEL, m1);
                 a.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("설명은 기억하지 않음"))));
                 kr.ddingmate.counter.IconCache.rememberSeen(a);
+                // 바닐라 재료는 같은 이름의 다른 칸(실제: 서버 창의 "구리 블록" = 산화된 구리 격자)을 배워도 바닐라 그림 그대로
+                ItemStack grate = new ItemStack(Items.WAXED_OXIDIZED_COPPER_GRATE);
+                grate.set(DataComponentTypes.CUSTOM_NAME, Text.literal("구리 블록"));
+                kr.ddingmate.counter.IconCache.rememberSeen(grate);
+                ItemStack copper = kr.ddingmate.counter.IconCache.forMaterial("구리 블록");
+                check(copper != null && copper.isOf(Items.COPPER_BLOCK), "구리 블록 그림이 바닐라 구리 블록이 아님: " + copper);
                 ItemStack got = kr.ddingmate.counter.IconCache.forMaterial("시험용 서버 아이템");
                 check(got != null && m1.equals(got.get(DataComponentTypes.ITEM_MODEL)), "창에서 본 아이템 모양을 기억하지 못함");
                 check(got.get(DataComponentTypes.LORE) == null || got.get(DataComponentTypes.LORE).lines().isEmpty(), "설명까지 기억함");
