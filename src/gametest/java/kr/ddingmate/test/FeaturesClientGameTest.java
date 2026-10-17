@@ -766,6 +766,48 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("features-5-inquiry-tab");
+            // 문의 칸은 한 줄 입력칸 바탕이라 caramelChat 같은 한글 입력 모드가 붙는다. 한글을 친 그대로 받고, 긴 글은 여러 줄로 보인다
+            ctx.runOnClient(c -> {
+                DdingMateScreen s = (DdingMateScreen) c.currentScreen;
+                kr.ddingmate.ui.TextArea box = s.inquiryBox();
+                check(box instanceof net.minecraft.client.gui.widget.TextFieldWidget, "문의 칸이 한 줄 입력칸 바탕이 아님");
+                s.setFocused(box);
+                for (char ch : "한글 입력 확인".toCharArray()) s.charTyped(ch, 0);
+                check(box.getText().equals("한글 입력 확인"), "한글을 친 대로 안 받음: " + box.getText());
+                s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE, 0, 0);
+                check(box.getText().equals("한글 입력 확") && box.getCursor() == 7, "지우기가 다름: " + box.getText());
+                String longText = "재료 HUD 에서 구리 블록 그림이 청록색으로 보여요. 시설 창 옆 레시피 판에서도 같은 그림이 나오고, 다시 접속해도 그대로예요. "
+                        + "가방을 열었다 닫으면 잠깐 맞게 보였다가 다시 바뀌어요. 스크린샷 두 장 첨부할게요. 확인 부탁드려요!";
+                box.setText(longText);
+                java.util.List<Integer> starts = box.lineStarts();
+                check(starts.size() >= 3 && box.getText().equals(longText), "긴 글이 여러 줄로 안 나뉨: " + starts);
+                for (int k = 1; k < starts.size(); k++)
+                    check(longText.charAt(starts.get(k) - 1) == ' ', "줄이 띄어쓰기에서 안 바뀜: " + starts);
+                box.setCursor(starts.get(1) + 2, false);
+                box.moveLine(1, false);
+                check(box.getCursor() >= starts.get(2) && box.getCursor() <= starts.get(2) + 4, "아래 줄로 커서가 안 감: " + box.getCursor() + " / " + starts);
+                box.moveLine(-1, false);
+                check(box.getCursor() >= starts.get(1) && box.getCursor() <= starts.get(1) + 4, "위 줄로 커서가 안 감: " + box.getCursor() + " / " + starts);
+                box.setCursorToEnd(false);
+                // caramelChat 이 함께 깔려 있으면 이 칸에 한글 입력을 붙였는지(없으면 건너뜀)
+                try {
+                    Class<?> ctl = Class.forName("moe.caramel.chat.controller.EditBoxController");
+                    Object wrapper = ctl.getMethod("caramelChat$wrapper").invoke(box);
+                    check(wrapper != null, "caramelChat 이 문의 칸에 안 붙음");
+                    kr.ddingmate.DdingMate.LOG.info("[시험] caramelChat 이 문의 칸에 붙음: {}", wrapper.getClass().getName());
+                } catch (ClassNotFoundException e) {
+                    kr.ddingmate.DdingMate.LOG.info("[시험] caramelChat 없음, 붙는지 확인은 건너뜀");
+                } catch (ReflectiveOperationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-5d-inquiry-korean");
+            ctx.runOnClient(c -> {
+                DdingMateScreen s = (DdingMateScreen) c.currentScreen;
+                s.inquiryBox().setText("");
+                s.setFocused(null);
+            });
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "짧음");

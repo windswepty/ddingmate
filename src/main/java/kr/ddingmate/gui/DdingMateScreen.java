@@ -402,7 +402,8 @@ public class DdingMateScreen extends Screen {
     /** 아래 가운데 안내 자리에 보여 줄 보내기 결과(비어 있으면 평소 안내) */
     private static String inquiryStatus = "";
     private static boolean inquiryOk;
-    private net.minecraft.client.gui.widget.EditBoxWidget inquiryBox;
+    /** 한 줄 입력칸 바탕의 여러 줄 칸: 여러 줄 칸(EditBoxWidget)은 caramelChat 에서 한글이 안 써진다(2026-10-17) */
+    private kr.ddingmate.ui.TextArea inquiryBox;
     private Widgets.Button inquirySend;
 
     private void buildInquiry() {
@@ -427,12 +428,11 @@ public class DdingMateScreen extends Screen {
     private void addInquiryWidgets(int top) {
         int bottom = cy + ch - 4;
         int sendY = bottom - 20;
-        inquiryBox = new net.minecraft.client.gui.widget.EditBoxWidget(textRenderer, cx + 4, top, cw - 8, Math.max(24, sendY - 4 - top),
-                Text.literal("무슨 일이 있었는지, 어떤 기능이 있으면 좋을지 적어 주세요(스크린샷이 있으면 어디서 보였는지도)"),
-                Text.literal("문의 내용"));
+        inquiryBox = new kr.ddingmate.ui.TextArea(cx + 4, top, cw - 8, Math.max(33, sendY - 4 - top), Text.literal("문의 내용"));
+        inquiryBox.setHint(Text.literal("무슨 일이 있었는지, 어떤 기능이 있으면 좋을지 적어 주세요(스크린샷이 있으면 어디서 보였는지도)"));
         inquiryBox.setMaxLength(kr.ddingmate.inquiry.Inquiry.MAX_LENGTH);
         inquiryBox.setText(inquiryDraft);
-        inquiryBox.setChangeListener(t -> inquiryDraft = t);
+        inquiryBox.setChangedListener(t -> inquiryDraft = t);
         addDrawableChild(inquiryBox);
         inquirySend = new Widgets.Button(120, 20, Text.literal("문의 보내기"), true, b -> sendInquiry());
         // 입력 칸의 글자 수(0/1500)가 오른쪽 아래에 나와서 단추는 왼쪽에
@@ -530,6 +530,11 @@ public class DdingMateScreen extends Screen {
         if (inquiryBox != null) inquiryBox.setText(text);
         inquiryDraft = text;
         sendInquiry();
+    }
+
+    /** 시험용: 문의 입력칸 */
+    public kr.ddingmate.ui.TextArea inquiryBox() {
+        return inquiryBox;
     }
 
     /** 시험용 */
