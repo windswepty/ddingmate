@@ -779,6 +779,8 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 String fields = e.getAsJsonArray("fields").toString();
                 check(fields.contains(c.player.getUuidAsString()) && fields.contains("띵메이트 ") && fields.contains("마인크래프트 1.21.4"),
                         "플레이어 정보가 빠짐: " + fields);
+                // 시험 계정(오프라인 UUID)은 NameMC 링크 대신 "확인 불가"(정품 계정만 링크)
+                check(fields.contains("오프라인 계정(확인 불가)") && !fields.contains("namemc.com"), "오프라인 계정에 NameMC 링크를 붙임: " + fields);
                 check(DdingMateScreen.inquiryStatus().contains("보냈어요"), "보낸 뒤 안내가 다름: " + DdingMateScreen.inquiryStatus());
                 // 1분 안에 또 누르면 보내지 않는다(도배 막기)
                 sent[0] = null;
@@ -792,6 +794,20 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 c.currentScreen.close();
             });
             ctx.waitTicks(5);
+            // 실제 디스코드로 한 번 보내 보기(DDINGMATE_REAL_INQUIRY=1 로 실행할 때만, 평소 시험에서는 보내지 않는다)
+            if (System.getenv("DDINGMATE_REAL_INQUIRY") != null) {
+                kr.ddingmate.inquiry.Inquiry.Result[] real = new kr.ddingmate.inquiry.Inquiry.Result[1];
+                ctx.runOnClient(c -> {
+                    check(kr.ddingmate.inquiry.Inquiry.endpoint() != null, "inquiry.properties 의 보낼 곳을 못 읽음");
+                    kr.ddingmate.inquiry.Inquiry.send(c, kr.ddingmate.inquiry.Inquiry.Category.OTHER,
+                            "[테스트] 띵메이트 문의 연결 확인이에요. 이 메시지는 개발 중 자동 시험에서 보냈어요.", r -> real[0] = r);
+                });
+                for (int i = 0; i < 30 && real[0] == null; i++) ctx.waitTicks(20);
+                ctx.runOnClient(c -> {
+                    check(real[0] != null && real[0].ok(), "실제 문의를 보내지 못함: " + (real[0] == null ? "응답 없음" : real[0].message()));
+                    kr.ddingmate.DdingMate.LOG.info("실제 문의 보내기 결과: {}", real[0].message());
+                });
+            }
         }
     }
 

@@ -97,10 +97,14 @@ public final class Inquiry {
         return null;
     }
 
-    /** 지금 플레이어 정보 */
+    /**
+     * 지금 플레이어 정보. 사용자가 적는 칸은 없고, 모두 게임이 로그인한 계정(마이크로소프트 인증)에서 그대로 읽는다
+     * (남의 닉네임을 적어 사칭하지 못하게). 받는 쪽에서 닉네임과 UUID 가 같은 계정인지 확인할 수 있게 NameMC 주소도 붙인다
+     */
     public static Info info(MinecraftClient client) {
-        String name = client.getSession() != null ? client.getSession().getUsername() : "?";
-        String uuid = client.player != null ? client.player.getUuidAsString() : "?";
+        com.mojang.authlib.GameProfile profile = client.player != null ? client.player.getGameProfile() : null;
+        String name = profile != null ? profile.getName() : client.getSession() != null ? client.getSession().getUsername() : "?";
+        String uuid = profile != null && profile.getId() != null ? profile.getId().toString() : "?";
         String mod = FabricLoader.getInstance().getModContainer(DdingMate.MOD_ID)
                 .map(m -> m.getMetadata().getVersion().getFriendlyString()).orElse("?");
         String game = SharedConstants.getGameVersion().getName();
@@ -130,7 +134,8 @@ public final class Inquiry {
         embed.addProperty("color", category.color);
         embed.addProperty("timestamp", Instant.now().toString());
         JsonArray fields = new JsonArray();
-        fields.add(field("플레이어", i.name() + "\n" + i.uuid()));
+        fields.add(field("플레이어", i.name() + "\n" + i.uuid()
+                + (realAccount(i.uuid()) ? "\n[계정 확인](https://namemc.com/profile/" + i.uuid() + ")" : "\n오프라인 계정(확인 불가)")));
         fields.add(field("버전", "띵메이트 " + i.modVersion() + "\n마인크래프트 " + i.gameVersion()));
         fields.add(field("접속", i.server() + "\n" + i.place()));
         embed.add("fields", fields);
@@ -138,6 +143,18 @@ public final class Inquiry {
         embeds.add(embed);
         root.add("embeds", embeds);
         return root.toString();
+    }
+
+    /**
+     * 마이크로소프트(정품) 계정의 UUID 인가. 정품 계정은 무작위 UUID(4판), 오프라인·시험 계정은 이름으로 만든 UUID(3판)라
+     * NameMC 에서 찾을 수 없다(2026-10-17 실제: 시험 계정 Player0 링크가 404)
+     */
+    static boolean realAccount(String uuid) {
+        try {
+            return java.util.UUID.fromString(uuid).version() == 4;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private static JsonObject field(String name, String value) {
