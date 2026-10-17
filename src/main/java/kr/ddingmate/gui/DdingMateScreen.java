@@ -62,7 +62,8 @@ public class DdingMateScreen extends Screen {
     enum Tab {
         HOME("홈", Items.RED_BED), NOTIFY("알림 방식", Items.BELL), EVENTS("일정", Items.CLOCK), CHANNELS("내 채널", Items.COMPASS),
         KEYWORDS("키워드", Items.NAME_TAG), COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
-        TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK), EXPERT("전문가", Items.EXPERIENCE_BOTTLE);
+        TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK), EXPERT("전문가", Items.EXPERIENCE_BOTTLE),
+        INQUIRY("문의", Items.FEATHER);
 
         final String title;
         final ItemStack icon;
@@ -139,7 +140,7 @@ public class DdingMateScreen extends Screen {
         ch = ph - (cy - py) - 32;
         sections.clear();
         sectionButtons.clear();
-        side = tab != Tab.EVENTS && tab != Tab.LOG && pw >= 396 ? SIDE_W : 0;
+        side = tab != Tab.EVENTS && tab != Tab.LOG && tab != Tab.INQUIRY && pw >= 396 ? SIDE_W : 0;
 
         // 탭은 4개씩 두 줄
         Tab[] tabs = Tab.values();
@@ -154,10 +155,13 @@ public class DdingMateScreen extends Screen {
         }
         if (tab == Tab.LOG) AlertLog.markRead();
 
-        list = addDrawableChild(new ConfigList(client, cw - 4 - side, ch - 4, cy + 2, ITEM_H));
+        // 문의 탭: 위에 안내·분류 두 줄만 목록으로, 그 아래는 여러 줄 입력 칸과 [문의 보내기]
+        int listH = tab == Tab.INQUIRY ? 2 * ITEM_H + 8 : ch - 4;
+        list = addDrawableChild(new ConfigList(client, cw - 4 - side, listH, cy + 2, ITEM_H));
         list.setX(cx + 2);
         buildRows();
         list.setScrollY(savedScroll);
+        if (tab == Tab.INQUIRY) addInquiryWidgets(cy + 2 + listH + 2);
         // 오른쪽 목차: 누르면 그 분류로 바로 스크롤
         if (side > 0 && sections.size() >= 2) {
             // 창 높이에 맞춰 단추 간격을 줄여서라도 모든 분류를 보여 준다(단추 높이 12~16)
@@ -369,7 +373,77 @@ public class DdingMateScreen extends Screen {
             case TODO -> buildTodo();
             case LOG -> buildLog();
             case EXPERT -> buildExpert();
+            case INQUIRY -> buildInquiry();
         }
+    }
+
+    // ---------------------------------------------------------------- 문의
+
+    /** 고른 분류와 쓰던 내용(창을 닫았다 열어도 남게) */
+    private static kr.ddingmate.inquiry.Inquiry.Category inquiryCategory = kr.ddingmate.inquiry.Inquiry.Category.BUG;
+    private static String inquiryDraft = "";
+    /** 아래 가운데 안내 자리에 보여 줄 보내기 결과(비어 있으면 평소 안내) */
+    private static String inquiryStatus = "";
+    private static boolean inquiryOk;
+    private net.minecraft.client.gui.widget.EditBoxWidget inquiryBox;
+    private Widgets.Button inquirySend;
+
+    private void buildInquiry() {
+        list.guide("버그·건의를 개발자에게 바로 보내요. 닉네임·UUID·띵메이트·마인크래프트 버전·접속한 서버와 지역이 함께 가요(게임 서버로는 안 보내요).");
+        list.single(new Widgets.Cycle<>(rowWidth(), "분류", List.of(kr.ddingmate.inquiry.Inquiry.Category.values()), inquiryCategory,
+                c -> c.label, c -> inquiryCategory = c));
+    }
+
+    private void addInquiryWidgets(int top) {
+        int bottom = cy + ch - 4;
+        int sendY = bottom - 20;
+        inquiryBox = new net.minecraft.client.gui.widget.EditBoxWidget(textRenderer, cx + 4, top, cw - 8, Math.max(24, sendY - 4 - top),
+                Text.literal("무슨 일이 있었는지, 어떤 기능이 있으면 좋을지 적어 주세요(스크린샷이 있으면 어디서 보였는지도)"),
+                Text.literal("문의 내용"));
+        inquiryBox.setMaxLength(kr.ddingmate.inquiry.Inquiry.MAX_LENGTH);
+        inquiryBox.setText(inquiryDraft);
+        inquiryBox.setChangeListener(t -> inquiryDraft = t);
+        addDrawableChild(inquiryBox);
+        inquirySend = new Widgets.Button(120, 20, Text.literal("문의 보내기"), true, b -> sendInquiry());
+        // 입력 칸의 글자 수(0/1500)가 오른쪽 아래에 나와서 단추는 왼쪽에
+        inquirySend.setX(cx + 4);
+        inquirySend.setY(sendY);
+        String to = kr.ddingmate.inquiry.Inquiry.available() ? "" : "\n(문의 받을 곳이 아직 정해지지 않아 보낼 수 없어요)";
+        inquirySend.setTooltip(Tooltip.of(Text.literal("함께 보내는 정보: "
+                + (client != null && client.player != null ? kr.ddingmate.inquiry.Inquiry.infoLine(kr.ddingmate.inquiry.Inquiry.info(client)) : "게임에 들어가 있을 때 보여요")
+                + to)));
+        inquirySend.active = kr.ddingmate.inquiry.Inquiry.available() && client != null && client.player != null;
+        addDrawableChild(inquirySend);
+    }
+
+    private void sendInquiry() {
+        if (client == null || client.player == null) return;
+        String text = inquiryBox == null ? inquiryDraft : inquiryBox.getText();
+        inquiryStatus = "보내는 중…";
+        inquiryOk = true;
+        if (inquirySend != null) inquirySend.active = false;
+        kr.ddingmate.inquiry.Inquiry.send(client, inquiryCategory, text, r -> {
+            inquiryStatus = r.message();
+            inquiryOk = r.ok();
+            if (r.ok()) {
+                inquiryDraft = "";
+                if (inquiryBox != null) inquiryBox.setText("");
+            }
+            if (inquirySend != null) inquirySend.active = kr.ddingmate.inquiry.Inquiry.available();
+        });
+    }
+
+    /** 시험용: 문의 내용을 적고 [문의 보내기]를 누른 것처럼 */
+    public void debugInquiry(kr.ddingmate.inquiry.Inquiry.Category category, String text) {
+        inquiryCategory = category;
+        if (inquiryBox != null) inquiryBox.setText(text);
+        inquiryDraft = text;
+        sendInquiry();
+    }
+
+    /** 시험용 */
+    public static String inquiryStatus() {
+        return inquiryStatus;
     }
 
     private void buildNotify() {
@@ -1192,7 +1266,13 @@ public class DdingMateScreen extends Screen {
             Theme.boldText(ctx, textRenderer, "바로 가기", cx + cw - side + 4, cy + 5, Theme.TEXT_SOFT, false);
         }
         String hint = "바꾼 값은 바로 적용돼요";
-        Theme.text(ctx, textRenderer, hint, px + (pw - Theme.width(textRenderer, hint)) / 2, py + ph - 20, Theme.TEXT_SOFT);
+        int hintColor = Theme.TEXT_SOFT;
+        if (tab == Tab.INQUIRY && !inquiryStatus.isEmpty()) {
+            hint = inquiryStatus;
+            hintColor = inquiryOk ? Theme.GREEN_ON_LIGHT : Theme.RED_ON_LIGHT;
+        }
+        hint = Theme.ellipsize(textRenderer, hint, pw - 2 * 126 - 8);
+        Theme.text(ctx, textRenderer, hint, px + (pw - Theme.width(textRenderer, hint)) / 2, py + ph - 20, hintColor);
     }
 
     /**

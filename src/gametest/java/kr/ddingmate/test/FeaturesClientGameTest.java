@@ -749,6 +749,49 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 DdingMate.config().todo.hudEnabled = false;
             });
             ctx.waitTicks(5);
+
+            // 11) 문의 탭: 분류·내용과 플레이어 정보를 디스코드로(시험에서는 인터넷으로 보내지 않고 보낼 내용만 받는다)
+            String[] sent = new String[1];
+            ctx.runOnClient(c -> {
+                kr.ddingmate.inquiry.Inquiry.debugSender(body -> {
+                    sent[0] = body;
+                    return 204;
+                });
+                check(kr.ddingmate.inquiry.Inquiry.validate("짧음") != null && kr.ddingmate.inquiry.Inquiry.validate("가".repeat(1501)) != null
+                        && kr.ddingmate.inquiry.Inquiry.validate("구리 블록 그림이 이상해요") == null, "문의 내용 검사가 다름");
+                DdingMateScreen s = new DdingMateScreen(null);
+                c.setScreen(s);
+                s.openTab(10);
+            });
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("features-5-inquiry-tab");
+            ctx.runOnClient(c -> {
+                DdingMateScreen s = (DdingMateScreen) c.currentScreen;
+                s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "짧음");
+                check(sent[0] == null && !DdingMateScreen.inquiryStatus().isEmpty(), "너무 짧은 문의를 보냄");
+                s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "재료 HUD 구리 블록 그림이 청록색이에요 @everyone");
+                check(sent[0] != null, "문의를 보내지 않음");
+                com.google.gson.JsonObject j = com.google.gson.JsonParser.parseString(sent[0]).getAsJsonObject();
+                com.google.gson.JsonObject e = j.getAsJsonArray("embeds").get(0).getAsJsonObject();
+                check(j.getAsJsonObject("allowed_mentions").getAsJsonArray("parse").isEmpty(), "멘션(@everyone)을 막지 않음");
+                check(e.get("title").getAsString().startsWith("[버그 제보] ") && e.get("description").getAsString().contains("구리 블록"),
+                        "문의 분류·내용이 다름: " + sent[0]);
+                String fields = e.getAsJsonArray("fields").toString();
+                check(fields.contains(c.player.getUuidAsString()) && fields.contains("띵메이트 ") && fields.contains("마인크래프트 1.21.4"),
+                        "플레이어 정보가 빠짐: " + fields);
+                check(DdingMateScreen.inquiryStatus().contains("보냈어요"), "보낸 뒤 안내가 다름: " + DdingMateScreen.inquiryStatus());
+                // 1분 안에 또 누르면 보내지 않는다(도배 막기)
+                sent[0] = null;
+                s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.FEATURE, "기능 하나 더 부탁해요");
+                check(sent[0] == null && DdingMateScreen.inquiryStatus().contains("초 뒤에"), "1분 안에 다시 보냄");
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-5b-inquiry-sent");
+            ctx.runOnClient(c -> {
+                kr.ddingmate.inquiry.Inquiry.debugSender(null);
+                c.currentScreen.close();
+            });
+            ctx.waitTicks(5);
         }
     }
 
