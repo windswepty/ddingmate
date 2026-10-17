@@ -407,7 +407,7 @@ public class DdingMateScreen extends Screen {
     private Widgets.Button inquirySend;
 
     private void buildInquiry() {
-        list.guide("버그·건의를 개발자에게 바로 보내요. 닉네임·UUID·띵메이트·마인크래프트 버전·접속한 서버와 지역이 함께 가요(게임 서버로는 안 보내요).");
+        list.guide("버그·건의를 개발자에게 바로 보내요. 닉네임·UUID·띵메이트·마인크래프트 버전·접속한 서버와 지역이 함께 가요(게임 서버로는 안 보내요). 답변은 내 채팅·알림으로 와요.");
         // 분류는 한 줄에 다 보이게 단추로 고른다(고른 것은 파랗게)
         kr.ddingmate.inquiry.Inquiry.Category[] cats = kr.ddingmate.inquiry.Inquiry.Category.values();
         int bw = (rowWidth() - GAP * (cats.length - 1)) / cats.length;

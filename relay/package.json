@@ -1,0 +1,12 @@
+{
+  "name": "ddingmate-relay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/index.test.js",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.146.0"
+  }
+}

@@ -96,6 +96,31 @@ public final class Notifier {
                 SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), new ItemStack(Items.CLOCK), Theme.GOLD, true);
     }
 
+    /**
+     * 보낸 문의에 개발자가 디스코드에서 답했을 때. 귓속말처럼 내 채팅창에만 남기고(채팅 알림을 꺼 두었어도), 소리·팝업도 낸다.
+     * 서버로는 아무것도 보내지 않는다. 기록 탭에서 다시 볼 수 있다
+     */
+    public static void devReply(String category, String preview, String text) {
+        AlertLog.add("문의", "개발자 답변 · [" + category + "] " + preview, text);
+        MinecraftClient client = MinecraftClient.getInstance();
+        DdingMateConfig cfg = DdingMate.config();
+        if (cfg.soundEnabled && cfg.soundVolume > 0f) {
+            client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, cfg.soundVolume));
+        }
+        if (cfg.toastEnabled) {
+            String body = text.replaceAll("\\s+", " ").trim();
+            ItemStack icon = new ItemStack(Items.WRITABLE_BOOK);
+            if (toastReady(client)) client.getToastManager().add(new DdingMateToast("개발자 답변이 왔어요", body, icon, Theme.BLUE));
+            else HELD.add(new Held("개발자 답변이 왔어요", body, icon, Theme.BLUE));
+        }
+        chat(Text.literal("개발자 → 나").formatted(Formatting.LIGHT_PURPLE)
+                .append(Text.literal(" (문의: [" + category + "] " + preview + ")").formatted(Formatting.GRAY)));
+        for (String line : text.split("\n")) {
+            if (line.isBlank()) continue;
+            chat(Text.literal(line.strip()).formatted(Formatting.LIGHT_PURPLE));
+        }
+    }
+
     // ---------------------------------------------------------------- 접속 직후 팝업 미루기
 
     /**

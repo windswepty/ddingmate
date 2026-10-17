@@ -751,12 +751,13 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(5);
 
-            // 11) 문의 탭: 분류·내용과 플레이어 정보를 디스코드로(시험에서는 인터넷으로 보내지 않고 보낼 내용만 받는다)
+            // 11) 문의 탭: 분류·내용과 플레이어 정보를 문의 중계로(시험에서는 인터넷으로 보내지 않고 보낼 내용만 받는다)
             String[] sent = new String[1];
             ctx.runOnClient(c -> {
-                kr.ddingmate.inquiry.Inquiry.debugSender(body -> {
-                    sent[0] = body;
-                    return 204;
+                kr.ddingmate.inquiry.Replies.debugReset();
+                kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> {
+                    if (path.equals("/inquiry")) sent[0] = body;
+                    return new kr.ddingmate.inquiry.Inquiry.Http(200, "{\"id\":\"abcd1234\"}");
                 });
                 check(kr.ddingmate.inquiry.Inquiry.validate("짧음") != null && kr.ddingmate.inquiry.Inquiry.validate("가".repeat(1501)) != null
                         && kr.ddingmate.inquiry.Inquiry.validate("구리 블록 그림이 이상해요") == null, "문의 내용 검사가 다름");
@@ -814,29 +815,28 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(sent[0] == null && !DdingMateScreen.inquiryStatus().isEmpty(), "너무 짧은 문의를 보냄");
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "재료 HUD 구리 블록 그림이 청록색이에요 @everyone");
                 check(sent[0] != null, "문의를 보내지 않음");
+                // 중계로는 정해진 칸만 보낸다(디스코드 메시지 모양·멘션은 중계가 만든다)
                 com.google.gson.JsonObject j = com.google.gson.JsonParser.parseString(sent[0]).getAsJsonObject();
-                com.google.gson.JsonObject e = j.getAsJsonArray("embeds").get(0).getAsJsonObject();
-                check(j.getAsJsonObject("allowed_mentions").getAsJsonArray("parse").isEmpty(), "멘션(@everyone)을 막지 않음");
-                // 개발자 멘션: 정해 두면 그 한 사람만 울리고(내용 속 @everyone 은 그대로 막힘), 안 정하면 멘션 없음
-                String keepMention = kr.ddingmate.inquiry.Inquiry.debugMention("123456789012345678");
-                String withMention = kr.ddingmate.inquiry.Inquiry.payload(kr.ddingmate.inquiry.Inquiry.Category.BUG, "내용 @everyone",
-                        kr.ddingmate.inquiry.Inquiry.info(c));
-                com.google.gson.JsonObject jm = com.google.gson.JsonParser.parseString(withMention).getAsJsonObject();
-                check(jm.get("content").getAsString().startsWith("<@123456789012345678>")
-                                && jm.getAsJsonObject("allowed_mentions").getAsJsonArray("users").toString().equals("[\"123456789012345678\"]")
-                                && jm.getAsJsonObject("allowed_mentions").getAsJsonArray("parse").isEmpty(),
-                        "개발자 멘션이 다름: " + withMention);
-                kr.ddingmate.inquiry.Inquiry.debugMention(null);
-                check(!kr.ddingmate.inquiry.Inquiry.payload(kr.ddingmate.inquiry.Inquiry.Category.BUG, "내용", kr.ddingmate.inquiry.Inquiry.info(c)).contains("\"content\""),
-                        "멘션할 사람이 없는데 멘션함");
-                kr.ddingmate.inquiry.Inquiry.debugMention(keepMention);
-                check(e.get("title").getAsString().startsWith("[버그 제보] ") && e.get("description").getAsString().contains("구리 블록"),
+                com.google.gson.JsonObject info = j.getAsJsonObject("info");
+                check(j.get("category").getAsString().equals("BUG") && j.get("text").getAsString().contains("구리 블록"),
                         "문의 분류·내용이 다름: " + sent[0]);
-                String fields = e.getAsJsonArray("fields").toString();
-                check(fields.contains(c.player.getUuidAsString()) && fields.contains("띵메이트 ") && fields.contains("마인크래프트 1.21.4"),
-                        "플레이어 정보가 빠짐: " + fields);
-                // 시험 계정(오프라인 UUID)은 NameMC 링크 대신 "확인 불가"(정품 계정만 링크)
-                check(fields.contains("오프라인 계정(확인 불가)") && !fields.contains("namemc.com"), "오프라인 계정에 NameMC 링크를 붙임: " + fields);
+                check(info.get("uuid").getAsString().equals(c.player.getUuidAsString()) && info.get("name").getAsString().equals(c.player.getGameProfile().getName())
+                                && info.get("modVersion").getAsString().length() > 0 && info.get("gameVersion").getAsString().equals("1.21.4"),
+                        "플레이어 정보가 빠짐: " + sent[0]);
+                String token = j.get("token").getAsString();
+                check(token.matches("[A-Za-z0-9_-]{43}"), "답변 번호표 모양이 다름: " + token);
+                check(!j.has("embeds") && !j.has("content") && !j.has("allowed_mentions"), "디스코드 메시지를 직접 만들어 보냄: " + sent[0]);
+                // 보낸 문의는 답변을 받아 가도록 번호표와 함께 따로 남긴다(설정 파일 ddingmate.json 에는 안 남김)
+                java.util.List<kr.ddingmate.inquiry.Replies.Ticket> tickets = kr.ddingmate.inquiry.Replies.debugTickets();
+                check(tickets.size() == 1 && tickets.get(0).id.equals("abcd1234") && tickets.get(0).token.equals(token)
+                        && tickets.get(0).category.equals("버그 제보") && tickets.get(0).preview.startsWith("재료 HUD"), "보낸 문의 기록이 다름");
+                try {
+                    String cfgText = java.nio.file.Files.readString(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ddingmate.json"));
+                    String ticketText = java.nio.file.Files.readString(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ddingmate-inquiries.json"));
+                    check(!cfgText.contains(token) && ticketText.contains(token), "번호표를 저장한 곳이 다름");
+                } catch (java.io.IOException ex) {
+                    throw new RuntimeException(ex);
+                }
                 check(DdingMateScreen.inquiryStatus().contains("보냈어요"), "보낸 뒤 안내가 다름: " + DdingMateScreen.inquiryStatus());
                 // 이미지 첨부: 이미지가 아닌 파일은 빼고, 3장까지. 보내면 첫 장이 메시지 안에 크게, 원래 파일 이름은 안 보낸다
                 try {
@@ -862,14 +862,14 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             ctx.takeScreenshot("features-5c-inquiry-attached");
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
-                kr.ddingmate.inquiry.Inquiry.debugSender(body -> {
-                    sent[0] = body;
-                    return 204;
+                kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> {
+                    if (path.equals("/inquiry")) sent[0] = body;
+                    return new kr.ddingmate.inquiry.Inquiry.Http(200, "{\"id\":\"0000beef\"}");
                 });
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.TEXT, "첨부한 스크린샷의 글자가 잘려요");
                 check(kr.ddingmate.inquiry.Inquiry.debugLastFiles.equals(List.of("image1.png", "image2.png", "image3.png"))
-                        && sent[0].contains("attachment://image1.png") && !sent[0].contains("내 스크린샷"),
-                        "첨부 이미지 이름·메시지 안 그림이 다름: " + kr.ddingmate.inquiry.Inquiry.debugLastFiles + " / " + sent[0]);
+                        && !sent[0].contains("내 스크린샷"),
+                        "첨부 이미지 이름이 다름: " + kr.ddingmate.inquiry.Inquiry.debugLastFiles + " / " + sent[0]);
                 check(DdingMateScreen.inquiryImageCount() == 0, "보낸 뒤에도 첨부가 남음");
                 // 1분 안에 또 누르면 보내지 않는다(도배 막기)
                 sent[0] = null;
@@ -878,9 +878,58 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(3);
             ctx.takeScreenshot("features-5b-inquiry-sent");
+            // 중계가 안 될 때 알려 주는 말(쓴 내용은 남는다)
+            ctx.runOnClient(c -> {
+                DdingMateScreen s = (DdingMateScreen) c.currentScreen;
+                kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> new kr.ddingmate.inquiry.Inquiry.Http(429, "{\"error\":\"cooldown\"}"));
+                s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "중계가 바쁠 때 시험");
+                check(DdingMateScreen.inquiryStatus().contains("잠시 뒤에"), "429 안내가 다름: " + DdingMateScreen.inquiryStatus());
+                kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> new kr.ddingmate.inquiry.Inquiry.Http(502, "{\"error\":\"discord\"}"));
+                s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "중계가 멈췄을 때 시험");
+                check(DdingMateScreen.inquiryStatus().contains("조금 뒤에") && s.inquiryBox().getText().equals("중계가 멈췄을 때 시험"),
+                        "502 안내가 다름: " + DdingMateScreen.inquiryStatus());
+                check(kr.ddingmate.inquiry.Replies.debugTickets().size() == 2, "보내지 못한 문의를 기록함");
+                s.inquiryBox().setText("");
+                c.currentScreen.close();
+            });
+            ctx.waitTicks(5);
+
+            // 12) 개발자 답변 받기: 접속하면 5초 뒤·10분마다 묻고, 처음 보는 답변만 귓속말처럼 내 채팅·팝업·기록에
+            String[] asked = new String[1];
+            ctx.runOnClient(c -> {
+                c.inGameHud.getChatHud().clear(false);
+                kr.ddingmate.inquiry.Replies.onJoin();
+                check(kr.ddingmate.inquiry.Replies.debugNextPollAt() > System.currentTimeMillis() + 3000, "접속하자마자 물음");
+                kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> {
+                    asked[0] = body;
+                    return new kr.ddingmate.inquiry.Inquiry.Http(200, "{\"tickets\":[{\"found\":true,\"id\":\"abcd1234\",\"replies\":["
+                            + "{\"n\":1,\"text\":\"구리 블록 그림 고쳤어요!\\n0.3.2 에서 확인해 주세요\",\"at\":1760700000000}]},"
+                            + "{\"found\":true,\"id\":\"0000beef\",\"replies\":[]}]}");
+                });
+                int logBefore = AlertLog.entries().size();
+                kr.ddingmate.inquiry.Replies.debugPoll(c);
+                com.google.gson.JsonArray toks = com.google.gson.JsonParser.parseString(asked[0]).getAsJsonObject().getAsJsonArray("tokens");
+                check(toks.size() == 2 && toks.get(0).getAsString().equals(kr.ddingmate.inquiry.Replies.debugTickets().get(0).token), "물어본 번호표가 다름: " + asked[0]);
+                check(AlertLog.entries().size() == logBefore + 1 && AlertLog.entries().get(0).body.contains("고쳤어요")
+                        && AlertLog.entries().get(0).title.contains("[버그 제보] 재료 HUD"), "답변이 기록에 안 남음");
+                check(kr.ddingmate.inquiry.Replies.debugTickets().get(0).replies.size() == 1, "받은 답변을 저장 안 함");
+                // 다시 물어도 같은 답변은 또 알리지 않는다
+                kr.ddingmate.inquiry.Replies.debugPoll(c);
+                check(AlertLog.entries().size() == logBefore + 1, "같은 답변을 또 알림");
+                // 중계에 기록이 없는(오래된) 문의는 하루가 지나면 더 묻지 않는다
+                kr.ddingmate.inquiry.Replies.debugTickets().get(1).sentAt -= 2L * 24 * 3600 * 1000;
+                kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> new kr.ddingmate.inquiry.Inquiry.Http(200,
+                        "{\"tickets\":[{\"found\":true,\"id\":\"abcd1234\",\"replies\":[]},{\"found\":false,\"replies\":[]}]}"));
+                kr.ddingmate.inquiry.Replies.debugPoll(c);
+                check(kr.ddingmate.inquiry.Replies.debugTickets().get(1).gone && !kr.ddingmate.inquiry.Replies.debugTickets().get(0).gone,
+                        "없는 문의를 계속 물음");
+                kr.ddingmate.inquiry.Replies.onDisconnect();
+            });
+            ctx.waitTicks(25);
+            ctx.takeScreenshot("features-5e-dev-reply");
             ctx.runOnClient(c -> {
                 kr.ddingmate.inquiry.Inquiry.debugSender(null);
-                c.currentScreen.close();
+                kr.ddingmate.inquiry.Replies.debugReset();
             });
             ctx.waitTicks(5);
             // 실제 디스코드로 한 번 보내 보기(DDINGMATE_REAL_INQUIRY=1 로 실행할 때만, 평소 시험에서는 보내지 않는다)
@@ -901,8 +950,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 for (int i = 0; i < 30 && real[0] == null; i++) ctx.waitTicks(20);
                 ctx.runOnClient(c -> {
                     check(real[0] != null && real[0].ok(), "실제 문의를 보내지 못함: " + (real[0] == null ? "응답 없음" : real[0].message()));
-                    kr.ddingmate.DdingMate.LOG.info("실제 문의 보내기 결과: {}", real[0].message());
+                    kr.ddingmate.DdingMate.LOG.info("실제 문의 보내기 결과: {} / 문의 번호 {}", real[0].message(),
+                            kr.ddingmate.inquiry.Replies.debugTickets().get(kr.ddingmate.inquiry.Replies.debugTickets().size() - 1).id);
+                    // 실제 중계에 답변을 물어본다(아직 답이 없으면 0개)
+                    kr.ddingmate.inquiry.Replies.debugPoll(c);
                 });
+                ctx.waitTicks(100);
             }
         }
     }

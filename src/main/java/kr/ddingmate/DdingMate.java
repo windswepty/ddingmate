@@ -112,9 +112,13 @@ public final class DdingMate implements ClientModInitializer {
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> Notifier.onJoin());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            Notifier.onJoin();
+            kr.ddingmate.inquiry.Replies.onJoin(); // 보낸 문의에 답변이 왔는지(접속 직후·10분마다)
+        });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             ServerHud.reset();
+            kr.ddingmate.inquiry.Replies.onDisconnect();
             wasInGame = false;
             BagTracker.save();
             PlaytimeTracker.save();
@@ -199,6 +203,7 @@ public final class DdingMate implements ClientModInitializer {
 
     private static void onTick(MinecraftClient client) {
         Notifier.tick(client);
+        kr.ddingmate.inquiry.Replies.tick(client);
         while (toggleHudKey.wasPressed()) {
             config.hudEnabled = !config.hudEnabled;
             config.save();

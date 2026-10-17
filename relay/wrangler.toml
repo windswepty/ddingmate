@@ -1,0 +1,18 @@
+name = "ddingmate-relay"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# 문의가 올라갈 디스코드 채널 ID (개발자 모드 켜고 채널 우클릭 → ID 복사)
+CHANNEL_ID = ""
+# 멘션·답변할 개발자 디스코드 사용자 ID
+DEV_USER_ID = "726781498606354452"
+
+# 봇 토큰·앱 공개 키는 여기 적지 말고 비밀 값으로:
+#   npx wrangler secret put DISCORD_TOKEN
+#   npx wrangler secret put DISCORD_PUBLIC_KEY
+
+[[kv_namespaces]]
+binding = "DB"
+# npx wrangler kv namespace create DB 로 만든 id
+id = ""
