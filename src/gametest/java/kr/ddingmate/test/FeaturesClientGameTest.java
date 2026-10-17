@@ -159,7 +159,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             // 3-2) 할 일 탭: 줄을 눌러도 바뀌지 않고, [빼기]로 빼고, '넣을 수 있는 할 일'에서 다시 넣는다
             ctx.runOnClient(c -> {
                 c.setScreen(new DdingMateScreen(null));
-                ((DdingMateScreen) c.currentScreen).openTab(7);
+                ((DdingMateScreen) c.currentScreen).openTabNamed("할 일");
             });
             ctx.waitTicks(3);
             ctx.takeScreenshot("features-0b-todo-tab");
@@ -335,7 +335,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.runOnClient(c -> {
                 c.setScreen(new DdingMateScreen(null));
-                ((DdingMateScreen) c.currentScreen).openTab(3);
+                ((DdingMateScreen) c.currentScreen).openTabNamed("일정");
             });
             ctx.waitTicks(3);
             ctx.takeScreenshot("features-2c-channels-auto");
@@ -733,12 +733,13 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             // 10) 알림 기록함과 새 탭 화면
             ctx.runOnClient(c -> check(AlertLog.entries().size() >= 2, "알림 기록이 쌓이지 않음"));
             String[] names = {"gear", "todo", "log"};
+            String[] titles = {"장비", "할 일", "기록"};
             for (int i = 0; i < names.length; i++) {
-                int tab = 6 + i;
+                String tab = titles[i];
                 ctx.runOnClient(c -> {
                     DdingMateScreen s = new DdingMateScreen(null);
                     c.setScreen(s);
-                    s.openTab(tab);
+                    s.openTabNamed(tab);
                 });
                 ctx.waitTicks(5);
                 ctx.takeScreenshot("features-3-settings-" + names[i]);
@@ -761,7 +762,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         && kr.ddingmate.inquiry.Inquiry.validate("구리 블록 그림이 이상해요") == null, "문의 내용 검사가 다름");
                 DdingMateScreen s = new DdingMateScreen(null);
                 c.setScreen(s);
-                s.openTab(10);
+                s.openTabNamed("문의");
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("features-5-inquiry-tab");

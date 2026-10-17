@@ -90,7 +90,7 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
                 for (int i = 0; i < 40; i++) s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, 0, 0);
                 if (s.tutorialStep() != 0) throw new AssertionError("처음 단계로 돌아가지 않음");
                 for (int i = 0; i < 16; i++) s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER, 0, 0);
-                if (s.tutorialStep() != 16 || s.tabIndex() != 5) {
+                if (s.tutorialStep() != 16 || !s.tabTitle().equals("재료")) {
                     throw new AssertionError("17단계(재료 탭)가 아님: 단계 " + s.tutorialStep() + ", 탭 " + s.tabIndex());
                 }
             });
@@ -103,7 +103,7 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
                 s.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, 0, 0);
-                if (s.tutorialStep() != 15 || s.tabIndex() != 4) throw new AssertionError("이전 단계로 가지 않음");
+                if (s.tutorialStep() != 15 || !s.tabTitle().equals("키워드")) throw new AssertionError("이전 단계로 가지 않음");
                 // 튜토리얼 중에는 아래 창이 눌리지 않는다(탭 단추를 눌러도 그대로)
                 s.mouseClicked(1, 1, 0);
                 if (s.tutorialStep() != 15) throw new AssertionError("튜토리얼 밖을 눌렀는데 단계가 바뀜");
@@ -159,7 +159,7 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
                 }
             });
             ctx.waitTicks(10);
-            String[] tabs = {"notify", "events", "channels", "keywords"};
+            String[] tabs = {"notify", "events", "keywords"};
             for (int i = 0; i < tabs.length; i++) {
                 int index = i + 1;
                 ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTab(index));

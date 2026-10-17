@@ -50,7 +50,7 @@ final class Tutorial {
                     "일일·주간 초기화, 정기 점검, 낚시 대회 같은 서버 일정을 미리 알려 줘요. 줄 오른쪽에 다음까지 남은 시간이 보여요."),
             new Step(DdingMateScreen.Tab.EVENTS, false, "일일 초기화 (매일 03:00)", "일정 켜고 끄기 · 알림 시점",
                     "스위치로 일정마다 켜고 꺼요. 끄면 HUD·알림에서 빠져요. 오른쪽 칸에 몇 분 전에 알릴지 적어요(예: 10,3 = 10분 전과 3분 전, 0 = 시작할 때)."),
-            new Step(DdingMateScreen.Tab.CHANNELS, false, "지금 있는 채널 자동 인식", "내 채널 자동 인식",
+            new Step(DdingMateScreen.Tab.EVENTS, false, "지금 있는 채널 자동 인식", "내 채널 자동 인식",
                     "화면 오른쪽 위 채널 표시(예: 마을30)를 읽어 지역별 내 채널을 알아서 맞추고, 그 채널이 재시작되기 전에 알려 줘요. 끄면 아래에서 직접 고를 수 있어요."),
             new Step(DdingMateScreen.Tab.KEYWORDS, false, "키워드 알림", "키워드 알림",
                     "채팅에 정해 둔 단어가 들어간 메시지가 뜨면 소리와 팝업으로 알려 줘요. 팝업 아래에 그 메시지가 그대로 보여요."),

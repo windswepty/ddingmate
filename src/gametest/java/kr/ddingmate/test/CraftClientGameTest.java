@@ -433,7 +433,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.Cooking.debugPrice("양파 수프", 1800, now() - 30L * 24 * 3600_000);
                 kr.ddingmate.gui.DdingMateScreen s = new kr.ddingmate.gui.DdingMateScreen(null);
                 c.setScreen(s);
-                s.openTab(9);
+                s.openTabNamed("전문가");
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("expert-1-top");
@@ -836,7 +836,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.Cooking.debugPrice("토마토 스파게티", 394, now());
                 kr.ddingmate.gui.DdingMateScreen s = new kr.ddingmate.gui.DdingMateScreen(null);
                 c.setScreen(s);
-                s.openTab(9);
+                s.openTabNamed("전문가");
             });
             ctx.waitTicks(3);
             ctx.runOnClient(c -> {
@@ -1207,7 +1207,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
             // 10) 설정 화면: 재료 탭 목록, 홈 '제작 중'
             ctx.runOnClient(c -> {
                 c.setScreen(new DdingMateScreen(null));
-                ((DdingMateScreen) c.currentScreen).openTab(5);
+                ((DdingMateScreen) c.currentScreen).openTabNamed("재료");
             });
             ctx.waitTicks(3);
             ctx.runOnClient(CraftClientGameTest::scrollToBottom);
@@ -1692,7 +1692,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         kr.ddingmate.hud.HudLayout.bounds());
                 kr.ddingmate.gui.DdingMateScreen s = new kr.ddingmate.gui.DdingMateScreen(null);
                 c.setScreen(s);
-                s.openTab(6);
+                s.openTabNamed("장비");
             });
             ctx.waitTicks(5);
             ctx.runOnClient(c -> c.currentScreen.children().stream()

@@ -108,7 +108,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> c.setScreen(new DdingMateScreen(null)));
             ctx.waitTicks(3);
             int[] pressed = new int[1];
-            for (int tab = 0; tab < 9; tab++) {
+            for (int tab = 0; tab < 10; tab++) {
                 int t = tab;
                 ctx.runOnClient(c -> {
                     ((DdingMateScreen) c.currentScreen).openTab(t);
@@ -176,7 +176,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             ctx.takeScreenshot("smoke-2-korean-hud");
             ctx.runOnClient(c -> c.setScreen(new DdingMateScreen(null)));
             ctx.waitTicks(5);
-            ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTab(6));
+            ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTabNamed("장비"));
             ctx.waitTicks(5);
             ctx.takeScreenshot("smoke-3-korean-gear-tab");
             ctx.runOnClient(c -> {

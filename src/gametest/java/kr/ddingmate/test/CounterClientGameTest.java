@@ -154,7 +154,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 DdingMateScreen s = new DdingMateScreen(null);
                 c.setScreen(s);
-                s.openTab(5);
+                s.openTabNamed("재료");
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("counter-4-settings");
@@ -169,7 +169,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
                         "핀 칸을 우클릭해도 핀이 안 빠짐(또는 다른 창이 열림): " + used + " / " + pin.recipe);
                 pin.recipe = keep;
                 pin.crafts = keepCrafts;
-                ((DdingMateScreen) c.currentScreen).openTab(5);
+                ((DdingMateScreen) c.currentScreen).openTabNamed("재료");
             });
             ctx.waitTicks(3);
             ctx.runOnClient(c -> c.currentScreen.children().stream()

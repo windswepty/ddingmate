@@ -60,7 +60,7 @@ public class DdingMateScreen extends Screen {
     private static final int ITEM_H = 24;
 
     enum Tab {
-        HOME("홈", Items.RED_BED), NOTIFY("알림 방식", Items.BELL), EVENTS("일정", Items.CLOCK), CHANNELS("내 채널", Items.COMPASS),
+        HOME("홈", Items.RED_BED), NOTIFY("알림 방식", Items.BELL), EVENTS("일정", Items.CLOCK),
         KEYWORDS("키워드", Items.NAME_TAG), COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
         TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK), EXPERT("전문가", Items.EXPERIENCE_BOTTLE),
         INQUIRY("문의", Items.FEATHER);
@@ -140,7 +140,7 @@ public class DdingMateScreen extends Screen {
         ch = ph - (cy - py) - 32;
         sections.clear();
         sectionButtons.clear();
-        side = tab != Tab.EVENTS && tab != Tab.LOG && tab != Tab.INQUIRY && pw >= 396 ? SIDE_W : 0;
+        side = tab != Tab.LOG && tab != Tab.INQUIRY && pw >= 396 ? SIDE_W : 0;
 
         // 탭은 4개씩 두 줄
         Tab[] tabs = Tab.values();
@@ -299,6 +299,20 @@ public class DdingMateScreen extends Screen {
     }
 
     /** 탭 번호(0부터)로 바로 이동. 시험·단축 이동용 */
+    /** 시험용: 탭 이름(예: "재료")으로 열기 */
+    public void openTabNamed(String title) {
+        for (Tab t : Tab.values()) if (t.title.equals(title)) {
+            switchTab(t);
+            return;
+        }
+        throw new IllegalArgumentException("없는 탭: " + title);
+    }
+
+    /** 시험용: 지금 탭 이름 */
+    public String tabTitle() {
+        return tab.title;
+    }
+
     public void openTab(int index) {
         Tab[] tabs = Tab.values();
         switchTab(tabs[Math.floorMod(index, tabs.length)]);
@@ -365,8 +379,11 @@ public class DdingMateScreen extends Screen {
         switch (tab) {
             case HOME -> buildHome();
             case NOTIFY -> buildNotify();
-            case EVENTS -> buildEvents();
-            case CHANNELS -> buildChannels();
+            case EVENTS -> {
+                // 내 채널은 채널 재시작 일정에만 쓰여서 일정 탭 아래에 함께 둔다(탭 10개, 2026-10-17)
+                buildEvents();
+                buildChannels();
+            }
             case KEYWORDS -> buildKeywords();
             case COUNTER -> buildCounter();
             case GEAR -> buildGear();
@@ -489,8 +506,8 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildEvents() {
-        list.guide("띵타이쿤 서버 일정이에요. 끄면 HUD·알림에서 빠져요. 오른쪽 칸에 몇 분 전에 알릴지 적어요(예: 10,3).");
-        list.header("일정별 알림 · 0 = 시작할 때 알림");
+        list.guide("띵타이쿤 서버 일정과 내 채널 재시작이에요. 끄면 HUD·알림에서 빠져요. 오른쪽 칸에 몇 분 전에 알릴지 적어요(예: 10,3).");
+        list.header("일정별 알림 · 0 = 시작할 때 알림", "일정별 알림");
         Map<String, EventRule> rules = ScheduleEngine.byId(
                 ScheduleEngine.buildRules(new ScheduleEngine.Channels(1, 1, 1, 1, 1)));
         for (Map.Entry<String, String> e : EVENT_NAMES.entrySet()) {
@@ -610,8 +627,7 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildChannels() {
-        list.guide("내가 있는 채널이 재시작되기 전에 미리 알려 줘요. 화면 오른쪽 위 채널 표시(예: 마을30)를 읽어 알아서 맞춰요.");
-        list.header("채널 자동 인식", "자동 인식");
+        list.header("내 채널 · 재시작 전에 알려 줘요(화면 오른쪽 위 채널 표시를 읽어요)", "내 채널");
         list.single(tip(toggle("지금 있는 채널 자동 인식", cfg.autoChannel, v -> {
             cfg.autoChannel = v;
             rebuild();
@@ -621,7 +637,7 @@ public class DdingMateScreen extends Screen {
                 ? "지금 있는 곳: 아직 못 읽었어요 (스폰에 들어가면 화면 오른쪽 위 표시를 읽어요)"
                 : "지금 있는 곳: " + here.label + " " + kr.ddingmate.game.ServerHud.channel() + "채널"
                         + (cfg.autoChannel ? " · 이 지역의 내 채널로 맞췄어요" : ""));
-        list.header(cfg.autoChannel ? "지역별 내 채널 · 마지막으로 있던 채널" : "지역별 내 채널", "내 채널");
+        list.header(cfg.autoChannel ? "지역별 내 채널 · 마지막으로 있던 채널" : "지역별 내 채널", "지역별 채널");
         list.pair(channel("마을", 35, cfg.villageChannel, v -> cfg.villageChannel = v), null);
         list.note(cfg.autoChannel
                 ? "가 본 지역은 알아서 채워져요. 직접 바꿔도 되고, '끔'이면 그 지역 재시작은 알리지 않아요(그 지역에 다시 가면 다시 켜져요)."
