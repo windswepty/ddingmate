@@ -4,15 +4,17 @@ compatibility_date = "2026-09-01"
 
 [vars]
 # 문의가 올라갈 디스코드 채널 ID (개발자 모드 켜고 채널 우클릭 → ID 복사)
-CHANNEL_ID = ""
+CHANNEL_ID = "1560930202089955338"
 # 멘션·답변할 개발자 디스코드 사용자 ID
 DEV_USER_ID = "726781498606354452"
 
-# 봇 토큰·앱 공개 키는 여기 적지 말고 비밀 값으로:
+# 디스코드 앱 공개 키(General Information → PUBLIC KEY). 비밀 값 아님: 디스코드가 보낸 요청인지 서명을 확인하는 데만 쓴다
+DISCORD_PUBLIC_KEY = "f1d6305d8afacd52eee538d7862a3d71bc7f2e4581a77860d6cb54732fd79fd6"
+
+# 봇 토큰은 여기 적지 말고 비밀 값으로(터미널에 직접 붙여 넣기):
 #   npx wrangler secret put DISCORD_TOKEN
-#   npx wrangler secret put DISCORD_PUBLIC_KEY
 
 [[kv_namespaces]]
 binding = "DB"
 # npx wrangler kv namespace create DB 로 만든 id
-id = ""
+id = "ffb33da2347c44a0a5051ec7221b4872"
