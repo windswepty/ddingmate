@@ -8,7 +8,8 @@
 // 답변은 번호표를 가진 그 컴퓨터만 받을 수 있다(닉네임·UUID 를 알아도 남의 답변은 못 본다).
 //
 // 환경 값(wrangler.toml / 비밀 값):
-//   DB                  KV 이름공간
+//   DB                  D1 데이터베이스(migrations/). 쓰자마자 정확히 읽혀서 답변 번호·읽음 표시가 꼬이지 않는다
+//                       (처음엔 KV 였는데, KV 는 최대 60초 예전 값을 읽어 같은 답변 기록이 두 번 달렸다, 2026-10-18)
 //   CHANNEL_ID          문의가 올라갈 디스코드 채널 ID
 //   DEV_USER_ID         멘션·답변할 개발자 디스코드 사용자 ID
 //   DISCORD_TOKEN       (비밀) 봇 토큰
@@ -55,7 +56,20 @@ export default {
       return json({ error: 'server error' }, 500);
     }
   },
+  // 하루 한 번: 90일 지난 문의·답변과 끝난 도배 막기 기록을 지운다
+  async scheduled(event, env) {
+    await cleanup(env, Date.now());
+  },
 };
+
+export async function cleanup(env, now) {
+  const old = now - LIMITS.ttlSec * 1000;
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM replies WHERE ticket_id IN (SELECT id FROM tickets WHERE created < ?)').bind(old),
+    env.DB.prepare('DELETE FROM tickets WHERE created < ?').bind(old),
+    env.DB.prepare('DELETE FROM limits WHERE until < ?').bind(now),
+  ]);
+}
 
 // ---------------------------------------------------------------- 문의 받기
 
@@ -77,15 +91,18 @@ async function inquiry(request, env) {
   if (bad) return json({ error: bad }, 400);
 
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  const day = new Date().toISOString().slice(0, 10);
-  if (await env.DB.get(`rl:${ip}`)) return json({ error: 'cooldown' }, 429);
-  const ipDay = Number(await env.DB.get(`rd:${day}:${ip}`)) || 0;
-  const allDay = Number(await env.DB.get(`ad:${day}`)) || 0;
-  if (ipDay >= LIMITS.perIpDaily || allDay >= LIMITS.globalDaily) return json({ error: 'daily limit' }, 429);
+  const now = Date.now();
+  const day = new Date(now).toISOString().slice(0, 10);
+  const nextDay = Date.parse(day) + 2 * 24 * 3600 * 1000;
+  const lim = (key) => env.DB.prepare('SELECT count FROM limits WHERE key = ? AND until > ?').bind(key, now).first('count');
+  if (await lim(`ip:${ip}`)) return json({ error: 'cooldown' }, 429);
+  if ((await lim(`ipday:${day}:${ip}`) || 0) >= LIMITS.perIpDaily || (await lim(`day:${day}`) || 0) >= LIMITS.globalDaily) {
+    return json({ error: 'daily limit' }, 429);
+  }
 
-  const id = randomId();
   const tokenHash = await sha256(payload.token);
-  if (await env.DB.get(`t:${tokenHash}`)) return json({ error: 'token reused' }, 400);
+  if (await env.DB.prepare('SELECT 1 AS x FROM tickets WHERE token_hash = ?').bind(tokenHash).first('x')) return json({ error: 'token reused' }, 400);
+  const id = randomId();
 
   const names = files.map((f, k) => `image${k + 1}.${ext(f.name)}`);
   const message = inquiryMessage(env, id, payload, names);
@@ -95,20 +112,14 @@ async function inquiry(request, env) {
     return json({ error: 'discord' }, 502);
   }
 
-  const record = {
-    id,
-    name: payload.info.name,
-    category: payload.category,
-    created: Date.now(),
-    messageId: posted.body.id,
-    replies: [],
-  };
-  await Promise.all([
-    env.DB.put(`t:${tokenHash}`, JSON.stringify(record), { expirationTtl: LIMITS.ttlSec }),
-    env.DB.put(`id:${id}`, tokenHash, { expirationTtl: LIMITS.ttlSec }),
-    env.DB.put(`rl:${ip}`, '1', { expirationTtl: LIMITS.perIpCooldownSec }),
-    env.DB.put(`rd:${day}:${ip}`, String(ipDay + 1), { expirationTtl: 2 * 24 * 3600 }),
-    env.DB.put(`ad:${day}`, String(allDay + 1), { expirationTtl: 2 * 24 * 3600 }),
+  const bump = (key, until) => env.DB.prepare('INSERT INTO limits (key, count, until) VALUES (?1, 1, ?2) '
+    + 'ON CONFLICT(key) DO UPDATE SET count = CASE WHEN until > ?3 THEN count + 1 ELSE 1 END, until = ?2').bind(key, until, now);
+  await env.DB.batch([
+    env.DB.prepare('INSERT INTO tickets (id, token_hash, name, category, created, message_id) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(id, tokenHash, payload.info.name, payload.category, now, posted.body.id),
+    bump(`ip:${ip}`, now + LIMITS.perIpCooldownSec * 1000),
+    bump(`ipday:${day}:${ip}`, nextDay),
+    bump(`day:${day}`, nextDay),
   ]);
   return json({ id });
 }
@@ -177,14 +188,13 @@ async function interactions(request, env, ctx) {
   if (user.id !== env.DEV_USER_ID) return ephemeral('개발자만 답변할 수 있어요.');
 
   if (it.type === 3 && customId.startsWith('reply:')) {
-    const id = customId.slice(6);
-    const record = await recordById(env, id);
-    if (!record) return ephemeral('이 문의 기록을 찾을 수 없어요(90일이 지났거나 지워졌어요).');
+    const ticket = await ticketById(env, customId.slice(6));
+    if (!ticket) return ephemeral('이 문의 기록을 찾을 수 없어요(90일이 지났거나 지워졌어요).');
     return json({
       type: 9,
       data: {
-        custom_id: `send:${id}`,
-        title: cut(`${record.name} 님에게 답변`, 45),
+        custom_id: `send:${ticket.id}`,
+        title: cut(`${ticket.name} 님에게 답변`, 45),
         components: [{ type: 1, components: [{
           type: 4, custom_id: 'text', label: '답변 (띵메이트 채팅·알림으로 가요)', style: 2,
           min_length: 1, max_length: LIMITS.maxReply, required: true,
@@ -194,48 +204,45 @@ async function interactions(request, env, ctx) {
   }
 
   if (it.type === 5 && customId.startsWith('send:')) {
-    const id = customId.slice(5);
     const reply = modalValue(it.data, 'text').trim();
     if (!reply) return ephemeral('답변이 비어 있어요.');
-    const tokenHash = await env.DB.get(`id:${id}`);
-    const record = tokenHash && parseJson(await env.DB.get(`t:${tokenHash}`));
-    if (!record) return ephemeral('이 문의 기록을 찾을 수 없어요(90일이 지났거나 지워졌어요).');
-    const n = record.replies.length + 1;
-    record.replies.push({ n, text: reply, at: Date.now(), delivered: 0, noteId: null });
-    await env.DB.put(`t:${tokenHash}`, JSON.stringify(record), { expirationTtl: LIMITS.ttlSec });
+    const ticket = await ticketById(env, customId.slice(5));
+    if (!ticket) return ephemeral('이 문의 기록을 찾을 수 없어요(90일이 지났거나 지워졌어요).');
+    // 번호 매기기와 저장을 한 문장으로: 동시에 두 개가 와도 번호가 겹치지 않고, 같은 제출(디스코드 재전송)은 한 번만
+    const n = await env.DB.prepare('INSERT INTO replies (ticket_id, n, text, at, interaction_id) '
+      + 'SELECT ?1, COALESCE(MAX(n), 0) + 1, ?2, ?3, ?4 FROM replies WHERE ticket_id = ?1 ON CONFLICT DO NOTHING RETURNING n')
+      .bind(ticket.id, reply, Date.now(), String(it.id || '')).first('n');
+    if (!n) return ephemeral('이미 저장한 답변이에요.');
     // 3초 안에 답해야 해서 채널 기록은 뒤에서 남긴다
-    ctx.waitUntil(postReplyNote(env, tokenHash, record, n));
-    return ephemeral(`답변을 저장했어요. ${record.name} 님이 띵메이트를 켜고 접속하면 받아요.`);
+    ctx.waitUntil(postReplyNote(env, ticket, n, reply));
+    return ephemeral(`답변을 저장했어요. ${ticket.name} 님이 띵메이트를 켜고 접속하면 받아요.`);
   }
   return ephemeral('알 수 없는 동작이에요.');
 }
 
-async function postReplyNote(env, tokenHash, record, n) {
-  const r = record.replies[n - 1];
+async function postReplyNote(env, ticket, n, reply) {
   const res = await discord(env, 'POST', `/channels/${env.CHANNEL_ID}/messages`, {
-    content: replyNote(record, r),
+    content: replyNote(ticket.name, n, reply, 0),
     allowed_mentions: { parse: [] },
-    message_reference: { message_id: record.messageId, fail_if_not_exists: false },
+    message_reference: { message_id: ticket.message_id, fail_if_not_exists: false },
   });
   if (!res.ok) return console.error('reply note failed', res.status, res.body);
-  // 그 사이 이미 읽었을 수도 있으니 다시 읽어서 표시 자리만 붙인다
-  const fresh = parseJson(await env.DB.get(`t:${tokenHash}`)) || record;
-  if (fresh.replies[n - 1]) {
-    fresh.replies[n - 1].noteId = res.body.id;
-    await env.DB.put(`t:${tokenHash}`, JSON.stringify(fresh), { expirationTtl: LIMITS.ttlSec });
-    if (fresh.replies[n - 1].delivered) await markNote(env, fresh, fresh.replies[n - 1]);
-  }
+  // 그 사이 이미 읽었으면 바로 "읽음"으로 고친다(읽음 표시 쪽은 아직 기록 자리를 몰라 못 고쳤다)
+  const delivered = await env.DB.prepare('UPDATE replies SET note_id = ? WHERE ticket_id = ? AND n = ? RETURNING delivered')
+    .bind(res.body.id, ticket.id, n).first('delivered');
+  if (delivered) await markNote(env, ticket.name, { n, text: reply, delivered, note_id: res.body.id });
 }
 
-export function replyNote(record, r) {
-  const quoted = r.text.split('\n').map((l) => `> ${l}`).join('\n');
-  const state = r.delivered ? `✅ 읽음 <t:${Math.floor(r.delivered / 1000)}:R>` : '⏳ 아직 안 읽음(접속하면 받아요)';
-  return cut(`💬 **${record.name}** 님에게 답변 #${r.n}\n${quoted}\n${state}`, 2000);
+export function replyNote(name, n, text, delivered) {
+  const quoted = text.split('\n').map((l) => `> ${l}`).join('\n');
+  const state = delivered ? `✅ 읽음 <t:${Math.floor(delivered / 1000)}:R>` : '⏳ 아직 안 읽음(접속하면 받아요)';
+  return cut(`💬 **${name}** 님에게 답변 #${n}\n${quoted}\n${state}`, 2000);
 }
 
-async function markNote(env, record, r) {
-  if (!r.noteId) return;
-  await discord(env, 'PATCH', `/channels/${env.CHANNEL_ID}/messages/${r.noteId}`, { content: replyNote(record, r), allowed_mentions: { parse: [] } });
+async function markNote(env, name, r) {
+  if (!r.note_id) return;
+  await discord(env, 'PATCH', `/channels/${env.CHANNEL_ID}/messages/${r.note_id}`,
+    { content: replyNote(name, r.n, r.text, r.delivered), allowed_mentions: { parse: [] } });
 }
 
 // ---------------------------------------------------------------- 띵메이트가 답변 받아 가기
@@ -248,20 +255,20 @@ async function replies(request, env, ctx) {
   }
   const out = [];
   const marks = [];
+  const now = Date.now();
   for (const token of tokens) {
-    const hash = await sha256(token);
-    const record = parseJson(await env.DB.get(`t:${hash}`));
-    if (!record) {
+    const ticket = await env.DB.prepare('SELECT id, name FROM tickets WHERE token_hash = ?').bind(await sha256(token)).first();
+    if (!ticket) {
       out.push({ found: false, replies: [] });
       continue;
     }
-    out.push({ found: true, id: record.id, replies: record.replies.map((r) => ({ n: r.n, text: r.text, at: r.at })) });
-    const now = Date.now();
-    const fresh = record.replies.filter((r) => !r.delivered);
-    if (fresh.length) {
-      for (const r of fresh) r.delivered = now;
-      marks.push(env.DB.put(`t:${hash}`, JSON.stringify(record), { expirationTtl: LIMITS.ttlSec })
-        .then(() => Promise.all(fresh.map((r) => markNote(env, record, r)))));
+    const { results } = await env.DB.prepare('SELECT n, text, at, delivered FROM replies WHERE ticket_id = ? ORDER BY n').bind(ticket.id).all();
+    out.push({ found: true, id: ticket.id, replies: results.map((r) => ({ n: r.n, text: r.text, at: r.at })) });
+    if (results.some((r) => !r.delivered)) {
+      // 처음 받아 가는 답변만 읽음으로(한 문장이라 동시에 받아 가도 한 번만 고친다)
+      const { results: fresh } = await env.DB.prepare('UPDATE replies SET delivered = ? WHERE ticket_id = ? AND delivered = 0 RETURNING n, text, delivered, note_id')
+        .bind(now, ticket.id).all();
+      for (const r of fresh) marks.push(markNote(env, ticket.name, r));
     }
   }
   if (marks.length) ctx.waitUntil(Promise.all(marks));
@@ -270,10 +277,9 @@ async function replies(request, env, ctx) {
 
 // ---------------------------------------------------------------- 도움 함수
 
-async function recordById(env, id) {
+async function ticketById(env, id) {
   if (!/^[0-9a-f]{8}$/.test(id)) return null;
-  const hash = await env.DB.get(`id:${id}`);
-  return hash ? parseJson(await env.DB.get(`t:${hash}`)) : null;
+  return env.DB.prepare('SELECT id, name, message_id FROM tickets WHERE id = ?').bind(id).first();
 }
 
 function modalValue(data, id) {
@@ -342,7 +348,7 @@ function cut(s, max) {
   return s.length <= max ? s : s.slice(0, max - 1) + '…';
 }
 
-function parseJson(s) {
+export function parseJson(s) {
   try {
     return typeof s === 'string' ? JSON.parse(s) : null;
   } catch (e) {

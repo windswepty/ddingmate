@@ -5,7 +5,8 @@
 
 - 게임 서버로는 아무것도 보내지 않는다.
 - 문의마다 띵메이트가 만든 비밀 번호표(token)의 **해시만** 저장한다. 답변은 그 번호표를 가진 컴퓨터만 받는다.
-- 기록은 90일 뒤 저절로 지워진다(KV TTL).
+- 저장은 D1(쓰자마자 정확히 읽힘). 기록은 하루 한 번 90일 지난 것을 지운다(cron).
+  처음엔 KV 였는데 KV 는 최대 60초 예전 값을 읽어 같은 답변 기록이 채널에 두 번 달렸다(2026-10-18).
 - 막는 것: 같은 주소 60초에 1번·하루 20번, 전체 하루 300번, 내용 5~1500자, 이미지 3장·8MB, 멘션은 개발자 한 사람만.
 
 ## 처음 한 번 설정
@@ -19,13 +20,13 @@
    ```
    npm install
    npx wrangler login
-   npx wrangler kv namespace create DB      # 나온 id 를 wrangler.toml 의 id 에
+   npx wrangler d1 create ddingmate-relay                       # 나온 database_id 를 wrangler.toml 에
+   npx wrangler d1 migrations apply ddingmate-relay --remote    # 표 만들기
    ```
-   `wrangler.toml` 의 `CHANNEL_ID` 에 채널 ID.
+   `wrangler.toml` 의 `CHANNEL_ID` 에 채널 ID, `DISCORD_PUBLIC_KEY` 에 앱 공개 키.
 3. **비밀 값**(터미널에 직접 붙여 넣기)
    ```
    npx wrangler secret put DISCORD_TOKEN
-   npx wrangler secret put DISCORD_PUBLIC_KEY
    ```
 4. **올리기** — `npx wrangler deploy` → `https://ddingmate-relay.<이름>.workers.dev`
 5. 디스코드 앱 General Information → **Interactions Endpoint URL** 에 `https://ddingmate-relay.<이름>.workers.dev/interactions` 저장
@@ -36,11 +37,11 @@
 
 ```
 npm test              # 디스코드·KV 흉내로 전체 흐름
-node test/smoke.mjs   # 실제 Workers 실행기(wrangler dev)로 서명·KV·첨부
+node test/smoke.mjs   # 실제 Workers 실행기(wrangler dev)로 서명·D1·첨부
 ```
 
 ## 무료 한도(Workers Free)
 
-요청 하루 10만 번, KV 읽기 하루 10만 번·쓰기 하루 1천 번. 문의 1건 ≈ 쓰기 5번, 답변 1건 ≈ 쓰기 2~3번,
-띵메이트의 답변 확인은 답을 기다리는 문의가 있을 때만(접속 직후·10분마다, 30일까지) 읽기 1번씩.
+요청 하루 10만 번, D1 읽기 하루 500만 행·쓰기 하루 10만 행. 문의 1건 ≈ 쓰기 4행, 답변 1건 ≈ 쓰기 3행,
+띵메이트의 답변 확인은 답을 기다리는 문의가 있을 때만(접속 직후·10분마다, 30일까지) 읽기 몇 행씩.
 한도를 넘으면 그날(한국 시간 오전 9시까지) 문의·답변 확인이 실패하고, 띵메이트는 다음 차례에 다시 묻는다.

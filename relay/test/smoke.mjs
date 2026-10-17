@@ -1,6 +1,6 @@
 // 실제 Workers 실행기(workerd, wrangler dev)로 띄워 서명 확인·KV·FormData 가 Workers 에서도 되는지 본다.
 // 디스코드에는 가짜 토큰이라 올리지 못한다(문의 올리기는 502 가 맞다). 실행: node test/smoke.mjs
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -20,13 +20,19 @@ CHANNEL_ID = "111111111111111111"
 DEV_USER_ID = "${DEV}"
 DISCORD_TOKEN = "fake"
 DISCORD_PUBLIC_KEY = "${pub}"
-[[kv_namespaces]]
+[[d1_databases]]
 binding = "DB"
-id = "smoke-local"
+database_name = "smoke"
+database_id = "smoke-local"
+migrations_dir = "../migrations"
 `);
 
 // 경로에 띄어쓰기·한글이 있어 셸 없이 wrangler 를 바로 띄운다
 const wranglerBin = join(here, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+rmSync(join(here, '.smoke-state'), { recursive: true, force: true });
+const migrate = spawnSync(process.execPath, [wranglerBin, 'd1', 'migrations', 'apply', 'smoke', '--local', '--config', join(here, 'wrangler.smoke.toml'),
+  '--persist-to', join(here, '.smoke-state')], { cwd: join(here, '..'), encoding: 'utf-8', input: 'y\n' });
+if (migrate.status !== 0) throw new Error('로컬 D1 표 만들기 실패: ' + migrate.stdout + migrate.stderr);
 const child = spawn(process.execPath, [wranglerBin, 'dev', '--config', join(here, 'wrangler.smoke.toml'), '--port', String(PORT), '--ip', '127.0.0.1',
   '--persist-to', join(here, '.smoke-state')], { cwd: join(here, '..'), env: { ...process.env, WRANGLER_SEND_METRICS: 'false' } });
 let log = '';
@@ -71,7 +77,7 @@ try {
   check(missing.type === 4 && missing.data.content.includes('찾을 수 없어요'), '없는 문의 단추 → 안내');
   const rep = await fetch(BASE + '/replies', { method: 'POST', body: JSON.stringify({ tokens: ['A'.repeat(43)] }), headers: { 'content-type': 'application/json' } });
   const repBody = await rep.json();
-  check(rep.status === 200 && repBody.tickets[0].found === false, '/replies (KV 읽기)');
+  check(rep.status === 200 && repBody.tickets[0].found === false, '/replies (D1 읽기)');
   const form = new FormData();
   form.append('payload_json', JSON.stringify({ category: 'BUG', text: '스모크 시험 문의예요', token: 'C'.repeat(43),
     info: { name: 'Player0', uuid: '?', modVersion: '0.3.2', gameVersion: '1.21.4', server: '혼자 하기', place: '모름' } }));
@@ -84,6 +90,10 @@ try {
   child.kill();
   if (process.platform === 'win32') spawn('taskkill', ['/pid', String(child.pid), '/t', '/f']);
   rmSync(join(here, 'wrangler.smoke.toml'), { force: true });
+  // 멈추는 중인 workerd 가 파일을 잡고 있으면 못 지운다(다음 실행 처음에 지운다)
+  try {
+    rmSync(join(here, '.smoke-state'), { recursive: true, force: true });
+  } catch (e) { /* 다음에 */ }
 }
 if (failures) {
   console.log(log.slice(-3000));

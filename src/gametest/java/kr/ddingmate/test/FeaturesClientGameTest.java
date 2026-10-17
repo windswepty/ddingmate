@@ -952,10 +952,28 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                     check(real[0] != null && real[0].ok(), "실제 문의를 보내지 못함: " + (real[0] == null ? "응답 없음" : real[0].message()));
                     kr.ddingmate.DdingMate.LOG.info("실제 문의 보내기 결과: {} / 문의 번호 {}", real[0].message(),
                             kr.ddingmate.inquiry.Replies.debugTickets().get(kr.ddingmate.inquiry.Replies.debugTickets().size() - 1).id);
-                    // 실제 중계에 답변을 물어본다(아직 답이 없으면 0개)
-                    kr.ddingmate.inquiry.Replies.debugPoll(c);
                 });
-                ctx.waitTicks(100);
+                // DDINGMATE_REAL_REPLY=1 이면 개발자가 디스코드에서 답할 때까지(최대 5분) 10초마다 실제 중계에 묻는다
+                if (System.getenv("DDINGMATE_REAL_REPLY") != null) {
+                    boolean[] got = new boolean[1];
+                    for (int i = 0; i < 30 && !got[0]; i++) {
+                        ctx.runOnClient(c -> {
+                            c.inGameHud.getChatHud().clear(false);
+                            kr.ddingmate.inquiry.Replies.debugPoll(c);
+                        });
+                        ctx.waitTicks(200);
+                        ctx.runOnClient(c -> {
+                            java.util.List<kr.ddingmate.inquiry.Replies.Ticket> ts = kr.ddingmate.inquiry.Replies.debugTickets();
+                            got[0] = !ts.get(ts.size() - 1).replies.isEmpty();
+                        });
+                    }
+                    ctx.takeScreenshot("features-real-reply");
+                    ctx.runOnClient(c -> {
+                        java.util.List<kr.ddingmate.inquiry.Replies.Ticket> ts = kr.ddingmate.inquiry.Replies.debugTickets();
+                        check(got[0], "5분 안에 실제 답변을 못 받음");
+                        kr.ddingmate.DdingMate.LOG.info("실제 답변 받음: {}", ts.get(ts.size() - 1).replies.get(0).text);
+                    });
+                }
             }
         }
     }

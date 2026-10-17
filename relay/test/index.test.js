@@ -1,15 +1,53 @@
 // 디스코드·KV 를 흉내 내고 Worker 를 그대로 돌려 본다: node --test test/
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { validateInquiry, realAccount, sha256, verifyDiscord, LIMITS } from '../src/index.js';
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import worker, { validateInquiry, realAccount, sha256, verifyDiscord, cleanup, LIMITS } from '../src/index.js';
 
 const DEV = '726781498606354452';
 const CHANNEL = '111111111111111111';
 
-class FakeKV {
-  constructor() { this.map = new Map(); this.writes = 0; }
-  async get(k) { return this.map.has(k) ? this.map.get(k) : null; }
-  async put(k, v) { this.writes++; this.map.set(k, String(v)); }
+// D1 흉내: 진짜 SQLite(node:sqlite)에 migrations/ 를 적용하고 D1 과 같은 모양(prepare·bind·first·all·run·batch)으로
+class FakeD1 {
+  constructor() {
+    this.db = new DatabaseSync(':memory:');
+    this.db.exec(readFileSync(new URL('../migrations/0001_init.sql', import.meta.url), 'utf-8'));
+    this.writes = 0;
+  }
+  prepare(sql) {
+    const d1 = this;
+    const make = (args) => ({
+      bind: (...a) => make(a),
+      run() {
+        if (!/^\s*select/i.test(sql)) d1.writes++;
+        return /returning/i.test(sql) ? d1.db.prepare(sql).all(...args) : d1.db.prepare(sql).run(...args);
+      },
+      async first(col) {
+        const row = /^\s*select/i.test(sql) ? d1.db.prepare(sql).get(...args) : this.run()[0];
+        if (!row) return null;
+        return col ? (row[col] ?? null) : { ...row };
+      },
+      async all() {
+        const rows = /^\s*select/i.test(sql) ? d1.db.prepare(sql).all(...args) : this.run();
+        return { results: Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [] };
+      },
+    });
+    return make([]);
+  }
+  async batch(stmts) {
+    this.db.exec('BEGIN');
+    try {
+      const out = [];
+      for (const st of stmts) out.push(await st.all());
+      this.db.exec('COMMIT');
+      return out;
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+  }
+  rows(sql, ...a) { return this.db.prepare(sql).all(...a).map((r) => ({ ...r })); }
 }
 
 let env, sent, waits, keys, nextMessage;
@@ -22,7 +60,7 @@ async function makeKeys() {
 
 beforeEach(async () => {
   keys = keys || await makeKeys();
-  env = { DB: new FakeKV(), CHANNEL_ID: CHANNEL, DEV_USER_ID: DEV, DISCORD_TOKEN: 'bot-token', DISCORD_PUBLIC_KEY: keys.publicHex };
+  env = { DB: new FakeD1(), CHANNEL_ID: CHANNEL, DEV_USER_ID: DEV, DISCORD_TOKEN: 'bot-token', DISCORD_PUBLIC_KEY: keys.publicHex };
   sent = [];
   waits = [];
   nextMessage = 1000;
@@ -86,8 +124,11 @@ test('문의: 디스코드에 임베드와 [답변 보내기] 단추로 올리�
   assert.equal(m.body.embeds[0].footer.text, `문의 번호 ${r.body.id}`);
   assert.equal(m.body.components[0].components[0].custom_id, `reply:${r.body.id}`);
   const hash = await sha256(TOKEN);
-  assert.ok(env.DB.map.has(`t:${hash}`));
-  assert.ok(![...env.DB.map.values()].some((v) => v.includes(TOKEN)), '번호표 원문이 저장됨');
+  const rows = env.DB.rows('SELECT * FROM tickets');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].token_hash, hash);
+  assert.equal(rows[0].message_id, '1000');
+  assert.ok(!JSON.stringify(env.DB.rows('SELECT * FROM tickets')).includes(TOKEN), '번호표 원문이 저장됨');
 });
 
 test('문의: 이미지 첨부는 image1.png 로 바꿔 올리고 첫 장을 임베드 그림으로', async () => {
@@ -117,7 +158,7 @@ test('문의: 잘못된 내용·도배는 막는다', async () => {
 
 test('문의: 하루 전체 한도', async () => {
   const day = new Date().toISOString().slice(0, 10);
-  env.DB.map.set(`ad:${day}`, String(LIMITS.globalDaily));
+  env.DB.db.prepare('INSERT INTO limits VALUES (?, ?, ?)').run(`day:${day}`, LIMITS.globalDaily, Date.now() + 3600_000);
   assert.equal((await post('/inquiry', inquiryBody())).status, 429);
   assert.equal(sent.length, 0);
 });
@@ -177,6 +218,46 @@ test('답변: 개발자만, 단추 → 입력창 → 저장 → 채널에 "아�
   assert.equal(again.body.tickets[0].replies.length, 1);
   assert.equal(sent.length, 0);
   assert.equal(env.DB.writes, writes, '이미 읽은 답변인데 또 저장함');
+});
+
+test('답변: 디스코드가 같은 제출을 두 번 보내도 한 번만, 연달아 보낸 답변은 #1 #2 로 다 남는다', async () => {
+  const id = (await post('/inquiry', inquiryBody())).body.id;
+  sent.length = 0;
+  const submit = (iid, value) => signed({ id: iid, type: 5, user: { id: DEV }, data: { custom_id: `send:${id}`, components: [{ type: 1, components: [{ type: 4, custom_id: 'text', value }] }] } });
+  const [a, b] = await Promise.all([submit('9001', '첫 답변'), submit('9001', '첫 답변')]);
+  const c = await submit('9002', '두 번째 답변');
+  await settle();
+  const msgs = [a, b, c].map((r) => r.body.data.content);
+  assert.equal(msgs.filter((m) => m.startsWith('답변을 저장했어요')).length, 2);
+  assert.equal(msgs.filter((m) => m.startsWith('이미 저장한')).length, 1);
+  assert.deepEqual(env.DB.rows('SELECT n, text FROM replies ORDER BY n'), [{ n: 1, text: '첫 답변' }, { n: 2, text: '두 번째 답변' }]);
+  assert.equal(sent.filter((s) => s.method === 'POST').length, 2, '채널 기록이 답변 수와 다름');
+  const got = await post('/replies', { tokens: [TOKEN] });
+  assert.deepEqual(got.body.tickets[0].replies.map((r) => r.n), [1, 2]);
+});
+
+test('읽음이 채널 기록보다 먼저 와도 기록은 하나, "읽음"으로 고쳐진다', async () => {
+  const id = (await post('/inquiry', inquiryBody())).body.id;
+  sent.length = 0;
+  await signed({ id: '7001', type: 5, user: { id: DEV }, data: { custom_id: `send:${id}`, components: [{ type: 1, components: [{ type: 4, custom_id: 'text', value: '빠른 답변' }] }] } });
+  // 채널 기록(waitUntil)이 끝나기 전에 띵메이트가 받아 감
+  const pending = waits.splice(0);
+  await post('/replies', { tokens: [TOKEN] });
+  await Promise.all(pending);
+  await settle();
+  const posts = sent.filter((s) => s.method === 'POST');
+  const patches = sent.filter((s) => s.method === 'PATCH');
+  assert.equal(posts.length, 1);
+  assert.equal(patches.length, 1);
+  assert.match(patches[0].body.content, /✅ 읽음/);
+});
+
+test('90일 지난 문의·답변과 끝난 도배 막기 기록은 지운다', async () => {
+  await post('/inquiry', inquiryBody());
+  const later = Date.now() + (LIMITS.ttlSec + 60) * 1000;
+  await cleanup(env, later);
+  assert.equal(env.DB.rows('SELECT * FROM tickets').length, 0);
+  assert.equal(env.DB.rows('SELECT * FROM limits').length, 0);
 });
 
 test('답변 받기: 잘못된 요청은 거절', async () => {

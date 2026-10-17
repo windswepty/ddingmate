@@ -14,7 +14,17 @@ DISCORD_PUBLIC_KEY = "f1d6305d8afacd52eee538d7862a3d71bc7f2e4581a77860d6cb54732f
 # 봇 토큰은 여기 적지 말고 비밀 값으로(터미널에 직접 붙여 넣기):
 #   npx wrangler secret put DISCORD_TOKEN
 
-[[kv_namespaces]]
+# 문의·답변 저장(쓰자마자 정확히 읽히는 D1). 표는 migrations/
+[[d1_databases]]
 binding = "DB"
-# npx wrangler kv namespace create DB 로 만든 id
-id = "ffb33da2347c44a0a5051ec7221b4872"
+database_name = "ddingmate-relay"
+database_id = "dc5228ea-1ea1-400b-a6f4-85c5b9068af0"
+migrations_dir = "migrations"
+
+# 하루 한 번(한국 시간 새벽 4시) 90일 지난 기록 지우기
+[triggers]
+crons = ["0 19 * * *"]
+
+# 대시보드에서 오류 기록을 볼 수 있게
+[observability]
+enabled = true
