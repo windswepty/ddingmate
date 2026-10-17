@@ -36,7 +36,7 @@
 ## 시험
 
 ```
-npm test              # 디스코드·KV 흉내로 전체 흐름
+npm test              # 디스코드 흉내 + 진짜 SQLite(D1 흉내)로 전체 흐름
 node test/smoke.mjs   # 실제 Workers 실행기(wrangler dev)로 서명·D1·첨부
 ```
 
