@@ -121,8 +121,66 @@ public final class Inquiry {
         return i.name() + " · 띵메이트 " + i.modVersion() + " · 마인크래프트 " + i.gameVersion() + " · " + i.server() + " · " + i.place();
     }
 
+    // ---------------------------------------------------------------- 이미지 첨부
+
+    public static final int MAX_FILES = 3;
+    /** 디스코드 웹후크 첨부 한도(서버 부스트 없는 기본 8MB)에 맞춘 한 장 크기 */
+    public static final long MAX_FILE_BYTES = 8L * 1024 * 1024;
+    private static final java.util.Set<String> IMAGE_EXT = java.util.Set.of("png", "jpg", "jpeg", "gif", "webp");
+
+    private static String ext(java.nio.file.Path p) {
+        String n = p.getFileName().toString();
+        int dot = n.lastIndexOf('.');
+        return dot < 0 ? "" : n.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** 첨부할 수 있는 이미지인가. 괜찮으면 null, 아니면 알려 줄 말 */
+    public static String checkImage(java.nio.file.Path p) {
+        try {
+            if (p == null || !java.nio.file.Files.isRegularFile(p)) return "파일을 찾을 수 없어요";
+            if (!IMAGE_EXT.contains(ext(p))) return "이미지(png·jpg·gif·webp)만 첨부할 수 있어요";
+            if (java.nio.file.Files.size(p) > MAX_FILE_BYTES) return p.getFileName() + " 가 8MB 보다 커요";
+            return null;
+        } catch (java.io.IOException e) {
+            return "파일을 읽지 못했어요";
+        }
+    }
+
+    /**
+     * 이미지 고르기: 윈도우 파일 고르기 창을 스크린샷 폴더에서 연다(여러 장 고르기 가능). 고르는 동안 게임이 멈추지 않게 따로 띄우고
+     * (맥은 화면 스레드에서만 띄울 수 있어 그대로), 고른 파일은 게임 스레드에서 done 으로 넘긴다. 취소하면 빈 목록
+     */
+    public static void pickImages(MinecraftClient client, Consumer<java.util.List<java.nio.file.Path>> done) {
+        Runnable ask = () -> {
+            java.util.List<java.nio.file.Path> out = new java.util.ArrayList<>();
+            try (org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+                org.lwjgl.PointerBuffer filters = stack.mallocPointer(5);
+                for (String f : new String[]{"*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"}) filters.put(stack.UTF8(f));
+                filters.flip();
+                java.nio.file.Path shots = client.runDirectory.toPath().resolve("screenshots");
+                String start = (java.nio.file.Files.isDirectory(shots) ? shots : client.runDirectory.toPath()).toAbsolutePath() + java.io.File.separator;
+                String picked = org.lwjgl.util.tinyfd.TinyFileDialogs.tinyfd_openFileDialog("문의에 첨부할 이미지", start, filters, "이미지", true);
+                if (picked != null) for (String f : picked.split("\\|")) if (!f.isBlank()) out.add(java.nio.file.Path.of(f));
+            } catch (Throwable t) {
+                DdingMate.LOG.warn("이미지 고르기 창을 열지 못했어요", t);
+            }
+            client.execute(() -> done.accept(out));
+        };
+        if (MinecraftClient.IS_SYSTEM_MAC) ask.run();
+        else {
+            Thread t = new Thread(ask, "ddingmate-image-picker");
+            t.setDaemon(true);
+            t.start();
+        }
+    }
+
     /** 디스코드 웹후크로 보낼 JSON. 멘션(@everyone 등)은 울리지 않게 막는다 */
     public static String payload(Category category, String text, Info i) {
+        return payload(category, text, i, java.util.List.of());
+    }
+
+    /** files: 첨부할 이름(image1.png …). 첫 장은 메시지 안에 크게 보이게 */
+    public static String payload(Category category, String text, Info i, java.util.List<String> files) {
         JsonObject root = new JsonObject();
         root.addProperty("username", "띵메이트 문의");
         JsonObject mentions = new JsonObject();
@@ -133,6 +191,11 @@ public final class Inquiry {
         embed.addProperty("description", cut(text.strip(), 4000));
         embed.addProperty("color", category.color);
         embed.addProperty("timestamp", Instant.now().toString());
+        if (!files.isEmpty()) {
+            JsonObject image = new JsonObject();
+            image.addProperty("url", "attachment://" + files.get(0));
+            embed.add("image", image);
+        }
         JsonArray fields = new JsonArray();
         fields.add(field("플레이어", i.name() + "\n" + i.uuid()
                 + (realAccount(i.uuid()) ? "\n[계정 확인](https://namemc.com/profile/" + i.uuid() + ")" : "\n오프라인 계정(확인 불가)")));
@@ -174,7 +237,14 @@ public final class Inquiry {
      * 내용이 맞지 않거나 쉬는 시간 중이면 바로 실패로 알려 준다
      */
     public static void send(MinecraftClient client, Category category, String text, Consumer<Result> done) {
+        send(client, category, text, java.util.List.of(), done);
+    }
+
+    public static void send(MinecraftClient client, Category category, String text, java.util.List<java.nio.file.Path> images,
+                            Consumer<Result> done) {
         String problem = validate(text);
+        if (problem == null && images.size() > MAX_FILES) problem = "이미지는 " + MAX_FILES + "장까지 첨부할 수 있어요";
+        if (problem == null) for (java.nio.file.Path p : images) if ((problem = checkImage(p)) != null) break;
         if (problem != null) {
             done.accept(new Result(false, problem));
             return;
@@ -187,21 +257,63 @@ public final class Inquiry {
             done.accept(new Result(false, sending ? "보내는 중이에요" : "문의 받을 곳이 아직 정해지지 않았어요"));
             return;
         }
-        String body = payload(category, text, info(client));
+        // 첨부 이름은 image1.png 처럼(원래 파일 이름·폴더 경로는 보내지 않는다)
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (int k = 0; k < images.size(); k++) names.add("image" + (k + 1) + "." + ext(images.get(k)));
+        String body = payload(category, text, info(client), names);
         sending = true;
         if (testSender != null) {
+            debugLastFiles = java.util.List.copyOf(names);
             finish(client, testSender.apply(body), null, done);
             return;
         }
-        HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-        HttpRequest req = HttpRequest.newBuilder(URI.create(endpoint()))
-                .timeout(Duration.ofSeconds(15))
-                .header("Content-Type", "application/json; charset=utf-8")
-                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
-                .build();
-        http.sendAsync(req, HttpResponse.BodyHandlers.discarding())
-                .whenComplete((res, err) -> client.execute(() -> finish(client, res == null ? -1 : res.statusCode(), err, done)));
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try {
+                return images.isEmpty() ? null : multipart(body, images, names);
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }).thenCompose(multi -> {
+            HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(endpoint())).timeout(Duration.ofSeconds(images.isEmpty() ? 15 : 60));
+            if (multi == null) {
+                b.header("Content-Type", "application/json; charset=utf-8").POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+            } else {
+                b.header("Content-Type", "multipart/form-data; boundary=" + BOUNDARY).POST(HttpRequest.BodyPublishers.ofByteArray(multi));
+            }
+            return HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+                    .sendAsync(b.build(), HttpResponse.BodyHandlers.discarding());
+        }).whenComplete((res, err) -> client.execute(() -> finish(client, res == null ? -1 : res.statusCode(), err, done)));
     }
+
+    private static final String BOUNDARY = "ddingmate-" + Long.toHexString(Double.doubleToLongBits(Math.random()));
+
+    /** 디스코드 웹후크 파일 첨부: payload_json + files[n] */
+    static byte[] multipart(String json, java.util.List<java.nio.file.Path> images, java.util.List<String> names) throws java.io.IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        String head = "--" + BOUNDARY + "\r\nContent-Disposition: form-data; name=\"payload_json\"\r\n"
+                + "Content-Type: application/json; charset=utf-8\r\n\r\n";
+        out.write(head.getBytes(StandardCharsets.UTF_8));
+        out.write(json.getBytes(StandardCharsets.UTF_8));
+        out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+        for (int k = 0; k < images.size(); k++) {
+            String type = switch (ext(images.get(k))) {
+                case "png" -> "image/png";
+                case "gif" -> "image/gif";
+                case "webp" -> "image/webp";
+                default -> "image/jpeg";
+            };
+            String part = "--" + BOUNDARY + "\r\nContent-Disposition: form-data; name=\"files[" + k + "]\"; filename=\"" + names.get(k) + "\"\r\n"
+                    + "Content-Type: " + type + "\r\n\r\n";
+            out.write(part.getBytes(StandardCharsets.UTF_8));
+            out.write(java.nio.file.Files.readAllBytes(images.get(k)));
+            out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+        }
+        out.write(("--" + BOUNDARY + "--\r\n").getBytes(StandardCharsets.UTF_8));
+        return out.toByteArray();
+    }
+
+    /** 시험용: 마지막으로 보낸(시험) 첨부 이름 */
+    public static java.util.List<String> debugLastFiles = java.util.List.of();
 
     private static void finish(MinecraftClient client, int status, Throwable err, Consumer<Result> done) {
         sending = false;

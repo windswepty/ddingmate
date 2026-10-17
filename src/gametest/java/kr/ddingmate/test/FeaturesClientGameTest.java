@@ -783,6 +783,39 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 // 시험 계정(오프라인 UUID)은 NameMC 링크 대신 "확인 불가"(정품 계정만 링크)
                 check(fields.contains("오프라인 계정(확인 불가)") && !fields.contains("namemc.com"), "오프라인 계정에 NameMC 링크를 붙임: " + fields);
                 check(DdingMateScreen.inquiryStatus().contains("보냈어요"), "보낸 뒤 안내가 다름: " + DdingMateScreen.inquiryStatus());
+                // 이미지 첨부: 이미지가 아닌 파일은 빼고, 3장까지. 보내면 첫 장이 메시지 안에 크게, 원래 파일 이름은 안 보낸다
+                try {
+                    java.nio.file.Path dir = c.runDirectory.toPath().resolve("ddingmate-test-images");
+                    java.nio.file.Files.createDirectories(dir);
+                    java.util.List<java.nio.file.Path> pngs = new java.util.ArrayList<>();
+                    for (int k = 1; k <= 4; k++) {
+                        java.nio.file.Path f = dir.resolve("내 스크린샷 " + k + ".png");
+                        java.nio.file.Files.write(f, new byte[]{(byte) 0x89, 'P', 'N', 'G'});
+                        pngs.add(f);
+                    }
+                    java.nio.file.Path txt = dir.resolve("메모.txt");
+                    java.nio.file.Files.writeString(txt, "글");
+                    s.debugAttach(List.of(txt));
+                    check(DdingMateScreen.inquiryImageCount() == 0 && DdingMateScreen.inquiryStatus().contains("이미지"), "이미지가 아닌 파일을 첨부함");
+                    s.debugAttach(pngs);
+                    check(DdingMateScreen.inquiryImageCount() == 3 && DdingMateScreen.inquiryStatus().contains("3장까지"), "이미지를 3장 넘게 첨부함");
+                } catch (java.io.IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("features-5c-inquiry-attached");
+            ctx.runOnClient(c -> {
+                DdingMateScreen s = (DdingMateScreen) c.currentScreen;
+                kr.ddingmate.inquiry.Inquiry.debugSender(body -> {
+                    sent[0] = body;
+                    return 204;
+                });
+                s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.TEXT, "첨부한 스크린샷의 글자가 잘려요");
+                check(kr.ddingmate.inquiry.Inquiry.debugLastFiles.equals(List.of("image1.png", "image2.png", "image3.png"))
+                        && sent[0].contains("attachment://image1.png") && !sent[0].contains("내 스크린샷"),
+                        "첨부 이미지 이름·메시지 안 그림이 다름: " + kr.ddingmate.inquiry.Inquiry.debugLastFiles + " / " + sent[0]);
+                check(DdingMateScreen.inquiryImageCount() == 0, "보낸 뒤에도 첨부가 남음");
                 // 1분 안에 또 누르면 보내지 않는다(도배 막기)
                 sent[0] = null;
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.FEATURE, "기능 하나 더 부탁해요");
@@ -800,8 +833,15 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.inquiry.Inquiry.Result[] real = new kr.ddingmate.inquiry.Inquiry.Result[1];
                 ctx.runOnClient(c -> {
                     check(kr.ddingmate.inquiry.Inquiry.endpoint() != null, "inquiry.properties 의 보낼 곳을 못 읽음");
+                    // 이 시험에서 찍은 스크린샷 한 장을 함께 보낸다(실제 첨부 경로 확인)
+                    java.util.List<java.nio.file.Path> shot = new java.util.ArrayList<>();
+                    try (var files = java.nio.file.Files.list(c.runDirectory.toPath().resolve("screenshots"))) {
+                        files.filter(f -> f.toString().endsWith(".png")).sorted().limit(1).forEach(shot::add);
+                    } catch (java.io.IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
                     kr.ddingmate.inquiry.Inquiry.send(c, kr.ddingmate.inquiry.Inquiry.Category.OTHER,
-                            "[테스트] 띵메이트 문의 연결 확인이에요. 이 메시지는 개발 중 자동 시험에서 보냈어요.", r -> real[0] = r);
+                            "[테스트] 띵메이트 문의 이미지 첨부 확인이에요. 이 메시지는 개발 중 자동 시험에서 보냈어요.", shot, r -> real[0] = r);
                 });
                 for (int i = 0; i < 30 && real[0] == null; i++) ctx.waitTicks(20);
                 ctx.runOnClient(c -> {

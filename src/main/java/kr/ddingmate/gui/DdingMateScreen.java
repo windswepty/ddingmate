@@ -407,9 +407,22 @@ public class DdingMateScreen extends Screen {
 
     private void buildInquiry() {
         list.guide("버그·건의를 개발자에게 바로 보내요. 닉네임·UUID·띵메이트·마인크래프트 버전·접속한 서버와 지역이 함께 가요(게임 서버로는 안 보내요).");
-        list.single(new Widgets.Cycle<>(rowWidth(), "분류", List.of(kr.ddingmate.inquiry.Inquiry.Category.values()), inquiryCategory,
-                c -> c.label, c -> inquiryCategory = c));
+        // 분류는 한 줄에 다 보이게 단추로 고른다(고른 것은 파랗게)
+        kr.ddingmate.inquiry.Inquiry.Category[] cats = kr.ddingmate.inquiry.Inquiry.Category.values();
+        int bw = (rowWidth() - GAP * (cats.length - 1)) / cats.length;
+        ClickableWidget[] buttons = new ClickableWidget[cats.length];
+        for (int i = 0; i < cats.length; i++) {
+            kr.ddingmate.inquiry.Inquiry.Category c = cats[i];
+            buttons[i] = new Widgets.Button(bw, 20, Text.literal(c.label), c == inquiryCategory, x -> {
+                inquiryCategory = c;
+                rebuild();
+            });
+        }
+        list.row(buttons);
     }
+
+    /** 첨부할 이미지(창을 닫았다 열어도 남게) */
+    private static final List<java.nio.file.Path> inquiryImages = new ArrayList<>();
 
     private void addInquiryWidgets(int top) {
         int bottom = cy + ch - 4;
@@ -431,6 +444,63 @@ public class DdingMateScreen extends Screen {
                 + to)));
         inquirySend.active = kr.ddingmate.inquiry.Inquiry.available() && client != null && client.player != null;
         addDrawableChild(inquirySend);
+        // 이미지 첨부: 윈도우 파일 고르기 창(스크린샷 폴더부터), 3장까지. 첨부한 게 있으면 [✕]로 비운다
+        int ax = cx + 4 + 120 + 4;
+        Widgets.Button attach = new Widgets.Button(104, 20,
+                Text.literal("이미지 첨부 " + inquiryImages.size() + "/" + kr.ddingmate.inquiry.Inquiry.MAX_FILES), false, b -> pickInquiryImages());
+        attach.setX(ax);
+        attach.setY(sendY);
+        attach.setTooltip(Tooltip.of(Text.literal(inquiryImages.isEmpty()
+                ? "스크린샷(F2) 같은 이미지를 " + kr.ddingmate.inquiry.Inquiry.MAX_FILES + "장까지 함께 보내요. 한 장에 8MB 까지"
+                : "첨부한 이미지:\n" + String.join("\n", inquiryImages.stream().map(x -> x.getFileName().toString()).toList()))));
+        attach.active = inquiryImages.size() < kr.ddingmate.inquiry.Inquiry.MAX_FILES;
+        addDrawableChild(attach);
+        if (!inquiryImages.isEmpty()) {
+            Widgets.Button clear = new Widgets.Button(20, 20, Text.literal("✕"), false, b -> {
+                inquiryImages.clear();
+                inquiryStatus = "";
+                rebuild();
+            });
+            clear.setX(ax + 104 + 4);
+            clear.setY(sendY);
+            clear.setTooltip(Tooltip.of(Text.literal("첨부한 이미지 모두 빼기")));
+            addDrawableChild(clear);
+        }
+    }
+
+    private void pickInquiryImages() {
+        if (client == null) return;
+        inquiryStatus = "이미지 고르는 중…(열린 창에서 골라 주세요)";
+        inquiryOk = true;
+        kr.ddingmate.inquiry.Inquiry.pickImages(client, picked -> addInquiryImages(picked));
+    }
+
+    /** 고른 이미지를 붙인다(이미지가 아니거나 너무 크면 빼고 이유를 알려 준다) */
+    private void addInquiryImages(List<java.nio.file.Path> picked) {
+        String problem = null;
+        for (java.nio.file.Path p : picked) {
+            if (inquiryImages.size() >= kr.ddingmate.inquiry.Inquiry.MAX_FILES) {
+                problem = "이미지는 " + kr.ddingmate.inquiry.Inquiry.MAX_FILES + "장까지 첨부할 수 있어요";
+                break;
+            }
+            String bad = kr.ddingmate.inquiry.Inquiry.checkImage(p);
+            if (bad != null) problem = bad;
+            else if (!inquiryImages.contains(p)) inquiryImages.add(p);
+        }
+        inquiryStatus = problem != null ? problem : picked.isEmpty() ? "" : "이미지 " + inquiryImages.size() + "장을 첨부했어요";
+        inquiryOk = problem == null;
+        // 고르는 동안 띵메이트 창을 닫았으면 다시 그리지 않는다(다음에 열 때 그대로 보인다)
+        if (client != null && client.currentScreen == this) rebuild();
+    }
+
+    /** 시험용: 이미지 고르기 창 없이 고른 것처럼 */
+    public void debugAttach(List<java.nio.file.Path> picked) {
+        addInquiryImages(picked);
+    }
+
+    /** 시험용 */
+    public static int inquiryImageCount() {
+        return inquiryImages.size();
     }
 
     private void sendInquiry() {
@@ -439,12 +509,16 @@ public class DdingMateScreen extends Screen {
         inquiryStatus = "보내는 중…";
         inquiryOk = true;
         if (inquirySend != null) inquirySend.active = false;
-        kr.ddingmate.inquiry.Inquiry.send(client, inquiryCategory, text, r -> {
+        kr.ddingmate.inquiry.Inquiry.send(client, inquiryCategory, text, List.copyOf(inquiryImages), r -> {
             inquiryStatus = r.message();
             inquiryOk = r.ok();
             if (r.ok()) {
                 inquiryDraft = "";
                 if (inquiryBox != null) inquiryBox.setText("");
+                if (!inquiryImages.isEmpty()) {
+                    inquiryImages.clear();
+                    if (client != null && client.currentScreen == this) rebuild();
+                }
             }
             if (inquirySend != null) inquirySend.active = kr.ddingmate.inquiry.Inquiry.available();
         });
