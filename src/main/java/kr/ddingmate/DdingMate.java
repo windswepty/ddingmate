@@ -129,6 +129,7 @@ public final class DdingMate implements ClientModInitializer {
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             BagTracker.onOverlay(message.getString()); // "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" → 저장소 재고
             if (overlay) ServerHud.onOverlay(message.getString()); // 채팅으로 온 액션바: 잠수 채널 알아보기(일반 채팅은 안 씀)
+            kr.ddingmate.expert.OceanOrder.onMessage(message.getString()); // 오션오더 도착·성공·실패(채팅·액션바)
             if (!overlay) {
                 KeywordWatcher.onMessage(message, null);
                 TodoList.onChat(message.getString()); // 할 일 "자동으로 세기 문구"
@@ -238,6 +239,7 @@ public final class DdingMate implements ClientModInitializer {
             kr.ddingmate.expert.ShopPrices.scan(client); // 로니·샤키·포스·픽스·카이 상점 창의 판매품 가격
             kr.ddingmate.expert.PriceSkills.scan(client); // /전문가 스킬 창의 판매가 스킬 증가율
             kr.ddingmate.craft.FacilityPanel.scan(client); // 제작 시설 창: 가진 재료로 만들 수 있는 레시피
+            kr.ddingmate.expert.PetFish.scan(client); // 어항 창의 반려어 허기·기분·활력·성장도
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
             if (client.world != null) kr.ddingmate.counter.IconCache.tick(client); // 열어 본 창의 아이템 모양을 기억
@@ -251,6 +253,9 @@ public final class DdingMate implements ClientModInitializer {
             Notifier.schedule(a);
         }
         TodoList.tick(now);
+        long ms = System.currentTimeMillis();
+        kr.ddingmate.expert.PetFish.tick(ms);
+        kr.ddingmate.expert.OceanOrder.tick(ms);
     }
 
     public static DdingMateConfig config() {

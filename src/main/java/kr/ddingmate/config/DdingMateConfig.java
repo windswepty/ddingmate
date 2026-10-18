@@ -169,6 +169,10 @@ public final class DdingMateConfig {
         public boolean cookingPanel = true;
         /** 판매품 상점(로니·샤키·포스·픽스·카이) 창 옆에 보유 판매품과 팔면 받는 금액 판 */
         public boolean shopPanel = true;
+        /** 반려어(수족관) 밥 타이머: 어항 창의 허기·기분·활력을 읽어 밥 줄 때·폐사 위험·다 컸을 때 알림 */
+        public boolean petFish = true;
+        /** 오션오더 타이머: 도착하면 5분 남은 시간과 오늘 받은 횟수(10번까지) */
+        public boolean oceanOrder = true;
         /** 판매가 전문가 스킬(이름 → 지금 증가율 %). /전문가 스킬 창에서 자동으로 읽음 */
         public Map<String, Double> priceSkills = new LinkedHashMap<>();
     }

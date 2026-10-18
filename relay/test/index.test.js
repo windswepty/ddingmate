@@ -204,6 +204,7 @@ test('답변: 개발자만, 단추 → 입력창 → 저장 → 채널에 "아�
   assert.equal(got.body.tickets[0].replies[0].text, '고쳤어요!\n다음 버전에서 확인해 주세요');
   assert.equal(got.body.tickets[0].replies[0].n, 1);
   assert.equal(got.body.tickets[1].found, false);
+  assert.equal(got.body.pollSec, 120, '띵메이트에 확인 간격을 안 알려 줌');
   await settle();
   const patch = sent.find((s) => s.method === 'PATCH');
   assert.ok(patch, '읽음 표시를 안 함');

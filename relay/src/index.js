@@ -273,7 +273,8 @@ async function replies(request, env, ctx) {
     }
   }
   if (marks.length) ctx.waitUntil(Promise.all(marks));
-  return json({ tickets: out });
+  // 띵메이트가 다음에 물을 간격(초). 무료 한도에 가까워지면 wrangler.toml 의 POLL_SEC 만 늘려 배포하면 된다
+  return json({ tickets: out, pollSec: Number(env.POLL_SEC) || 120 });
 }
 
 // ---------------------------------------------------------------- 도움 함수

@@ -59,6 +59,15 @@ public final class Replies {
 
     static final long WATCH_MS = 30L * 24 * 3600 * 1000;
     static final long POLL_MS = 10 * 60 * 1000;
+    /**
+     * 보낸 지 하루 안 된 문의가 있으면 더 자주 묻는다(10분은 답장이 늦게 온다는 의견, 2026-10-18). 중계가 응답에 pollSec 을 주면
+     * 그 값을 쓴다(1~30분 사이) — 무료 한도에 가까워지면 모드를 다시 배포하지 않고 중계에서 늦출 수 있게
+     */
+    static final long FRESH_MS = 24L * 3600 * 1000;
+    static long fastPollMs = 2 * 60 * 1000;
+    /** 문의 탭을 열 때 바로 묻되, 너무 자주는 말고 */
+    static final long OPEN_POLL_GAP_MS = 30_000;
+    private static long lastPollAt;
     /** 접속하자마자 묻지 않고 조금 기다린다(리소스팩 받는 중) */
     static final long FIRST_DELAY_MS = 5_000;
     static final int MAX_TICKETS = 20;
@@ -131,10 +140,23 @@ public final class Replies {
         nextPollAt = Long.MAX_VALUE;
     }
 
+    /** 다음에 물을 때까지: 하루 안에 보낸 문의가 있으면 짧게 */
+    static long interval() {
+        long now = System.currentTimeMillis();
+        for (Ticket t : watched()) if (now - t.sentAt < FRESH_MS) return fastPollMs;
+        return POLL_MS;
+    }
+
     /** 매 틱: 물을 때가 됐으면 묻는다 */
     public static void tick(MinecraftClient client) {
         if (client.player == null || polling || System.currentTimeMillis() < nextPollAt) return;
-        nextPollAt = System.currentTimeMillis() + POLL_MS;
+        nextPollAt = System.currentTimeMillis() + interval();
+        poll(client);
+    }
+
+    /** 문의 탭을 열었을 때: 기다리는 답이 있으면 바로 한 번 묻는다(30초에 한 번까지) */
+    public static void onInquiryTabOpened(MinecraftClient client) {
+        if (client.player == null || polling || System.currentTimeMillis() - lastPollAt < OPEN_POLL_GAP_MS) return;
         poll(client);
     }
 
@@ -146,6 +168,7 @@ public final class Replies {
         for (Ticket t : asked) tokens.add(t.token);
         root.add("tokens", tokens);
         String body = root.toString();
+        lastPollAt = System.currentTimeMillis();
         if (Inquiry.testSender != null) {
             Inquiry.Http res = Inquiry.testSender.apply("/replies", body);
             if (res != null && res.status() == 200) apply(asked, res.body());
@@ -170,7 +193,9 @@ public final class Replies {
         int shown = 0;
         boolean changed = false;
         try {
-            JsonArray list = JsonParser.parseString(json).getAsJsonObject().getAsJsonArray("tickets");
+            JsonObject top = JsonParser.parseString(json).getAsJsonObject();
+            if (top.has("pollSec")) fastPollMs = Math.max(60, Math.min(1800, top.get("pollSec").getAsLong())) * 1000;
+            JsonArray list = top.getAsJsonArray("tickets");
             for (int i = 0; i < Math.min(asked.size(), list.size()); i++) {
                 Ticket t = asked.get(i);
                 JsonObject o = list.get(i).getAsJsonObject();
@@ -223,5 +248,14 @@ public final class Replies {
 
     public static long debugNextPollAt() {
         return nextPollAt;
+    }
+
+    public static long debugInterval() {
+        return interval();
+    }
+
+    public static void debugFastPoll(long ms) {
+        fastPollMs = ms;
+        lastPollAt = 0;
     }
 }

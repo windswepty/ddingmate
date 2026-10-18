@@ -92,6 +92,7 @@ public final class ScheduleHud {
             Entry e = cached.get(i);
             // 제작 줄: 다 됨 초록, 진행 중 파랑(곧 끝나도 빨갛게 재촉하지 않는다), 시간 모름 흐리게
             int color = e.color() == Theme.GREEN ? Theme.green(dark) : e.color() == Theme.TEXT_SOFT ? Theme.soft(dark)
+                    : e.color() == Theme.RED ? Theme.red(dark)
                     : e.color() == Theme.BLUE ? Theme.blue(dark)
                     : e.color() != 0 ? Theme.gold(dark)
                     : e.minutes() < 10 ? Theme.red(dark) : e.minutes() < 60 ? Theme.gold(dark) : Theme.blue(dark);
@@ -168,6 +169,19 @@ public final class ScheduleHud {
             String where = a == null ? "지금 채널" : a.label + " " + kr.ddingmate.game.ServerHud.channel() + "채널";
             out.add(0, new Entry(where + " 재시작", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초", sec / 60, 0));
         }
+        // 오션오더: 5분 안에 끝나야 해서 맨 위에
+        long nowMs0 = System.currentTimeMillis();
+        if (cfg.expert.oceanOrder && kr.ddingmate.expert.OceanOrder.active(nowMs0)) {
+            out.add(0, new Entry(kr.ddingmate.expert.OceanOrder.label(), kr.ddingmate.expert.OceanOrder.remainingText(nowMs0),
+                    0, Theme.GOLD));
+        }
+        // 반려어: 밥 줄 때까지
+        kr.ddingmate.expert.PetFish.Fish fish = cfg.expert.petFish ? kr.ddingmate.expert.PetFish.current() : null;
+        if (fish != null) {
+            int lv = kr.ddingmate.expert.PetFish.level(fish, nowMs0);
+            out.add(new Entry(kr.ddingmate.expert.PetFish.label(fish), kr.ddingmate.expert.PetFish.status(fish, nowMs0),
+                    lv >= 2 ? 0 : Long.MAX_VALUE - 3, lv >= 3 ? Theme.RED : lv == 2 ? Theme.GOLD : lv == 1 ? Theme.GREEN : Theme.BLUE));
+        }
         // 제작 중인 아이템: 완료가 가까운 순서로
         if (cfg.craft.enabled && cfg.craft.showInHud) {
             long nowMs = System.currentTimeMillis();
@@ -177,7 +191,7 @@ public final class ScheduleHud {
             int more = Math.max(0, groups.size() - MAX_CRAFT_ROWS);
             for (kr.ddingmate.craft.CraftTimers.Group g : groups.subList(0, groups.size() - more)) {
                 long mins = g.unknown() ? Long.MAX_VALUE - 1 : Math.max(0, (g.endsAt() - nowMs) / 60000);
-                out.add(new Entry(g.label(), kr.ddingmate.craft.CraftTimers.remainingText(g, nowMs),
+                out.add(new Entry(kr.ddingmate.craft.CraftTimers.displayLabel(g, nowMs), kr.ddingmate.craft.CraftTimers.remainingText(g, nowMs),
                         mins, g.unknown() || g.estimated() ? Theme.TEXT_SOFT : g.done() ? Theme.GREEN : Theme.BLUE));
             }
             if (more > 0) out.add(new Entry("그 밖의 제작 " + more + "개", "/띵메이트 홈", Long.MAX_VALUE - 2, Theme.TEXT_SOFT));

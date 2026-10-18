@@ -48,6 +48,7 @@ public final class ServerHud {
     public static void tick(MinecraftClient client) {
         if (client.inGameHud == null || client.player == null) return;
         for (ClientBossBar bar : ((BossBarHudAccessor) client.inGameHud.getBossBarHud()).ddingmate$bossBars().values()) {
+            kr.ddingmate.expert.OceanOrder.onMessage(bar.getName().getString()); // 오션오더 남은 시간이 보스바로 올 수도
             Matcher m = CHANNEL.matcher(ItemKeys.stripGlyphs(bar.getName().getString()));
             if (!m.find()) continue;
             Area a = areaOf(m.group(1));

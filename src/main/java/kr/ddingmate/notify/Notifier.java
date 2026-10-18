@@ -60,6 +60,12 @@ public final class Notifier {
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);
     }
 
+    /** 형광 광산 골렘 채광이 끝났을 때 */
+    public static void mineDone(String golem) {
+        notify("제작", "형광 광산 채광 완료", (golem == null || golem.isEmpty() ? "" : golem + " 골렘 · ") + "광물을 수령할 수 있어요",
+                SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.AMETHYST_SHARD), Theme.GREEN, false);
+    }
+
     public static void voyageDone(String island) {
         notify("제작", "항해 완료: " + island, "항해선이 돌아왔어요 · 항해 창에서 보상을 받으세요",
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);
@@ -89,6 +95,18 @@ public final class Notifier {
     public static void playtimeReward(int hours, String reward) {
         notify("접속", "접속 " + hours + "시간 달성!", reward + " · /접속시간 에서 받으세요",
                 SoundEvents.ENTITY_PLAYER_LEVELUP, new ItemStack(Items.NETHER_STAR), Theme.GOLD, true);
+    }
+
+    /** 반려어 밥·폐사 위험·다 큼. 놓치면 폐사할 수 있어서 채팅 알림을 꺼 두었어도 채팅에 남긴다 */
+    public static void petFish(String title, String body) {
+        notify("반려어", title, body, SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.TROPICAL_FISH),
+                title.contains("위험") ? Theme.RED : Theme.BLUE, true);
+    }
+
+    /** 오션오더 도착·1분 남음·실패 */
+    public static void oceanOrder(String title, String body) {
+        notify("오션오더", title, body, SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), new ItemStack(Items.FISHING_ROD),
+                title.contains("실패") ? Theme.RED : Theme.GOLD, false);
     }
 
     public static void playtimeMidnight(String detail) {

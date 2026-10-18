@@ -21,6 +21,7 @@ public abstract class InGameHudOverlayMixin {
         BagTracker.onOverlay(message.getString());
         kr.ddingmate.game.ServerHud.onOverlay(message.getString()); // 잠수 채널 알아보기
         kr.ddingmate.skill.SkillSignals.onOverlay(message.getString()); // 스킬을 켠 직후 액션바(진단 기록)
+        kr.ddingmate.expert.OceanOrder.onMessage(message.getString());
     }
 
     @Inject(method = "setTitle", at = @At("HEAD"))
@@ -28,6 +29,7 @@ public abstract class InGameHudOverlayMixin {
         if (title == null) return;
         BagTracker.onOverlay(title.getString());
         kr.ddingmate.skill.SkillSignals.onOverlay(title.getString());
+        kr.ddingmate.expert.OceanOrder.onMessage(title.getString());
     }
 
     @Inject(method = "setSubtitle", at = @At("HEAD"))
@@ -35,5 +37,6 @@ public abstract class InGameHudOverlayMixin {
         if (subtitle == null) return;
         BagTracker.onOverlay(subtitle.getString());
         kr.ddingmate.skill.SkillSignals.onOverlay(subtitle.getString());
+        kr.ddingmate.expert.OceanOrder.onMessage(subtitle.getString());
     }
 }

@@ -407,6 +407,7 @@ public class DdingMateScreen extends Screen {
     private Widgets.Button inquirySend;
 
     private void buildInquiry() {
+        if (client != null) kr.ddingmate.inquiry.Replies.onInquiryTabOpened(client);
         list.guide("버그·건의를 개발자에게 보내요. 닉네임·UUID·버전·접속한 서버와 지역이 함께 가고(게임 서버로는 안 보내요), 답변은 내 채팅으로 와요.");
         // 분류는 한 줄에 다 보이게 단추로 고른다(고른 것은 파랗게)
         kr.ddingmate.inquiry.Inquiry.Category[] cats = kr.ddingmate.inquiry.Inquiry.Category.values();
@@ -684,7 +685,7 @@ public class DdingMateScreen extends Screen {
             long nowMs = System.currentTimeMillis();
             for (kr.ddingmate.craft.CraftTimers.Group j : crafting) {
                 list.single(new InfoRow(craftIcon(j.name()),
-                        j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
+                        kr.ddingmate.craft.CraftTimers.displayLabel(j, nowMs), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
                         j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, Tab.COUNTER).island(j.name()));
             }
         }
@@ -840,7 +841,7 @@ public class DdingMateScreen extends Screen {
         long nowMs = System.currentTimeMillis();
         for (kr.ddingmate.craft.CraftTimers.Group j : jobs) {
             InfoRow row = new InfoRow(craftIcon(j.name()),
-                    j.label(), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
+                    kr.ddingmate.craft.CraftTimers.displayLabel(j, nowMs), kr.ddingmate.craft.CraftTimers.remainingText(j, nowMs),
                     j.unknown() || j.estimated() ? Theme.TEXT_SOFT : j.done() ? Theme.GREEN : Theme.BLUE, null).island(j.name());
             Widgets.Button del = new Widgets.Button(44, 20, Text.literal("지우기"), false, b -> {
                 kr.ddingmate.craft.CraftTimers.remove(j);
@@ -999,10 +1000,43 @@ public class DdingMateScreen extends Screen {
                 ? "스킬을 강화했다면 /전문가 스킬 창을 한 번 열어 주세요. 바뀐 시간을 다시 읽어요."
                 : "/전문가 → 스킬 보기 창을 한 번 열면 스킬마다 지속 시간·재사용 대기 시간을 읽어 와요.");
 
+        buildMarine();
         buildBarista();
         buildCooking();
         buildWares();
         buildPriceSkills();
+    }
+
+    /** 해양: 반려어 밥 타이머·오션오더 타이머(0.3.2) */
+    private void buildMarine() {
+        DdingMateConfig.Expert ex = cfg.expert;
+        list.header("해양 · 반려어 밥 타이머 · 오션오더", "반려어");
+        list.pair(tip(toggle("반려어 밥 타이머", ex.petFish, v -> ex.petFish = v),
+                        "어항 창을 열면 반려어의 허기·기분·활력·성장도를 읽고, 밥 줄 때·폐사 위험·다 컸을 때 알려 줘요"),
+                tip(toggle("오션오더 타이머", ex.oceanOrder, v -> ex.oceanOrder = v),
+                        "오션오더가 오면 남은 시간(5분)과 오늘 받은 횟수(10번까지)를 일정 HUD 맨 위에 보여 줘요"));
+        long now = System.currentTimeMillis();
+        kr.ddingmate.expert.PetFish.Fish f = kr.ddingmate.expert.PetFish.current();
+        if (f != null) {
+            int lv = kr.ddingmate.expert.PetFish.level(f, now);
+            InfoRow row = new InfoRow(new ItemStack(Items.TROPICAL_FISH), kr.ddingmate.expert.PetFish.label(f),
+                    kr.ddingmate.expert.PetFish.status(f, now),
+                    lv >= 3 ? Theme.RED : lv == 2 ? Theme.GOLD : lv == 1 ? Theme.GREEN : Theme.BLUE, null)
+                    .sub(kr.ddingmate.expert.PetFish.detail(f, now));
+            Widgets.Button del = new Widgets.Button(44, 20, Text.literal("지우기"), false, b -> {
+                kr.ddingmate.expert.PetFish.forget();
+                rebuild();
+            });
+            del.setTooltip(Tooltip.of(Text.literal("어항에서 꺼냈거나 방생한 반려어의 기록을 지워요")));
+            list.withButton(row, del);
+        } else {
+            list.note("어항 창을 한 번 열면 반려어를 읽어 일정 HUD 에 '반려어 · 밥 N분 뒤'로 보여 줘요.");
+        }
+        list.note("위키 기준: 허기·기분·활력은 10분마다 가장 높은 것부터 20~25% 줄고, 하나라도 0% 면 폐사해요. 평균이 80% 아래면 성장이 "
+                + "느려지고, 넣은 뒤 2시간이 지났을 때 성장도가 90 이상이면 더 줄지 않아요. 밥: 허기 빵 · 기분 덩굴 · 활력 뼈 블록"
+                + "(들고 쉬프트+좌클릭하면 100%). 안전하게 한 번에 25%씩 준다고 보고 계산해요.");
+        list.note("오션오더: 오늘 " + kr.ddingmate.expert.OceanOrder.todayCount() + "/" + kr.ddingmate.expert.OceanOrder.DAILY_MAX
+                + "번 받음(03시 초기화). 받은 뒤 다른 채널로 옮기면 실패해요.");
     }
 
     /** 판매가를 올려 주는 전문가 스킬: 지금 비율(스킬 창에서 읽음)과 바뀐 판매가 예시 */

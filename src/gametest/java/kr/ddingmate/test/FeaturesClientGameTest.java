@@ -940,6 +940,126 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.inquiry.Replies.debugReset();
             });
             ctx.waitTicks(5);
+            // 13) 0.3.2: 제작 [대기중..] · 반려어 밥 타이머 · 오션오더 타이머 · 답장 빨리 확인
+            ctx.runOnClient(c -> {
+                long now = System.currentTimeMillis();
+                // 같은 시설에서 앞 제작(어빌리티 스톤)이 안 끝나 조약돌 뭉치는 시작도 안 함 → [대기중..]
+                kr.ddingmate.craft.CraftTimers.debugClear();
+                String q = "채광물 가공 시설@VILLAGE";
+                kr.ddingmate.craft.CraftTimers.debugAddJob("어빌리티 스톤", 64, now - 60_000, now + 74 * 60_000, q);
+                kr.ddingmate.craft.CraftTimers.debugAddJob("조약돌 뭉치", 7, now - 50_000, now + 75 * 60_000, q);
+                kr.ddingmate.craft.CraftTimers.debugAddJob("코룸 주괴", 24, now - 10_000, now + 5 * 60_000, "강화 제작 시설@VILLAGE");
+                java.util.Map<String, String> labels = new java.util.HashMap<>();
+                for (kr.ddingmate.craft.CraftTimers.Group g : kr.ddingmate.craft.CraftTimers.groups())
+                    labels.put(g.name(), kr.ddingmate.craft.CraftTimers.displayLabel(g, now));
+                check(labels.get("조약돌 뭉치").endsWith("[대기중..]") && !labels.get("어빌리티 스톤").contains("대기")
+                        && !labels.get("코룸 주괴").contains("대기"), "대기 표시가 다름: " + labels);
+                check(!kr.ddingmate.craft.CraftTimers.displayLabel(kr.ddingmate.craft.CraftTimers.groups().stream()
+                        .filter(g -> g.name().equals("조약돌 뭉치")).findFirst().orElseThrow(), now + 74 * 60_000 + 1000).contains("대기"),
+                        "앞 제작이 끝났는데도 대기 중으로 보임");
+
+                // 형광 광산: 골렘 칸의 남은 시간으로 타이머, 남은 시간이 없는 칸이 되면(받아 감) 정리
+                net.minecraft.item.ItemStack mineItem = new net.minecraft.item.ItemStack(Items.PAPER);
+                mineItem.set(DataComponentTypes.CUSTOM_NAME, Text.literal("[ 형광 광물 채광 중 ]"));
+                java.util.List<Text> mineLore = java.util.List.of(Text.literal("일꾼 골렘이 현재 채광을 진행 중입니다."),
+                        Text.literal("남은 시간이 지나면 광물 수령이 가능합니다."), Text.literal(""),
+                        Text.literal("  - 일꾼 골렘 : 에픽"), Text.literal("  - 남은 시간 : 13초"));
+                check(kr.ddingmate.craft.CraftTimers.debugMine(mineItem, mineLore), "형광 광산 칸을 못 읽음");
+                kr.ddingmate.craft.CraftTimers.Group mineG = kr.ddingmate.craft.CraftTimers.groups().stream()
+                        .filter(g -> g.name().equals(kr.ddingmate.craft.CraftTimers.MINE)).findFirst().orElse(null);
+                check(mineG != null && Math.abs(mineG.endsAt() - (now + 13_000)) < 1500 && !mineG.unknown() && !mineG.estimated(),
+                        "형광 광산 남은 시간이 다름: " + mineG);
+                check(!kr.ddingmate.craft.CraftTimers.debugMine(mineItem, mineLore), "같은 시간인데 또 바꿈");
+
+                // 반려어: 위키대로 10분마다 가장 높은 스탯이 25%씩(안전하게 큰 값) → 30분 뒤 평균 75%(성장 느려짐), 70분 뒤 25%(폐사 위험)
+                kr.ddingmate.expert.PetFish.debugReset();
+                long t0 = now - 1000;
+                kr.ddingmate.expert.PetFish.debugRead("아기 먹", List.of("허기 : 100%", "기분 : 100%", "활력 : 100%", "성장도 : 0"), t0);
+                kr.ddingmate.expert.PetFish.Fish f = kr.ddingmate.expert.PetFish.current();
+                check(f != null && f.insertedAt == t0 && f.hunger == 100, "반려어를 못 읽음");
+                kr.ddingmate.expert.PetFish.Forecast fc = kr.ddingmate.expert.PetFish.forecast(f, t0 + 60_000);
+                check(fc.slowAt() == t0 + 30 * 60_000 && fc.dangerAt() == t0 + 70 * 60_000,
+                        "반려어 예상 시각이 다름: 느려짐 " + (fc.slowAt() - t0) / 60000 + "분, 위험 " + (fc.dangerAt() - t0) / 60000 + "분");
+                check(kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000).equals("밥 25분 뒤"), "밥 시간 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000));
+                check(kr.ddingmate.expert.PetFish.status(f, t0 + 31 * 60_000).equals("밥 줄 때!"), "밥 줄 때 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 31 * 60_000));
+                check(kr.ddingmate.expert.PetFish.status(f, t0 + 71 * 60_000).equals("폐사 위험!"), "폐사 위험 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 71 * 60_000));
+                // 알림: 밥 줄 때 한 번, 폐사 위험 한 번(같은 것을 또 울리지 않음)
+                int pfBefore = AlertLog.entries().size();
+                kr.ddingmate.expert.PetFish.tick(t0 + 31 * 60_000);
+                kr.ddingmate.expert.PetFish.tick(t0 + 32 * 60_000);
+                check(AlertLog.entries().size() == pfBefore + 1 && AlertLog.entries().get(0).title.contains("밥 줄 때"), "밥 알림이 다름");
+                kr.ddingmate.expert.PetFish.tick(t0 + 71 * 60_000);
+                check(AlertLog.entries().size() == pfBefore + 2 && AlertLog.entries().get(0).title.contains("폐사 위험"), "폐사 위험 알림이 다름");
+                // 밥을 줘서 다시 채워진 걸 읽으면 알림을 다시 할 수 있다
+                kr.ddingmate.expert.PetFish.debugRead("아기 먹", List.of("허기 : 100%", "기분 : 100%", "활력 : 100%", "성장도 : 40"), t0 + 72 * 60_000);
+                check(!f.warnedFeed && !f.warnedDanger && f.growth == 40, "밥 준 뒤 알림을 다시 못 함");
+                // 창에 남은 성장 시간이 있으면 넣은 시각을 거기서
+                kr.ddingmate.expert.PetFish.debugRead("먹", List.of("허기 85%", "기분 90%", "활력 100%", "성장도 50", "남은 성장 시간 : 1시간 30분"), now);
+                check(kr.ddingmate.expert.PetFish.current().insertedAt == now + 90 * 60_000 - kr.ddingmate.expert.PetFish.GROW_MS, "남은 성장 시간으로 넣은 시각을 못 맞춤");
+                // 2시간 지나 성장도 90 이상이면 더 안 줄어서 다 큼
+                kr.ddingmate.expert.PetFish.debugRead("먹", List.of("허기 60%", "기분 70%", "활력 80%", "성장도 95", "남은 성장 시간 : 0분"), now);
+                check(kr.ddingmate.expert.PetFish.status(kr.ddingmate.expert.PetFish.current(), now + 3 * 3600_000L).equals("다 컸어요"),
+                        "다 컸는데 밥을 재촉함: " + kr.ddingmate.expert.PetFish.status(kr.ddingmate.expert.PetFish.current(), now + 3 * 3600_000L));
+                // HUD 에 보일 상태로 다시(30분 남음)
+                kr.ddingmate.expert.PetFish.debugReset();
+                kr.ddingmate.expert.PetFish.debugRead("아기 루모스", List.of("허기 : 100%", "기분 : 100%", "활력 : 80%", "성장도 : 12"), now - 9 * 60_000);
+
+                // 오션오더: 도착하면 5분, 진행·성공·실패, 사람 채팅은 무시
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.OceanOrder.onMessage("[초보모험가] 누군가 : 오션오더 도착했다");
+                check(!kr.ddingmate.expert.OceanOrder.active(now), "사람 채팅으로 오션오더를 켬");
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다! 300초 안에 주문한 물고기를 낚아 주세요.", now);
+                check(kr.ddingmate.expert.OceanOrder.active(now) && kr.ddingmate.expert.OceanOrder.endsAt() == now + 300_000
+                        && kr.ddingmate.expert.OceanOrder.todayCount() == 1, "오션오더 도착을 못 읽음");
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더 물고기 도미를 낚았습니다! (1/3) 남은 시간 : 4분 32초", now);
+                check(kr.ddingmate.expert.OceanOrder.endsAt() == now + 272_000 && kr.ddingmate.expert.OceanOrder.label().contains("1/3"),
+                        "오션오더 진행을 못 읽음: " + kr.ddingmate.expert.OceanOrder.label());
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더를 성공적으로 완료했습니다! 골든티켓 2개를 획득했습니다.", now);
+                check(!kr.ddingmate.expert.OceanOrder.active(now), "오션오더 성공인데 계속 셈");
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더 실패! 제한시간이 지났습니다.", now);
+                check(!kr.ddingmate.expert.OceanOrder.active(now) && kr.ddingmate.expert.OceanOrder.todayCount() == 2, "오션오더 실패 처리가 다름");
+                check(kr.ddingmate.expert.OceanOrder.remainingIn("남은 시간 : 2분 5초") == 125_000, "남은 시간 읽기");
+                // 1분 남으면 한 번 알림
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now - 241_000);
+                int ob = AlertLog.entries().size();
+                kr.ddingmate.expert.OceanOrder.tick(now);
+                kr.ddingmate.expert.OceanOrder.tick(now + 1000);
+                check(AlertLog.entries().size() == ob + 1 && AlertLog.entries().get(0).title.contains("1분"), "오션오더 1분 알림이 다름");
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);
+
+                // 답장 확인 간격: 하루 안에 보낸 문의가 있으면 짧게, 중계가 정하면 그 값
+                kr.ddingmate.inquiry.Replies.debugReset();
+                kr.ddingmate.inquiry.Replies.debugFastPoll(120_000);
+                check(kr.ddingmate.inquiry.Replies.debugInterval() == 10 * 60_000, "기다리는 문의가 없는데 자주 물음");
+                kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> new kr.ddingmate.inquiry.Inquiry.Http(200,
+                        path.equals("/inquiry") ? "{\"id\":\"aaaa0000\"}" : "{\"tickets\":[{\"found\":true,\"id\":\"aaaa0000\",\"replies\":[]}],\"pollSec\":90}"));
+                kr.ddingmate.inquiry.Inquiry.send(c, kr.ddingmate.inquiry.Inquiry.Category.QUESTION, "답장 빨리 오나 시험", r -> {});
+                check(kr.ddingmate.inquiry.Replies.debugInterval() == 120_000, "방금 보낸 문의인데 10분마다 물음");
+                kr.ddingmate.inquiry.Replies.debugPoll(c);
+                check(kr.ddingmate.inquiry.Replies.debugInterval() == 90_000, "중계가 정한 간격을 안 씀: " + kr.ddingmate.inquiry.Replies.debugInterval());
+                kr.ddingmate.inquiry.Inquiry.debugSender(null);
+                kr.ddingmate.inquiry.Replies.debugReset();
+                kr.ddingmate.inquiry.Replies.debugFastPoll(120_000);
+            });
+            ctx.waitTicks(25);
+            ctx.takeScreenshot("features-6-ocean-petfish-waiting");
+            ctx.runOnClient(c -> {
+                DdingMateScreen s = new DdingMateScreen(null);
+                c.setScreen(s);
+                s.openTabNamed("전문가");
+                s.jumpTo("반려어");
+            });
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("features-6b-expert-marine");
+            ctx.runOnClient(c -> {
+                c.currentScreen.close();
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.PetFish.debugReset();
+                kr.ddingmate.craft.CraftTimers.debugClear();
+            });
+            ctx.waitTicks(3);
+
             // 실제 디스코드로 한 번 보내 보기(DDINGMATE_REAL_INQUIRY=1 로 실행할 때만, 평소 시험에서는 보내지 않는다)
             if (System.getenv("DDINGMATE_REAL_INQUIRY") != null) {
                 kr.ddingmate.inquiry.Inquiry.Result[] real = new kr.ddingmate.inquiry.Inquiry.Result[1];

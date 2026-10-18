@@ -537,6 +537,10 @@ public final class CraftTimers {
                 if (voyage(jobs, s, lore.lines(), now)) changed = true;
                 continue;
             }
+            if (isMine(lore.lines())) {
+                if (mine(jobs, s, lore.lines(), now)) changed = true;
+                continue;
+            }
             Reading r = read(lore.lines());
             if (r == null) continue;
             String name = cleanName(ItemKeys.stripGlyphs(s.getName().getString()));
@@ -742,6 +746,68 @@ public final class CraftTimers {
         return (n == null ? name : n).replaceFirst("(\\s*\\[\\+\\d+\\])+\\s*$", "").trim();
     }
 
+    // ---------------------------------------------------------------- 형광 광산
+
+    /** 형광 광산 타이머 이름 */
+    public static final String MINE = "형광 광산 채광";
+    /**
+     * 형광 광산 창의 골렘 칸(2026-10-18 실제 화면): "[ 형광 광물 채광 중 ]" · "일꾼 골렘이 현재 채광을 진행 중입니다." ·
+     * "- 일꾼 골렘 : 에픽" · "- 남은 시간 : 13초". 일꾼 골렘 줄이 있는 칸만 본다
+     */
+    private static final Pattern MINE_HINT = Pattern.compile("일꾼\\s*골렘");
+    private static final Pattern MINE_GOLEM = Pattern.compile("일꾼\\s*골렘\\s*:\\s*(\\S+)");
+
+    static boolean isMine(List<Text> lines) {
+        for (Text l : lines) if (MINE_HINT.matcher(ItemKeys.stripGlyphs(l.getString())).find()) return true;
+        return false;
+    }
+
+    /**
+     * 형광 광산 골렘 칸을 읽는다. 남은 시간이 보이면 그 시각으로 맞추고, 남은 시간이 없는 칸(수령 가능·쉬는 중)이면
+     * 끝난 줄은 받아 간 것으로 보고 뺀다. 바꾼 게 있으면 true
+     */
+    static boolean mine(List<Job> jobs, ItemStack stack, List<Text> lines, long now) {
+        long remaining = -1;
+        String golem = "";
+        StringBuilder all = new StringBuilder();
+        for (Text l : lines) {
+            String t = ItemKeys.stripGlyphs(l.getString());
+            all.append(" | ").append(t);
+            Matcher g = MINE_GOLEM.matcher(t);
+            if (g.find()) golem = g.group(1);
+            if (REMAIN_HINT.matcher(t).find()) {
+                long sec = seconds(t);
+                if (sec >= 0) remaining = sec;
+            }
+        }
+        String rawName = ItemKeys.stripGlyphs(stack.getName().getString()).trim();
+        String sig = "mine:" + rawName + all.toString().replaceAll("\\d", "#");
+        if (LOGGED.size() < 60 && LOGGED.add(sig)) DdingMate.LOG.info("형광 광산 칸 읽음: {}{}", rawName, all);
+        Job job = jobs.stream().filter(j -> j.separate && j.name.equals(MINE)).findFirst().orElse(null);
+        if (remaining < 0) {
+            // 채광 중이 아니다: 끝난 줄은 받아 갔거나 쉬는 중이라 정리
+            if (job != null && (job.endsAt == 0 || job.endsAt <= now + 1000)) {
+                jobs.remove(job);
+                return true;
+            }
+            return false;
+        }
+        long ends = now + remaining * 1000;
+        if (job == null) {
+            job = new Job();
+            job.name = MINE;
+            job.separate = true;
+            jobs.add(job);
+        } else if (job.synced && Math.abs(job.endsAt - ends) <= 1500) {
+            return false;
+        }
+        if (!golem.isEmpty()) job.queue = golem; // 골렘 등급(알림에 붙인다)
+        job.endsAt = ends;
+        job.synced = true;
+        job.notified = remaining == 0;
+        return true;
+    }
+
     // ---------------------------------------------------------------- 항해
 
     /** 항해 타이머 이름 끝: "유실라 항해" */
@@ -921,6 +987,11 @@ public final class CraftTimers {
         return jobs != null && voyage(jobs, stack, lines, System.currentTimeMillis());
     }
 
+    public static boolean debugMine(ItemStack stack, List<Text> lines) {
+        List<Job> jobs = jobsForWrite();
+        return jobs != null && isMine(lines) && mine(jobs, stack, lines, System.currentTimeMillis());
+    }
+
     // ---------------------------------------------------------------- 알림
 
     /** 1초마다: 같은 아이템·개수로 넣은 제작이 모두 끝나면 한 번 알린다(조약돌 뭉치 ×7 [4]) */
@@ -948,6 +1019,8 @@ public final class CraftTimers {
             int sum = all.stream().mapToInt(o -> o.count).sum();
             if (DdingMate.config().craft.notify && j.name.equals(VOYAGE_RESET_NAME)) {
                 Notifier.voyageReset();
+            } else if (DdingMate.config().craft.notify && j.name.equals(MINE)) {
+                Notifier.mineDone(j.queue);
             } else if (DdingMate.config().craft.notify && j.name.endsWith(VOYAGE)) {
                 Notifier.voyageDone(j.name.substring(0, j.name.length() - VOYAGE.length()).trim());
             } else if (DdingMate.config().craft.notify) {
@@ -1001,6 +1074,27 @@ public final class CraftTimers {
     }
 
     /** 남은 시간 글: "1분 20초"(어림값이면 "약 "), 끝났으면 "완료!", 모르면 안내 */
+    /**
+     * 같은 시설 대기열에서 앞 제작이 아직 안 끝나 이 묶음은 시작도 안 했나. 남은 시간에는 기다리는 시간까지 들어 있어서
+     * "조약돌 뭉치 ×7 [3] 1시간 15분"처럼 조약돌 뭉치가 오래 걸리는 것으로 오해하기 쉬웠다(2026-10-18 사용자) → 이름 옆에 [대기중..]
+     */
+    public static boolean waiting(Group g, long now) {
+        if (g.done() || g.unknown()) return false;
+        Job first = null;
+        for (Job j : g.jobs()) if (first == null || j.endsAt < first.endsAt) first = j;
+        if (first == null || first.separate || first.queue == null || first.queue.isEmpty()) return false;
+        for (Job j : jobs()) {
+            if (g.jobs().contains(j) || j.separate || j.endsAt == 0 || !first.queue.equals(j.queue)) continue;
+            if (j.endsAt > now && j.endsAt <= first.endsAt) return true;
+        }
+        return false;
+    }
+
+    /** 화면에 쓸 이름: 기다리는 중이면 " [대기중..]" */
+    public static String displayLabel(Group g, long now) {
+        return waiting(g, now) ? g.label() + " [대기중..]" : g.label();
+    }
+
     public static String remainingText(Group g, long now) {
         // 확실하지 않은 시각(서버에서 확인 전)은 어림 숫자 대신 확인 방법을 보여 준다
         if (g.unknown() || g.estimated()) return unknownText(g.name());
@@ -1041,7 +1135,7 @@ public final class CraftTimers {
         return store.accounts.computeIfAbsent(key, k -> new ArrayList<>());
     }
 
-    private static String accountKey() {
+    public static String accountKey() {
         MinecraftClient client = MinecraftClient.getInstance();
         UUID id = client.player != null ? client.player.getUuid() : null;
         if (id == null) return null;
@@ -1123,6 +1217,21 @@ public final class CraftTimers {
     /** 시험용 */
     public static void debugClear() {
         store = fresh();
+        dirty = true;
+    }
+
+    /** 시험용: 시설 창에서 맞춘 것처럼 제작 하나를 넣는다 */
+    public static void debugAddJob(String name, int count, long startedAt, long endsAt, String queue) {
+        String key = accountKey();
+        if (key == null) return;
+        Job j = new Job();
+        j.name = name;
+        j.count = count;
+        j.startedAt = startedAt;
+        j.endsAt = endsAt;
+        j.synced = true;
+        j.queue = queue;
+        store.accounts.computeIfAbsent(key, k -> new ArrayList<>()).add(j);
         dirty = true;
     }
 
