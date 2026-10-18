@@ -41,7 +41,7 @@ final class Tutorial {
             new Step(DdingMateScreen.Tab.NOTIFY, false, "소리 크기", "소리 크기",
                     "알림 소리 크기를 막대를 끌어 정해요. 0% 면 소리가 나지 않아요."),
             new Step(DdingMateScreen.Tab.NOTIFY, false, "HUD 스타일", "HUD 스타일 · 진하기",
-                    "어두운 판(서버 HUD 느낌), 밝은 창, 반투명 중에서 골라요. 진하기로 배경이 얼마나 비칠지 정해요."),
+                    "어두운 판(서버 HUD 느낌), 밝은 창, 반투명 중에서 골라요. 진하기로 배경이 얼마나 비칠지 정해요. 바로 아래 \"글꼴\"에서 갈무리·프리텐다드·네오둥근모 중 읽기 편한 글꼴로 바꿀 수 있어요."),
             new Step(DdingMateScreen.Tab.NOTIFY, false, "HUD 전체 크기", "HUD 크기 · 서버 HUD 피하기",
                     "HUD 를 한꺼번에 줄이거나 키워요. \"서버 HUD 피하기\"를 켜 두면 서버의 재화 바·날짜 줄과 채팅창을 가리지 않게 자리를 잡아요."),
             new Step(DdingMateScreen.Tab.NOTIFY, false, "HUD 위치·크기 설정", "HUD 위치·크기 설정",

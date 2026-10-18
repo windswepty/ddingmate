@@ -5,6 +5,6 @@
   "name": "띵메이트 테스트",
   "environment": "client",
   "entrypoints": {
-    "fabric-client-gametest": ["kr.ddingmate.test.LogicClientGameTest", "kr.ddingmate.test.DdingMateClientGameTest", "kr.ddingmate.test.CounterClientGameTest", "kr.ddingmate.test.FeaturesClientGameTest", "kr.ddingmate.test.CraftClientGameTest", "kr.ddingmate.test.UiSmokeClientGameTest"]
+    "fabric-client-gametest": ["kr.ddingmate.test.FontCompareClientGameTest", "kr.ddingmate.test.LogicClientGameTest", "kr.ddingmate.test.DdingMateClientGameTest", "kr.ddingmate.test.CounterClientGameTest", "kr.ddingmate.test.FeaturesClientGameTest", "kr.ddingmate.test.CraftClientGameTest", "kr.ddingmate.test.UiSmokeClientGameTest"]
   }
 }

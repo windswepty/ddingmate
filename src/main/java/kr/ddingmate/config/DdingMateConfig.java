@@ -188,6 +188,23 @@ public final class DdingMateConfig {
         public boolean midnightReminder = true;
     }
 
+    /**
+     * 띵메이트 글꼴(0.3.2, 사용자 문의 "갈무리가 잘 안 읽힌다"). 1920×1080 GUI 2·3·4 에서 같은 문구를 비교해 셋만 남김:
+     * 갈무리11·14 는 획이 가늘어 더 흐렸고 GUI 2 에서 글자가 깨졌다. 모두 OFL 글꼴
+     */
+    public enum FontStyle {
+        GALMURI("갈무리", ""), PRETENDARD("프리텐다드", "_pretendard"), NEODGM("네오둥근모", "_neodgm");
+
+        public final String label;
+        /** assets/ddingmate/font 의 body·bold·title 뒤에 붙는 이름 */
+        public final String suffix;
+
+        FontStyle(String label, String suffix) {
+            this.label = label;
+            this.suffix = suffix;
+        }
+    }
+
     /** DARK=서버 HUD 처럼 어두운 판, LIGHT=서버 창처럼 밝은 판, CLASSIC=예전 반투명 검은 상자 */
     public enum HudStyle { DARK, LIGHT, CLASSIC }
 
@@ -215,6 +232,8 @@ public final class DdingMateConfig {
     /** 편집 화면에서 아래 가장자리로 정한 HUD 높이(HUD 좌표 px). 넘치는 줄은 옆 칸으로 */
     public Map<String, Integer> hudHeights = new LinkedHashMap<>();
     public HudStyle hudStyle = HudStyle.DARK;
+    /** 띵메이트 창·HUD·알림 글꼴 */
+    public FontStyle font = FontStyle.GALMURI;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
     /** HUD 크기 50~100 (%) */

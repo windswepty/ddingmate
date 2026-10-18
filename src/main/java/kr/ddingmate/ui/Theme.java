@@ -96,10 +96,18 @@ public final class Theme {
     public static final int TEXT_LIGHT = 0xFFFFFFFF;
     public static final int TEXT_DISABLED = 0xFF666C77;
 
-    // 글꼴(assets/ddingmate/font)
-    public static final Identifier BODY_FONT = Identifier.of(DdingMate.MOD_ID, "body");
-    public static final Identifier BOLD_FONT = Identifier.of(DdingMate.MOD_ID, "bold");
-    public static final Identifier TITLE_FONT = Identifier.of(DdingMate.MOD_ID, "title");
+    // 글꼴(assets/ddingmate/font): 설정에서 고른 글꼴의 body·bold·title(갈무리·프리텐다드·네오둥근모)
+    private static final java.util.Map<String, Identifier> FONT_IDS = new java.util.HashMap<>();
+
+    private static Identifier font(String kind) {
+        kr.ddingmate.config.DdingMateConfig cfg = DdingMate.config();
+        String suffix = cfg == null || cfg.font == null ? "" : cfg.font.suffix;
+        return FONT_IDS.computeIfAbsent(kind + suffix, k -> Identifier.of(DdingMate.MOD_ID, k));
+    }
+
+    public static Identifier bodyFont() {
+        return font("body");
+    }
 
     private Theme() {}
 
@@ -113,17 +121,17 @@ public final class Theme {
 
     public static MutableText body(String s) {
         MutableText t = Text.literal(s);
-        return galmuri() ? t.setStyle(Style.EMPTY.withFont(BODY_FONT)) : t;
+        return galmuri() ? t.setStyle(Style.EMPTY.withFont(font("body"))) : t;
     }
 
     public static MutableText bold(String s) {
         MutableText t = Text.literal(s);
-        return galmuri() ? t.setStyle(Style.EMPTY.withFont(BOLD_FONT)) : t.setStyle(Style.EMPTY.withBold(true));
+        return galmuri() ? t.setStyle(Style.EMPTY.withFont(font("bold"))) : t.setStyle(Style.EMPTY.withBold(true));
     }
 
     public static MutableText title(String s) {
         MutableText t = Text.literal(s);
-        return galmuri() ? t.setStyle(Style.EMPTY.withFont(TITLE_FONT)) : t.setStyle(Style.EMPTY.withBold(true));
+        return galmuri() ? t.setStyle(Style.EMPTY.withFont(font("title"))) : t.setStyle(Style.EMPTY.withBold(true));
     }
 
     public static int width(TextRenderer tr, String s) {
