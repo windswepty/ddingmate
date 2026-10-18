@@ -646,6 +646,45 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         "기억한 길(레시피 목록)을 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot() + " / " + kr.ddingmate.craft.FacilityPanel.debugHint());
                 kr.ddingmate.craft.FacilityPanel.debugDetail(null);
                 kr.ddingmate.craft.FacilityPanel.debugForgetPaths();
+                // 탭 순서 = 시설 레시피 분류 순서(실제 9개 시설 107개 중 105개 일치)
+                check(kr.ddingmate.craft.FacilityPanel.debugTabOf("채광물 가공 시설/세르칸 큐브") == 50
+                                && kr.ddingmate.craft.FacilityPanel.debugTabOf("연금 제작 시설/" + firstOf("연금 제작 시설", "핵")) == 46
+                                && kr.ddingmate.craft.FacilityPanel.debugTabOf("해양 제작 시설/" + firstOf("해양 제작 시설", "열쇠")) == 45,
+                        "탭 순서 규칙이 다름");
+                check("레시피 목록 → 6번째 탭(형광 큐브) → 세르칸 큐브".equals(kr.ddingmate.craft.FacilityPanel.debugFullPath("채광물 가공 시설/세르칸 큐브")),
+                        "전체 길이 다름: " + kr.ddingmate.craft.FacilityPanel.debugFullPath("채광물 가공 시설/세르칸 큐브"));
+                // 창 모양을 아직 확인 못 한 시설은 길을 지어내지 않는다(목록 창을 한 번 보면 확인)
+                check(kr.ddingmate.craft.FacilityPanel.debugFullPath("농작물 가공 시설/" + firstOf("농작물 가공 시설", "베이스")) == null,
+                        "확인 못 한 시설에 길을 지어냄");
+                // 첫 화면(0번 = 이름 없는 레시피 목록 단추, 위 줄 = 레시피 고정 칸) → 0번
+                c.setScreen(ruleScreen(c, false, "조약돌 뭉치"));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                var target2 = kr.ddingmate.counter.RecipeBook.get("강화 제작 시설/" + firstOf("강화 제작 시설", "영혼 계약서"));
+                kr.ddingmate.craft.FacilityPanel.debugAct(target2, 0, true);
+                check(kr.ddingmate.craft.FacilityPanel.debugTargetSlot() == 0 && kr.ddingmate.craft.FacilityPanel.debugHint().contains("레시피 목록"),
+                        "첫 화면에서 레시피 목록 단추를 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot() + " " + kr.ddingmate.craft.FacilityPanel.debugHint());
+                // 목록 화면(45~50번 탭, 지금은 첫 탭 '뭉치') → 영혼 계약서 탭(47번, 세 번째)
+                c.setScreen(ruleScreen(c, true, "조약돌 뭉치"));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.craft.FacilityPanel.debugFocus() != null && kr.ddingmate.craft.FacilityPanel.debugTargetSlot() == 47
+                                && kr.ddingmate.craft.FacilityPanel.debugHint().contains("3번째 탭"),
+                        "목록 화면에서 그 탭을 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot() + " " + kr.ddingmate.craft.FacilityPanel.debugHint());
+                // 맞는 탭인데 그 레시피가 다음 쪽 → ↓(53번)
+                String second = nthOf("강화 제작 시설", "영혼 계약서", 1);
+                c.setScreen(ruleScreen(c, true, second));
+                kr.ddingmate.craft.FacilityPanel.debugDetail(null);
+                kr.ddingmate.craft.FacilityPanel.debugDetail(kr.ddingmate.counter.RecipeBook.get("강화 제작 시설/" + nthOf("강화 제작 시설", "영혼 계약서", 3)));
+            });
+            ctx.waitTicks(12);
+            ctx.takeScreenshot("facility-1d-rule-arrow");
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.craft.FacilityPanel.debugTargetSlot() == 53 && kr.ddingmate.craft.FacilityPanel.debugHint().contains("다른 쪽"),
+                        "같은 탭 다음 쪽인데 ↓를 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot() + " " + kr.ddingmate.craft.FacilityPanel.debugHint());
+                kr.ddingmate.craft.FacilityPanel.debugDetail(null);
                 // 다음 시험이 쓰는 원래 창으로
                 c.setScreen(facility(c,
                         item("조약돌 뭉치", 1, "다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 5초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정"),
@@ -1841,6 +1880,38 @@ public class CraftClientGameTest implements FabricClientGameTest {
         s.set(DataComponentTypes.CUSTOM_NAME, Text.literal(name));
         s.set(DataComponentTypes.LORE, new LoreComponent(lines(lore)));
         return s;
+    }
+
+    /** 실제 시설 창 모양: listView 면 0 뒤로·8 ↑·45~50 탭·53 ↓(모두 이름 없는 종이), 첫 화면이면 0 레시피 목록 + 9번 고정 칸 */
+    private static GenericContainerScreen ruleScreen(MinecraftClient c, boolean listView, String recipeName) {
+        SimpleInventory inv = new SimpleInventory(54);
+        java.util.function.IntConsumer blank = i -> {
+            ItemStack s = new ItemStack(Items.PAPER);
+            s.set(DataComponentTypes.CUSTOM_NAME, Text.literal(" "));
+            inv.setStack(i, s);
+        };
+        blank.accept(0);
+        ItemStack recipe = item(recipeName, 1, "재료입니다.", "", "  제작 시간 : 10초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정");
+        if (listView) {
+            blank.accept(8);
+            for (int i = 45; i <= 50; i++) blank.accept(i);
+            blank.accept(53);
+            inv.setStack(17, recipe);
+        } else {
+            inv.setStack(9, recipe);
+        }
+        GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(91, c.player.getInventory(), inv);
+        return new GenericContainerScreen(h, c.player.getInventory(), Text.literal("가공 시설"));
+    }
+
+    /** 그 시설·분류의 n번째(0부터) 레시피 이름 */
+    private static String nthOf(String facility, String category, int n) {
+        return kr.ddingmate.counter.RecipeBook.all().stream().filter(r -> r.facility.equals(facility) && category.equals(r.category))
+                .skip(n).findFirst().orElseThrow().name;
+    }
+
+    private static String firstOf(String facility, String category) {
+        return nthOf(facility, category, 0);
     }
 
     private static GenericContainerScreen facility(MinecraftClient c, ItemStack... items) {

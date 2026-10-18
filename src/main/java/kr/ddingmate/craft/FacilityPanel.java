@@ -112,8 +112,9 @@ public final class FacilityPanel {
             detail = null; // 다른 시설 창이면 지난 강조는 닫는다
         }
         learn(screen, facility, slotsNow);
+        noteLayout(facility);
         recipeSlots = slotsNow;
-        tabSlots = findTabs(screen, facility);
+        tabSlots = Map.of();
         Map<String, Integer> counts = MaterialCounter.availableCounts(client);
         lastCounts = counts;
         List<Entry> out = new ArrayList<>();
@@ -299,6 +300,7 @@ public final class FacilityPanel {
             boolean changed = false;
             for (String n : now.keySet()) {
                 if (visible.containsKey(n) || n.equals(clickedNode)) continue;
+                if (n.startsWith("r:") && clickedNode.startsWith("s:" + LIST_BUTTON + ":")) continue; // 목록 첫 탭은 규칙으로 안다
                 if (!clickedNode.equals(map.put(n, clickedNode))) {
                     changed = true;
                     if (n.startsWith("r:")) DdingMate.LOG.info("시설 경로 기억: {} ← {}", n, clickedNode);
@@ -330,10 +332,87 @@ public final class FacilityPanel {
         }
     }
 
-    /** 강조할 칸: 레시피가 보이면 그 칸, 아니면 기억한 길을 거슬러 지금 보이는 칸, 아니면 분류 이름 탭. 없으면 -1 */
+    // ---- 시설 창 구조(2026-10-18 실제, 9개 시설에서 누른 기록으로 확인):
+    //  첫 화면: 왼쪽 위 0번 칸 = 레시피 목록(이름 없는 투명 종이), 위 줄은 '레시피 고정' 칸
+    //  목록 화면: 0번 = 뒤로, 8번 = ↑, 줄마다 9·18·27·36번 재료 → 17·26·35·44번 결과(한 번에 4줄),
+    //            맨 아래 45~50번 = 탭(이름 없는 투명 종이, 그림은 창 배경), 53번 = ↓
+    //  탭 순서 = 그 시설 레시피 목록(recipes.json, 위키 표 순서)의 분류 순서: 첫 분류가 45번, 다음이 46번 …
+    //  (연금: 정수·핵·에센스·결정·엘릭서·영약 → 45~50, 채광물: 연료·주괴·코룸·리프톤·세렌트·형광 큐브 → 45~50)
+    static final int LIST_BUTTON = 0, UP_ARROW = 8, DOWN_ARROW = 53, FIRST_TAB = 45, MAX_TABS = 6;
+
+    /** 레시피 목록·탭 창 모양을 실제로 확인한 시설(2026-10-18 사용자가 열어 본 9곳). 나머지는 그 창에서 목록을 열면 확인한다 */
+    static final java.util.Set<String> VERIFIED_LAYOUT = java.util.Set.of("강화 제작 시설", "도구 제작 시설", "연금 제작 시설", "영혼 가공 시설",
+            "요리 제작 시설", "정밀 연금 제작 시설", "채광물 가공 시설", "해양 제작 시설", "황금 요리 제작 시설");
+
+    /** 이 시설의 창이 위 모양(0번 목록 단추, 45~50번 탭)인 걸 알고 있나 */
+    static boolean layoutKnown(String facility) {
+        if (VERIFIED_LAYOUT.contains(facility)) return true;
+        Map<String, String> seen = parents().get(LAYOUT_KEY);
+        return seen != null && seen.containsKey(facility);
+    }
+
+    private static final String LAYOUT_KEY = "_목록 창 모양 확인";
+
+    /** 목록 화면(45번 탭이 이름 없는 단추)을 본 시설은 모양을 확인한 것으로 기억 */
+    private static void noteLayout(String facility) {
+        if (layoutKnown(facility) || !blankButton(FIRST_TAB) || !blankButton(LIST_BUTTON)) return;
+        parents().computeIfAbsent(LAYOUT_KEY, k -> new java.util.HashMap<>()).put(facility, "list");
+        saveParents();
+        DdingMate.LOG.info("시설 목록 창 모양 확인: {}", facility);
+    }
+
+    /**
+     * 처음부터 끝까지 길: "레시피 목록 → 3번째 탭(영혼 계약서) → 세르칸 큐브". 탭 안의 줄 순서는 레시피 목록 순서와 달라서
+     * (2026-10-18 실제: 세르칸 큐브가 목록상 5번째인데 첫 쪽 4번째 줄) 몇 번째 줄인지는 적지 않는다. 모양을 모르는 시설이면 null
+     */
+    static String fullPath(RecipeBook.Recipe r) {
+        int tab = tabOf(r);
+        if (tab < 0 || !layoutKnown(r.facility)) return null;
+        return "레시피 목록 → " + (tab - FIRST_TAB + 1) + "번째 탭(" + r.category + ") → " + r.name;
+    }
+
+    /** 이 레시피가 있는 탭 칸 번호(시설의 분류 순서로). 모르면 -1 */
+    static int tabOf(RecipeBook.Recipe r) {
+        if (r == null || r.category == null) return -1;
+        List<String> cats = new ArrayList<>();
+        for (RecipeBook.Recipe x : RecipeBook.all()) if (x.facility.equals(r.facility) && x.category != null && !cats.contains(x.category)) cats.add(x.category);
+        int i = cats.indexOf(r.category);
+        return i < 0 || i >= MAX_TABS ? -1 : FIRST_TAB + i;
+    }
+
+    /** 지금 창의 그 칸이 이름 없는 단추(투명 종이)인가 — 레시피 목록 단추·탭·화살표 */
+    private static boolean blankButton(int slotId) {
+        MinecraftClient c = MinecraftClient.getInstance();
+        if (!(c.currentScreen instanceof HandledScreen<?> hs) || slotId < 0 || slotId >= hs.getScreenHandler().slots.size()) return false;
+        Slot slot = hs.getScreenHandler().slots.get(slotId);
+        if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) return false;
+        return ItemKeys.normalize(ItemKeys.stripGlyphs(slot.getStack().getName().getString())).isEmpty();
+    }
+
+    /** 규칙으로 찾은 다음 칸: 첫 화면이면 레시피 목록, 목록 화면이면 그 탭, 맞는 탭이면 ↓·↑. 모르면 -1 */
+    private static int ruleSlot(RecipeBook.Recipe r) {
+        int tab = tabOf(r);
+        if (tab < 0 || !layoutKnown(r.facility)) return -1;
+        boolean listView = blankButton(FIRST_TAB);
+        if (!listView) return blankButton(LIST_BUTTON) ? LIST_BUTTON : -1;
+        // 지금 보이는 레시피가 같은 분류면 맞는 탭에 있다 → 위아래로 넘긴다
+        boolean sameTab = false;
+        for (String id : recipeSlots.keySet()) {
+            RecipeBook.Recipe v = RecipeBook.get(id);
+            if (v != null && v.facility.equals(r.facility) && r.category.equals(v.category)) sameTab = true;
+        }
+        if (!sameTab) return blankButton(tab) ? tab : -1;
+        // 맞는 탭인데 안 보이면 다른 쪽: 줄 순서를 몰라 방향은 ↓(끝까지 내려가면 ↑)
+        if (blankButton(DOWN_ARROW)) return DOWN_ARROW;
+        return blankButton(UP_ARROW) ? UP_ARROW : -1;
+    }
+
+    /** 강조할 칸: 레시피가 보이면 그 칸, 아니면 시설 창 구조 규칙, 아니면 기억한 길, 아니면 분류 이름 탭. 없으면 -1 */
     private static int targetSlot(String recipeId) {
         Integer direct = recipeSlots.get(recipeId);
         if (direct != null) return direct;
+        int rule = ruleSlot(RecipeBook.get(recipeId));
+        if (rule >= 0) return rule;
         Map<String, String> map = lastFacility == null ? null : parents().get(lastFacility);
         String node = map == null ? null : map.get("r:" + recipeId);
         for (int depth = 0; node != null && depth < 6; depth++) {
@@ -341,8 +420,6 @@ public final class FacilityPanel {
             if (at != null) return at;
             node = map.get(node);
         }
-        RecipeBook.Recipe r = RecipeBook.get(recipeId);
-        if (r != null && r.category != null && tabSlots.containsKey(r.category)) return tabSlots.get(r.category);
         return -1;
     }
 
@@ -379,8 +456,12 @@ public final class FacilityPanel {
     private static String hint() {
         String focusId = focus();
         if (focusId == null || recipeSlots.containsKey(focusId)) return null;
-        if (targetSlot(focusId) >= 0) return "→ 반짝이는 칸을 눌러요";
-        return "→ 처음엔 직접 찾아 주세요(찾아간 길은 기억해요)";
+        int at = targetSlot(focusId);
+        if (at == LIST_BUTTON && blankButton(LIST_BUTTON) && !blankButton(FIRST_TAB)) return "지금: 왼쪽 위 레시피 목록";
+        if (at >= FIRST_TAB && at < FIRST_TAB + MAX_TABS) return "지금: 아래 " + (at - FIRST_TAB + 1) + "번째 탭";
+        if (at == DOWN_ARROW || at == UP_ARROW) return "지금: 다른 쪽(↓↑로 넘겨요)";
+        if (at >= 0) return "지금: 반짝이는 칸";
+        return "처음엔 직접 찾아 주세요(길은 기억해요)";
     }
 
     /** 시설 창의 그 칸(없으면 탭)에 반짝이는 테두리 */
@@ -421,6 +502,14 @@ public final class FacilityPanel {
         clickedAt = System.currentTimeMillis();
     }
 
+    public static String debugFullPath(String recipeId) {
+        return fullPath(RecipeBook.get(recipeId));
+    }
+
+    public static int debugTabOf(String recipeId) {
+        return tabOf(RecipeBook.get(recipeId));
+    }
+
     public static int debugTargetSlot() {
         String f = focus();
         return f == null ? -1 : targetSlot(f);
@@ -444,7 +533,8 @@ public final class FacilityPanel {
     }
 
     private static int detailHeight(RecipeBook.Recipe r) {
-        return SidePanel.HEAD_H + 5 + r.materials.size() * ROW + 4 + 12 + 4 + (hint() != null ? 10 : 0);
+        boolean path = DdingMate.config().counter.facilityHighlight && fullPath(r) != null;
+        return SidePanel.HEAD_H + 5 + r.materials.size() * ROW + 4 + 12 + 4 + (hint() != null ? 10 : 0) + (path ? 30 : 0);
     }
 
     /** 시험용: 마지막으로 그린 레시피 판 자리 {x, y, w, h} */
@@ -485,8 +575,18 @@ public final class FacilityPanel {
         int can = MaterialCounter.craftable(lastCounts, r);
         String sum = can > 0 ? "지금 " + can + "번 만들 수 있어요" : "재료가 모자라요";
         Theme.text(ctx, tr, Theme.ellipsize(tr, sum, w - 12), x + 6, cy + 6, can > 0 ? p.good() : p.soft());
+        int ly = cy + 16;
+        String path = DdingMate.config().counter.facilityHighlight ? fullPath(r) : null;
+        if (path != null) {
+            // 좁은 판에 다 보이게 한 단계씩 한 줄: "길: 레시피 목록" / "→ 3번째 탭(영혼 계약서)" / "→ 정복의 영혼 계약서"
+            String[] steps = path.split(" → ");
+            for (int k = 0; k < steps.length; k++) {
+                Theme.text(ctx, tr, Theme.ellipsize(tr, (k == 0 ? "길: " : "→ ") + steps[k], w - 12), x + 6, ly, p.ink());
+                ly += 10;
+            }
+        }
         String hint = hint();
-        if (hint != null) Theme.text(ctx, tr, Theme.ellipsize(tr, hint, w - 12), x + 6, cy + 16, Theme.GOLD_ON_LIGHT);
+        if (hint != null) Theme.text(ctx, tr, Theme.ellipsize(tr, hint, w - 12), x + 6, ly, Theme.GOLD_ON_LIGHT);
         ctx.getMatrices().pop();
     }
 
