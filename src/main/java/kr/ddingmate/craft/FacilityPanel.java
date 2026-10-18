@@ -54,7 +54,7 @@ public final class FacilityPanel {
      * 눌러야 할 칸 강조(0.3.2): 판 줄을 쉬프트(앉기 키)+좌클릭해서 연 레시피(재료 판과 함께 켜지고 꺼진다, 2026-10-18 사용자 요청).
      * 창에 그 레시피 칸이 보이면 그 칸, 아니면 그 레시피 분류의 탭 칸을 테두리로 표시한다. 누르는 건 사용자가 직접
      */
-    private static Object focusScreen;
+    private static String lastFacility;
     /** 지금 창: 레시피 id → 칸 번호, 분류 이름 → 탭 칸 번호 */
     private static Map<String, Integer> recipeSlots = Map.of();
     private static Map<String, Integer> tabSlots = Map.of();
@@ -76,11 +76,12 @@ public final class FacilityPanel {
             entries = List.of();
             recipeSlots = Map.of();
             tabSlots = Map.of();
+            visible = Map.of();
+            if (client.currentScreen == null) {
+                detail = null; // 창을 닫으면 강조·재료 판도 닫는다
+                lastFacility = null;
+            }
             return;
-        }
-        if (focusScreen != screen) {
-            focusScreen = screen;
-            detail = null; // 다른 창을 열면 지난 강조·재료 판은 닫는다
         }
         // 레시피 칸으로 어느 시설 창인지 알아본다(고정 칸도 시설을 알아보는 데만 쓴다)
         Map<String, Integer> facilities = new java.util.HashMap<>();
@@ -103,8 +104,14 @@ public final class FacilityPanel {
         if (facility == null) {
             entries = List.of();
             detail = null;
+            visible = Map.of();
             return;
         }
+        if (!facility.equals(lastFacility)) {
+            lastFacility = facility;
+            detail = null; // 다른 시설 창이면 지난 강조는 닫는다
+        }
+        learn(screen, facility, slotsNow);
         recipeSlots = slotsNow;
         tabSlots = findTabs(screen, facility);
         Map<String, Integer> counts = MaterialCounter.availableCounts(client);
@@ -257,26 +264,131 @@ public final class FacilityPanel {
                 && net.minecraft.client.util.InputUtil.isKeyPressed(c.getWindow().getHandle(), k.getCode());
     }
 
+    // ---- 경로 배우기: 사용자가 칸을 누른 뒤 새로 나타난 레시피·칸은 "그 칸을 누르면 나온다"로 기억한다
+    //      (서버 창의 칸 이름을 몰라도, 한 번 직접 찾아간 길은 다음부터 반짝여 알려 줄 수 있다. 서버로는 아무것도 보내지 않음)
+
+    /** 지금 창에 보이는 것: 노드(레시피 "r:id" 또는 칸 "s:번호:이름:모양") → 칸 번호 */
+    private static Map<String, Integer> visible = Map.of();
+    /** 시설 → (노드 → 그 노드를 나타나게 한 칸 노드) */
+    private static Map<String, Map<String, String>> parents;
+    private static String clickedNode;
+    private static long clickedAt;
+
+    private static String slotNode(Slot slot) {
+        ItemStack s = slot.getStack();
+        String name = ItemKeys.normalize(ItemKeys.stripGlyphs(s.getName().getString()));
+        String model = "";
+        net.minecraft.component.type.CustomModelDataComponent cmd = s.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+        if (cmd != null && !cmd.floats().isEmpty()) model = String.valueOf(cmd.floats().get(0).intValue());
+        var im = s.getComponentChanges().get(DataComponentTypes.ITEM_MODEL);
+        if (im != null && im.isPresent()) model += im.get().toString();
+        return "s:" + slot.id + ":" + name + ":" + model;
+    }
+
+    private static void learn(HandledScreen<?> screen, String facility, Map<String, Integer> recipesNow) {
+        Map<String, Integer> now = new java.util.HashMap<>();
+        for (Map.Entry<String, Integer> e : recipesNow.entrySet()) now.put("r:" + e.getKey(), e.getValue());
+        for (Slot slot : screen.getScreenHandler().slots) {
+            if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
+            if (recipesNow.containsValue(slot.id)) continue;
+            now.put(slotNode(slot), slot.id);
+        }
+        // 누른 지 3초 안에 새로 나타난 것들은 그 칸을 눌러서 나온 것
+        if (clickedNode != null && System.currentTimeMillis() - clickedAt < 3000 && !visible.isEmpty()) {
+            Map<String, String> map = parents().computeIfAbsent(facility, k -> new java.util.HashMap<>());
+            boolean changed = false;
+            for (String n : now.keySet()) {
+                if (visible.containsKey(n) || n.equals(clickedNode)) continue;
+                if (!clickedNode.equals(map.put(n, clickedNode))) {
+                    changed = true;
+                    if (n.startsWith("r:")) DdingMate.LOG.info("시설 경로 기억: {} ← {}", n, clickedNode);
+                }
+            }
+            if (changed) saveParents();
+        }
+        if (!now.keySet().equals(visible.keySet()) && clickedNode != null && System.currentTimeMillis() - clickedAt < 3000) {
+            clickedNode = null; // 한 번 누른 것은 한 번만 배운다
+        }
+        visible = now;
+    }
+
+    /** 창 칸을 눌렀을 때(띵메이트 판 바깥): 어떤 칸을 눌렀는지만 기억한다 */
+    private static void noteSlotClick(double mouseX, double mouseY) {
+        MinecraftClient c = MinecraftClient.getInstance();
+        if (lastFacility == null || !(c.currentScreen instanceof HandledScreen<?> hs)) return;
+        int ox = ((kr.ddingmate.mixin.HandledScreenAccessor) hs).ddingmate$x();
+        int oy = ((kr.ddingmate.mixin.HandledScreenAccessor) hs).ddingmate$y();
+        for (Slot slot : hs.getScreenHandler().slots) {
+            if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
+            int sx = ox + slot.x, sy = oy + slot.y;
+            if (mouseX >= sx && mouseX < sx + 16 && mouseY >= sy && mouseY < sy + 16) {
+                clickedNode = recipeSlots.containsValue(slot.id) ? null : slotNode(slot);
+                clickedAt = System.currentTimeMillis();
+                if (clickedNode != null) DdingMate.LOG.info("시설 창 누름: {} · {}", lastFacility, clickedNode);
+                return;
+            }
+        }
+    }
+
+    /** 강조할 칸: 레시피가 보이면 그 칸, 아니면 기억한 길을 거슬러 지금 보이는 칸, 아니면 분류 이름 탭. 없으면 -1 */
+    private static int targetSlot(String recipeId) {
+        Integer direct = recipeSlots.get(recipeId);
+        if (direct != null) return direct;
+        Map<String, String> map = lastFacility == null ? null : parents().get(lastFacility);
+        String node = map == null ? null : map.get("r:" + recipeId);
+        for (int depth = 0; node != null && depth < 6; depth++) {
+            Integer at = visible.get(node);
+            if (at != null) return at;
+            node = map.get(node);
+        }
+        RecipeBook.Recipe r = RecipeBook.get(recipeId);
+        if (r != null && r.category != null && tabSlots.containsKey(r.category)) return tabSlots.get(r.category);
+        return -1;
+    }
+
+    private static Map<String, Map<String, String>> parents() {
+        if (parents == null) {
+            parents = new java.util.HashMap<>();
+            java.nio.file.Path f = pathsFile();
+            if (java.nio.file.Files.exists(f)) {
+                try (java.io.Reader r = java.nio.file.Files.newBufferedReader(f, java.nio.charset.StandardCharsets.UTF_8)) {
+                    Map<String, Map<String, String>> read = new com.google.gson.Gson().fromJson(r,
+                            new com.google.gson.reflect.TypeToken<Map<String, Map<String, String>>>() {}.getType());
+                    if (read != null) read.forEach((k, v) -> parents.put(k, new java.util.HashMap<>(v)));
+                } catch (Exception e) {
+                    DdingMate.LOG.warn("시설 경로 기록을 읽지 못했어요", e);
+                }
+            }
+        }
+        return parents;
+    }
+
+    private static java.nio.file.Path pathsFile() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ddingmate-facility-paths.json");
+    }
+
+    private static void saveParents() {
+        try (java.io.Writer w = java.nio.file.Files.newBufferedWriter(pathsFile(), java.nio.charset.StandardCharsets.UTF_8)) {
+            new com.google.gson.Gson().toJson(parents(), w);
+        } catch (Exception e) {
+            DdingMate.LOG.warn("시설 경로 기록을 저장하지 못했어요", e);
+        }
+    }
+
     /** 강조할 레시피가 창에 안 보이면 어디로 가야 하는지 한 줄 */
     private static String hint() {
         String focusId = focus();
         if (focusId == null || recipeSlots.containsKey(focusId)) return null;
-        RecipeBook.Recipe r = RecipeBook.get(focusId);
-        if (r == null) return null;
-        if (r.category != null && tabSlots.containsKey(r.category)) return "→ 아래 '" + r.category + "' 탭에 있어요";
-        return "→ 다른 탭이나 다음 쪽에 있어요";
+        if (targetSlot(focusId) >= 0) return "→ 반짝이는 칸을 눌러요";
+        return "→ 처음엔 직접 찾아 주세요(찾아간 길은 기억해요)";
     }
 
     /** 시설 창의 그 칸(없으면 탭)에 반짝이는 테두리 */
     private static void highlight(DrawContext ctx, Screen screen) {
         String focusId = focus();
         if (focusId == null || !(screen instanceof HandledScreen<?> hs)) return;
-        Integer slotId = recipeSlots.get(focusId);
-        if (slotId == null) {
-            RecipeBook.Recipe r = RecipeBook.get(focusId);
-            if (r != null && r.category != null) slotId = tabSlots.get(r.category);
-        }
-        if (slotId == null || slotId < 0 || slotId >= hs.getScreenHandler().slots.size()) return;
+        int slotId = targetSlot(focusId);
+        if (slotId < 0 || slotId >= hs.getScreenHandler().slots.size()) return;
         Slot slot = hs.getScreenHandler().slots.get(slotId);
         int sx = ((kr.ddingmate.mixin.HandledScreenAccessor) hs).ddingmate$x() + slot.x;
         int sy = ((kr.ddingmate.mixin.HandledScreenAccessor) hs).ddingmate$y() + slot.y;
@@ -301,6 +413,23 @@ public final class FacilityPanel {
 
     public static Map<String, Integer> debugRecipeSlots() {
         return recipeSlots;
+    }
+
+    /** 시험용: 이 칸을 누른 것처럼(경로 배우기) */
+    public static void debugClickSlot(Slot slot) {
+        clickedNode = slotNode(slot);
+        clickedAt = System.currentTimeMillis();
+    }
+
+    public static int debugTargetSlot() {
+        String f = focus();
+        return f == null ? -1 : targetSlot(f);
+    }
+
+    public static void debugForgetPaths() {
+        parents = new java.util.HashMap<>();
+        saveParents();
+        visible = Map.of();
     }
 
     public static String debugHint() {
@@ -444,6 +573,12 @@ public final class FacilityPanel {
 
     /** 판 안을 눌렀으면 처리하고 true(창으로는 넘기지 않음). 왼쪽: 핀 넣기, 오른쪽: 핀 빼기 */
     public static boolean click(double mouseX, double mouseY, int button) {
+        boolean ours = clickPanel(mouseX, mouseY, button);
+        if (!ours && button == 0) noteSlotClick(mouseX, mouseY);
+        return ours;
+    }
+
+    private static boolean clickPanel(double mouseX, double mouseY, int button) {
         if (button != 0 && button != 1) return false;
         if (inDetail(mouseX, mouseY)) {
             if (sneakDown()) detail = null;

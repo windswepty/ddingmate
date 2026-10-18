@@ -605,6 +605,54 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.craft.FacilityPanel.debugDetail(null);
                 check(kr.ddingmate.craft.FacilityPanel.debugFocus() == null, "재료 판을 닫았는데 강조가 남음");
             });
+            // 경로 배우기: 창에 없는 레시피는, 사용자가 한 번 칸(예: 레시피 목록)을 눌러 그 레시피가 나타나면 그 길을 기억해 다음부터 그 칸을 강조
+            String[] target = new String[1];
+            ctx.runOnClient(c -> {
+                kr.ddingmate.craft.FacilityPanel.debugForgetPaths();
+                target[0] = "하급 라이프스톤"; // 같은 강화 제작 시설의, 첫 화면에 없는 레시피
+                // 첫 화면: 조약돌 뭉치(레시피) + 레시피 목록 단추(칸 11)
+                c.setScreen(facility(c,
+                        item("조약돌 뭉치", 1, "다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 5초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정"),
+                        item("레시피 목록", 1, "클릭하면 레시피 목록을 엽니다.")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                var r1 = kr.ddingmate.counter.RecipeBook.get("강화 제작 시설/" + target[0]);
+                check(r1 != null, "하급 라이프스톤 레시피가 없음");
+                kr.ddingmate.craft.FacilityPanel.debugAct(r1, 0, true);
+                check(kr.ddingmate.craft.FacilityPanel.debugTargetSlot() < 0 && kr.ddingmate.craft.FacilityPanel.debugHint().contains("처음엔"),
+                        "길을 모르는데 강조함: " + kr.ddingmate.craft.FacilityPanel.debugHint());
+                // 사용자가 '레시피 목록'을 누름 → 서버가 목록 창을 연다(그 레시피 줄이 보임)
+                var button = ((GenericContainerScreen) c.currentScreen).getScreenHandler().slots.get(11);
+                kr.ddingmate.craft.FacilityPanel.debugClickSlot(button);
+                c.setScreen(facility(c,
+                        item(target[0], 1, "재료입니다.", "", "  제작 시간 : 10초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정"),
+                        item("뒤로", 1, "이전 화면으로")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                var es = kr.ddingmate.craft.FacilityPanel.entries();
+                check(kr.ddingmate.craft.FacilityPanel.debugFocus() != null, "같은 시설의 다른 창을 열었는데 강조가 꺼짐");
+                check(kr.ddingmate.craft.FacilityPanel.debugTargetSlot() == 10, "목록 창에서 그 레시피 칸을 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot());
+                // 다시 첫 화면으로 → 이번엔 '레시피 목록' 칸(11)을 강조
+                c.setScreen(facility(c,
+                        item("조약돌 뭉치", 1, "다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 5초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정"),
+                        item("레시피 목록", 1, "클릭하면 레시피 목록을 엽니다.")));
+            });
+            ctx.waitTicks(12);
+            ctx.takeScreenshot("facility-1c-learned-path");
+            ctx.runOnClient(c -> {
+                check(kr.ddingmate.craft.FacilityPanel.debugTargetSlot() == 11 && kr.ddingmate.craft.FacilityPanel.debugHint().contains("반짝이는"),
+                        "기억한 길(레시피 목록)을 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot() + " / " + kr.ddingmate.craft.FacilityPanel.debugHint());
+                kr.ddingmate.craft.FacilityPanel.debugDetail(null);
+                kr.ddingmate.craft.FacilityPanel.debugForgetPaths();
+                // 다음 시험이 쓰는 원래 창으로
+                c.setScreen(facility(c,
+                        item("조약돌 뭉치", 1, "다양한 제작에 사용되는 재료입니다.", "", "  제작 시간 : 5초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정"),
+                        item("하급 라이프스톤", 1, "세이지 도구 강화에 필요합니다.", "", "  제작 시간 : 1분 0초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거"),
+                        item("어빌리티 스톤", 1, "신비로운 힘이 깃들어 있는 스톤입니다.", "", "  제작 시간 : 2분 0초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거")));
+            });
+            ctx.waitTicks(12);
             // 재료가 많아 추천이 8개를 넘으면 "그 밖에 N개"를 눌러 전체 목록 판을 연다
             ctx.runOnClient(c -> {
                 var pinv = c.player.getInventory();
