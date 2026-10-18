@@ -1893,9 +1893,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
         blank.accept(0);
         ItemStack recipe = item(recipeName, 1, "재료입니다.", "", "  제작 시간 : 10초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정");
         if (listView) {
-            blank.accept(8);
-            for (int i = 45; i <= 50; i++) blank.accept(i);
-            blank.accept(53);
+            for (int i = 45; i <= 50; i++) blank.accept(i); // 탭: 이름 없는 종이. ↑(8)·↓(53)는 실제처럼 아이템 없는 빈 칸
             inv.setStack(17, recipe);
         } else {
             inv.setStack(9, recipe);

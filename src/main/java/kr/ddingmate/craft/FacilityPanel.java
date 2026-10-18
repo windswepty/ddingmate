@@ -335,7 +335,7 @@ public final class FacilityPanel {
     // ---- 시설 창 구조(2026-10-18 실제, 9개 시설에서 누른 기록으로 확인):
     //  첫 화면: 왼쪽 위 0번 칸 = 레시피 목록(이름 없는 투명 종이), 위 줄은 '레시피 고정' 칸
     //  목록 화면: 0번 = 뒤로, 8번 = ↑, 줄마다 9·18·27·36번 재료 → 17·26·35·44번 결과(한 번에 4줄),
-    //            맨 아래 45~50번 = 탭(이름 없는 투명 종이, 그림은 창 배경), 53번 = ↓
+    //            맨 아래 45~50번 = 탭(이름 없는 투명 종이, 그림은 창 배경), 53번 = ↓(아이템 없는 빈 칸, 그림은 창 배경)
     //  탭 순서 = 그 시설 레시피 목록(recipes.json, 위키 표 순서)의 분류 순서: 첫 분류가 45번, 다음이 46번 …
     //  (연금: 정수·핵·에센스·결정·엘릭서·영약 → 45~50, 채광물: 연료·주괴·코룸·리프톤·세렌트·형광 큐브 → 45~50)
     static final int LIST_BUTTON = 0, UP_ARROW = 8, DOWN_ARROW = 53, FIRST_TAB = 45, MAX_TABS = 6;
@@ -402,9 +402,9 @@ public final class FacilityPanel {
             if (v != null && v.facility.equals(r.facility) && r.category.equals(v.category)) sameTab = true;
         }
         if (!sameTab) return blankButton(tab) ? tab : -1;
-        // 맞는 탭인데 안 보이면 다른 쪽: 줄 순서를 몰라 방향은 ↓(끝까지 내려가면 ↑)
-        if (blankButton(DOWN_ARROW)) return DOWN_ARROW;
-        return blankButton(UP_ARROW) ? UP_ARROW : -1;
+        // 맞는 탭인데 안 보이면 다른 쪽 → ↓. 화살표는 아이템 없는 빈 칸이고 그림은 창 배경이라(2026-10-18 실제 화면)
+        // 칸에 아이템이 있는지는 보지 않는다(목록 화면인 것은 45번 탭으로 이미 확인)
+        return DOWN_ARROW;
     }
 
     /** 강조할 칸: 레시피가 보이면 그 칸, 아니면 시설 창 구조 규칙, 아니면 기억한 길, 아니면 분류 이름 탭. 없으면 -1 */
