@@ -43,7 +43,7 @@ public final class Notifier {
     }
 
     public static void materialsReady(String pinTitle, ItemStack icon) {
-        notify("재료", "재료 준비 완료: " + pinTitle, "핀에 등록한 재료가 다 모였어요",
+        notify("재료", "재료 준비 완료: " + Theme.compactGrade(pinTitle), "핀에 등록한 재료가 다 모였어요",
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), icon == null ? new ItemStack(Items.CHEST) : icon,
                 Theme.GREEN, false);
     }
@@ -67,7 +67,7 @@ public final class Notifier {
 
     public static void craftDone(String name, int count, int times) {
         ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(name);
-        notify("제작", "제작 완료: " + name + (count > 1 ? " ×" + count : "") + (times > 1 ? " [" + times + "]" : ""),
+        notify("제작", "제작 완료: " + Theme.compactGrade(name) + (count > 1 ? " ×" + count : "") + (times > 1 ? " [" + times + "]" : ""),
                 times > 1 ? "넣어 둔 " + times + "번이 모두 끝났어요 · 시설에서 꺼내 가세요" : "시설에서 꺼내 가세요",
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), icon == null ? new ItemStack(Items.CRAFTING_TABLE) : icon,
                 Theme.GREEN, false);

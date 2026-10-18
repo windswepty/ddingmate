@@ -271,5 +271,10 @@ test('검사 함수', async () => {
   assert.equal(realAccount('e4f1c3a2-1234-3abc-8def-0123456789ab'), false);
   assert.equal(validateInquiry(inquiryBody()), null);
   assert.equal(validateInquiry(inquiryBody({ text: 'x'.repeat(1501) })), 'bad text');
+  const named = (name) => validateInquiry(inquiryBody({ info: { ...inquiryBody().info, name } }));
+  assert.equal(named('.Bedrock Name'), null);
+  assert.equal(named('Blo_9'), null);
+  assert.equal(named('@everyone'), 'bad name');
+  assert.equal(named('**굵게**'), 'bad name');
   assert.equal(await verifyDiscord('zz', 'zz', '1', 'x'), false);
 });

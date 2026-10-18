@@ -135,7 +135,8 @@ export function validateInquiry(p, files = []) {
   for (const k of ['name', 'uuid', 'modVersion', 'gameVersion', 'server', 'place']) {
     if (typeof i[k] !== 'string' || i[k].length > 100) return `bad info.${k}`;
   }
-  if (!/^[A-Za-z0-9_]{1,16}$|^\?$/.test(i.name)) return 'bad name';
+  // 자바 닉네임(영문·숫자·_) + 베드록 연동 이름(앞의 . 이나 * , 띄어쓰기). 멘션·서식 글자는 막는다
+  if (!/^[.*]?[A-Za-z0-9_ ]{1,32}$|^\?$/.test(i.name)) return 'bad name';
   if (files.length > LIMITS.maxFiles) return 'too many files';
   for (const f of files) {
     if (!IMAGE_TYPES[ext(f.name)] || f.size > LIMITS.maxFileBytes) return 'bad file';

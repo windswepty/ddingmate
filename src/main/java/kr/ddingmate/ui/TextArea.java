@@ -177,6 +177,11 @@ public class TextArea extends TextFieldWidget {
     }
 
     @Override
+    public void write(String text) {
+        super.write(text.replace("\r\n", " ").replace('\n', ' ').replace('\r', ' ').replace('\t', ' '));
+    }
+
+    @Override
     public void onClick(double mouseX, double mouseY) {
         List<Integer> starts = lineStarts();
         int line = Math.max(0, Math.min(starts.size() - 1, scroll + (int) Math.floor((mouseY - getY() - PAD + 1) / LINE)));

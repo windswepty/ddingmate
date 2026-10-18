@@ -379,7 +379,7 @@ public final class FacilityPanel {
 
     /** "'리프톤 주괴'는" 처럼 받침에 맞는 조사를 붙인다(한글로 안 끝나면 "은(는)") */
     static String quoted(RecipeBook.Recipe r, String withFinal, String withoutFinal) {
-        String n = r.displayName();
+        String n = kr.ddingmate.ui.Theme.compactGrade(r.displayName());
         char last = n.isEmpty() ? ' ' : n.charAt(n.length() - 1);
         String josa;
         if (last >= 0xAC00 && last <= 0xD7A3) josa = (last - 0xAC00) % 28 != 0 ? withFinal : withoutFinal;

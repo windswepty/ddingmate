@@ -113,7 +113,7 @@ public final class Inquiry {
         String where = server == null ? (client.isInSingleplayer() ? "혼자 하기" : "접속 안 함") : server.address;
         kr.ddingmate.game.ServerHud.Area area = kr.ddingmate.game.ServerHud.area();
         int ch = kr.ddingmate.game.ServerHud.channel();
-        String place = area == null ? "모름" : area.label + (ch > 0 ? " " + ch + "채널" : "");
+        String place = area == null || server == null ? "모름" : area.label + (ch > 0 ? " " + ch + "채널" : "");
         return new Info(name, uuid, mod, game, where, place);
     }
 

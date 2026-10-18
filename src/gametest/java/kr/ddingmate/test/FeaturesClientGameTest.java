@@ -790,6 +790,14 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 box.moveLine(-1, false);
                 check(box.getCursor() >= starts.get(1) && box.getCursor() <= starts.get(1) + 4, "위 줄로 커서가 안 감: " + box.getCursor() + " / " + starts);
                 box.setCursorToEnd(false);
+                // 여러 줄 글을 붙여 넣으면 줄바꿈은 띄어쓰기로(낱말이 붙지 않게)
+                box.setText("");
+                box.write("첫 줄입니다\r\n둘째 줄입니다\n셋째");
+                check(box.getText().equals("첫 줄입니다 둘째 줄입니다 셋째"), "붙여 넣은 줄바꿈이 다름: " + box.getText());
+                box.setText(longText);
+                box.setCursorToEnd(false);
+                // 서버에 들어가 있지 않으면(혼자 하기) 지역은 "모름"으로 보낸다(나간 뒤 남은 표시가 섞이지 않게)
+                check(kr.ddingmate.inquiry.Inquiry.info(c).place().equals("모름"), "서버 밖인데 지역을 보냄: " + kr.ddingmate.inquiry.Inquiry.info(c).place());
                 // caramelChat 이 함께 깔려 있으면 이 칸에 한글 입력을 붙였는지(없으면 건너뜀)
                 try {
                     Class<?> ctl = Class.forName("moe.caramel.chat.controller.EditBoxController");

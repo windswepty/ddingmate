@@ -99,7 +99,7 @@ final class Tutorial {
             new Step(DdingMateScreen.Tab.EXPERT, false, "스킬 판매가 · 전문가 스킬로 바뀌는 판매가", "스킬 판매가",
                     "판매가를 올려 주는 전문가 스킬 16개와 지금 비율, 바뀐 판매가 예시예요. 스킬 창을 한 번 열면 배운 %를 읽어 판매 시세에 반영해요."),
             new Step(DdingMateScreen.Tab.INQUIRY, true, null, "문의 탭",
-                    "버그나 바라는 기능을 분류를 골라 적고 [문의 보내기]를 누르면 개발자에게 바로 가요. 닉네임·버전·접속한 서버가 함께 가고, 1분에 한 번 보낼 수 있어요."),
+                    "버그나 바라는 기능을 분류를 골라 적고 [문의 보내기]를 누르면 개발자에게 바로 가요. 닉네임·버전·접속한 서버가 함께 가고, 1분에 한 번 보낼 수 있어요. 개발자가 답하면 내 채팅·알림으로 와요(그때 접속해 있지 않았으면 다음 접속 때)."),
             new Step(DdingMateScreen.Tab.LOG, true, null, "기록 탭",
                     "소리·팝업을 놓쳐도 괜찮아요. 지난 알림을 최근 100개까지 다시 볼 수 있어요."),
             new Step(DdingMateScreen.Tab.HOME, false, "튜토리얼 다시 보기", "준비 끝!",
