@@ -65,6 +65,8 @@ public final class DdingMateConfig {
         public boolean showSets = false;
         /** 제작 시설 창 옆에 가진 재료로 만들 수 있는 레시피 판(누르면 핀) */
         public boolean facilityPanel = true;
+        /** 레시피 판 줄에 마우스를 올리면 시설 창에서 눌러야 할 칸(없으면 그 레시피가 있는 탭)을 강조. 누르는 건 사용자가 직접 */
+        public boolean facilityHighlight = true;
     }
 
     /** 추적하는 장비 하나. key 는 ItemKeys 키, name 은 화면에 보일 이름 */

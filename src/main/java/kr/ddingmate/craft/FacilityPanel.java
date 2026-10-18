@@ -50,6 +50,16 @@ public final class FacilityPanel {
     private static boolean expanded;
     private static int scroll;
     private static int lx, ly, lw, lh, listTop, listRows, moreY;
+    /**
+     * 눌러야 할 칸 강조(0.3.2): 판 줄을 쉬프트(앉기 키)+좌클릭해서 연 레시피(재료 판과 함께 켜지고 꺼진다, 2026-10-18 사용자 요청).
+     * 창에 그 레시피 칸이 보이면 그 칸, 아니면 그 레시피 분류의 탭 칸을 테두리로 표시한다. 누르는 건 사용자가 직접
+     */
+    private static Object focusScreen;
+    /** 지금 창: 레시피 id → 칸 번호, 분류 이름 → 탭 칸 번호 */
+    private static Map<String, Integer> recipeSlots = Map.of();
+    private static Map<String, Integer> tabSlots = Map.of();
+    private static final java.util.Set<String> TAB_LOGGED = new java.util.HashSet<>();
+
     /** 쉬프트+클릭으로 연 레시피(아래 판에 재료를 보여 줌). 쉬프트+오른쪽 클릭으로 닫는다 */
     private static RecipeBook.Recipe detail;
     /** 마지막으로 센 보유 개수(레시피 판에 씀) */
@@ -64,10 +74,17 @@ public final class FacilityPanel {
         if (!DdingMate.config().counter.facilityPanel || client.player == null
                 || !(client.currentScreen instanceof HandledScreen<?> screen)) {
             entries = List.of();
+            recipeSlots = Map.of();
+            tabSlots = Map.of();
             return;
+        }
+        if (focusScreen != screen) {
+            focusScreen = screen;
+            detail = null; // 다른 창을 열면 지난 강조·재료 판은 닫는다
         }
         // 레시피 칸으로 어느 시설 창인지 알아본다(고정 칸도 시설을 알아보는 데만 쓴다)
         Map<String, Integer> facilities = new java.util.HashMap<>();
+        Map<String, Integer> slotsNow = new java.util.HashMap<>();
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
             ItemStack s = slot.getStack();
@@ -77,7 +94,10 @@ public final class FacilityPanel {
             if (r == null || !r.recipe()) continue;
             String name = CraftTimers.cleanName(ItemKeys.stripGlyphs(s.getName().getString()));
             RecipeBook.Recipe recipe = RecipeBook.forWindowSlot(name, s.getCount());
-            if (recipe != null) facilities.merge(recipe.facility, 1, Integer::sum);
+            if (recipe != null) {
+                facilities.merge(recipe.facility, 1, Integer::sum);
+                slotsNow.putIfAbsent(recipe.id, slot.id);
+            }
         }
         String facility = facilities.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
         if (facility == null) {
@@ -85,6 +105,8 @@ public final class FacilityPanel {
             detail = null;
             return;
         }
+        recipeSlots = slotsNow;
+        tabSlots = findTabs(screen, facility);
         Map<String, Integer> counts = MaterialCounter.availableCounts(client);
         lastCounts = counts;
         List<Entry> out = new ArrayList<>();
@@ -123,7 +145,7 @@ public final class FacilityPanel {
         }
         w = Math.max(132, Math.min(SidePanel.maxWidth(screen.width), w));
         String foot = "클릭: 핀 넣기 / 한 번 더: 빼기";
-        String foot2 = "쉬프트+클릭: 레시피 보기 / 닫기";
+        String foot2 = DdingMate.config().counter.facilityHighlight ? "쉬프트+클릭: 재료·칸 보기 / 닫기" : "쉬프트+클릭: 레시피 보기 / 닫기";
         int h = SidePanel.HEAD_H + 5 + shown * ROW + 4 + (entries.size() > shown ? 11 : 0) + 12 + 10;
         int[] at = SidePanel.place(screen.width, screen.height, w, h);
         int x = at[0], y = at[1];
@@ -184,6 +206,7 @@ public final class FacilityPanel {
             }
             renderDetail(ctx, screen, tr, p, dx, dy, dw);
         }
+        highlight(ctx, screen);
         // 이름이 … 로 잘린 줄에 마우스를 올리면 서버 이름 그대로 보여 준다
         if (tip != null) {
             ctx.getMatrices().push();
@@ -196,6 +219,94 @@ public final class FacilityPanel {
     /** 이번 프레임에 마우스를 올린 잘린 이름(전체) */
     private static String tip;
 
+    // ---------------------------------------------------------------- 눌러야 할 칸 강조
+
+    /** 이 시설 레시피의 분류 이름이 칸 이름에 들어간 칸 = 아래 탭. 처음 보는 탭 이름은 로그에 남긴다(서버 표기 확인용) */
+    private static Map<String, Integer> findTabs(HandledScreen<?> screen, String facility) {
+        java.util.Set<String> cats = new java.util.HashSet<>();
+        for (RecipeBook.Recipe r : RecipeBook.all()) if (r.facility.equals(facility) && r.category != null) cats.add(r.category);
+        Map<String, Integer> out = new java.util.HashMap<>();
+        for (Slot slot : screen.getScreenHandler().slots) {
+            if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
+            LoreComponent tabLore = slot.getStack().get(DataComponentTypes.LORE);
+            if (tabLore != null && CraftTimers.read(tabLore.lines()) != null) continue;
+            String n = ItemKeys.normalize(ItemKeys.stripGlyphs(slot.getStack().getName().getString()));
+            if (n.isEmpty()) continue;
+            for (String c : cats) {
+                String nc = ItemKeys.normalize(c);
+                if (!nc.isEmpty() && n.contains(nc) && !out.containsKey(c)) {
+                    out.put(c, slot.id);
+                    if (TAB_LOGGED.add(facility + "/" + c)) DdingMate.LOG.info("시설 탭 읽음: {} · {} → 칸 {}", facility, c, slot.id);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** 강조할 레시피 id(쉬프트+클릭으로 연 레시피). 강조를 꺼 두었으면 null */
+    private static String focus() {
+        return DdingMate.config().counter.facilityHighlight && detail != null ? detail.id : null;
+    }
+
+    /** 쉬프트 또는 앉기 키(다른 키로 바꿔 쓰는 사람도 있어서) */
+    static boolean sneakDown() {
+        if (net.minecraft.client.gui.screen.Screen.hasShiftDown()) return true;
+        MinecraftClient c = MinecraftClient.getInstance();
+        net.minecraft.client.util.InputUtil.Key k = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(c.options.sneakKey);
+        return k.getCategory() == net.minecraft.client.util.InputUtil.Type.KEYSYM
+                && net.minecraft.client.util.InputUtil.isKeyPressed(c.getWindow().getHandle(), k.getCode());
+    }
+
+    /** 강조할 레시피가 창에 안 보이면 어디로 가야 하는지 한 줄 */
+    private static String hint() {
+        String focusId = focus();
+        if (focusId == null || recipeSlots.containsKey(focusId)) return null;
+        RecipeBook.Recipe r = RecipeBook.get(focusId);
+        if (r == null) return null;
+        if (r.category != null && tabSlots.containsKey(r.category)) return "→ 아래 '" + r.category + "' 탭에 있어요";
+        return "→ 다른 탭이나 다음 쪽에 있어요";
+    }
+
+    /** 시설 창의 그 칸(없으면 탭)에 반짝이는 테두리 */
+    private static void highlight(DrawContext ctx, Screen screen) {
+        String focusId = focus();
+        if (focusId == null || !(screen instanceof HandledScreen<?> hs)) return;
+        Integer slotId = recipeSlots.get(focusId);
+        if (slotId == null) {
+            RecipeBook.Recipe r = RecipeBook.get(focusId);
+            if (r != null && r.category != null) slotId = tabSlots.get(r.category);
+        }
+        if (slotId == null || slotId < 0 || slotId >= hs.getScreenHandler().slots.size()) return;
+        Slot slot = hs.getScreenHandler().slots.get(slotId);
+        int sx = ((kr.ddingmate.mixin.HandledScreenAccessor) hs).ddingmate$x() + slot.x;
+        int sy = ((kr.ddingmate.mixin.HandledScreenAccessor) hs).ddingmate$y() + slot.y;
+        // 0.8초마다 밝아졌다 어두워진다
+        double phase = (net.minecraft.util.Util.getMeasuringTimeMs() % 800) / 800.0;
+        int a = (int) (140 + 115 * Math.abs(Math.sin(phase * Math.PI)));
+        int c = (a << 24) | 0xF2B531;
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(0, 0, 350);
+        ctx.fill(sx - 2, sy - 2, sx + 18, sy, c);
+        ctx.fill(sx - 2, sy + 16, sx + 18, sy + 18, c);
+        ctx.fill(sx - 2, sy, sx, sy + 16, c);
+        ctx.fill(sx + 16, sy, sx + 18, sy + 16, c);
+        ctx.fill(sx, sy, sx + 16, sy + 16, (a / 4 << 24) | 0xF2B531);
+        ctx.getMatrices().pop();
+    }
+
+    /** 시험용 */
+    public static String debugFocus() {
+        return focus();
+    }
+
+    public static Map<String, Integer> debugRecipeSlots() {
+        return recipeSlots;
+    }
+
+    public static String debugHint() {
+        return hint();
+    }
+
     /** 쉬프트+클릭한 레시피의 재료: 판 바로 아래(자리가 없으면 위)에 재료마다 보유/필요 */
     /** 마지막으로 그린 레시피 판 안인가 */
     private static boolean inDetail(double mx, double my) {
@@ -204,7 +315,7 @@ public final class FacilityPanel {
     }
 
     private static int detailHeight(RecipeBook.Recipe r) {
-        return SidePanel.HEAD_H + 5 + r.materials.size() * ROW + 4 + 12 + 4;
+        return SidePanel.HEAD_H + 5 + r.materials.size() * ROW + 4 + 12 + 4 + (hint() != null ? 10 : 0);
     }
 
     /** 시험용: 마지막으로 그린 레시피 판 자리 {x, y, w, h} */
@@ -245,13 +356,15 @@ public final class FacilityPanel {
         int can = MaterialCounter.craftable(lastCounts, r);
         String sum = can > 0 ? "지금 " + can + "번 만들 수 있어요" : "재료가 모자라요";
         Theme.text(ctx, tr, Theme.ellipsize(tr, sum, w - 12), x + 6, cy + 6, can > 0 ? p.good() : p.soft());
+        String hint = hint();
+        if (hint != null) Theme.text(ctx, tr, Theme.ellipsize(tr, hint, w - 12), x + 6, cy + 16, Theme.GOLD_ON_LIGHT);
         ctx.getMatrices().pop();
     }
 
     /** 쉬프트를 누른 채 누르면 레시피 판 열기(왼쪽)/닫기(오른쪽), 아니면 핀 넣기/빼기 */
     private static void act(RecipeBook.Recipe r, int button) {
-        if (net.minecraft.client.gui.screen.Screen.hasShiftDown()) {
-            // 쉬프트+클릭: 레시피 판 열기, 같은 레시피를 한 번 더 누르면 닫기(쉬프트+우클릭도 닫기)
+        if (sneakDown()) {
+            // 쉬프트(앉기)+클릭: 레시피 판 열기 + 시설 창에서 눌러야 할 칸 강조, 같은 레시피를 한 번 더 누르면 닫기(쉬프트+우클릭도 닫기)
             detail = button == 0 && detail != r ? r : null;
             return;
         }
@@ -333,7 +446,7 @@ public final class FacilityPanel {
     public static boolean click(double mouseX, double mouseY, int button) {
         if (button != 0 && button != 1) return false;
         if (inDetail(mouseX, mouseY)) {
-            if (net.minecraft.client.gui.screen.Screen.hasShiftDown()) detail = null;
+            if (sneakDown()) detail = null;
             return true;
         }
         // 전체 목록 판
@@ -357,7 +470,7 @@ public final class FacilityPanel {
         }
         int i = (int) Math.floor((mouseY - (rowsTop - 1)) / ROW);
         if (mouseY >= rowsTop - 1 && i >= 0 && i < shown) act(entries.get(i).recipe(), button);
-        else if (button == 1 && net.minecraft.client.gui.screen.Screen.hasShiftDown()) detail = null;
+        else if (button == 1 && sneakDown()) detail = null;
         return true;
     }
 

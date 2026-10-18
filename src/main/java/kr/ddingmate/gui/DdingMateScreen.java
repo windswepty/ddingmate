@@ -780,6 +780,10 @@ public class DdingMateScreen extends Screen {
                 tip(toggle("시설 창 옆 레시피 판", cc.facilityPanel, v -> cc.facilityPanel = v),
                         "제작 시설 창을 열면 옆에 보유 재료로 만들 수 있는 레시피와 몇 번 만들 수 있는지 보여 줘요. 왼쪽 클릭은 핀 넣기, 오른쪽 클릭은 핀 빼기"));
 
+        list.pair(tip(toggle("눌러야 할 칸 강조", cc.facilityHighlight, v -> cc.facilityHighlight = v),
+                "레시피 판 줄을 쉬프트(앉기 키)+좌클릭하면 시설 창에서 그 레시피를 만들 칸을 반짝이는 테두리로 표시해요. 다른 탭에 있으면 그 탭을 표시해요. "
+                        + "누르는 건 직접 해요(띵메이트는 서버로 아무것도 보내지 않아요)"), null);
+
         list.header("모험 가방", "모험 가방");
         Widgets.Field aliases = new Widgets.Field(rowWidth(), Text.literal("가방 단축어(선택)"));
         aliases.setMaxLength(100);

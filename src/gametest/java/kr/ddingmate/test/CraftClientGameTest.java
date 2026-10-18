@@ -582,6 +582,28 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.craft.FacilityPanel.detail() == es.get(0).recipe(), "쉬프트+클릭으로 레시피가 안 열림");
                 kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, true);
                 check(kr.ddingmate.craft.FacilityPanel.detail() == null, "쉬프트+클릭 한 번 더 해도 레시피가 안 닫힘");
+                // 눌러야 할 칸 강조: 쉬프트+클릭한 레시피가 창에 보이면 그 칸(안내 줄 없음), 안 보이면 어디로 가야 하는지 한 줄
+                kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, true);
+                check(es.get(0).recipe().id.equals(kr.ddingmate.craft.FacilityPanel.debugFocus())
+                                && kr.ddingmate.craft.FacilityPanel.debugRecipeSlots().containsKey(es.get(0).recipe().id)
+                                && kr.ddingmate.craft.FacilityPanel.debugHint() == null,
+                        "창에 보이는 레시피 칸을 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugRecipeSlots());
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("facility-1b-highlight");
+            ctx.runOnClient(c -> {
+                var es = kr.ddingmate.craft.FacilityPanel.entries();
+                if (es.size() > 1) {
+                    kr.ddingmate.craft.FacilityPanel.debugAct(es.get(1).recipe(), 0, true);
+                    check(kr.ddingmate.craft.FacilityPanel.debugHint() != null && kr.ddingmate.craft.FacilityPanel.debugHint().startsWith("→"),
+                            "창에 없는 레시피인데 어디로 가야 하는지 안내가 없음");
+                }
+                // 스위치를 끄면 강조하지 않는다(재료 판은 그대로)
+                DdingMate.config().counter.facilityHighlight = false;
+                check(kr.ddingmate.craft.FacilityPanel.debugFocus() == null && kr.ddingmate.craft.FacilityPanel.debugHint() == null, "꺼도 강조함");
+                DdingMate.config().counter.facilityHighlight = true;
+                kr.ddingmate.craft.FacilityPanel.debugDetail(null);
+                check(kr.ddingmate.craft.FacilityPanel.debugFocus() == null, "재료 판을 닫았는데 강조가 남음");
             });
             // 재료가 많아 추천이 8개를 넘으면 "그 밖에 N개"를 눌러 전체 목록 판을 연다
             ctx.runOnClient(c -> {
