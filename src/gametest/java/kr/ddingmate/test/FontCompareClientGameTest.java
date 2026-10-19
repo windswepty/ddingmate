@@ -31,8 +31,8 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                     widths.add(Theme.width(c.textRenderer, "조약돌 뭉치 ×7 [3] 50분 20초"));
                     // 글꼴 파일이 실제로 읽혀야 한다(없으면 마인크래프트 기본 글꼴로 대신 그려 폭이 갈무리와 같아지지 않는다)
                 }
-                if (ids.size() != 3) throw new AssertionError("글꼴마다 다른 글꼴 이름이 아님: " + ids);
-                if (widths.size() < 3) throw new AssertionError("글꼴을 바꿔도 글자 폭이 같음(글꼴 파일을 못 읽음?): " + widths);
+                if (ids.size() != DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴마다 다른 글꼴 이름이 아님: " + ids);
+                if (widths.size() < DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴을 바꿔도 글자 폭이 같음(글꼴 파일을 못 읽음?): " + widths);
                 cfg.font = keep[0];
             });
             if (System.getenv("DDINGMATE_FONT_COMPARE") == null) return;

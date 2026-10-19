@@ -1,6 +1,0 @@
-{
-  "providers": [
-    {"type": "ttf", "file": "ddingmate:neodgm.ttf", "size": 10.8, "oversample": 8.0},
-    {"type": "reference", "id": "minecraft:default"}
-  ]
-}

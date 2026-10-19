@@ -1,6 +1,0 @@
-{
-  "providers": [
-    {"type": "ttf", "file": "ddingmate:pretendard-medium.ttf", "size": 7.6, "oversample": 8.0},
-    {"type": "reference", "id": "minecraft:default"}
-  ]
-}

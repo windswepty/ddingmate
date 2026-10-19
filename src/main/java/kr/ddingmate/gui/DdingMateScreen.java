@@ -567,9 +567,8 @@ public class DdingMateScreen extends Screen {
                     cfg.font = v;
                     rebuild(); // 글자 폭이 달라 줄 배치를 다시
                 });
-        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요.\n갈무리: 띵타이쿤과 비슷한 픽셀 글꼴\n"
-                + "프리텐다드: 매끈하고 가장 읽기 쉬운 고딕\n네오둥근모: 굵고 또렷한 픽셀 글꼴")));
-        list.pair(font, null);
+        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요.")));
+        if (DdingMateConfig.FontStyle.values().length > 1) list.pair(font, null); // 고를 글꼴이 둘 이상일 때만
         Widgets.Cycle<Integer> size = new Widgets.Cycle<>(half(), "HUD 전체 크기", List.of(50, 60, 70, 80, 90, 100),
                 nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
         size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 설정'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));

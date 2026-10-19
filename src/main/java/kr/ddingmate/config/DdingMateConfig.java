@@ -193,7 +193,7 @@ public final class DdingMateConfig {
      * 갈무리11·14 는 획이 가늘어 더 흐렸고 GUI 2 에서 글자가 깨졌다. 모두 OFL 글꼴
      */
     public enum FontStyle {
-        GALMURI("갈무리", ""), PRETENDARD("프리텐다드", "_pretendard"), NEODGM("네오둥근모", "_neodgm");
+        GALMURI("갈무리", "");
 
         public final String label;
         /** assets/ddingmate/font 의 body·bold·title 뒤에 붙는 이름 */
@@ -306,6 +306,7 @@ public final class DdingMateConfig {
         hudLines = Math.max(1, Math.min(10, hudLines));
         hudOpacity = Math.max(30, Math.min(100, hudOpacity));
         if (hudStyle == null) hudStyle = HudStyle.DARK;
+        if (font == null) font = FontStyle.GALMURI; // 빼 버린 글꼴(프리텐다드·네오둥근모)을 골라 두었던 설정은 갈무리로
         hudScale = Math.max(50, Math.min(100, hudScale));
         if (hudPos == null) hudPos = new LinkedHashMap<>();
         if (hudSizes == null) hudSizes = new LinkedHashMap<>();

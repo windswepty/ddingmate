@@ -78,6 +78,12 @@ public final class CraftTimers {
         public boolean notified;
         /** 시설 창에서 이 제작이 맨 앞에서 돌고 있는 것을 마지막으로 본 시각(저장 안 함). 완료로 바뀌는 순간을 잡는 데 쓴다 */
         transient long seenRunningAt;
+        /**
+         * 형광 광산·항해 칸에서 마지막으로 읽은 남은 초(저장 안 함). 이 창들의 "남은 시간"은 창을 열어 둔 동안 줄지 않고 그대로라
+         * (2026-10-19 실제: 7분 47초가 계속 보임), 같은 값을 다시 읽어 "지금부터 7분 47초"로 맞추면 HUD 타이머가 멈춰 보였다.
+         * 서버가 값을 바꿨을 때만 다시 맞춘다
+         */
+        transient long lastReadSec = -1;
     }
 
     /**
@@ -798,9 +804,11 @@ public final class CraftTimers {
             job.name = MINE;
             job.separate = true;
             jobs.add(job);
-        } else if (job.synced && Math.abs(job.endsAt - ends) <= 1500) {
-            return false;
+        } else if (job.synced && (job.lastReadSec == remaining || Math.abs(job.endsAt - ends) <= 1500)) {
+            job.lastReadSec = remaining;
+            return false; // 창 글이 그대로(서버가 안 바꿈) → 이미 맞춘 시각대로 줄어들게
         }
+        job.lastReadSec = remaining;
         if (!golem.isEmpty()) job.queue = golem; // 골렘 등급(알림에 붙인다)
         job.endsAt = ends;
         job.synced = true;
@@ -913,9 +921,11 @@ public final class CraftTimers {
             job.name = name;
             job.separate = true;
             jobs.add(job);
-        } else if (job.synced && Math.abs(job.endsAt - ends) <= 1500) {
-            return false;
+        } else if (job.synced && (job.lastReadSec == remaining || Math.abs(job.endsAt - ends) <= 1500)) {
+            job.lastReadSec = remaining;
+            return false; // 항해 칸도 남은 시간이 창을 연 동안 그대로 → 같은 값이면 시각을 옮기지 않는다
         }
+        job.lastReadSec = remaining;
         job.endsAt = ends;
         job.synced = true;
         job.notified = false;
@@ -988,8 +998,12 @@ public final class CraftTimers {
     }
 
     public static boolean debugMine(ItemStack stack, List<Text> lines) {
+        return debugMine(stack, lines, System.currentTimeMillis());
+    }
+
+    public static boolean debugMine(ItemStack stack, List<Text> lines, long now) {
         List<Job> jobs = jobsForWrite();
-        return jobs != null && isMine(lines) && mine(jobs, stack, lines, System.currentTimeMillis());
+        return jobs != null && isMine(lines) && mine(jobs, stack, lines, now);
     }
 
     // ---------------------------------------------------------------- 알림

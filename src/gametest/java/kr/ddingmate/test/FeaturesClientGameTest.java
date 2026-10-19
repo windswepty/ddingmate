@@ -970,6 +970,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(mineG != null && Math.abs(mineG.endsAt() - (now + 13_000)) < 1500 && !mineG.unknown() && !mineG.estimated(),
                         "형광 광산 남은 시간이 다름: " + mineG);
                 check(!kr.ddingmate.craft.CraftTimers.debugMine(mineItem, mineLore), "같은 시간인데 또 바꿈");
+                // 창을 열어 둔 동안 서버의 '남은 시간'은 그대로(실제 7분 47초 고정) → 5초 뒤 같은 글을 읽어도 끝나는 시각은 그대로
+                long mineEnds = mineG.endsAt();
+                check(!kr.ddingmate.craft.CraftTimers.debugMine(mineItem, mineLore, now + 5000), "멈춘 창 글을 다시 읽어 타이머가 멈춤");
+                long mineEnds2 = kr.ddingmate.craft.CraftTimers.groups().stream()
+                        .filter(g -> g.name().equals(kr.ddingmate.craft.CraftTimers.MINE)).findFirst().orElseThrow().endsAt();
+                check(mineEnds2 == mineEnds, "같은 글인데 끝나는 시각이 바뀜: " + (mineEnds2 - mineEnds) + "ms");
 
                 // 반려어: 위키대로 10분마다 가장 높은 스탯이 25%씩(안전하게 큰 값) → 30분 뒤 평균 75%(성장 느려짐), 70분 뒤 25%(폐사 위험)
                 kr.ddingmate.expert.PetFish.debugReset();
