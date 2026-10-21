@@ -10,7 +10,8 @@
     "ItemCooldownMixin",
     "TextFieldWidgetAccessor",
     "TextFieldWidgetMixin",
-    "TextRendererFontMixin"
+    "FontStorageGameFontMixin",
+    "TextRendererAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

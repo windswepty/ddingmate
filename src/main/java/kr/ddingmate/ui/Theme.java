@@ -105,18 +105,6 @@ public final class Theme {
         return FONT_IDS.computeIfAbsent(kind + suffix, k -> Identifier.of(DdingMate.MOD_ID, k));
     }
 
-    private static final Identifier DEFAULT_FONT = Identifier.ofVanilla("default");
-
-    /**
-     * "게임 전체에 적용"이 켜져 있으면 기본 글꼴(minecraft:default)을 고른 글꼴(본문)로 바꿔 그린다. 그 밖의 글꼴은 그대로.
-     * 고른 글꼴 json 은 [TTF → minecraft:default] 라서 TTF 에 없는 글자(서버 아이콘·간격 글자)는 서버 글꼴로 떨어진다
-     */
-    public static Identifier gameFont(Identifier id) {
-        if (!DEFAULT_FONT.equals(id)) return id;
-        kr.ddingmate.config.DdingMateConfig cfg = DdingMate.config();
-        return cfg != null && cfg.fontEverywhere ? font("body") : id;
-    }
-
     public static Identifier bodyFont() {
         return font("body");
     }

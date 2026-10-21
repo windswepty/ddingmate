@@ -1070,6 +1070,27 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.OceanOrder.tick(now);
                 kr.ddingmate.expert.OceanOrder.tick(now + 1000);
                 check(AlertLog.entries().size() == ob + 1 && AlertLog.entries().get(0).title.contains("1분"), "오션오더 1분 알림이 다름");
+                // 서버 오션오더 HUD(보스바, 리소스팩 글꼴 hud_oceanorder_hud_*): 보이면 진행 중, 3초 넘게 사라지면 끝
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.OceanOrder.debugHudReset();
+                String ns = "41f8b3b6-0374-40e5-ae0e-c2a99c95b8e4";
+                net.minecraft.text.Text oceanBar = net.minecraft.text.Text.literal("󞀂").setStyle(net.minecraft.text.Style.EMPTY
+                                .withFont(net.minecraft.util.Identifier.of(ns, "hud_oceanorder_hud_image")))
+                        .append(net.minecraft.text.Text.literal("도미 (0/1)").setStyle(net.minecraft.text.Style.EMPTY
+                                .withFont(net.minecraft.util.Identifier.of(ns, "hud_oceanorder_hud_text_1_2_1"))))
+                        .append(net.minecraft.text.Text.literal("4:10").setStyle(net.minecraft.text.Style.EMPTY
+                                .withFont(net.minecraft.util.Identifier.of(ns, "hud_oceanorder_hud_text_2_3_1"))));
+                String hudLine = kr.ddingmate.expert.OceanOrder.hudText(oceanBar);
+                check("도미 (0/1) | 4:10".equals(hudLine), "오션오더 HUD 글을 못 읽음: " + hudLine);
+                check(kr.ddingmate.expert.OceanOrder.hudText(net.minecraft.text.Text.literal("에버그린 마을 (스폰4)")) == null, "채널 표시를 오션오더 HUD 로 봄");
+                kr.ddingmate.expert.OceanOrder.onHud(hudLine, now);
+                check(kr.ddingmate.expert.OceanOrder.active(now) && kr.ddingmate.expert.OceanOrder.endsAt() == now + 250_000
+                        && kr.ddingmate.expert.OceanOrder.label().contains("0/1"), "오션오더 HUD 로 타이머를 못 켬: " + kr.ddingmate.expert.OceanOrder.label());
+                kr.ddingmate.expert.OceanOrder.hudPresent(false, now + 2000);
+                check(kr.ddingmate.expert.OceanOrder.active(now + 2000), "HUD 가 잠깐 안 보였는데 끔");
+                kr.ddingmate.expert.OceanOrder.hudPresent(false, now + 4000);
+                check(!kr.ddingmate.expert.OceanOrder.active(now + 4000), "오션오더 HUD 가 사라졌는데 계속 셈");
+                kr.ddingmate.expert.OceanOrder.debugHudReset();
                 kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);
 
                 // 광석 골렘: "광석 골렘이 등장했습니다!"(실제 채팅) → 5분 쿨타임. 5분 안 돼 또 나오면 프레스티지(하루 20마리까지 1분)

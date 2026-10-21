@@ -135,6 +135,81 @@ public final class OceanOrder {
         lastChannel = -1;
     }
 
+    // ---------------------------------------------------------------- 서버 오션오더 HUD(보스바)
+
+    /** 오션오더 HUD 글꼴(서버 리소스팩 2026-10-21: 배경 hud_oceanorder_hud_image + 글자 7줄 hud_oceanorder_hud_text_N) */
+    private static final String HUD_FONT = "hud_oceanorder_hud_";
+    private static final Pattern CLOCK = Pattern.compile("(?<!\\d)(\\d{1,2}):(\\d{2})(?!\\d)");
+    private static boolean hudShown;
+    private static long hudSeenAt;
+    private static String lastHud = "";
+
+    /** 보스바 글이 오션오더 HUD 면 그 글자들(글꼴 줄마다 " | "로), 아니면 null */
+    public static String hudText(net.minecraft.text.Text name) {
+        if (name == null) return null;
+        java.util.Map<String, StringBuilder> lines = new java.util.LinkedHashMap<>();
+        boolean[] any = {false};
+        name.visit((style, s) -> {
+            net.minecraft.util.Identifier f = style.getFont();
+            if (f != null && f.getPath().startsWith(HUD_FONT)) {
+                any[0] = true;
+                if (f.getPath().contains("_text")) lines.computeIfAbsent(f.getPath(), k -> new StringBuilder()).append(s);
+            }
+            return java.util.Optional.empty();
+        }, net.minecraft.text.Style.EMPTY);
+        if (!any[0]) return null;
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (StringBuilder sb : lines.values()) {
+            String l = ItemKeys.stripGlyphs(sb.toString()).replaceAll("\\s+", " ").trim();
+            if (!l.isEmpty()) out.add(l);
+        }
+        return String.join(" | ", out);
+    }
+
+    /** 오션오더 HUD 가 보이면: 진행 중. 처음 보면 시작(도착 문구를 놓쳐도), 적힌 남은 시간·진행으로 맞춘다 */
+    public static void onHud(String text, long now) {
+        if (!DdingMate.config().expert.oceanOrder) return;
+        if (!text.equals(lastHud)) {
+            lastHud = text;
+            DdingMate.LOG.info("오션오더 HUD: {}", text);
+        }
+        hudShown = true;
+        hudSeenAt = now;
+        long left = hudRemaining(text);
+        if (!active(now)) start(now, left > 0 && left <= LIMIT_MS ? left : LIMIT_MS);
+        else if (left > 0 && left <= LIMIT_MS) endsAt = now + left;
+        // 물고기 줄마다 "(n/m)": 하나면 그대로, 여럿이면 다 잡은 줄 수/줄 수
+        Matcher p = PROGRESS.matcher(text);
+        int lines = 0, done = 0;
+        String one = "";
+        while (p.find()) {
+            lines++;
+            one = p.group(1) + "/" + p.group(2);
+            if (Integer.parseInt(p.group(1)) >= Integer.parseInt(p.group(2))) done++;
+        }
+        if (lines == 1) progress = one;
+        else if (lines > 1) progress = done + "/" + lines + "종";
+    }
+
+    /** HUD 글의 남은 시간: "4분 32초" · "4:32" · "272초" */
+    static long hudRemaining(String t) {
+        long left = remainingIn(t);
+        if (left > 0) return left;
+        Matcher c = CLOCK.matcher(t);
+        if (c.find()) return (Long.parseLong(c.group(1)) * 60 + Long.parseLong(c.group(2))) * 1000;
+        return 0;
+    }
+
+    /** 10틱마다: HUD 가 3초 넘게 안 보이면 오션오더가 끝난 것(성공·실패·채널 이동) */
+    public static void hudPresent(boolean shown, long now) {
+        if (shown || !hudShown || now - hudSeenAt < 3000) return;
+        hudShown = false;
+        if (active(now)) {
+            DdingMate.LOG.info("오션오더 HUD 가 사라져 타이머를 끔");
+            clear();
+        }
+    }
+
     private static String lastScreen = "";
 
     /**
@@ -272,5 +347,11 @@ public final class OceanOrder {
 
     public static void debugHandle(String text, long now) {
         handle(text, now);
+    }
+
+    public static void debugHudReset() {
+        hudShown = false;
+        hudSeenAt = 0;
+        lastHud = "";
     }
 }

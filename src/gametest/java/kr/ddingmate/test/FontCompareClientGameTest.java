@@ -33,19 +33,22 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                 }
                 if (ids.size() != DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴마다 다른 글꼴 이름이 아님: " + ids);
                 if (widths.size() < DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴을 바꿔도 글자 폭이 같음(글꼴 파일을 못 읽음?): " + widths);
-                // 게임 전체에 적용: 기본 글꼴로 그리는 글자(바닐라 Text)도 고른 글꼴로, 끄면 원래대로. 다른 글꼴(uniform 등)은 그대로
+                // 게임 전체에 적용: 기본 글꼴의 글자(한글·영문)도 고른 글꼴로, 끄면 원래대로
                 boolean keepEverywhere = cfg.fontEverywhere;
                 cfg.font = DdingMateConfig.FontStyle.BERRY;
-                String sample = "조약돌 뭉치 ×7 [3] 50분 20초";
+                String sample = "조약돌 뭉치 x7 [3] 50분 20초";
                 cfg.fontEverywhere = false;
                 int vanillaW = c.textRenderer.getWidth(sample);
                 cfg.fontEverywhere = true;
                 int everywhereW = c.textRenderer.getWidth(sample);
                 if (everywhereW == vanillaW || everywhereW != Theme.width(c.textRenderer, sample))
                     throw new AssertionError("게임 전체 글꼴이 안 바뀜: 기본 " + vanillaW + " / 적용 " + everywhereW + " / 베리려원 " + Theme.width(c.textRenderer, sample));
-                net.minecraft.util.Identifier uniform = net.minecraft.util.Identifier.ofVanilla("uniform");
-                if (Theme.gameFont(uniform) != uniform) throw new AssertionError("기본 글꼴이 아닌 글꼴까지 바꿈");
+                // 기본 글꼴이 아닌 글꼴(띵메이트 본문 글꼴 자체, uniform 등)은 그대로
+                net.minecraft.text.Text uni = net.minecraft.text.Text.literal(sample).setStyle(net.minecraft.text.Style.EMPTY
+                        .withFont(net.minecraft.util.Identifier.ofVanilla("uniform")));
+                int uniOn = c.textRenderer.getWidth(uni);
                 cfg.fontEverywhere = false;
+                if (c.textRenderer.getWidth(uni) != uniOn) throw new AssertionError("기본 글꼴이 아닌 글꼴까지 바꿈");
                 if (c.textRenderer.getWidth(sample) != vanillaW) throw new AssertionError("게임 전체 글꼴을 꺼도 원래대로 안 돌아옴");
                 cfg.fontEverywhere = keepEverywhere;
                 cfg.font = keep[0];

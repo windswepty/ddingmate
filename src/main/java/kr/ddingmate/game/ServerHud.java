@@ -47,8 +47,17 @@ public final class ServerHud {
     /** 10틱마다 */
     public static void tick(MinecraftClient client) {
         if (client.inGameHud == null || client.player == null) return;
+        boolean ocean = false, channelSeen = false;
         for (ClientBossBar bar : ((BossBarHudAccessor) client.inGameHud.getBossBarHud()).ddingmate$bossBars().values()) {
+            // 오션오더 HUD: 서버 리소스팩의 오션오더 HUD 글꼴로 그린 보스바(2026-10-21 리소스팩 hud_oceanorder_hud_*)
+            String oceanHud = kr.ddingmate.expert.OceanOrder.hudText(bar.getName());
+            if (oceanHud != null) {
+                ocean = true;
+                kr.ddingmate.expert.OceanOrder.onHud(oceanHud, System.currentTimeMillis());
+                continue;
+            }
             kr.ddingmate.expert.OceanOrder.onMessage(bar.getName().getString()); // 오션오더 남은 시간이 보스바로 올 수도
+            if (channelSeen) continue;
             Matcher m = CHANNEL.matcher(ItemKeys.stripGlyphs(bar.getName().getString()));
             if (!m.find()) continue;
             Area a = areaOf(m.group(1));
@@ -65,8 +74,9 @@ public final class ServerHud {
                 DdingMate.LOG.info("채널 인식: {} {}채널", a.label, ch);
                 remember(a, ch);
             }
-            return;
+            channelSeen = true;
         }
+        kr.ddingmate.expert.OceanOrder.hudPresent(ocean, System.currentTimeMillis());
     }
 
     /** 자동 인식이 켜져 있으면 그 지역의 "내 채널"을 지금 채널로 바꿔 재시작 알림이 따라오게 한다 */
