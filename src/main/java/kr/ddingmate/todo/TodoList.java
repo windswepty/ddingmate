@@ -71,7 +71,13 @@ public final class TodoList {
     }
 
     /** 목록에 보일 글: "접속 시간 보상 받기 [2/6]", 목표가 1이면 이름만 */
+    /** 스태미나처럼 큰 숫자는 "스태미나 소모하기 (1,200/3,000)" */
+    private static String big(int n) {
+        return String.format(java.util.Locale.ROOT, "%,d", n);
+    }
+
     public static String label(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        if (TodoPreset.STAMINA.id.equals(item.preset)) return item.name + " (" + big(progress(item, now)) + "/" + big(item.target) + ")";
         if (needsWindow(item, now)) return item.name + " · " + OPEN_WINDOW;
         return item.target > 1 ? item.name + " [" + progress(item, now) + "/" + item.target + "]" : item.name;
     }
@@ -105,6 +111,19 @@ public final class TodoList {
             sync(TodoPreset.RECOMMEND, 1);
             return;
         }
+        if (!kr.ddingmate.game.ServerText.fromPlayer(text)) {
+            // 스태미나(2026-10 실제 채팅): "오늘 스태미나 소모량이 부족합니다. (1,200 / 3,000)", "오늘 스태미나 3,000 소모 보상으로 빙고 티켓 …",
+            // "오늘 스태미나 소모 보상은 이미 수령했습니다."
+            java.util.regex.Matcher st = STAMINA_NEED.matcher(text);
+            if (st.find()) {
+                sync(TodoPreset.STAMINA, parse(st.group(1)));
+                return;
+            }
+            if (STAMINA_DONE.matcher(text).find()) {
+                sync(TodoPreset.STAMINA, TodoPreset.STAMINA.target);
+                return;
+            }
+        }
         // 사람이 쓴 채팅 줄("[칭호] 닉네임 : ...")은 세지 않는다. 서버 공지만 센다
         if (kr.ddingmate.game.ServerText.fromPlayer(text)) return; // 귓속말 포함
         if (QUEST_DONE.matcher(text).find()) {
@@ -115,6 +134,42 @@ public final class TodoList {
         for (TodoPreset p : TodoPreset.values()) {
             if (!p.phrase.isEmpty() && text.contains(p.phrase)) count(p);
         }
+    }
+
+    private static final java.util.regex.Pattern STAMINA_NEED = java.util.regex.Pattern.compile("오늘\\s*스태미나\\s*소모량이\\s*부족합니다\\.?\\s*\\(\\s*([\\d,]+)\\s*/\\s*[\\d,]+\\s*\\)");
+    private static final java.util.regex.Pattern STAMINA_DONE = java.util.regex.Pattern.compile("오늘\\s*스태미나\\s*[\\d,]+\\s*소모\\s*보상으로|오늘\\s*스태미나\\s*소모\\s*보상은\\s*이미\\s*수령");
+    /** 의뢰 트래커(오른쪽 사이드바) 줄: "스태미나 소모하기 (2,940/100)" — 앞 숫자가 오늘 소모한 스태미나(2026-10 실제) */
+    private static final java.util.regex.Pattern STAMINA_SIDEBAR = java.util.regex.Pattern.compile("스태미나\\s*소모하기\\s*\\(\\s*([\\d,]+)\\s*/");
+
+    private static int parse(String s) {
+        try {
+            return Integer.parseInt(s.replace(",", ""));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** 10틱마다: 오른쪽 의뢰 트래커에 "스태미나 소모하기 (N/…)"가 보이면 오늘 소모량으로 맞춘다(읽기만) */
+    public static void scanSidebar(net.minecraft.client.MinecraftClient client) {
+        if (client.world == null) return;
+        net.minecraft.scoreboard.Scoreboard sb = client.world.getScoreboard();
+        net.minecraft.scoreboard.ScoreboardObjective obj = sb.getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.SIDEBAR);
+        if (obj == null) return;
+        for (net.minecraft.scoreboard.ScoreboardEntry e : sb.getScoreboardEntries(obj)) {
+            net.minecraft.scoreboard.Team team = sb.getScoreHolderTeam(e.owner());
+            String line = kr.ddingmate.counter.ItemKeys.stripGlyphs(net.minecraft.scoreboard.Team.decorateName(team, e.name()).getString());
+            java.util.regex.Matcher m = STAMINA_SIDEBAR.matcher(line);
+            if (m.find()) {
+                sync(TodoPreset.STAMINA, parse(m.group(1)));
+                return;
+            }
+        }
+    }
+
+    /** 시험용 */
+    public static void debugSidebarLine(String line) {
+        java.util.regex.Matcher m = STAMINA_SIDEBAR.matcher(line);
+        if (m.find()) sync(TodoPreset.STAMINA, parse(m.group(1)));
     }
 
     /** 목록에 있는 그 할 일을 +1 */
@@ -150,7 +205,8 @@ public final class TodoList {
                 item.progress = target;
                 item.doneAt = System.currentTimeMillis();
                 DdingMate.config().save();
-                if (target > before) Notifier.todoProgress(item.name, target, item.target);
+                boolean quiet = TodoPreset.STAMINA.id.equals(item.preset) && target < item.target; // 스태미나는 자주 바뀌어 다 채웠을 때만
+                if (target > before && !quiet) Notifier.todoProgress(item.name, target, item.target);
             }
         }
     }

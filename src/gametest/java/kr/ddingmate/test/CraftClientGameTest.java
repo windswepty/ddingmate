@@ -1891,7 +1891,14 @@ public class CraftClientGameTest implements FabricClientGameTest {
             inv.setStack(i, s);
         };
         blank.accept(0);
-        ItemStack recipe = item(recipeName, 1, "재료입니다.", "", "  제작 시간 : 10초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 고정");
+        // 목록 줄은 "레시피 고정", 첫 화면 위 줄 고정 칸은 "레시피 제거"(실제 서버)
+        ItemStack recipe = item(recipeName, 1, "재료입니다.", "", "  제작 시간 : 10초", "", " (좌) 해당 레시피 선택",
+                listView ? " (쉬프트+우) 레시피 고정" : " (쉬프트+우) 레시피 제거");
+        if (!listView) {
+            // 첫 화면 맨 아래 줄 = 빈 제작 대기열(이름 없는 칸): 목록 화면의 탭과 헷갈리면 안 된다
+            for (int i = 45; i <= 49; i++) blank.accept(i);
+            blank.accept(44); // ✓ 제작 단추
+        }
         if (listView) {
             for (int i = 45; i <= 50; i++) blank.accept(i); // 탭: 이름 없는 종이. ↑(8)·↓(53)는 실제처럼 아이템 없는 빈 칸
             inv.setStack(17, recipe);

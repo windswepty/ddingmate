@@ -241,6 +241,7 @@ public final class DdingMate implements ClientModInitializer {
             kr.ddingmate.craft.FacilityPanel.scan(client); // 제작 시설 창: 가진 재료로 만들 수 있는 레시피
             kr.ddingmate.expert.PetFish.scan(client); // 어항 창의 반려어 허기·기분·활력·성장도
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
+            TodoList.scanSidebar(client); // 의뢰 트래커의 "스태미나 소모하기 (N/…)"
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
             if (client.world != null) kr.ddingmate.counter.IconCache.tick(client); // 열어 본 창의 아이템 모양을 기억
         }

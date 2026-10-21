@@ -381,6 +381,13 @@ public final class DdingMateConfig {
             todo.items = kept;
             todo.version = 3;
         }
+        if (todo.version < 4) {
+            // 0.3.2: 스태미나 소모하기(3,000) 추가 — 이미 쓰던 사람 목록에도 넣는다(빼고 싶으면 할 일 탭에서 빼기)
+            if (todo.items.stream().noneMatch(t -> kr.ddingmate.todo.TodoPreset.STAMINA.id.equals(t.preset))) {
+                todo.items.add(kr.ddingmate.todo.TodoPreset.STAMINA.create());
+            }
+            todo.version = 4;
+        }
         // 할 일은 직접 고치지 않는다: 이름·초기화·목표·문구는 늘 정해진 값
         todo.items.removeIf(t -> kr.ddingmate.todo.TodoPreset.of(t) == null);
         java.util.Set<String> presetSeen = new java.util.HashSet<>();

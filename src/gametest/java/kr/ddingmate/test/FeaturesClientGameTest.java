@@ -125,6 +125,26 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 // 지난 초기화 이전에 센 것은 0
                 daily.doneAt = TodoList.lastReset(daily.reset, now).minusMinutes(1).toInstant().toEpochMilli();
                 check(TodoList.progress(daily, now) == 0, "지난 초기화 이전 기록이 0 으로 돌아가지 않음");
+                // 스태미나 소모(3,000): 의뢰 트래커 줄·보상 안내 숫자로 맞추고, 보상을 받으면 다 채움. 자주 바뀌어 다 채울 때만 채팅
+                DdingMateConfig.TodoItem stamina = item("stamina");
+                check(stamina.target == 3000 && TodoList.label(stamina, now).equals("스태미나 소모하기 (0/3,000)"),
+                        "스태미나 표시가 다름: " + TodoList.label(stamina, now));
+                int logBeforeSt = AlertLog.entries().size();
+                c.inGameHud.getChatHud().clear(false);
+                TodoList.debugSidebarLine("스태미나 소모하기 (1,200/100)");
+                check(TodoList.progress(stamina, now) == 1200 && TodoList.label(stamina, now).equals("스태미나 소모하기 (1,200/3,000)"),
+                        "의뢰 트래커 줄로 못 맞춤: " + TodoList.label(stamina, now));
+                TodoList.onChat("오늘 스태미나 소모량이 부족합니다. (2,940 / 3,000)");
+                check(TodoList.progress(stamina, now) == 2940, "보상 안내 숫자로 못 맞춤: " + TodoList.progress(stamina, now));
+                TodoList.onChat("[칭호] 누군가 : 오늘 스태미나 소모량이 부족합니다. (3,000 / 3,000)");
+                check(TodoList.progress(stamina, now) == 2940, "사람이 쓴 채팅으로 맞춤");
+                TodoList.onChat("오늘 스태미나 3,000 소모 보상으로 빙고 티켓 10개를 지급받았습니다!");
+                check(TodoList.isDone(stamina, now) && TodoList.label(stamina, now).equals("스태미나 소모하기 (3,000/3,000)"), "보상 받았는데 다 안 채움");
+                // 예전 설정(할 일 목록 v3)에도 스태미나를 넣어 준다
+                tc.items.removeIf(t -> "stamina".equals(t.preset));
+                tc.version = 3;
+                DdingMate.config().sanitize();
+                check(tc.version == 4 && tc.items.stream().anyMatch(t -> "stamina".equals(t.preset)), "예전 목록에 스태미나를 안 넣음");
                 // 접속 보상: /접속시간 창의 받은 보상 수로 맞추고 줄이지 않는다
                 TodoList.sync(kr.ddingmate.todo.TodoPreset.PLAYTIME, 4);
                 check(TodoList.progress(item("playtime"), now) == 4, "받은 보상 수로 맞추지 않음");
@@ -146,7 +166,9 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         new DdingMateConfig.TodoItem("오션오더", DdingMateConfig.Reset.DAILY, 10)));
                 old.todo.version = 2;
                 old.sanitize();
-                check(old.todo.items.size() == 1, "알아서 못 세는 할 일이 남음: " + old.todo.items.stream().map(t -> t.name).toList());
+                // 남는 것: 일일 의뢰(센 값 유지) + 0.3.2 에 새로 넣어 주는 스태미나 소모하기
+                check(old.todo.items.size() == 2 && old.todo.items.get(1).preset.equals("stamina"),
+                        "알아서 못 세는 할 일이 남음: " + old.todo.items.stream().map(t -> t.name).toList());
                 DdingMateConfig.TodoItem kept = old.todo.items.get(0);
                 check(kept.preset.equals("daily_quest") && kept.name.equals("일일 의뢰") && kept.target == 5 && kept.progress == 2,
                         "의뢰 완료가 일일 의뢰(센 값 유지)로 바뀌지 않음: " + kept.name + " " + kept.target + " " + kept.progress);

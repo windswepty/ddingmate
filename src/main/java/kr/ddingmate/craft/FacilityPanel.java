@@ -114,6 +114,19 @@ public final class FacilityPanel {
         learn(screen, facility, slotsNow);
         noteLayout(facility);
         recipeSlots = slotsNow;
+        listView = false;
+        for (Slot slot : screen.getScreenHandler().slots) {
+            if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
+            LoreComponent l = slot.getStack().get(DataComponentTypes.LORE);
+            if (l == null) continue;
+            for (net.minecraft.text.Text t : l.lines()) {
+                if (t.getString().contains("레시피 고정")) {
+                    listView = true;
+                    break;
+                }
+            }
+            if (listView) break;
+        }
         tabSlots = Map.of();
         Map<String, Integer> counts = MaterialCounter.availableCounts(client);
         lastCounts = counts;
@@ -340,6 +353,13 @@ public final class FacilityPanel {
     //  (연금: 정수·핵·에센스·결정·엘릭서·영약 → 45~50, 채광물: 연료·주괴·코룸·리프톤·세렌트·형광 큐브 → 45~50)
     static final int LIST_BUTTON = 0, UP_ARROW = 8, DOWN_ARROW = 53, FIRST_TAB = 45, MAX_TABS = 6;
 
+    /**
+     * 지금 창이 레시피 목록 화면인가. 목록 줄의 결과 칸 설명에 "(쉬프트+우) 레시피 고정"이 있고, 첫 화면 위 줄 고정 칸은
+     * "레시피 제거"다(2026-10 실제). 예전엔 45번이 이름 없는 칸이면 목록으로 봤는데, 첫 화면 맨 아래 줄은 제작 대기열이라
+     * 비어 있으면 똑같이 이름 없는 칸이어서 첫 화면을 목록으로 착각해 엉뚱한 칸을 강조했다(2026-10-19 사용자)
+     */
+    private static boolean listView;
+
     /** 레시피 목록·탭 창 모양을 실제로 확인한 시설(2026-10-18 사용자가 열어 본 9곳). 나머지는 그 창에서 목록을 열면 확인한다 */
     static final java.util.Set<String> VERIFIED_LAYOUT = java.util.Set.of("강화 제작 시설", "도구 제작 시설", "연금 제작 시설", "영혼 가공 시설",
             "요리 제작 시설", "정밀 연금 제작 시설", "채광물 가공 시설", "해양 제작 시설", "황금 요리 제작 시설");
@@ -355,7 +375,7 @@ public final class FacilityPanel {
 
     /** 목록 화면(45번 탭이 이름 없는 단추)을 본 시설은 모양을 확인한 것으로 기억 */
     private static void noteLayout(String facility) {
-        if (layoutKnown(facility) || !blankButton(FIRST_TAB) || !blankButton(LIST_BUTTON)) return;
+        if (layoutKnown(facility) || !listView || !blankButton(FIRST_TAB) || !blankButton(LIST_BUTTON)) return;
         parents().computeIfAbsent(LAYOUT_KEY, k -> new java.util.HashMap<>()).put(facility, "list");
         saveParents();
         DdingMate.LOG.info("시설 목록 창 모양 확인: {}", facility);
@@ -393,7 +413,6 @@ public final class FacilityPanel {
     private static int ruleSlot(RecipeBook.Recipe r) {
         int tab = tabOf(r);
         if (tab < 0 || !layoutKnown(r.facility)) return -1;
-        boolean listView = blankButton(FIRST_TAB);
         if (!listView) return blankButton(LIST_BUTTON) ? LIST_BUTTON : -1;
         // 지금 보이는 레시피가 같은 분류면 맞는 탭에 있다 → 위아래로 넘긴다
         boolean sameTab = false;
@@ -457,7 +476,7 @@ public final class FacilityPanel {
         String focusId = focus();
         if (focusId == null || recipeSlots.containsKey(focusId)) return null;
         int at = targetSlot(focusId);
-        if (at == LIST_BUTTON && blankButton(LIST_BUTTON) && !blankButton(FIRST_TAB)) return "지금: 왼쪽 위 레시피 목록";
+        if (at == LIST_BUTTON && !listView) return "지금: 왼쪽 위 레시피 목록";
         if (at >= FIRST_TAB && at < FIRST_TAB + MAX_TABS) return "지금: 아래 " + (at - FIRST_TAB + 1) + "번째 탭";
         if (at == DOWN_ARROW || at == UP_ARROW) return "지금: 다른 쪽(↓↑로 넘겨요)";
         if (at >= 0) return "지금: 반짝이는 칸";
