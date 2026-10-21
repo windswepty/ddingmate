@@ -33,6 +33,21 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                 }
                 if (ids.size() != DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴마다 다른 글꼴 이름이 아님: " + ids);
                 if (widths.size() < DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴을 바꿔도 글자 폭이 같음(글꼴 파일을 못 읽음?): " + widths);
+                // 게임 전체에 적용: 기본 글꼴로 그리는 글자(바닐라 Text)도 고른 글꼴로, 끄면 원래대로. 다른 글꼴(uniform 등)은 그대로
+                boolean keepEverywhere = cfg.fontEverywhere;
+                cfg.font = DdingMateConfig.FontStyle.BERRY;
+                String sample = "조약돌 뭉치 ×7 [3] 50분 20초";
+                cfg.fontEverywhere = false;
+                int vanillaW = c.textRenderer.getWidth(sample);
+                cfg.fontEverywhere = true;
+                int everywhereW = c.textRenderer.getWidth(sample);
+                if (everywhereW == vanillaW || everywhereW != Theme.width(c.textRenderer, sample))
+                    throw new AssertionError("게임 전체 글꼴이 안 바뀜: 기본 " + vanillaW + " / 적용 " + everywhereW + " / 베리려원 " + Theme.width(c.textRenderer, sample));
+                net.minecraft.util.Identifier uniform = net.minecraft.util.Identifier.ofVanilla("uniform");
+                if (Theme.gameFont(uniform) != uniform) throw new AssertionError("기본 글꼴이 아닌 글꼴까지 바꿈");
+                cfg.fontEverywhere = false;
+                if (c.textRenderer.getWidth(sample) != vanillaW) throw new AssertionError("게임 전체 글꼴을 꺼도 원래대로 안 돌아옴");
+                cfg.fontEverywhere = keepEverywhere;
                 cfg.font = keep[0];
             });
             if (System.getenv("DDINGMATE_FONT_COMPARE") == null) return;
@@ -60,8 +75,22 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                 ctx.waitTicks(10);
                 ctx.takeScreenshot("font-screen-" + f.name().toLowerCase());
             }
+            // 게임 전체에 적용: 채팅·인벤토리(아이템 이름)까지 고른 글꼴로
+            for (DdingMateConfig.FontStyle f : new DdingMateConfig.FontStyle[]{DdingMateConfig.FontStyle.REDIO, DdingMateConfig.FontStyle.BERRY}) {
+                ctx.runOnClient(c -> {
+                    DdingMate.config().font = f;
+                    DdingMate.config().fontEverywhere = true;
+                    c.inGameHud.getChatHud().addMessage(net.minecraft.text.Text.literal("[초보모험가] 멜트 : 게임 전체 글꼴 시험이에요 1234 ABC"));
+                    c.inGameHud.getChatHud().addMessage(net.minecraft.text.Text.literal("오늘 스태미나 3,000 소모 보상으로 빙고 티켓 10개를 지급받았습니다!"));
+                    c.player.getInventory().setStack(0, new net.minecraft.item.ItemStack(net.minecraft.item.Items.DIAMOND_PICKAXE));
+                    c.setScreen(new net.minecraft.client.gui.screen.ingame.InventoryScreen(c.player));
+                });
+                ctx.waitTicks(10);
+                ctx.takeScreenshot("font-everywhere-" + f.name().toLowerCase());
+            }
             ctx.runOnClient(c -> {
                 c.setScreen(null);
+                DdingMate.config().fontEverywhere = false;
                 DdingMate.config().font = keep[0];
                 // 다음 시험은 '처음 설치' 상태로 시작해야 한다
                 DdingMate.config().opened = keepOpened[0];

@@ -239,6 +239,8 @@ public final class DdingMateConfig {
     public HudStyle hudStyle = HudStyle.DARK;
     /** 띵메이트 창·HUD·알림 글꼴 */
     public FontStyle font = FontStyle.GALMURI;
+    /** 고른 글꼴을 게임 전체(채팅·아이템 이름·메뉴 등 기본 글꼴로 그리는 글자)에도. 서버 아이콘·창 그림은 그대로 */
+    public boolean fontEverywhere = false;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
     /** HUD 크기 50~100 (%) */

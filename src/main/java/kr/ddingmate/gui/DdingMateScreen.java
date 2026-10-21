@@ -568,7 +568,11 @@ public class DdingMateScreen extends Screen {
                     rebuild(); // 글자 폭이 달라 줄 배치를 다시
                 });
         font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요. 레디오 볼펜체·베리려원은 온글잎 손글씨 글꼴이에요.")));
-        if (DdingMateConfig.FontStyle.values().length > 1) list.pair(font, null); // 고를 글꼴이 둘 이상일 때만
+        Widgets.Toggle everywhere = toggle("게임 전체에 적용", cfg.fontEverywhere, v -> cfg.fontEverywhere = v);
+        everywhere.setTooltip(Tooltip.of(Text.literal("켜면: 고른 글꼴로 채팅·아이템 이름과 설명·메뉴 등 게임 글자도 그려요.\n"
+                + "띵타이쿤 아이콘·창 그림은 그대로예요. 글자 폭이 달라 서버 HUD(위쪽 재화 바 등) 글자가 배경에서 조금 밀릴 수 있어요.\n"
+                + "끄면: 띵메이트 창·HUD·알림만 이 글꼴이에요.")));
+        list.pair(font, everywhere);
         Widgets.Cycle<Integer> size = new Widgets.Cycle<>(half(), "HUD 전체 크기", List.of(50, 60, 70, 80, 90, 100),
                 nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
         size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 설정'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));

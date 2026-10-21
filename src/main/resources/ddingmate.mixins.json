@@ -9,7 +9,8 @@
     "InGameHudOverlayMixin",
     "ItemCooldownMixin",
     "TextFieldWidgetAccessor",
-    "TextFieldWidgetMixin"
+    "TextFieldWidgetMixin",
+    "TextRendererFontMixin"
   ],
   "injectors": {
     "defaultRequire": 1
