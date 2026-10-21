@@ -27,6 +27,7 @@ public abstract class InGameHudOverlayMixin {
     @Inject(method = "setTitle", at = @At("HEAD"))
     private void ddingmate$title(Text title, CallbackInfo ci) {
         if (title == null) return;
+        kr.ddingmate.debug.DevRecord.message("title", title);
         BagTracker.onOverlay(title.getString());
         kr.ddingmate.skill.SkillSignals.onOverlay(title.getString());
         kr.ddingmate.expert.OceanOrder.onMessage(title.getString());
@@ -35,6 +36,7 @@ public abstract class InGameHudOverlayMixin {
     @Inject(method = "setSubtitle", at = @At("HEAD"))
     private void ddingmate$subtitle(Text subtitle, CallbackInfo ci) {
         if (subtitle == null) return;
+        kr.ddingmate.debug.DevRecord.message("subtitle", subtitle);
         BagTracker.onOverlay(subtitle.getString());
         kr.ddingmate.skill.SkillSignals.onOverlay(subtitle.getString());
         kr.ddingmate.expert.OceanOrder.onMessage(subtitle.getString());

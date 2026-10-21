@@ -128,6 +128,7 @@ public final class DdingMate implements ClientModInitializer {
             kr.ddingmate.skill.SkillTimers.save();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+            kr.ddingmate.debug.DevRecord.message(overlay ? "overlay" : "chat", message); // 개발용 원본 기록(꺼져 있으면 아무것도 안 함)
             BagTracker.onOverlay(message.getString()); // "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" → 저장소 재고
             if (overlay) ServerHud.onOverlay(message.getString()); // 채팅으로 온 액션바: 잠수 채널 알아보기(일반 채팅은 안 씀)
             kr.ddingmate.expert.OceanOrder.onMessage(message.getString()); // 오션오더 도착·성공·실패(채팅·액션바)
@@ -248,6 +249,7 @@ public final class DdingMate implements ClientModInitializer {
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
             TodoList.scanSidebar(client); // 의뢰 트래커의 "스태미나 소모하기 (N/…)"
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
+            kr.ddingmate.debug.DevRecord.tick(client); // 개발용 원본 기록: 보스바·사이드바·창(내 컴퓨터에만, 기본 꺼짐)
             if (client.world != null) kr.ddingmate.counter.IconCache.tick(client); // 열어 본 창의 아이템 모양을 기억
         }
         // 알림 판정은 1초에 한 번. 월드(서버)에 들어가 있을 때만 울린다.

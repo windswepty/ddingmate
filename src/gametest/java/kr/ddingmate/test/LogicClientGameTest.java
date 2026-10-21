@@ -240,7 +240,7 @@ public class LogicClientGameTest implements FabricClientGameTest {
             }
             check(RecipeBook.get(r.id) == r, "id 로 다시 찾지 못함: " + r.id);
         }
-        check(ids.size() == 378, "레시피 수가 378 이 아님: " + ids.size());
+        check(ids.size() == 386, "레시피 수가 386 이 아님: " + ids.size());
         check(RecipeBook.keysFor("구리 블록").contains("v:minecraft:copper_block"), "구리 블록 바닐라 연결 없음");
         check(RecipeBook.keysFor("코룸 주괴").equals(Set.of("n:코룸주괴")), "서버 아이템 키 오류");
         check(RecipeBook.recipeFor("조약돌 뭉치") != null, "조약돌 뭉치 레시피를 찾지 못함");

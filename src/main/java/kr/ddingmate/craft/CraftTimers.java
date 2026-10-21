@@ -209,6 +209,11 @@ public final class CraftTimers {
             voyageStarted(m.group(1).trim(), now);
             return;
         }
+        m = MINE_QUEUED.matcher(t);
+        if (m.find()) {
+            mineQueued(m.group(1).trim(), now);
+            return;
+        }
         if (VOYAGE_RESET_DONE.matcher(t).find()) {
             // 항해도가 새로 바뀌었다 → 지난 섬 줄과 "항해 초기화" 줄을 모두 지운다(새 섬은 항해를 보내면 생긴다)
             List<Job> jobs = jobsForWrite();
@@ -763,6 +768,42 @@ public final class CraftTimers {
     private static final Pattern MINE_HINT = Pattern.compile("일꾼\\s*골렘");
     private static final Pattern MINE_GOLEM = Pattern.compile("일꾼\\s*골렘\\s*:\\s*(\\S+)");
 
+    /** 채팅(2026-10 실제): "에픽 일꾼 골렘을 채광 대기열에 투입했습니다." */
+    private static final Pattern MINE_QUEUED = Pattern.compile("^(\\S+)\\s*일꾼\\s*골렘을\\s*채광\\s*대기열에\\s*투입했습니다");
+
+    /** 위키 형광 광산(2026-10-22): 일꾼 골렘 등급별 광물 1개 채광 시간. Normal 10분 · Rare 5분 · Epic 1분. 모르면 0 */
+    public static long mineMs(String grade) {
+        return switch (grade) {
+            case "노말", "Normal" -> 10 * 60_000L;
+            case "레어", "Rare" -> 5 * 60_000L;
+            case "에픽", "Epic" -> 60_000L;
+            default -> 0;
+        };
+    }
+
+    /**
+     * 골렘을 넣은 순간부터 센다: 앞에 채광 중인 골렘이 있으면 그 뒤에 이어서(대기열). 형광 광산 창을 열면 앞 골렘의 실제 남은 시간으로
+     * 다시 맞추고, 뒤 골렘들도 그만큼 옮긴다(mine)
+     */
+    private static void mineQueued(String grade, long now) {
+        List<Job> jobs = jobsForWrite();
+        if (jobs == null) return;
+        long ms = mineMs(grade);
+        long start = now;
+        for (Job j : jobs) if (j.separate && j.name.equals(MINE) && j.endsAt > start) start = j.endsAt;
+        Job job = new Job();
+        job.name = MINE;
+        job.separate = true;
+        job.queue = grade;
+        job.startedAt = now;
+        if (ms > 0) {
+            job.endsAt = start + ms;
+            job.synced = true;
+        }
+        jobs.add(job);
+        changed();
+    }
+
     static boolean isMine(List<Text> lines) {
         for (Text l : lines) if (MINE_HINT.matcher(ItemKeys.stripGlyphs(l.getString())).find()) return true;
         return false;
@@ -789,7 +830,9 @@ public final class CraftTimers {
         String rawName = ItemKeys.stripGlyphs(stack.getName().getString()).trim();
         String sig = "mine:" + rawName + all.toString().replaceAll("\\d", "#");
         if (LOGGED.size() < 60 && LOGGED.add(sig)) DdingMate.LOG.info("형광 광산 칸 읽음: {}{}", rawName, all);
-        Job job = jobs.stream().filter(j -> j.separate && j.name.equals(MINE)).findFirst().orElse(null);
+        // 창에 보이는 건 지금 채광 중인 골렘: 대기열에서 아직 안 끝난 첫 줄(다 끝났으면 첫 줄)
+        Job job = jobs.stream().filter(j -> j.separate && j.name.equals(MINE) && (j.endsAt == 0 || j.endsAt > now - 1000)).findFirst()
+                .orElse(jobs.stream().filter(j -> j.separate && j.name.equals(MINE)).findFirst().orElse(null));
         if (remaining < 0) {
             // 채광 중이 아니다: 끝난 줄은 받아 갔거나 쉬는 중이라 정리
             if (job != null && (job.endsAt == 0 || job.endsAt <= now + 1000)) {
@@ -810,6 +853,11 @@ public final class CraftTimers {
         }
         job.lastReadSec = remaining;
         if (!golem.isEmpty()) job.queue = golem; // 골렘 등급(알림에 붙인다)
+        // 뒤에 줄 선 골렘들도 앞 골렘이 끝나는 시각이 바뀐 만큼 옮긴다
+        if (job.endsAt > 0) {
+            long shift = ends - job.endsAt;
+            for (Job other : jobs) if (other != job && other.separate && other.name.equals(MINE) && other.endsAt > job.endsAt) other.endsAt += shift;
+        }
         job.endsAt = ends;
         job.synced = true;
         job.notified = remaining == 0;

@@ -1549,7 +1549,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         "우클릭 시 1개를 꺼냅니다.", "쉬프트 우클릭 시 64개를 꺼냅니다.", "Q키 입력 시 모두 꺼냅니다.") == 2868, "재고 2,868 을 못 읽음");
                 check(stored("아이템을 저장하는 저장소입니다.", "- 재고: 0 / 5,000개", "- 세트: 0개", "물품을 들고 클릭 시 변경합니다.") == 0,
                         "재고 0 을 최대치 5,000 으로 읽음");
-                // 20) 정밀 검사: 레시피 378개의 결과물·재료 이름 전부에 그림이 있다(서버 표 또는 바닐라)
+                // 20) 정밀 검사: 레시피 386개의 결과물·재료 이름 전부에 그림이 있다(서버 표 또는 바닐라)
                 java.util.List<String> noIcon = new java.util.ArrayList<>();
                 java.util.Set<String> every = new java.util.TreeSet<>();
                 for (kr.ddingmate.counter.RecipeBook.Recipe r : kr.ddingmate.counter.RecipeBook.all()) {

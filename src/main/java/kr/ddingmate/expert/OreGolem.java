@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 /**
  * 광석 골렘 출현 쿨타임. 위키 광석 골렘 문서(2026-10-22): 광석을 캘 때 0.5% 확률로 나오고, 한 번 나오면 모든 광석에
- * 5분 쿨타임(프레스티지 멤버십은 하루 처음 20마리까지 1분). 실제 채팅(2026-10 로그) "광석 골렘이 등장했습니다!"를 보면
+ * 5분 쿨타임(프레스티지 멤버십은 하루 처음 20마리까지 1분, 03시 초기화). 실제 채팅(2026-10 로그) "광석 골렘이 등장했습니다!"를 보면
  * 쿨타임을 센다. 5분이 안 돼 다시 나온 적이 있으면 프레스티지로 보고 그날 20마리까지 1분으로 센다.
  * 사용자가 /광석골렘 을 치면 오는 답에 남은 시간이 있으면 그 값으로 맞춘다(문구를 아직 못 봐서 로그에 남긴다).
  * 서버로는 아무것도 보내지 않는다.
@@ -103,9 +103,9 @@ public final class OreGolem {
         return 0;
     }
 
-    /** 오늘 출현 수(위키에 하루 기준 시각이 없어 자정 기준) */
+    /** 오늘 출현 수. 위키 스케줄러: "광석 골렘 쿨타임 감소 횟수 — 매일 오전 3시에 초기화" */
     private static void rollDay(State s, long now) {
-        String day = java.time.Instant.ofEpochMilli(now).atZone(ScheduleEngine.KST).toLocalDate().toString();
+        String day = java.time.Instant.ofEpochMilli(now).atZone(ScheduleEngine.KST).minusHours(3).toLocalDate().toString();
         if (!day.equals(s.day)) {
             s.day = day;
             s.today = 0;

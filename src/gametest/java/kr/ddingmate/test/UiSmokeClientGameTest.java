@@ -143,7 +143,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 ElementListWidget<?> list = (ElementListWidget<?>) c.currentScreen.children().stream()
                         .filter(e -> e instanceof ElementListWidget<?>).findFirst().orElseThrow();
                 int all = list.children().size();
-                check(all == 378, "전체 시설에서 레시피가 378개가 아님: " + all);
+                check(all == 386, "전체 시설에서 레시피가 386개가 아님: " + all);
                 int sum = 0;
                 for (int i = 0; i < 17; i++) {
                     filter.onPress();

@@ -394,7 +394,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                     }
                     check(RecipePickerScreen.matches(r, ItemKeys.normalize(r.name)), "검색으로 못 찾음: " + r.id);
                 }
-                check(RecipeBook.all().size() >= 378, "레시피 수가 줄어듦: " + RecipeBook.all().size());
+                check(RecipeBook.all().size() >= 386, "레시피 수가 줄어듦: " + RecipeBook.all().size());
                 check(facilities.size() == 17, "시설 수가 17개가 아님: " + facilities);
                 pin.recipe = keep;
                 pin.crafts = keepCrafts;
@@ -998,6 +998,18 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 long mineEnds2 = kr.ddingmate.craft.CraftTimers.groups().stream()
                         .filter(g -> g.name().equals(kr.ddingmate.craft.CraftTimers.MINE)).findFirst().orElseThrow().endsAt();
                 check(mineEnds2 == mineEnds, "같은 글인데 끝나는 시각이 바뀜: " + (mineEnds2 - mineEnds) + "ms");
+                // 골렘을 넣는 채팅(실제 로그)만으로도 센다: 위키 등급별 시간(레어 5분), 앞 골렘 뒤에 줄 선다. 사람 채팅은 무시
+                kr.ddingmate.craft.CraftTimers.onChat("[칭호] 누군가 : 레어 일꾼 골렘을 채광 대기열에 투입했습니다.");
+                kr.ddingmate.craft.CraftTimers.onChat("레어 일꾼 골렘을 채광 대기열에 투입했습니다.");
+                java.util.function.LongPredicate queuedAt = at -> kr.ddingmate.craft.CraftTimers.groups().stream()
+                        .anyMatch(g -> g.name().equals(kr.ddingmate.craft.CraftTimers.MINE) && Math.abs(g.endsAt() - at) < 1500);
+                check(queuedAt.test(mineEnds + 5 * 60_000), "대기열에 넣은 레어 골렘이 앞 골렘 뒤 5분으로 안 잡힘: " + kr.ddingmate.craft.CraftTimers.groups());
+                check(kr.ddingmate.craft.CraftTimers.mineMs("에픽") == 60_000 && kr.ddingmate.craft.CraftTimers.mineMs("노말") == 600_000, "등급별 채광 시간");
+                // 창을 다시 보니 앞 골렘이 20초 남음(7초 늦어짐) → 뒤 골렘도 7초 뒤로
+                java.util.List<Text> mineLore20 = java.util.List.of(Text.literal("일꾼 골렘이 현재 채광을 진행 중입니다."),
+                        Text.literal("  - 일꾼 골렘 : 에픽"), Text.literal("  - 남은 시간 : 20초"));
+                kr.ddingmate.craft.CraftTimers.debugMine(mineItem, mineLore20, now);
+                check(queuedAt.test(now + 20_000 + 5 * 60_000), "앞 골렘 시간이 바뀌었는데 뒤 골렘을 안 옮김: " + kr.ddingmate.craft.CraftTimers.groups());
 
                 // 반려어: 위키대로 10분마다 가장 높은 스탯이 25%씩(안전하게 큰 값) → 30분 뒤 평균 75%(성장 느려짐), 70분 뒤 25%(폐사 위험)
                 kr.ddingmate.expert.PetFish.debugReset();
