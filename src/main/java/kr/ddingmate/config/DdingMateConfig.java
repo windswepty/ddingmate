@@ -197,7 +197,8 @@ public final class DdingMateConfig {
      * 갈무리11·14 는 획이 가늘어 더 흐렸고 GUI 2 에서 글자가 깨졌다. 모두 OFL 글꼴
      */
     public enum FontStyle {
-        GALMURI("갈무리", "");
+        /** 온글잎 손글씨(2026-10-22 사용자 요청, 온글잎 라이선스: SW 탑재·배포 가능, 수정 불가 → 파일 그대로) */
+        GALMURI("갈무리", ""), REDIO("레디오 볼펜체", "_redio"), BERRY("베리려원", "_berry");
 
         public final String label;
         /** assets/ddingmate/font 의 body·bold·title 뒤에 붙는 이름 */

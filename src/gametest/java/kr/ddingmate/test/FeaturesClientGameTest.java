@@ -109,17 +109,17 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 TodoList.setExact(kr.ddingmate.todo.TodoPreset.WEEKLY_QUEST, 0);
                 check(TodoList.label(daily, now).equals("일일 의뢰 [0/5]"), "표시가 [0/5] 가 아님: " + TodoList.label(daily, now));
                 int before = TodoList.remaining(now).size();
-                TodoList.onChat("ꀂ 무역 아이템을 12,345골드에 판매하였습니다.");
+                TodoList.onChat("ꀂ\uE001 무역 아이템을 12,345골드에 판매하였습니다.");
                 check(TodoList.isDone(trade, now) && TodoList.remaining(now).size() == before - 1, "무역 메시지로 체크되지 않음");
                 // 의뢰: 주간 의뢰 창이 열려 있지 않으면 일일 의뢰, 열려 있었으면 주간 의뢰
                 TodoList.QuestContext.debugSet(false);
-                for (int i = 0; i < 7; i++) TodoList.onChat(" 의뢰를 완료하였습니다.");
+                for (int i = 0; i < 7; i++) TodoList.onChat("\uE001 의뢰를 완료하였습니다.");
                 check(TodoList.progress(daily, now) == 5 && TodoList.isDone(daily, now), "일일 의뢰를 5번에서 멈추지 않음: " + TodoList.progress(daily, now));
                 TodoList.QuestContext.debugSet(true);
-                TodoList.onChat(" 의뢰를 완료하였습니다.");
+                TodoList.onChat("\uE001 의뢰를 완료하였습니다.");
                 check(TodoList.progress(weekly, now) == 1, "주간 의뢰 창에서 완료한 것을 주간으로 세지 않음");
                 TodoList.QuestContext.debugSet(false);
-                TodoList.onChat(" 의뢰를 완료하지 않았습니다.");
+                TodoList.onChat("\uE001 의뢰를 완료하지 않았습니다.");
                 TodoList.onChat("[칭호] 누군가 : 의뢰를 완료하였습니다.");
                 check(TodoList.progress(weekly, now) == 1, "관계없는 메시지로 셈");
                 // 지난 초기화 이전에 센 것은 0
@@ -150,7 +150,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(TodoList.progress(item("playtime"), now) == 4, "받은 보상 수로 맞추지 않음");
                 TodoList.sync(kr.ddingmate.todo.TodoPreset.PLAYTIME, 2);
                 check(TodoList.progress(item("playtime"), now) == 4, "받은 보상 수가 줄어듦");
-                TodoList.onChat(" 5시간 접속 보상을 수령하였습니다.");
+                TodoList.onChat("\uE001 5시간 접속 보상을 수령하였습니다.");
                 check(TodoList.progress(item("playtime"), now) == 5, "보상 수령 메시지로 세지 않음");
             });
 
@@ -367,9 +367,9 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 DdingMate.config().todo.items = new java.util.ArrayList<>(DdingMateConfig.Todo.defaults());
                 DdingMate.config().todo.hudEnabled = true;
-                TodoList.onChat(" 마인리스트 추천 보상 우편이 도착했습니다. [/우편함]에서 확인할 수 있습니다.");
+                TodoList.onChat("\uE001 마인리스트 추천 보상 우편이 도착했습니다. [/우편함]에서 확인할 수 있습니다.");
                 TodoList.QuestContext.debugSet(false);
-                TodoList.onChat(" 의뢰를 완료하였습니다.");
+                TodoList.onChat("\uE001 의뢰를 완료하였습니다.");
                 check(TodoList.isDone(item("recommend"), ZonedDateTime.now(ScheduleEngine.KST)), "추천 메시지로 체크되지 않음");
             });
             ctx.waitTicks(25);
@@ -1008,7 +1008,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.PetFish.Forecast fc = kr.ddingmate.expert.PetFish.forecast(f, t0 + 60_000);
                 check(fc.slowAt() == t0 + 30 * 60_000 && fc.dangerAt() == t0 + 70 * 60_000,
                         "반려어 예상 시각이 다름: 느려짐 " + (fc.slowAt() - t0) / 60000 + "분, 위험 " + (fc.dangerAt() - t0) / 60000 + "분");
-                check(kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000).equals("밥 25분 뒤"), "밥 시간 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000));
+                check(kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000).equals("25분 뒤 밥 주기"), "밥 시간 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000));
                 check(kr.ddingmate.expert.PetFish.status(f, t0 + 31 * 60_000).equals("밥 줄 때!"), "밥 줄 때 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 31 * 60_000));
                 check(kr.ddingmate.expert.PetFish.status(f, t0 + 71 * 60_000).equals("폐사 위험!"), "폐사 위험 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 71 * 60_000));
                 // 알림: 밥 줄 때 한 번, 폐사 위험 한 번(같은 것을 또 울리지 않음)
@@ -1034,6 +1034,18 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.PetFish.debugRead("[ 신나는 풍선 뭉치 ]", List.of("풍선이 둥실둥실 떠다닙니다.", "기분 좋은 활력이 차오릅니다.",
                         "[옵션 목록]", "- 회복력 : 1", "- 점프력 : 1", "- 블록설치 : 1"), now);
                 check(kr.ddingmate.expert.PetFish.current() == null, "풍선 뭉치를 반려어로 읽음");
+                // 어항에서 꺼내면 일정에서 빠진다(사용자 문의): 제목이 그림 글자라 "어항" 글자가 없어도, 반려어를 읽었던 창과 같은 창이면
+                kr.ddingmate.expert.PetFish.debugRead("아기 먹", List.of("허기 : 100%", "기분 : 100%", "활력 : 100%"), now);
+                kr.ddingmate.expert.PetFish.debugSetScreen("\uE001\uE002");
+                kr.ddingmate.expert.PetFish.debugAfterScan("\uE009", false, true, now);
+                kr.ddingmate.expert.PetFish.debugAfterScan("\uE009", false, true, now + 2000);
+                check(kr.ddingmate.expert.PetFish.current() != null, "다른 창인데 반려어 기록을 지움");
+                kr.ddingmate.expert.PetFish.debugAfterScan("\uE001\uE002", false, false, now);
+                kr.ddingmate.expert.PetFish.debugAfterScan("\uE001\uE002", false, false, now + 2000);
+                check(kr.ddingmate.expert.PetFish.current() != null, "창 칸이 아직 안 왔는데 지움");
+                kr.ddingmate.expert.PetFish.debugAfterScan("\uE001\uE002", false, true, now);
+                kr.ddingmate.expert.PetFish.debugAfterScan("\uE001\uE002", false, true, now + 1500);
+                check(kr.ddingmate.expert.PetFish.current() == null, "어항에서 꺼냈는데 일정에 남음");
                 kr.ddingmate.expert.PetFish.debugRead("아기 루모스", List.of("허기 : 100%", "기분 : 100%", "활력 : 80%", "성장도 : 12"), now - 9 * 60_000);
 
                 // 오션오더: 도착하면 5분, 진행·성공·실패, 사람 채팅은 무시

@@ -567,7 +567,7 @@ public class DdingMateScreen extends Screen {
                     cfg.font = v;
                     rebuild(); // 글자 폭이 달라 줄 배치를 다시
                 });
-        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요.")));
+        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요. 레디오 볼펜체·베리려원은 온글잎 손글씨 글꼴이에요.")));
         if (DdingMateConfig.FontStyle.values().length > 1) list.pair(font, null); // 고를 글꼴이 둘 이상일 때만
         Widgets.Cycle<Integer> size = new Widgets.Cycle<>(half(), "HUD 전체 크기", List.of(50, 60, 70, 80, 90, 100),
                 nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
@@ -1044,8 +1044,10 @@ public class DdingMateScreen extends Screen {
             del.setTooltip(Tooltip.of(Text.literal("어항에서 꺼냈거나 방생한 반려어의 기록을 지워요")));
             list.withButton(row, del);
         } else {
-            list.note("어항 창을 한 번 열면 반려어를 읽어 일정 HUD 에 '반려어 · 밥 N분 뒤'로 보여 줘요.");
+            list.note("어항 창을 한 번 열면 반려어를 읽어 일정 HUD 에 'N분 뒤 밥 주기'로 보여 줘요.");
         }
+        list.note("'N분 뒤 밥 주기' = 허기·기분·활력 평균이 80% 아래로 떨어질 때까지 남은 시간이에요. 그때까지 밥을 주면 성장 속도가 "
+                + "줄지 않아요(성장도 100이 되는 시간이 아니에요). 어항에서 꺼내면 일정에서 빠지고, 안 빠지면 아래 [지우기]를 눌러요.");
         list.note("위키 기준: 허기·기분·활력은 10분마다 가장 높은 것부터 20~25% 줄고, 하나라도 0% 면 폐사해요. 평균이 80% 아래면 성장이 "
                 + "느려지고, 넣은 뒤 2시간이 지났을 때 성장도가 90 이상이면 더 줄지 않아요. 밥: 허기 빵 · 기분 덩굴 · 활력 뼈 블록"
                 + "(들고 쉬프트+좌클릭하면 100%). 안전하게 한 번에 25%씩 준다고 보고 계산해요.");

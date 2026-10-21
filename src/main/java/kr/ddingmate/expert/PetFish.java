@@ -59,6 +59,8 @@ public final class PetFish {
         public double growth = -1;
         /** 이번에 이미 알린 것(스탯이 다시 오르면 지운다) */
         public boolean warnedFeed, warnedDanger, notifiedGrown;
+        /** 이 반려어를 읽은 어항 창의 제목(서버 그림 글자 포함 그대로). 같은 창에 반려어가 없으면 꺼낸 것 */
+        public String screen = "";
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -75,13 +77,28 @@ public final class PetFish {
 
     /** 10틱마다: 연 창에 허기·기분·활력이 적힌 칸이 있으면 그 반려어를 읽는다 */
     public static void scan(MinecraftClient client) {
-        if (!DdingMate.config().expert.petFish) return;
+        if (!DdingMate.config().expert.petFish || client.player == null) return;
+        // 꺼낸 반려어가 내 인벤토리에 있으면(같은 이름에 허기·기분·활력 %) 어항에서 뺀 것
+        Fish cur = current();
+        if (cur != null) {
+            PlayerInventory inv = client.player.getInventory();
+            for (int i = 0; i < inv.size(); i++) {
+                ItemStack s = inv.getStack(i);
+                if (s.isEmpty() || statKinds(String.join(" | ", lore(s))) < 2) continue;
+                if (sameFish(cur.name, ItemKeys.stripGlyphs(s.getName().getString()).trim())) {
+                    DdingMate.LOG.info("반려어를 인벤토리로 꺼내 기록을 지움: {}", cur.name);
+                    forget();
+                    return;
+                }
+            }
+        }
         if (!(client.currentScreen instanceof HandledScreen<?> screen)) return;
-        String title = ItemKeys.stripGlyphs(screen.getTitle().getString());
-        boolean aquarium = title.contains("어항") || title.contains("수족관");
-        boolean found = false;
+        String rawTitle = screen.getTitle().getString();
+        String title = ItemKeys.stripGlyphs(rawTitle);
+        boolean found = false, anyItem = false;
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
+            anyItem = true;
             ItemStack s = slot.getStack();
             List<String> lore = lore(s);
             String joined = String.join(" | ", lore);
@@ -95,13 +112,29 @@ public final class PetFish {
                 DdingMate.LOG.info("어항 칸 읽음: {}", line);
             }
             read(name, lore, System.currentTimeMillis());
+            Fish f = current();
+            if (f != null && !rawTitle.equals(f.screen)) {
+                f.screen = rawTitle;
+                save();
+            }
             found = true;
             break;
         }
-        // 어항 창인데 반려어가 없으면 꺼냈거나 방생한 것(창이 다 그려진 뒤에 판단하도록 열린 지 1초 지나서)
-        if (aquarium && !found) {
-            if (emptySince == 0) emptySince = System.currentTimeMillis();
-            else if (System.currentTimeMillis() - emptySince > 1000 && current() != null) {
+        afterScan(rawTitle, title, found, anyItem, System.currentTimeMillis());
+    }
+
+    /**
+     * 어항 창인데 반려어가 없으면 꺼냈거나 방생한 것(창이 다 그려진 뒤에 판단하도록 1초 지나서).
+     * 어항 창은 제목이 서버 그림 글자라 "어항" 글자로는 못 알아볼 수 있어서, 반려어를 읽었던 창과 제목이 같은지로도 본다
+     * (2026-10-20 사용자 문의: "어항에서 빼도 일정에서 안 빠져요")
+     */
+    static void afterScan(String rawTitle, String title, boolean found, boolean anyItem, long now) {
+        Fish cur = current();
+        boolean aquarium = title.contains("어항") || title.contains("수족관")
+                || (cur != null && cur.screen != null && !cur.screen.isEmpty() && cur.screen.equals(rawTitle));
+        if (aquarium && !found && anyItem) {
+            if (emptySince == 0) emptySince = now;
+            else if (now - emptySince > 1000 && current() != null) {
                 DdingMate.LOG.info("어항에 반려어가 없어 기록을 지움: {}", title.trim());
                 forget();
             }
@@ -352,7 +385,7 @@ public final class PetFish {
         if (fc.grownSafe()) return "다 컸어요";
         if (fc.dangerAt() != 0 && now >= fc.dangerAt()) return "폐사 위험!";
         if (fc.slowAt() != 0 && now >= fc.slowAt()) return "밥 줄 때!";
-        if (fc.slowAt() != 0) return "밥 " + hm(fc.slowAt() - now) + " 뒤";
+        if (fc.slowAt() != 0) return hm(fc.slowAt() - now) + " 뒤 밥 주기";
         return "괜찮아요";
     }
 
@@ -371,7 +404,7 @@ public final class PetFish {
         if (f.statsAt == 0) return "어항 창을 열면 허기·기분·활력을 읽어요";
         Snapshot s = snapshot(f, now);
         StringBuilder sb = new StringBuilder();
-        sb.append("지금 예상: 평균 ").append(Math.round(s.avg())).append("% · 가장 낮은 스탯 ").append(Math.round(s.min())).append('%');
+        sb.append("지금 예상: 허기·기분·활력 평균 ").append(Math.round(s.avg())).append("% · 가장 낮은 스탯 ").append(Math.round(s.min())).append('%');
         if (f.growth >= 0) sb.append(" · 성장도 ").append(Math.round(s.growth()));
         if (f.insertedAt > 0) {
             long end = f.insertedAt + GROW_MS - now;
@@ -431,6 +464,17 @@ public final class PetFish {
 
     public static void debugRead(String name, List<String> lore, long now) {
         read(name, lore, now);
+    }
+
+    /** 시험용: 지금 반려어를 이 제목의 창에서 읽은 것으로 */
+    public static void debugSetScreen(String rawTitle) {
+        Fish f = current();
+        if (f != null) f.screen = rawTitle;
+    }
+
+    /** 시험용: 창을 본 것처럼(제목, 반려어 칸이 있었나, 칸이 하나라도 있었나) */
+    public static void debugAfterScan(String rawTitle, boolean found, boolean anyItem, long now) {
+        afterScan(rawTitle, ItemKeys.stripGlyphs(rawTitle), found, anyItem, now);
     }
 
     public static void debugReset() {

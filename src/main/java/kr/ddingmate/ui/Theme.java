@@ -96,7 +96,7 @@ public final class Theme {
     public static final int TEXT_LIGHT = 0xFFFFFFFF;
     public static final int TEXT_DISABLED = 0xFF666C77;
 
-    // 글꼴(assets/ddingmate/font): 설정에서 고른 글꼴의 body·bold·title(갈무리·프리텐다드·네오둥근모)
+    // 글꼴(assets/ddingmate/font): 설정에서 고른 글꼴의 body·bold·title(갈무리·온글잎 레디오 볼펜체·베리려원)
     private static final java.util.Map<String, Identifier> FONT_IDS = new java.util.HashMap<>();
 
     private static Identifier font(String kind) {

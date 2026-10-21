@@ -9,7 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 /**
- * 글꼴 스위치(0.3.2): 갈무리·프리텐다드·네오둥근모 마다 글꼴 이름이 바뀌고 글자 폭이 달라지는지, 그리고
+ * 글꼴 스위치(0.3.2): 글꼴마다(갈무리·온글잎 레디오 볼펜체·베리려원) 글꼴 이름이 바뀌고 글자 폭이 달라지는지, 그리고
  * 1920×1080 GUI 3 에서 띵메이트 창·HUD 를 찍는다(DDINGMATE_FONT_COMPARE=1 일 때만 찍음).
  */
 public class FontCompareClientGameTest implements FabricClientGameTest {

@@ -1,0 +1,16 @@
+온글잎 오리지널 폰트 라이선스 (https://www.ownglyph.com/font, 2026-10-22 확인)
+
+들어 있는 글꼴(온글잎 사이트에서 받은 파일 그대로, 고치지 않음 — 파일 이름만 영문으로):
+- assets/ddingmate/font/ownglyph-redio.ttf : 온글잎 레디오 볼펜체 (Designed by JiH***, Published by Ownglyph)
+  https://www.ownglyph.com/trial/25ae4803-26fa-44bb-94bc-d96c8dfad1b9
+- assets/ddingmate/font/ownglyph-berry.ttf : 온글잎 베리려원 (Designed by Rye***, Published by Ownglyph)
+  https://www.ownglyph.com/trial/60152ef6-c1e5-4359-9bb4-26f3c6457fc2
+
+저작재산권은 (주)보이저엑스와 해당 손글씨 제공자에게 있습니다.
+
+사용 범위(온글잎 라이선스 표):
+- 문서작성 · E-Learning · E-Book · 인쇄물 · UI · 영상 · 포장지 · CI/BI : 가능
+- 임베딩(HW 내 탑재, SW 내 탑재, 웹폰트 등 웹서버 탑재) : 가능
+- 폰트 배포(폰트 파일 배포) : 가능
+- 폰트 수정(폰트 파일의 수정) : 불가
+- 폰트 판매(폰트 파일의 유료 판매) : 불가
