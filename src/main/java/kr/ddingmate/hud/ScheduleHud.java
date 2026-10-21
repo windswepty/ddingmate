@@ -175,6 +175,13 @@ public final class ScheduleHud {
             out.add(0, new Entry(kr.ddingmate.expert.OceanOrder.label(), kr.ddingmate.expert.OceanOrder.remainingText(nowMs0),
                     0, Theme.GOLD));
         }
+        // 바닥 아이템 청소(10분마다, 서버 [청소] 안내로 맞춤)
+        long clean = cfg.cleanupTimer ? kr.ddingmate.game.ServerHud.cleanAt() : 0;
+        if (clean > 0) {
+            long sec = Math.max(0, (clean - nowMs0 + 999) / 1000);
+            out.add(new Entry("바닥 아이템 청소", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초",
+                    sec / 60, sec <= 60 ? Theme.GOLD : Theme.BLUE));
+        }
         // 광석 골렘: 다시 나올 수 있을 때까지(쿨타임 중에만)
         if (kr.ddingmate.expert.OreGolem.remaining(nowMs0) > 0) {
             out.add(new Entry("광석 골렘 쿨타임", kr.ddingmate.expert.OreGolem.remainingText(nowMs0),

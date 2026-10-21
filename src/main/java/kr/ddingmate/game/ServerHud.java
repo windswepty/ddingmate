@@ -152,6 +152,7 @@ public final class ServerHud {
     private static long rebootAt;
 
     public static void onChat(String message) {
+        if (message != null && message.contains("[청소]")) onCleanChat(ItemKeys.stripGlyphs(message).trim(), System.currentTimeMillis());
         if (message == null || !message.contains("리붓")) return;
         Matcher m = REBOOT.matcher(ItemKeys.stripGlyphs(message));
         if (!m.find()) return;
@@ -183,6 +184,40 @@ public final class ServerHud {
     }
 
     /** 지금 채널이 재부팅될 시각(ms). 예고가 없거나 지났으면 0 */
+    // ---------------------------------------------------------------- 바닥 아이템 청소
+
+    /**
+     * 실제 로그(2026-04~10, 약 1,900번): 10분마다 "[청소] 5분 후 떨어진 아이템이 전부 청소됩니다." → 3분·1분·30초·10초·5~1초 →
+     * "[청소] 떨어진 아이템 170개가 청소되었습니다." 채널마다 시각이 달라서 이 문구로 맞춘다(/개인설정 청소알림이 꺼져 있으면 모름)
+     */
+    private static final Pattern CLEAN_SOON = Pattern.compile("^\\[청소\\]\\s*(\\d+)\\s*(분|초)\\s*후\\s*떨어진\\s*아이템");
+    private static final Pattern CLEAN_DONE = Pattern.compile("^\\[청소\\]\\s*떨어진\\s*아이템.*청소되었습니다");
+    public static final long CLEAN_EVERY_MS = 10 * 60_000L;
+    private static long cleanAt;
+
+    static void onCleanChat(String t, long now) {
+        Matcher m = CLEAN_SOON.matcher(t);
+        if (m.find()) {
+            long n = Long.parseLong(m.group(1));
+            cleanAt = now + (m.group(2).equals("분") ? n * 60_000 : n * 1000);
+        } else if (CLEAN_DONE.matcher(t).find()) {
+            cleanAt = now + CLEAN_EVERY_MS;
+        }
+    }
+
+    /** 다음 바닥 아이템 청소 시각(모르면 0). 지난 시각이면 10분씩 넘겨 본다 */
+    public static long cleanAt() {
+        if (cleanAt == 0) return 0;
+        long now = System.currentTimeMillis();
+        long at = cleanAt;
+        while (at <= now) at += CLEAN_EVERY_MS;
+        return at;
+    }
+
+    public static void debugClean(String t, long now) {
+        onCleanChat(t, now);
+    }
+
     public static long rebootAt() {
         return rebootAt > System.currentTimeMillis() ? rebootAt : 0;
     }
@@ -199,7 +234,10 @@ public final class ServerHud {
 
     /** 시험용 */
     public static void debugSet(Area a, int ch) {
-        if (a != area || ch != channel) rebootAt = 0;
+        if (a != area || ch != channel) {
+            rebootAt = 0;
+            cleanAt = 0; // 채널마다 청소 시각이 다르다
+        }
         afk = false;
         area = a;
         channel = ch;

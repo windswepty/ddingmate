@@ -241,6 +241,8 @@ public final class DdingMateConfig {
     public FontStyle font = FontStyle.GALMURI;
     /** 고른 글꼴을 게임 전체(채팅·아이템 이름·메뉴 등 기본 글꼴로 그리는 글자)에도. 서버 아이콘·창 그림은 그대로 */
     public boolean fontEverywhere = false;
+    /** 바닥 아이템 청소까지 남은 시간을 일정 HUD 에(서버 [청소] 안내로 맞춤) */
+    public boolean cleanupTimer = true;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
     /** HUD 크기 50~100 (%) */
