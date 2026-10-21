@@ -48,7 +48,14 @@ public final class Inquiry {
     public record Result(boolean ok, String message) {}
 
     /** 함께 보내는 플레이어 정보 */
-    public record Info(String name, String uuid, String modVersion, String gameVersion, String server, String place) {}
+    /** nick: 띵타이쿤 한글 닉네임(모르면 빈 글). 서버가 보낸 귓속말·내 채팅에서 배운 것 */
+    public record Info(String name, String uuid, String modVersion, String gameVersion, String server, String place, String nick) {
+
+        /** "windswepty(멜트)" — 한글 닉네임을 모르면 계정 이름만 */
+        public String displayName() {
+            return nick == null || nick.isEmpty() ? name : name + "(" + nick + ")";
+        }
+    }
 
     /** 중계 응답 */
     public record Http(int status, String body) {}
@@ -114,12 +121,13 @@ public final class Inquiry {
         kr.ddingmate.game.ServerHud.Area area = kr.ddingmate.game.ServerHud.area();
         int ch = kr.ddingmate.game.ServerHud.channel();
         String place = area == null || server == null ? "모름" : area.label + (ch > 0 ? " " + ch + "채널" : "");
-        return new Info(name, uuid, mod, game, where, place);
+        String nick = kr.ddingmate.game.Nickname.get();
+        return new Info(name, uuid, mod, game, where, place, nick == null ? "" : nick);
     }
 
     /** 탭에 보여 줄 "함께 보내는 정보" 한 줄 */
     public static String infoLine(Info i) {
-        return i.name() + " · 띵메이트 " + i.modVersion() + " · 마인크래프트 " + i.gameVersion() + " · " + i.server() + " · " + i.place();
+        return i.displayName() + " · 띵메이트 " + i.modVersion() + " · 마인크래프트 " + i.gameVersion() + " · " + i.server() + " · " + i.place();
     }
 
     // ---------------------------------------------------------------- 이미지 첨부
@@ -193,6 +201,7 @@ public final class Inquiry {
         info.addProperty("gameVersion", cut(i.gameVersion(), 100));
         info.addProperty("server", cut(i.server(), 100));
         info.addProperty("place", cut(i.place(), 100));
+        if (i.nick() != null && !i.nick().isEmpty()) info.addProperty("nick", cut(i.nick(), 16));
         root.add("info", info);
         return root.toString();
     }

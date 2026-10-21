@@ -175,6 +175,11 @@ public final class ScheduleHud {
             out.add(0, new Entry(kr.ddingmate.expert.OceanOrder.label(), kr.ddingmate.expert.OceanOrder.remainingText(nowMs0),
                     0, Theme.GOLD));
         }
+        // 광석 골렘: 다시 나올 수 있을 때까지(쿨타임 중에만)
+        if (kr.ddingmate.expert.OreGolem.remaining(nowMs0) > 0) {
+            out.add(new Entry("광석 골렘 쿨타임", kr.ddingmate.expert.OreGolem.remainingText(nowMs0),
+                    kr.ddingmate.expert.OreGolem.remaining(nowMs0) / 60000, Theme.BLUE));
+        }
         // 반려어: 밥 줄 때까지
         kr.ddingmate.expert.PetFish.Fish fish = cfg.expert.petFish ? kr.ddingmate.expert.PetFish.current() : null;
         if (fish != null) {

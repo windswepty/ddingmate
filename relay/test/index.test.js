@@ -131,6 +131,15 @@ test('문의: 디스코드에 임베드와 [답변 보내기] 단추로 올리�
   assert.ok(!JSON.stringify(env.DB.rows('SELECT * FROM tickets')).includes(TOKEN), '번호표 원문이 저장됨');
 });
 
+test('문의: 한글 닉네임이 있으면 "windswepty(멜트)"로 올리고 답변 창에도', async () => {
+  const r = await post('/inquiry', inquiryBody({ info: { ...inquiryBody().info, nick: '멜트' } }));
+  assert.equal(r.status, 200);
+  assert.equal(sent[0].body.embeds[0].title, '[버그 제보] windswepty(멜트)');
+  assert.match(sent[0].body.embeds[0].fields[0].value, /^windswepty\(멜트\)\n/);
+  const modal = await signed({ type: 3, member: { user: { id: DEV } }, data: { custom_id: `reply:${r.body.id}` } });
+  assert.equal(modal.body.data.title, 'windswepty(멜트) 님에게 답변');
+});
+
 test('문의: 이미지 첨부는 image1.png 로 바꿔 올리고 첫 장을 임베드 그림으로', async () => {
   const form = new FormData();
   form.append('payload_json', JSON.stringify(inquiryBody()));
@@ -277,5 +286,11 @@ test('검사 함수', async () => {
   assert.equal(named('Blo_9'), null);
   assert.equal(named('@everyone'), 'bad name');
   assert.equal(named('**굵게**'), 'bad name');
+  const nicked = (nick) => validateInquiry(inquiryBody({ info: { ...inquiryBody().info, nick } }));
+  assert.equal(nicked('멜트'), null);
+  assert.equal(nicked('멜트_2'), null);
+  assert.equal(nicked('<@everyone>'), 'bad nick');
+  assert.equal(nicked('가'.repeat(17)), 'bad nick');
+  assert.equal(nicked(3), 'bad nick');
   assert.equal(await verifyDiscord('zz', 'zz', '1', 'x'), false);
 });

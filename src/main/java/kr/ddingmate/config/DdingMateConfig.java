@@ -45,6 +45,8 @@ public final class DdingMateConfig {
         public int crafts = 1;
         /** 한 번에 여러 개 나오는 레시피(예: 깐 새우 x2)에서 개수를 결과물 기준으로 받을지 */
         public boolean byOutput = false;
+        /** 고정 핀. 고정하지 않은 핀은 그 레시피를 한 번 만들기 시작하면 저절로 빠진다(2026-10-22 사용자) */
+        public boolean locked = false;
     }
 
     public static final class Counter {
@@ -175,6 +177,8 @@ public final class DdingMateConfig {
         public boolean petFish = true;
         /** 오션오더 타이머: 도착하면 5분 남은 시간과 오늘 받은 횟수(10번까지) */
         public boolean oceanOrder = true;
+        /** 광석 골렘 출현 쿨타임(5분, 프레스티지 1분)을 일정 HUD 에 */
+        public boolean oreGolem = true;
         /** 판매가 전문가 스킬(이름 → 지금 증가율 %). /전문가 스킬 창에서 자동으로 읽음 */
         public Map<String, Double> priceSkills = new LinkedHashMap<>();
     }

@@ -116,7 +116,7 @@ async function inquiry(request, env) {
     + 'ON CONFLICT(key) DO UPDATE SET count = CASE WHEN until > ?3 THEN count + 1 ELSE 1 END, until = ?2').bind(key, until, now);
   await env.DB.batch([
     env.DB.prepare('INSERT INTO tickets (id, token_hash, name, category, created, message_id) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(id, tokenHash, payload.info.name, payload.category, now, posted.body.id),
+      .bind(id, tokenHash, displayName(payload.info), payload.category, now, posted.body.id),
     bump(`ip:${ip}`, now + LIMITS.perIpCooldownSec * 1000),
     bump(`ipday:${day}:${ip}`, nextDay),
     bump(`day:${day}`, nextDay),
@@ -137,6 +137,8 @@ export function validateInquiry(p, files = []) {
   }
   // 자바 닉네임(영문·숫자·_) + 베드록 연동 이름(앞의 . 이나 * , 띄어쓰기). 멘션·서식 글자는 막는다
   if (!/^[.*]?[A-Za-z0-9_ ]{1,32}$|^\?$/.test(i.name)) return 'bad name';
+  // 띵타이쿤 한글 닉네임(있을 때만): 한글·영문·숫자·_ 16자까지
+  if (i.nick !== undefined && (typeof i.nick !== 'string' || !/^[\p{Script=Hangul}A-Za-z0-9_]{1,16}$/u.test(i.nick))) return 'bad nick';
   if (files.length > LIMITS.maxFiles) return 'too many files';
   for (const f of files) {
     if (!IMAGE_TYPES[ext(f.name)] || f.size > LIMITS.maxFileBytes) return 'bad file';
@@ -149,16 +151,21 @@ export function realAccount(uuid) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
 }
 
+/** "windswepty(멜트)" — 한글 닉네임이 없으면 계정 이름만 */
+export function displayName(i) {
+  return i.nick ? `${i.name}(${i.nick})` : i.name;
+}
+
 export function inquiryMessage(env, id, p, names = []) {
   const c = CATEGORIES[p.category];
   const i = p.info;
   const embed = {
-    title: cut(`[${c.label}] ${i.name}`, 256),
+    title: cut(`[${c.label}] ${displayName(i)}`, 256),
     description: cut(p.text.trim(), 4000),
     color: c.color,
     timestamp: new Date().toISOString(),
     fields: [
-      field('플레이어', `${i.name}\n${i.uuid}\n${realAccount(i.uuid) ? `[계정 확인](https://namemc.com/profile/${i.uuid})` : '오프라인 계정(확인 불가)'}`),
+      field('플레이어', `${displayName(i)}\n${i.uuid}\n${realAccount(i.uuid) ? `[계정 확인](https://namemc.com/profile/${i.uuid})` : '오프라인 계정(확인 불가)'}`),
       field('버전', `띵메이트 ${i.modVersion}\n마인크래프트 ${i.gameVersion}`),
       field('접속', `${i.server}\n${i.place}`),
     ],

@@ -1,6 +1,8 @@
 {
  "source": "https://wiki.ddingtycoon.kr/ko 제작 시설·가공 시설·추가 조합법(대형 제작대)·바리스타·플로리스트·영혼 명품·형광 광산 문서 (2026-10-09 기준)",
  "vanilla": {
+  "레드스톤 가루": "minecraft:redstone",
+  "청금석": "minecraft:lapis_lazuli",
   "가문비나무 잎": "minecraft:spruce_leaves",
   "가스트 눈물": "minecraft:ghast_tear",
   "가죽": "minecraft:leather",

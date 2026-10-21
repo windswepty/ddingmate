@@ -39,6 +39,8 @@ public final class OceanOrder {
     /** "남은 시간 : 4분 32초", "272초" */
     private static final Pattern MIN_SEC = Pattern.compile("(\\d+)\\s*분\\s*(\\d+)\\s*초");
     private static final Pattern SEC = Pattern.compile("(\\d+)\\s*초");
+    /** 오션오더일지 모르는 서버 문구(로그만) */
+    private static final Pattern CANDIDATE = Pattern.compile("주문.*(?:물고기|낚)|(?:물고기|낚).*주문|골든\\s*티켓");
     /** "(2/3)" 같은 진행 */
     private static final Pattern PROGRESS = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
 
@@ -63,7 +65,15 @@ public final class OceanOrder {
     public static void onMessage(String raw) {
         if (raw == null || !DdingMate.config().expert.oceanOrder) return;
         String t = ItemKeys.stripGlyphs(raw).replaceAll("\\s+", " ").trim();
-        if (!t.replace(" ", "").contains("오션오더") || ServerText.fromPlayer(t)) return;
+        if (ServerText.fromPlayer(t)) return;
+        if (!t.replace(" ", "").contains("오션오더")) {
+            // 실제 도착 문구를 아직 못 봤다: "오션오더"가 없는 주문·물고기 안내도 로그에 남겨 맞춰 간다
+            if (CANDIDATE.matcher(t).find() && !t.equals(lastLogged)) {
+                lastLogged = t;
+                DdingMate.LOG.info("오션오더 후보 문구: {}", t);
+            }
+            return;
+        }
         if (!t.equals(lastLogged)) {
             lastLogged = t;
             DdingMate.LOG.info("오션오더 문구: {}", t);
@@ -123,6 +133,45 @@ public final class OceanOrder {
         startedAt = 0;
         progress = "";
         lastChannel = -1;
+    }
+
+    private static String lastScreen = "";
+
+    /**
+     * 10틱마다: /오션오더 창이나 "오션오더"가 이름에 든 칸이 있으면 설명을 로그에 남기고, 남은 시간이 적혀 있으면
+     * 진행 중인 오션오더 시간을 맞춘다(도착 문구를 놓쳤어도 창을 열면 HUD 에 남은 시간이 뜨게)
+     */
+    public static void scanScreen(net.minecraft.client.MinecraftClient client) {
+        if (!DdingMate.config().expert.oceanOrder) return;
+        if (!(client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?> screen)) return;
+        String title = ItemKeys.stripGlyphs(screen.getTitle().getString()).replace(" ", "");
+        for (net.minecraft.screen.slot.Slot slot : screen.getScreenHandler().slots) {
+            if (!slot.hasStack()) continue;
+            net.minecraft.item.ItemStack s = slot.getStack();
+            String name = ItemKeys.stripGlyphs(s.getName().getString()).trim();
+            if (!title.contains("오션오더") && !name.replace(" ", "").contains("오션오더")) continue;
+            net.minecraft.component.type.LoreComponent lore = s.get(net.minecraft.component.DataComponentTypes.LORE);
+            StringBuilder sb = new StringBuilder(name);
+            if (lore != null) for (net.minecraft.text.Text l : lore.lines()) sb.append(" | ").append(ItemKeys.stripGlyphs(l.getString()).trim());
+            String line = sb.toString().replaceAll("\\s+", " ");
+            if (line.length() > 2 && !line.equals(lastScreen)) {
+                lastScreen = line;
+                DdingMate.LOG.info("오션오더 창 칸: {}", line);
+            }
+            if (line.contains("남은") || line.contains("제한")) {
+                long left = remainingIn(line);
+                long now = System.currentTimeMillis();
+                if (left > 0 && left <= LIMIT_MS) {
+                    if (!active(now)) {
+                        startedAt = now;
+                        progress = "";
+                        warned = false;
+                        lastChannel = kr.ddingmate.game.ServerHud.channel();
+                    }
+                    endsAt = now + left;
+                }
+            }
+        }
     }
 
     /** 1초마다: 1분 남으면 한 번 알리고, 시간이 지나면 끈다. 채널을 옮기면 실패(위키) */

@@ -86,8 +86,10 @@ public final class FacilityPanel {
         // 레시피 칸으로 어느 시설 창인지 알아본다(고정 칸도 시설을 알아보는 데만 쓴다)
         Map<String, Integer> facilities = new java.util.HashMap<>();
         Map<String, Integer> slotsNow = new java.util.HashMap<>();
+        boolean anyItem = false;
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
+            anyItem = true;
             ItemStack s = slot.getStack();
             LoreComponent lore = s.get(DataComponentTypes.LORE);
             if (lore == null || lore.lines().isEmpty()) continue;
@@ -101,10 +103,17 @@ public final class FacilityPanel {
             }
         }
         String facility = facilities.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
+        // 창이 막 바뀌어 칸이 아직 비어 있으면(첫 화면 → 목록 화면 사이) 열어 둔 레시피·강조를 그대로 둔다
+        if (facility == null && !anyItem) {
+            entries = List.of();
+            recipeSlots = Map.of();
+            return;
+        }
         if (facility == null) {
             entries = List.of();
             detail = null;
             visible = Map.of();
+            lastFacility = null; // 시설 창이 아니면 핀 강조도 하지 않는다
             return;
         }
         if (!facility.equals(lastFacility)) {
@@ -152,7 +161,12 @@ public final class FacilityPanel {
         pw = 0;
         tip = null;
         if (detail == null) detailRect = new int[4];
-        if (entries.isEmpty() || !DdingMate.config().counter.facilityPanel) return;
+        if (!DdingMate.config().counter.facilityPanel) return;
+        if (entries.isEmpty()) {
+            // 가진 재료가 없어 판은 비어도, 핀한 레시피로 가는 칸은 반짝인다
+            if (lastFacility != null) highlight(ctx, screen);
+            return;
+        }
         MinecraftClient client = MinecraftClient.getInstance();
         TextRenderer tr = client.textRenderer;
         SidePanel.Palette p = SidePanel.WORKSHOP;
@@ -165,7 +179,7 @@ public final class FacilityPanel {
             w = Math.max(w, 13 + pinW + Theme.itemNameWidth(tr, e.recipe().displayName()) + 8 + Theme.boldWidth(tr, right(e)) + 14);
         }
         w = Math.max(132, Math.min(SidePanel.maxWidth(screen.width), w));
-        String foot = "클릭: 핀 넣기 / 한 번 더: 빼기";
+        String foot = DdingMate.config().counter.facilityHighlight ? "클릭: 핀 넣기·길 강조 / 한 번 더: 빼기" : "클릭: 핀 넣기 / 한 번 더: 빼기";
         String foot2 = DdingMate.config().counter.facilityHighlight ? "쉬프트+클릭: 재료·칸 보기 / 닫기" : "쉬프트+클릭: 레시피 보기 / 닫기";
         int h = SidePanel.HEAD_H + 5 + shown * ROW + 4 + (entries.size() > shown ? 11 : 0) + 12 + 10;
         int[] at = SidePanel.place(screen.width, screen.height, w, h);
@@ -264,9 +278,16 @@ public final class FacilityPanel {
         return out;
     }
 
-    /** 강조할 레시피 id(쉬프트+클릭으로 연 레시피). 강조를 꺼 두었으면 null */
+    /** 강조할 레시피 id: 판에서 연 레시피, 없으면 이 시설에서 만드는 첫 핀(핀만 해 두고 시설 창을 열어도 길이 보이게). 강조를 꺼 두었으면 null */
     private static String focus() {
-        return DdingMate.config().counter.facilityHighlight && detail != null ? detail.id : null;
+        if (!DdingMate.config().counter.facilityHighlight) return null;
+        if (detail != null) return detail.id;
+        if (lastFacility == null) return null;
+        for (DdingMateConfig.Pin pin : DdingMate.config().counter.pins) {
+            RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
+            if (r != null && lastFacility.equals(r.facility)) return r.id;
+        }
+        return null;
     }
 
     /** 쉬프트 또는 앉기 키(다른 키로 바꿔 쓰는 사람도 있어서) */
@@ -616,16 +637,26 @@ public final class FacilityPanel {
             detail = button == 0 && detail != r ? r : null;
             return;
         }
-        // 클릭: 핀 넣기, 이미 핀이면 빼기(우클릭은 늘 빼기)
-        if (button == 0 && pinnedIndex(r) < 0) pin(r);
-        else unpin(r);
+        pinOrUnpin(r, button);
+    }
+
+    /**
+     * 클릭: 핀 넣기 + 그 레시피 재료·길 판을 열어 시설 창에서 눌러야 할 칸 강조, 이미 핀이면 빼기(우클릭은 늘 빼기).
+     * 핀과 강조를 따로 누르게 했더니 클릭만 하고 강조가 안 뜬다고 느꼈다(2026-10-22 사용자: "강조 안되는 문제")
+     */
+    private static void pinOrUnpin(RecipeBook.Recipe r, int button) {
+        if (button == 0 && pinnedIndex(r) < 0) {
+            if (pin(r) >= 0) detail = r;
+        } else {
+            unpin(r);
+            if (detail == r) detail = null;
+        }
     }
 
     /** 시험용: 쉬프트 없이 / 쉬프트 누르고 누른 것처럼 */
     public static void debugAct(RecipeBook.Recipe r, int button, boolean shift) {
         if (shift) detail = button == 0 && detail != r ? r : null;
-        else if (button == 0 && pinnedIndex(r) < 0) pin(r);
-        else unpin(r);
+        else pinOrUnpin(r, button);
     }
 
     /** 전체 목록 판: 창 왼쪽에 크게. 휠로 넘기고, 줄은 작은 판과 똑같이 왼쪽 클릭 핀 넣기 · 오른쪽 클릭 핀 빼기 */
@@ -739,13 +770,14 @@ public final class FacilityPanel {
         pin.recipe = "";
         pin.crafts = 1;
         pin.byOutput = false;
+        pin.locked = false;
         DdingMate.config().save();
         say("핀 " + (at + 1) + "에서 " + quoted(r, "을", "를") + " 뺐어요.");
         return at;
     }
 
     /** "'리프톤 주괴'는" 처럼 받침에 맞는 조사를 붙인다(한글로 안 끝나면 "은(는)") */
-    static String quoted(RecipeBook.Recipe r, String withFinal, String withoutFinal) {
+    public static String quoted(RecipeBook.Recipe r, String withFinal, String withoutFinal) {
         String n = kr.ddingmate.ui.Theme.compactGrade(r.displayName());
         char last = n.isEmpty() ? ' ' : n.charAt(n.length() - 1);
         String josa;
@@ -780,8 +812,9 @@ public final class FacilityPanel {
                 pin.recipe = r.id;
                 pin.crafts = 1;
                 pin.byOutput = false;
+                pin.locked = false;
                 DdingMate.config().save();
-                say("핀 " + (i + 1) + "에 " + quoted(r, "을", "를") + " 넣었어요. 재료 HUD 에서 모이는 걸 볼 수 있어요.");
+                say("핀 " + (i + 1) + "에 " + quoted(r, "을", "를") + " 넣었어요. 한 번 만들면 저절로 빠져요(재료 탭에서 고정할 수 있어요).");
                 return i;
             }
         }

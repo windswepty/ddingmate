@@ -105,7 +105,7 @@ public final class Notifier {
 
     /** 오션오더 도착·1분 남음·실패 */
     public static void oceanOrder(String title, String body) {
-        notify("오션오더", title, body, SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), new ItemStack(Items.FISHING_ROD),
+        notify("오션오더", title, body, SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), kr.ddingmate.skill.SkillIcons.sageTool("rod"),
                 title.contains("실패") ? Theme.RED : Theme.GOLD, false);
     }
 

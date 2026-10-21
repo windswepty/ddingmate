@@ -576,8 +576,12 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 // 클릭 한 번 = 핀, 한 번 더 = 핀 빼기 / 쉬프트+클릭 한 번 = 레시피, 한 번 더 = 닫기
                 kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, false);
                 check(DdingMate.config().counter.pins.get(0).recipe.equals(es.get(0).recipe().id), "클릭으로 핀이 안 들어감");
+                // 핀 넣기 = 길 강조도 함께(쉬프트 없이)
+                check(kr.ddingmate.craft.FacilityPanel.detail() == es.get(0).recipe()
+                        && es.get(0).recipe().id.equals(kr.ddingmate.craft.FacilityPanel.debugFocus()), "클릭으로 핀만 넣고 강조는 안 함");
                 kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, false);
                 check(DdingMate.config().counter.pins.get(0).recipe.isEmpty(), "핀 상태에서 한 번 더 눌러도 안 빠짐");
+                check(kr.ddingmate.craft.FacilityPanel.detail() == null, "핀을 뺐는데 강조가 남음");
                 kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, true);
                 check(kr.ddingmate.craft.FacilityPanel.detail() == es.get(0).recipe(), "쉬프트+클릭으로 레시피가 안 열림");
                 kr.ddingmate.craft.FacilityPanel.debugAct(es.get(0).recipe(), 0, true);

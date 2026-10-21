@@ -1030,6 +1030,10 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         "다 컸는데 밥을 재촉함: " + kr.ddingmate.expert.PetFish.status(kr.ddingmate.expert.PetFish.current(), now + 3 * 3600_000L));
                 // HUD 에 보일 상태로 다시(30분 남음)
                 kr.ddingmate.expert.PetFish.debugReset();
+                // 반려어가 아닌 아이템(실제 로그: 신나는 풍선 뭉치)은 "기분"·"활력" 낱말만 있고 숫자가 없다 → 일정에 안 생겨야
+                kr.ddingmate.expert.PetFish.debugRead("[ 신나는 풍선 뭉치 ]", List.of("풍선이 둥실둥실 떠다닙니다.", "기분 좋은 활력이 차오릅니다.",
+                        "[옵션 목록]", "- 회복력 : 1", "- 점프력 : 1", "- 블록설치 : 1"), now);
+                check(kr.ddingmate.expert.PetFish.current() == null, "풍선 뭉치를 반려어로 읽음");
                 kr.ddingmate.expert.PetFish.debugRead("아기 루모스", List.of("허기 : 100%", "기분 : 100%", "활력 : 80%", "성장도 : 12"), now - 9 * 60_000);
 
                 // 오션오더: 도착하면 5분, 진행·성공·실패, 사람 채팅은 무시
@@ -1055,6 +1059,74 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.OceanOrder.tick(now + 1000);
                 check(AlertLog.entries().size() == ob + 1 && AlertLog.entries().get(0).title.contains("1분"), "오션오더 1분 알림이 다름");
                 kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);
+
+                // 광석 골렘: "광석 골렘이 등장했습니다!"(실제 채팅) → 5분 쿨타임. 5분 안 돼 또 나오면 프레스티지(하루 20마리까지 1분)
+                kr.ddingmate.expert.OreGolem.debugReset();
+                kr.ddingmate.expert.OreGolem.onChat("[칭호] 누군가 : 광석 골렘이 등장했습니다!");
+                check(kr.ddingmate.expert.OreGolem.remaining(now) == 0, "사람 채팅으로 골렘 쿨타임을 켬");
+                kr.ddingmate.expert.OreGolem.debugHandle("광석 골렘이 등장했습니다!", now - 4 * 60_000);
+                check(kr.ddingmate.expert.OreGolem.remaining(now) == 60_000 && !kr.ddingmate.expert.OreGolem.debugPrestige(),
+                        "골렘 쿨타임 5분이 아님: " + kr.ddingmate.expert.OreGolem.remaining(now));
+                kr.ddingmate.expert.OreGolem.debugHandle("광석 골렘 길들이기에 성공하여 에픽 일꾼 골렘을 획득했습니다.", now - 3 * 60_000);
+                check(kr.ddingmate.expert.OreGolem.remaining(now) == 60_000, "길들이기 문구로 쿨타임이 바뀜");
+                kr.ddingmate.expert.OreGolem.debugHandle("광석 골렘이 등장했습니다!", now - 2 * 60_000);
+                check(kr.ddingmate.expert.OreGolem.debugPrestige() && kr.ddingmate.expert.OreGolem.remaining(now) == 0,
+                        "2분 만에 또 나왔는데 프레스티지(1분)로 안 봄: " + kr.ddingmate.expert.OreGolem.remaining(now));
+                kr.ddingmate.expert.OreGolem.debugHandle("광석 골렘이 등장했습니다!", now - 10_000);
+                check(kr.ddingmate.expert.OreGolem.remaining(now) == 50_000, "프레스티지 쿨타임 1분이 아님: " + kr.ddingmate.expert.OreGolem.remaining(now));
+
+                // 광물 블록 하위 재료: 블록 1개 = 9개(시설 레시피 목록에는 안 넣는다)
+                kr.ddingmate.counter.RecipeBook.Recipe dia = kr.ddingmate.counter.RecipeBook.subRecipeFor("다이아몬드 블록");
+                check(dia != null && dia.materials.size() == 1 && dia.materials.get(0).name.equals("다이아몬드") && dia.materials.get(0).count == 9,
+                        "다이아몬드 블록 하위 재료가 다름");
+                check(kr.ddingmate.counter.RecipeBook.subRecipeFor("레드스톤 블록").materials.get(0).name.equals("레드스톤 가루"), "레드스톤 블록 하위 재료");
+                check(kr.ddingmate.counter.RecipeBook.recipeFor("구리 블록") == null
+                        && kr.ddingmate.counter.RecipeBook.all().stream().noneMatch(r -> r.id.startsWith("block:")), "광물 블록이 시설 레시피에 섞임");
+
+                // 핀 고정: 고정 안 한 핀은 그 레시피 제작을 시작하면 빠지고, 고정한 핀은 남는다. 사람 채팅은 무시
+                kr.ddingmate.counter.RecipeBook.Recipe torch = kr.ddingmate.counter.RecipeBook.recipeFor("강화 횃불");
+                check(torch != null, "강화 횃불 레시피가 없음");
+                DdingMateConfig.Pin p0 = DdingMate.config().counter.pins.get(0);
+                String keepRecipe = p0.recipe;
+                p0.recipe = torch.id;
+                p0.locked = false;
+                kr.ddingmate.counter.MaterialCounter.onChat("[칭호] 누군가 : 강화 횃불 아이템 2개 제작을 시작했습니다.");
+                check(p0.recipe.equals(torch.id), "사람 채팅으로 핀을 뺌");
+                p0.locked = true;
+                kr.ddingmate.counter.MaterialCounter.onChat("강화 횃불 아이템 2개 제작을 시작했습니다.");
+                check(p0.recipe.equals(torch.id), "고정한 핀을 뺌");
+                p0.locked = false;
+                kr.ddingmate.counter.MaterialCounter.onChat("강화 횃불 아이템 2개 제작을 시작했습니다.");
+                check(p0.recipe.isEmpty(), "고정 안 한 핀을 한 번 만들었는데 안 뺌");
+                p0.recipe = keepRecipe;
+
+                // 한글 닉네임: 귓속말·돌아온 내 채팅에서 배우고, 문의에 "windswepty(멜트)"로
+                kr.ddingmate.game.Nickname.debugReset();
+                kr.ddingmate.game.Nickname.onChat("(바다 → 단무지<받음>) 안녕");
+                check(kr.ddingmate.game.Nickname.get() == null || kr.ddingmate.game.Nickname.get().equals("단무지"), "귓속말 받는 쪽");
+                kr.ddingmate.game.Nickname.debugReset();
+                kr.ddingmate.game.Nickname.onSent("안녕하세요 여러분");
+                kr.ddingmate.game.Nickname.onChat("[초보모험가] 멜트 : 안녕하세요 여러분");
+                check("멜트".equals(kr.ddingmate.game.Nickname.get()), "돌아온 내 채팅에서 닉네임을 못 배움: " + kr.ddingmate.game.Nickname.get());
+                kr.ddingmate.game.Nickname.onChat("(멜트2 → day_to_day<보냄>) 오션오더 타이머는 될꺼같습니다!");
+                check("멜트2".equals(kr.ddingmate.game.Nickname.get()), "귓속말 보낸 쪽에서 닉네임을 못 배움");
+                kr.ddingmate.game.Nickname.onChat("[달토끼] 망령 : 안녕하세요 여러분");
+                check("멜트2".equals(kr.ddingmate.game.Nickname.get()), "남의 채팅으로 닉네임이 바뀜");
+                kr.ddingmate.inquiry.Inquiry.Info ni = kr.ddingmate.inquiry.Inquiry.info(c);
+                check(ni.displayName().equals(ni.name() + "(멜트2)") && kr.ddingmate.inquiry.Inquiry.payload(
+                                kr.ddingmate.inquiry.Inquiry.Category.QUESTION, "닉네임 시험입니다", ni, "x").contains("\"nick\":\"멜트2\""),
+                        "문의에 한글 닉네임이 안 감: " + ni.displayName());
+                kr.ddingmate.game.Nickname.debugReset();
+
+                // 아이콘: 스킬은 전문가 창 보석(종이 모양 번호), 전문가 도구는 세이지 도구
+                net.minecraft.item.ItemStack gem = kr.ddingmate.skill.SkillIcons.forSkill("곡괭이 나가신다!", true, "pickaxe");
+                check(gem.isOf(net.minecraft.item.Items.PAPER)
+                                && gem.get(net.minecraft.component.DataComponentTypes.CUSTOM_MODEL_DATA).floats().get(0) == 2009143f,
+                        "곡괭이 나가신다! 아이콘이 다름");
+                net.minecraft.item.ItemStack rod = kr.ddingmate.skill.SkillIcons.sageTool("해양");
+                check(rod.isOf(net.minecraft.item.Items.FISHING_ROD)
+                        && rod.get(net.minecraft.component.DataComponentTypes.CUSTOM_MODEL_DATA).floats().get(0) == 2016017f, "세이지 낚싯대가 아님");
+                check(kr.ddingmate.skill.SkillIcons.forSkill("없는 스킬", true, "hoe").isOf(net.minecraft.item.Items.GOLDEN_HOE), "모르는 스킬은 세이지 괭이로");
 
                 // 답장 확인 간격: 하루 안에 보낸 문의가 있으면 짧게, 중계가 정하면 그 값
                 kr.ddingmate.inquiry.Replies.debugReset();

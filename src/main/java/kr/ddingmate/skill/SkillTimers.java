@@ -395,16 +395,9 @@ public final class SkillTimers {
         return sec + "초";
     }
 
-    /** 도구 모양 아이콘 */
+    /** 전문가 창의 스킬 보석 아이콘(모르는 스킬은 세이지 도구) — 2026-10-22 사용자 요청 */
     public static ItemStack icon(Skill s) {
-        return new ItemStack(switch (s.tool) {
-            case "pickaxe" -> Items.NETHERITE_PICKAXE;
-            case "hoe" -> Items.NETHERITE_HOE;
-            case "rod" -> Items.FISHING_ROD;
-            case "axe" -> Items.NETHERITE_AXE;
-            case "sword" -> Items.NETHERITE_SWORD;
-            default -> Items.EXPERIENCE_BOTTLE;
-        });
+        return SkillIcons.forSkill(s.name, true, s.tool);
     }
 
     /** 스킬 창에 적힌 지속 시간(ms). 모르면 0 */

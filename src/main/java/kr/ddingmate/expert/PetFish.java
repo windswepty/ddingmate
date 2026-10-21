@@ -85,9 +85,9 @@ public final class PetFish {
             ItemStack s = slot.getStack();
             List<String> lore = lore(s);
             String joined = String.join(" | ", lore);
-            int kinds = 0;
-            for (String k : new String[]{"허기", "기분", "활력"}) if (joined.contains(k)) kinds++;
-            if (kinds < 2) continue;
+            // "허기 80%"처럼 숫자(%)가 붙은 스탯이 둘 이상이어야 반려어 칸. 낱말만 보면 "기분 좋은 활력이 차오릅니다" 같은
+            // 다른 아이템 설명(신나는 풍선 뭉치)을 반려어로 착각했다(2026-10-21 사용자)
+            if (statKinds(joined) < 2) continue;
             String name = ItemKeys.stripGlyphs(s.getName().getString()).trim();
             String line = name + " | " + joined;
             if (!line.equals(lastLore)) {
@@ -110,6 +110,14 @@ public final class PetFish {
 
     private static long emptySince;
 
+    /** 설명에 "허기 N%"·"기분 N%"·"활력 N%" 중 몇 가지가 있나 */
+    static int statKinds(String joined) {
+        java.util.Set<String> kinds = new java.util.HashSet<>();
+        Matcher m = STAT.matcher(joined);
+        while (m.find()) kinds.add(m.group(1));
+        return kinds.size();
+    }
+
     private static List<String> lore(ItemStack s) {
         List<String> out = new ArrayList<>();
         LoreComponent lore = s.get(DataComponentTypes.LORE);
@@ -123,6 +131,7 @@ public final class PetFish {
 
     /** 칸 설명을 반영한다(시험에서도 부른다) */
     static void read(String name, List<String> lore, long now) {
+        if (statKinds(String.join(" | ", lore)) < 2) return;
         Fish f = current();
         boolean newFish = f == null || !sameFish(f.name, name);
         if (newFish) {
@@ -396,6 +405,8 @@ public final class PetFish {
                 try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
                     Map<String, Fish> read = GSON.fromJson(r, new com.google.gson.reflect.TypeToken<Map<String, Fish>>() {}.getType());
                     if (read != null) store.putAll(read);
+                    // 예전 판이 반려어가 아닌 칸(신나는 풍선 뭉치)을 스탯 없이 넣어 둔 것을 지운다
+                    if (store.values().removeIf(f -> f == null || f.statsAt == 0)) DdingMate.LOG.info("스탯 없는 반려어 기록을 지움");
                 } catch (Exception e) {
                     DdingMate.LOG.warn("반려어 기록을 읽지 못했어요", e);
                 }

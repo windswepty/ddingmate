@@ -193,7 +193,7 @@ public final class MaterialCounter {
      * 한 단계만 펼치고, 자기 자신을 다시 만드는 레시피는 건너뛴다.
      */
     private static Line withSubs(Line line, RecipeBook.Recipe parent, Pool pool) {
-        RecipeBook.Recipe sub = RecipeBook.recipeFor(line.name());
+        RecipeBook.Recipe sub = RecipeBook.subRecipeFor(line.name());
         if (sub == null || sub.id.equals(parent.id) || sub.materials.isEmpty()) return line;
         int shortage = line.need() - line.have();
         int crafts = (shortage + sub.output - 1) / sub.output;
@@ -203,6 +203,35 @@ public final class MaterialCounter {
             subs.add(pool.line(m.name, m.count * crafts));
         }
         return new Line(line.name(), line.inventory(), line.bags(), line.storage(), line.need(), List.copyOf(subs));
+    }
+
+    /** 제작 시작 채팅(2026 실제): "강화 횃불 아이템 2개 제작을 시작했습니다." */
+    private static final java.util.regex.Pattern CRAFT_START =
+            java.util.regex.Pattern.compile("^(.+?)\\s*아이템\\s*[\\d,]+\\s*개\\s*제작을\\s*시작했습니다");
+
+    /**
+     * 고정하지 않은 핀은 그 레시피를 한 번 만들기 시작하면 뺀다(재료를 모으는 목적을 다 했으니).
+     * 고정한 핀은 그대로 둔다. 사람이 쓴 채팅은 거른다
+     */
+    public static void onChat(String message) {
+        if (message == null) return;
+        String t = ItemKeys.stripGlyphs(net.minecraft.util.Formatting.strip(message)).trim();
+        if (kr.ddingmate.game.ServerText.fromPlayer(t)) return;
+        java.util.regex.Matcher m = CRAFT_START.matcher(t);
+        if (!m.find()) return;
+        String made = m.group(1).trim();
+        DdingMateConfig.Counter cfg = DdingMate.config().counter;
+        boolean changed = false;
+        for (DdingMateConfig.Pin pin : cfg.pins) {
+            RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
+            if (r == null || pin.locked || !RecipeBook.sameItem(r, made)) continue;
+            pin.recipe = "";
+            pin.crafts = 1;
+            pin.byOutput = false;
+            changed = true;
+            Notifier.chat("핀에서 " + kr.ddingmate.craft.FacilityPanel.quoted(r, "을", "를") + " 뺐어요(한 번 만들었어요). 계속 두려면 재료 탭에서 '고정'을 켜 주세요.");
+        }
+        if (changed) DdingMate.config().save();
     }
 
     /** 인벤토리 + (설정에 따라) 기록된 가방 + 아이템 저장소를 합친 개수: 아이템 키 → 개수 */

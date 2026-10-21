@@ -104,6 +104,40 @@ public final class RecipeBook {
         return r != null ? r : byOutput.get(canonicalName(outputName));
     }
 
+    /**
+     * 광물 블록 1개 = 9개(바닐라 제작대 압축). 시설 레시피가 아니라서 레시피 목록·제작 시간·경로 강조에는 넣지 않고,
+     * 하위 재료 펼치기에만 쓴다(2026-10-22 사용자: "다이아몬드 블록 1개 → 다이아몬드 9개")
+     */
+    private static final Map<String, Recipe> BLOCKS = blocks(
+            "석탄 블록", "석탄", "구리 블록", "구리 주괴", "철 블록", "철 주괴", "금 블록", "금 주괴",
+            "레드스톤 블록", "레드스톤 가루", "청금석 블록", "청금석", "다이아몬드 블록", "다이아몬드",
+            "에메랄드 블록", "에메랄드", "네더라이트 블록", "네더라이트 주괴");
+
+    private static Map<String, Recipe> blocks(String... pairs) {
+        Map<String, Recipe> map = new LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            Recipe r = new Recipe();
+            r.id = "block:" + pairs[i];
+            r.facility = "제작대";
+            r.category = "광물 블록";
+            r.name = pairs[i];
+            Material m = new Material();
+            m.name = pairs[i + 1];
+            m.count = 9;
+            r.materials.add(m);
+            map.put(pairs[i], r);
+        }
+        return Map.copyOf(map);
+    }
+
+    /** 하위 재료로 펼칠 레시피: 시설 레시피, 없으면 광물 블록 압축. 없으면 null */
+    public static Recipe subRecipeFor(String name) {
+        Recipe r = recipeFor(name);
+        if (r != null || name == null) return r;
+        r = BLOCKS.get(name);
+        return r != null ? r : BLOCKS.get(canonicalName(name));
+    }
+
     /** 다른 이름(예: 위키 옛 표기 "활기찬 가죽 지갑")이면 대표 이름, 아니면 그대로 */
     public static String canonicalName(String name) {
         return name == null ? null : canonical.getOrDefault(ItemKeys.normalize(name), name);
@@ -119,6 +153,14 @@ public final class RecipeBook {
             if (r.time > 0 && (ItemKeys.normalize(r.name).equals(key) || plainKey(r.name).equals(key))) return r.time;
         }
         return -1;
+    }
+
+    /** 채팅·창에 보인 이름이 이 레시피의 결과물인가(등급 표시·"(조합 N)"·다른 이름은 너그럽게) */
+    public static boolean sameItem(Recipe r, String shownName) {
+        if (r == null || shownName == null) return false;
+        String key = ItemKeys.normalize(canonicalName(shownName));
+        String plainShown = plainKey(shownName);
+        return ItemKeys.normalize(r.name).equals(key) || plainKey(r.name).equals(key) || plainKey(r.name).equals(plainShown);
     }
 
     private static String plainKey(String name) {

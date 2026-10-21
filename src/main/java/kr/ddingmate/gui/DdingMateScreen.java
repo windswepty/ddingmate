@@ -770,6 +770,8 @@ public class DdingMateScreen extends Screen {
                 list.labeledRow("만들 개수", bar.countWidgets());
                 // 한 번에 여러 개 나오는 레시피: 번 만들기/개 얻기는 다음 줄(한 줄에 다 넣으면 오른쪽이 잘린다)
                 if (bar.mode() != null) list.labeledRow("세는 방법", List.of(bar.mode()));
+                list.labeledRow("핀 고정", List.of(tip(toggle("만들어도 핀 유지", pin.locked, v -> pin.locked = v),
+                        "켜면: 만들어도 핀이 그대로 남아요.\n끄면: 이 레시피를 한 번 만들기 시작하면 핀에서 저절로 빠져요.")));
             }
         }
         list.header("표시와 알림", "표시·알림");
@@ -788,7 +790,7 @@ public class DdingMateScreen extends Screen {
                         "제작 시설 창을 열면 옆에 보유 재료로 만들 수 있는 레시피와 몇 번 만들 수 있는지 보여 줘요. 왼쪽 클릭은 핀 넣기, 오른쪽 클릭은 핀 빼기"));
 
         list.pair(tip(toggle("제작 경로 강조", cc.facilityHighlight, v -> cc.facilityHighlight = v),
-                "레시피 판 줄을 쉬프트(앉기 키)+좌클릭하면 재료와 함께, 그 레시피까지 가는 길(레시피 목록 → 탭 → 줄)을 차례로 반짝여 알려 줘요. "
+                "레시피 판 줄을 클릭해 핀에 넣으면(쉬프트+클릭은 핀 없이) 재료와 함께, 그 레시피까지 가는 길(레시피 목록 → 탭 → 줄)을 차례로 반짝여 알려 줘요. "
                         + "누르는 건 직접 해요(띵메이트는 서버로 아무것도 보내지 않아요)"), null);
 
         list.header("모험 가방", "모험 가방");
@@ -1011,6 +1013,7 @@ public class DdingMateScreen extends Screen {
                 ? "스킬을 강화했다면 /전문가 스킬 창을 한 번 열어 주세요. 바뀐 시간을 다시 읽어요."
                 : "/전문가 → 스킬 보기 창을 한 번 열면 스킬마다 지속 시간·재사용 대기 시간을 읽어 와요.");
 
+        buildGolem();
         buildMarine();
         buildBarista();
         buildCooking();
@@ -1050,6 +1053,18 @@ public class DdingMateScreen extends Screen {
                 + "번 받음(03시 초기화). 받은 뒤 다른 채널로 옮기면 실패해요.");
     }
 
+    /** 채광 · 광석 골렘 출현 쿨타임(스킬 분류 아래) */
+    private void buildGolem() {
+        // 목차 단추가 넘치지 않게 스킬 분류 안에 둔다
+        list.pair(tip(toggle("광석 골렘 쿨타임", cfg.expert.oreGolem, v -> cfg.expert.oreGolem = v),
+                "\"광석 골렘이 등장했습니다!\"가 뜨면 다시 나올 수 있을 때까지 남은 시간을 일정 HUD 에 보여 줘요"), null);
+        long now = System.currentTimeMillis();
+        list.single(new InfoRow(kr.ddingmate.skill.SkillIcons.sageTool("채광"), "광석 골렘", kr.ddingmate.expert.OreGolem.detail(now),
+                kr.ddingmate.expert.OreGolem.remaining(now) > 0 ? Theme.BLUE : Theme.GREEN_ON_LIGHT, null));
+        list.note("위키 기준: 광석을 캘 때 0.5% 확률로 나오고, 한 번 나오면 모든 광석에 5분 쿨타임이 걸려요(프레스티지 멤버십은 하루 처음 "
+                + "20마리까지 1분). 5분이 안 돼 다시 나온 적이 있으면 프레스티지로 보고 1분으로 세요. /광석골렘 으로 서버에서도 확인할 수 있어요.");
+    }
+
     /** 판매가를 올려 주는 전문가 스킬: 지금 비율(스킬 창에서 읽음)과 바뀐 판매가 예시 */
     private void buildPriceSkills() {
         list.header("스킬 판매가 · 전문가 스킬로 바뀌는 판매가", "스킬 판매가");
@@ -1060,7 +1075,8 @@ public class DdingMateScreen extends Screen {
             String levels = k.levels().length == 0 ? "" : " · 레벨별 " + String.join("/", java.util.Arrays.stream(k.levels())
                     .mapToObj(v -> v == Math.floor(v) ? String.valueOf((int) v) : String.valueOf(v)).toList()) + "%";
             String value = pct < 0 ? "스킬 창 열면 표시" : pct == 0 ? "안 배움" : "+" + fmtPct(pct) + "%";
-            list.single(new InfoRow(expertIcon(k.expert()), "[" + k.expert() + "] " + k.name() + " · " + k.goods(), value,
+            list.single(new InfoRow(kr.ddingmate.skill.SkillIcons.forSkill(k.name(), pct != 0, k.expert()),
+                    "[" + k.expert() + "] " + k.name() + " · " + k.goods(), value,
                     pct > 0 ? Theme.GREEN_ON_LIGHT : Theme.TEXT_SOFT, null).sub(k.note() + levels));
             if (pct <= 0) continue;
             // 바뀐 판매가 예시
@@ -1158,13 +1174,9 @@ public class DdingMateScreen extends Screen {
         return "1개 " + base + (o.fromShop() ? " · 상점에서 본 값" : " · 위키 표(상점 창을 열면 스킬 반영가로 바뀌어요)");
     }
 
+    /** 전문가 도구 = 세이지 도구 그림(2026-10-22 사용자 요청) */
     private static ItemStack expertIcon(String expert) {
-        return new ItemStack(switch (expert) {
-            case "채광" -> Items.IRON_PICKAXE;
-            case "해양" -> Items.FISHING_ROD;
-            case "사냥" -> Items.IRON_SWORD;
-            default -> Items.IRON_HOE;
-        });
+        return kr.ddingmate.skill.SkillIcons.sageTool(expert);
     }
 
     /** 제작 줄 아이콘: 항해는 배(섬 그림을 알면 그 그림을 대신 그린다), 그 밖은 만드는 아이템 → 작업대 */
@@ -1260,6 +1272,9 @@ public class DdingMateScreen extends Screen {
             list.note("아직 가격을 모르는 요리뿐이에요. 세레니티 마을 밀키 상점을 한 번 열어 주세요.");
             return;
         }
+        // 가격이 바뀐 뒤 밀키 상점을 아직 안 열었으면 순위가 틀릴 수 있다(가격은 상점 창을 열 때만 읽는다)
+        long stale = ranks.stream().filter(r -> !r.fresh()).count();
+        if (stale > 0) list.note("가격이 바뀐 뒤 아직 확인하지 않은 요리가 " + stale + "개 있어요. 밀키 상점 창을 열어 가격 확인이 필요해요.");
         double best = ex.cookingByTime ? ranks.get(0).perMinute() : ranks.get(0).perItem();
         int i = 0;
         for (kr.ddingmate.expert.Cooking.Rank r : ranks) {
@@ -1269,7 +1284,7 @@ public class DdingMateScreen extends Screen {
             String val = ex.cookingByTime ? String.format("%,.0fG/분", v) : String.format("%.1fG/재료", v);
             String label = i + ". " + r.recipe().name;
             String sub = "판매가 " + String.format("%,dG", r.price()) + (r.variant().isEmpty() ? "" : " · " + r.variant())
-                    + (r.fresh() ? "" : " · 지난 가격");
+                    + (r.fresh() ? "" : " · 확인 필요(밀키 상점 열기)");
             ItemStack icon = kr.ddingmate.counter.IconCache.forRecipe(r.recipe());
             list.single(new InfoRow(icon == null ? new ItemStack(Items.BOWL) : icon, label, val + " · " + diff,
                     !r.fresh() ? Theme.TEXT_SOFT : i == 1 ? Theme.GREEN : Theme.BLUE, null).sub(sub));
@@ -1665,6 +1680,7 @@ public class DdingMateScreen extends Screen {
         pin.recipe = "";
         pin.crafts = 1;
         pin.byOutput = false;
+        pin.locked = false;
         DdingMate.config().save();
     }
 

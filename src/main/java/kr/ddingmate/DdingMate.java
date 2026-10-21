@@ -111,6 +111,7 @@ public final class DdingMate implements ClientModInitializer {
         HudRenderCallback.EVENT.register(DdingMate::renderHuds);
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
+        ClientSendMessageEvents.CHAT.register(kr.ddingmate.game.Nickname::onSent); // 돌아온 내 채팅에서 한글 닉네임 배우기
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             Notifier.onJoin();
@@ -136,6 +137,9 @@ public final class DdingMate implements ClientModInitializer {
                 kr.ddingmate.game.ServerHud.onChat(message.getString()); // "[서버 리붓] 3분 뒤 현재 채널이 재부팅됩니다."
                 PlaytimeTracker.onChat(message.getString()); // 서버가 알려 주는 일일 접속 시간·받은 보상
                 CraftTimers.onChat(message.getString()); // 제작 시작·회수 메시지
+                kr.ddingmate.counter.MaterialCounter.onChat(message.getString()); // 고정 안 한 핀은 한 번 만들면 뺀다
+                kr.ddingmate.expert.OreGolem.onChat(message.getString()); // "광석 골렘이 등장했습니다!" → 출현 쿨타임
+                kr.ddingmate.game.Nickname.onChat(message.getString()); // 귓속말·내 채팅에서 한글 닉네임(문의에 함께 보냄)
                 kr.ddingmate.skill.SkillTimers.onChat(message.getString()); // "곡괭이 나가신다! 스킬을 활성화했습니다." 등
             }
         });
@@ -240,6 +244,7 @@ public final class DdingMate implements ClientModInitializer {
             kr.ddingmate.expert.PriceSkills.scan(client); // /전문가 스킬 창의 판매가 스킬 증가율
             kr.ddingmate.craft.FacilityPanel.scan(client); // 제작 시설 창: 가진 재료로 만들 수 있는 레시피
             kr.ddingmate.expert.PetFish.scan(client); // 어항 창의 반려어 허기·기분·활력·성장도
+            kr.ddingmate.expert.OceanOrder.scanScreen(client); // /오션오더 창·칸의 남은 시간
             TodoList.QuestContext.scan(client); // 지금 연 의뢰 창이 일일·주간 중 어느 쪽인지
             TodoList.scanSidebar(client); // 의뢰 트래커의 "스태미나 소모하기 (N/…)"
             kr.ddingmate.debug.ScreenNotes.tick(client); // 서버 창 모양 기록(내 컴퓨터에만)
