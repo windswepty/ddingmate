@@ -582,8 +582,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 // 실제로 세는지: 위키가 '철'로 줄여 쓴 철 주괴(바닐라), 이름이 두 가지인 플래티넘 주괴(서버 아이템)
                 var pinv = c.player.getInventory();
                 pinv.setStack(0, new ItemStack(Items.IRON_INGOT, 8));
-                ItemStack platinum = new ItemStack(Items.PAPER, 3);
-                platinum.set(DataComponentTypes.CUSTOM_NAME, Text.literal("플래티늄 주괴"));
+                ItemStack platinum = TestItems.server("플래티늄 주괴", 3);
                 pinv.setStack(1, platinum);
                 pin.recipe = "도구 제작 시설/육식 동물 덫 x2";
                 pin.crafts = 1;

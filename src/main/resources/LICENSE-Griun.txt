@@ -1,0 +1,13 @@
+그리운(Griun, 타이비 TypeE) 무료 폰트 사용범위 (https://www.griun.co.kr/fonts, 2026-10-22 확인)
+
+들어 있는 글꼴(그리운 공식 배포 파일 그대로, 고치지 않음 — 파일 이름만 영문으로):
+- assets/ddingmate/font/griun-mongtori.ttf : 그리운 몽토리체 (Griun Mongtori, Copyright © 2024 TypeE. Corp. & Hwang Su Yeon)
+  https://www.griun.co.kr/fonts/mongtori
+- assets/ddingmate/font/griun-myoeunddobak.ttf : 그리운 묘은또박체 (Griun Myoeun ddobak, Copyright © TypeE. Corp. & Kim Hyo Eun)
+  https://www.griun.co.kr/fonts/myoeunddobak
+
+폰트 사용범위(그리운 원문):
+  모든 사용 범위에서 자유롭게 사용이 가능합니다.
+  다만, 폰트파일 개작⋅수정⋅판매는 금지됩니다.
+
+파일 안 저작권 표기: 이 파일을 수정하기 위해서는 반드시 타이비의 사전 허가를 받아야 합니다.

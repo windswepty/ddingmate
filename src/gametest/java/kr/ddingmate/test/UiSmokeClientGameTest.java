@@ -63,11 +63,13 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(15);
 
             // 1) 기본 자리(일정·재료: 왼쪽 위, 할 일: 오른쪽 위, 내구도: 오른쪽 아래)에서 모든 스타일·크기·여백 조합
-            for (DdingMateConfig.HudStyle style : DdingMateConfig.HudStyle.values()) {
+            for (kr.ddingmate.ui.HudTheme theme : kr.ddingmate.ui.HudTheme.values()) {
+                DdingMateConfig.HudStyle style = theme.style;
                 for (int scale : new int[]{50, 70, 100}) {
                     for (boolean avoid : new boolean[]{true, false}) {
                         ctx.runOnClient(c -> {
                             DdingMateConfig cfg = DdingMate.config();
+                            cfg.hudTheme = theme;
                             cfg.hudStyle = style;
                             cfg.hudScale = scale;
                             cfg.avoidServerHud = avoid;
@@ -77,18 +79,39 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                             cfg.durability.corner = DdingMateConfig.Corner.BOTTOM_RIGHT;
                         });
                         ctx.waitTicks(2);
-                        String label = style + " " + scale + "% 피하기=" + avoid;
+                        String label = theme + " " + scale + "% 피하기=" + avoid;
                         ctx.runOnClient(c -> checkLayout(c, label, avoid, true));
                     }
                 }
             }
             ctx.runOnClient(c -> {
+                DdingMate.config().hudTheme = kr.ddingmate.ui.HudTheme.LIGHT;
                 DdingMate.config().hudStyle = DdingMateConfig.HudStyle.LIGHT;
                 DdingMate.config().hudScale = 100;
                 DdingMate.config().avoidServerHud = true;
             });
             ctx.waitTicks(2);
             ctx.takeScreenshot("smoke-1-light-style");
+            // 테마 × 테두리 장식: 장식이 있어도 HUD 배치는 그대로, 테마마다 한 장씩 찍는다
+            kr.ddingmate.ui.HudFrame[] frames = kr.ddingmate.ui.HudFrame.values();
+            kr.ddingmate.ui.HudTheme[] themes = kr.ddingmate.ui.HudTheme.values();
+            for (int i = 0; i < themes.length; i++) {
+                kr.ddingmate.ui.HudTheme theme = themes[i];
+                kr.ddingmate.ui.HudFrame frame = frames[(i + 1) % frames.length];
+                ctx.runOnClient(c -> {
+                    DdingMate.config().hudTheme = theme;
+                    DdingMate.config().hudStyle = theme.style;
+                    DdingMate.config().hudFrame = frame;
+                });
+                ctx.waitTicks(2);
+                ctx.runOnClient(c -> checkLayout(c, theme + "+" + frame, true, true));
+                ctx.takeScreenshot("smoke-theme-" + theme.name().toLowerCase() + "-" + frame.name().toLowerCase());
+            }
+            ctx.runOnClient(c -> {
+                DdingMate.config().hudTheme = kr.ddingmate.ui.HudTheme.LIGHT;
+                DdingMate.config().hudStyle = DdingMateConfig.HudStyle.LIGHT;
+                DdingMate.config().hudFrame = kr.ddingmate.ui.HudFrame.NONE;
+            });
 
             // 2) 네 HUD 를 한 구석에 몰아도 화면 밖으로 나가거나 오류가 나지 않는다(작은 창에서는 겹칠 수 있음)
             for (DdingMateConfig.Corner corner : DdingMateConfig.Corner.values()) {

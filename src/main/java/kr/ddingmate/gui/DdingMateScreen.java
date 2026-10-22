@@ -558,16 +558,24 @@ public class DdingMateScreen extends Screen {
         list.pair(hudButton(),
                 new Widgets.Cycle<>(half(), "보일 일정 수", IntStream.rangeClosed(1, 10).boxed().toList(), cfg.hudLines,
                         n -> n + "개", v -> cfg.hudLines = v));
-        list.pair(new Widgets.Cycle<>(half(), "HUD 스타일", List.of(DdingMateConfig.HudStyle.values()), cfg.hudStyle,
-                        DdingMateScreen::styleName, v -> cfg.hudStyle = v),
-                new Widgets.Cycle<>(half(), "HUD 진하기", List.of(30, 40, 50, 60, 70, 80, 85, 90, 100), nearest(cfg.hudOpacity),
-                        v -> v + "%", v -> cfg.hudOpacity = v));
+        Widgets.Cycle<kr.ddingmate.ui.HudFrame> frame = new Widgets.Cycle<>(half(), "HUD 테두리 장식", List.of(kr.ddingmate.ui.HudFrame.values()),
+                cfg.hudFrame, f -> f.label, v -> cfg.hudFrame = v);
+        frame.setTooltip(Tooltip.of(Text.literal("HUD 판 귀퉁이에 작은 픽셀 그림(꽃·별·하트·잎사귀)을 얹거나 나무 테두리를 둘러요")));
+        Widgets.Cycle<kr.ddingmate.ui.HudTheme> theme = new Widgets.Cycle<>(half(), "HUD 테마", List.of(kr.ddingmate.ui.HudTheme.values()),
+                kr.ddingmate.ui.HudTheme.current(), t -> t.label, v -> {
+                    cfg.hudTheme = v;
+                    cfg.hudStyle = v.style;
+                });
+        theme.setTooltip(Tooltip.of(Text.literal("HUD 판 색 한 벌: 띵타이쿤 파랑(기본) · 다크 · 라이트 · 파스텔 · 고대비(진하기를 낮춰도 또렷하게) · 클래식(예전 반투명 상자)")));
+        list.pair(theme, frame);
+        list.pair(new Widgets.Cycle<>(half(), "HUD 진하기", List.of(30, 40, 50, 60, 70, 80, 85, 90, 100), nearest(cfg.hudOpacity),
+                        v -> v + "%", v -> cfg.hudOpacity = v), null);
         Widgets.Cycle<DdingMateConfig.FontStyle> font = new Widgets.Cycle<>(half(), "글꼴", List.of(DdingMateConfig.FontStyle.values()),
                 cfg.font, f -> f.label, v -> {
                     cfg.font = v;
                     rebuild(); // 글자 폭이 달라 줄 배치를 다시
                 });
-        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요. 레디오 볼펜체·베리려원은 온글잎 손글씨 글꼴이에요.")));
+        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요. 레디오 볼펜체·베리려원·호주나리체는 온글잎, 몽토리체·묘은또박체는 그리운 손글씨 글꼴, G마켓 산스는 반듯한 고딕이에요.")));
         Widgets.Toggle everywhere = toggle("게임 전체에 적용", cfg.fontEverywhere, v -> cfg.fontEverywhere = v);
         everywhere.setTooltip(Tooltip.of(Text.literal("켜면: 고른 글꼴로 채팅·아이템 이름과 설명·메뉴 등 게임 글자도 그려요.\n"
                 + "띵타이쿤 아이콘·창 그림은 그대로예요. 글자 폭이 달라 서버 HUD(위쪽 재화 바 등) 글자가 배경에서 조금 밀릴 수 있어요.\n"

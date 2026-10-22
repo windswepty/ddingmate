@@ -5,6 +5,7 @@
   https://www.ownglyph.com/trial/25ae4803-26fa-44bb-94bc-d96c8dfad1b9
 - assets/ddingmate/font/ownglyph-berry.ttf : 온글잎 베리려원 (Designed by Rye***, Published by Ownglyph)
   https://www.ownglyph.com/trial/60152ef6-c1e5-4359-9bb4-26f3c6457fc2
+- assets/ddingmate/font/ownglyph-nari.ttf : 온글잎 호주나리체 (Ownglyph Nari in syd, Copyright © 2023 VoyagerX, inc. & Yuna Lee)
 
 저작재산권은 (주)보이저엑스와 해당 손글씨 제공자에게 있습니다.
 

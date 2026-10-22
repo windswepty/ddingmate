@@ -107,15 +107,30 @@ public final class ScheduleHud {
     static void panel(DrawContext ctx, int x, int y, int w, int h, int alpha, boolean dark) {
         if (dark) Theme.hudDark(ctx, x, y, w, h, alpha);
         else Theme.hudLight(ctx, x, y, w, h, alpha);
+        // 테두리 장식(픽셀 아트): 판을 다 그린 뒤 귀퉁이에
+        kr.ddingmate.config.DdingMateConfig cfg = DdingMate.config();
+        if (cfg != null && cfg.hudFrame != null) cfg.hudFrame.draw(ctx, x, y, w, h, alpha);
     }
 
     /** HUD 판 위쪽 제목 줄: 작은 아이콘 + 굵은 제목 + 파란 밑줄 */
     static void header(DrawContext ctx, TextRenderer tr, int x, int y, int boxW, String title, ItemStack icon,
                        boolean dark, int alpha) {
-        if (!dark) Theme.skyHeader(ctx, x + 2, y + 2, boxW - 4, HEAD_H - 3);
+        kr.ddingmate.ui.HudTheme t = kr.ddingmate.ui.HudTheme.current();
+        boolean themed = (t.style != DdingMateConfig.HudStyle.LIGHT) == dark;
+        if (!dark) {
+            if (themed && t.headMid != 0) {
+                // 테마 제목 줄: 가운데 → 가장자리 색으로
+                int hw = boxW - 4;
+                for (int i = 0; i < hw; i++) {
+                    double k = Math.abs((i + 0.5) / hw - 0.5) * 2;
+                    ctx.fill(x + 2 + i, y + 2, x + 3 + i, y + HEAD_H - 1, Theme.lerp(t.headMid, t.headEdge, k));
+                }
+            } else Theme.skyHeader(ctx, x + 2, y + 2, boxW - 4, HEAD_H - 3);
+        }
         Theme.item(ctx, icon, x + 4, y + 2, 10);
-        Theme.boldText(ctx, tr, title, x + 16, y + 3, dark ? Theme.WHITE : Theme.INK, dark);
-        if (dark) ctx.fill(x + 3, y + HEAD_H - 1, x + boxW - 3, y + HEAD_H, Theme.withAlpha(Theme.BLUE, Math.max(alpha, 200)));
+        Theme.boldText(ctx, tr, title, x + 16, y + 3, themed ? t.title : dark ? Theme.WHITE : Theme.INK, dark);
+        if (dark) ctx.fill(x + 3, y + HEAD_H - 1, x + boxW - 3, y + HEAD_H,
+                Theme.withAlpha(themed && t.accent != 0 ? t.accent : Theme.BLUE, Math.max(alpha, 200)));
     }
 
     private static int drawClassic(DrawContext ctx, TextRenderer tr, DdingMateConfig cfg) {

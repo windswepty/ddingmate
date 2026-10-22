@@ -66,28 +66,40 @@ public final class Theme {
     public static final int TEXT_ON_DARK = 0xFFEEF1F5;
     public static final int SOFT_ON_DARK = 0xFFA7B0BE;
 
+    // HUD 글자색: 지금 HUD 테마가 같은 밝기(어두운 판/밝은 판)면 그 테마 색, 아니면 기본 색
+    private static HudTheme hud(boolean dark) {
+        HudTheme t = HudTheme.current();
+        return (t.style != kr.ddingmate.config.DdingMateConfig.HudStyle.LIGHT) == dark ? t : null;
+    }
+
     public static int red(boolean dark) {
-        return dark ? RED_ON_DARK : RED_ON_LIGHT;
+        HudTheme t = hud(dark);
+        return t != null ? t.red : dark ? RED_ON_DARK : RED_ON_LIGHT;
     }
 
     public static int gold(boolean dark) {
-        return dark ? GOLD_ON_DARK : GOLD_ON_LIGHT;
+        HudTheme t = hud(dark);
+        return t != null ? t.gold : dark ? GOLD_ON_DARK : GOLD_ON_LIGHT;
     }
 
     public static int blue(boolean dark) {
-        return dark ? BLUE_ON_DARK : BLUE_ON_LIGHT;
+        HudTheme t = hud(dark);
+        return t != null ? t.blue : dark ? BLUE_ON_DARK : BLUE_ON_LIGHT;
     }
 
     public static int green(boolean dark) {
-        return dark ? GREEN_ON_DARK : GREEN_ON_LIGHT;
+        HudTheme t = hud(dark);
+        return t != null ? t.green : dark ? GREEN_ON_DARK : GREEN_ON_LIGHT;
     }
 
     public static int text(boolean dark) {
-        return dark ? TEXT_ON_DARK : TEXT;
+        HudTheme t = hud(dark);
+        return t != null ? t.text : dark ? TEXT_ON_DARK : TEXT;
     }
 
     public static int soft(boolean dark) {
-        return dark ? SOFT_ON_DARK : TEXT_SOFT;
+        HudTheme t = hud(dark);
+        return t != null ? t.soft : dark ? SOFT_ON_DARK : TEXT_SOFT;
     }
 
     // 글자
@@ -96,7 +108,7 @@ public final class Theme {
     public static final int TEXT_LIGHT = 0xFFFFFFFF;
     public static final int TEXT_DISABLED = 0xFF666C77;
 
-    // 글꼴(assets/ddingmate/font): 설정에서 고른 글꼴의 body·bold·title(갈무리·온글잎 레디오 볼펜체·베리려원)
+    // 글꼴(assets/ddingmate/font): 설정에서 고른 글꼴의 body·bold·title(갈무리·온글잎 3종·그리운 2종)
     private static final java.util.Map<String, Identifier> FONT_IDS = new java.util.HashMap<>();
 
     private static Identifier font(String kind) {
@@ -367,16 +379,21 @@ public final class Theme {
 
     /** 서버 HUD 처럼 어두운 반투명 판 + 얇은 테두리 + 위쪽 파란 선 */
     public static void hudDark(DrawContext ctx, int x, int y, int w, int h, int alpha) {
-        outlineSmall(ctx, x, y, w, h, withAlpha(0xFF000000, alpha));
-        ctx.fill(x + 1, y + 1, x + w - 1, y + h - 1, withAlpha(0xFF14171C, alpha));
-        outlineSmall(ctx, x + 1, y + 1, w - 2, h - 2, withAlpha(0xFF3C4250, alpha));
+        HudTheme t = hud(true);
+        if (t == null || t.style != kr.ddingmate.config.DdingMateConfig.HudStyle.DARK) t = HudTheme.BLUE;
+        alpha = t.alpha(alpha);
+        outlineSmall(ctx, x, y, w, h, withAlpha(t.outer, alpha));
+        ctx.fill(x + 1, y + 1, x + w - 1, y + h - 1, withAlpha(t.body, alpha));
+        if (t.inner != t.body) outlineSmall(ctx, x + 1, y + 1, w - 2, h - 2, withAlpha(t.inner, alpha));
     }
 
     /** 창처럼 밝은 HUD 판 */
     public static void hudLight(DrawContext ctx, int x, int y, int w, int h, int alpha) {
-        outline(ctx, x, y, w, h, withAlpha(OUTLINE, alpha));
-        ctx.fill(x + 2, y + 1, x + w - 2, y + h - 1, withAlpha(WINDOW, alpha));
-        ctx.fill(x + 1, y + 2, x + w - 1, y + h - 2, withAlpha(WINDOW, alpha));
+        HudTheme t = hud(false);
+        if (t == null) t = HudTheme.LIGHT;
+        outline(ctx, x, y, w, h, withAlpha(t.outer, alpha));
+        ctx.fill(x + 2, y + 1, x + w - 2, y + h - 1, withAlpha(t.body, alpha));
+        ctx.fill(x + 1, y + 2, x + w - 1, y + h - 2, withAlpha(t.body, alpha));
         ctx.fill(x + 2, y + 1, x + w - 2, y + 2, withAlpha(WHITE, alpha));
         ctx.fill(x + 2, y + h - 2, x + w - 2, y + h - 1, withAlpha(ROW_SHADE, alpha));
     }

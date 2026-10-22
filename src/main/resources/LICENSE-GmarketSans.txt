@@ -1,0 +1,11 @@
+G마켓 산스(Gmarket Sans) — Copyright © 2019 eBay Korea Co., Ltd. (현 G마켓)
+https://corp.gmarket.com/fonts/ (2026-10-22 확인, 공식 TTF 묶음 GmarketSansTTF.zip)
+
+들어 있는 글꼴(공식 배포 파일 그대로 — 파일 이름만 영문으로):
+- assets/ddingmate/font/gmarket-sans-medium.ttf : GmarketSansTTFMedium.ttf
+- assets/ddingmate/font/gmarket-sans-bold.ttf : GmarketSansTTFBold.ttf
+
+사용 조건(G마켓 안내):
+  누구나 아무 제약 없이 쉽게 사용할 수 있습니다.
+  Gmarket Sans는 누구나 제약 없이 자유롭게 수정하고 재배포 하실 수 있습니다.
+  (폰트 파일 자체의 유료 판매는 금지)

@@ -212,8 +212,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
         SimpleInventory inv = new SimpleInventory(54);
         inv.setStack(0, new ItemStack(Items.COPPER_BLOCK, copper));
         inv.setStack(1, new ItemStack(Items.COBBLESTONE, 10));
-        ItemStack bundle = new ItemStack(Items.PAPER, 2);
-        bundle.set(DataComponentTypes.CUSTOM_NAME, Text.literal("조약돌 뭉치"));
+        ItemStack bundle = TestItems.server("조약돌 뭉치", 2); // 실제 서버 모양(종이 2006023)
         inv.setStack(5, bundle);
         inv.setStack(9, new ItemStack(Items.DIAMOND_PICKAXE));
         inv.setStack(20, new ItemStack(Items.GLASS_BOTTLE, 3));

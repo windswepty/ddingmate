@@ -24,15 +24,21 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                 DdingMateConfig cfg = DdingMate.config();
                 keep[0] = cfg.font;
                 java.util.Set<String> ids = new java.util.HashSet<>();
-                java.util.Set<Integer> widths = new java.util.HashSet<>();
+                java.util.Map<DdingMateConfig.FontStyle, Integer> widths = new java.util.LinkedHashMap<>();
+                String fontSample = "조약돌 뭉치 ×7 [3] 50분 20초 가나다라마바사 ABCxyz";
+                // 글꼴 파일을 못 읽으면 그 글꼴 묶음의 다음 줄(minecraft:default)로 대신 그려 폭이 기본 글꼴과 같아진다
+                int fallback = c.textRenderer.getWidth(fontSample);
                 for (DdingMateConfig.FontStyle f : DdingMateConfig.FontStyle.values()) {
                     cfg.font = f;
                     ids.add(Theme.bodyFont().toString());
-                    widths.add(Theme.width(c.textRenderer, "조약돌 뭉치 ×7 [3] 50분 20초"));
-                    // 글꼴 파일이 실제로 읽혀야 한다(없으면 마인크래프트 기본 글꼴로 대신 그려 폭이 갈무리와 같아지지 않는다)
+                    widths.put(f, Theme.width(c.textRenderer, fontSample));
                 }
+                DdingMate.LOG.info("글꼴별 글자 폭(기본 글꼴 {}): {}", fallback, widths);
                 if (ids.size() != DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴마다 다른 글꼴 이름이 아님: " + ids);
-                if (widths.size() < DdingMateConfig.FontStyle.values().length) throw new AssertionError("글꼴을 바꿔도 글자 폭이 같음(글꼴 파일을 못 읽음?): " + widths);
+                for (var e : widths.entrySet())
+                    if (e.getValue() == fallback && e.getKey() != DdingMateConfig.FontStyle.GALMURI)
+                        throw new AssertionError("글꼴 파일을 못 읽은 듯(기본 글꼴과 폭이 같음): " + e.getKey() + " " + widths);
+                if (new java.util.HashSet<>(widths.values()).size() < 3) throw new AssertionError("글꼴을 바꿔도 글자 폭이 거의 같음: " + widths);
                 // 게임 전체에 적용: 기본 글꼴의 글자(한글·영문)도 고른 글꼴로, 끄면 원래대로
                 boolean keepEverywhere = cfg.fontEverywhere;
                 cfg.font = DdingMateConfig.FontStyle.BERRY;

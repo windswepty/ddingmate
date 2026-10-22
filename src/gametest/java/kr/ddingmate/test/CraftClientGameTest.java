@@ -1878,8 +1878,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
     }
 
     private static ItemStack item(String name, int count, String... lore) {
-        ItemStack s = new ItemStack(Items.PAPER, Math.min(count, 64));
-        s.set(DataComponentTypes.CUSTOM_NAME, Text.literal(name));
+        ItemStack s = TestItems.server(name, Math.min(count, 64)); // 실제 서버 모양(리소스팩 모델 번호)으로
+        s.setCount(Math.min(count, 64));
         s.set(DataComponentTypes.LORE, new LoreComponent(lines(lore)));
         return s;
     }
@@ -1895,11 +1895,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
     /** 실제 시설 창 모양: listView 면 0 뒤로·8 ↑·45~50 탭·53 ↓(모두 이름 없는 종이), 첫 화면이면 0 레시피 목록 + 9번 고정 칸 */
     private static GenericContainerScreen ruleScreen(MinecraftClient c, boolean listView, String recipeName) {
         SimpleInventory inv = new SimpleInventory(54);
-        java.util.function.IntConsumer blank = i -> {
-            ItemStack s = new ItemStack(Items.PAPER);
-            s.set(DataComponentTypes.CUSTOM_NAME, Text.literal(" "));
-            inv.setStack(i, s);
-        };
+        java.util.function.IntConsumer blank = i -> inv.setStack(i, TestItems.blank());
         blank.accept(0);
         // 목록 줄은 "레시피 고정", 첫 화면 위 줄 고정 칸은 "레시피 제거"(실제 서버)
         ItemStack recipe = item(recipeName, 1, "재료입니다.", "", "  제작 시간 : 10초", "", " (좌) 해당 레시피 선택",

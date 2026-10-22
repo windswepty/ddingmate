@@ -212,7 +212,11 @@ public final class DdingMateConfig {
      */
     public enum FontStyle {
         /** 온글잎 손글씨(2026-10-22 사용자 요청, 온글잎 라이선스: SW 탑재·배포 가능, 수정 불가 → 파일 그대로) */
-        GALMURI("갈무리", ""), REDIO("레디오 볼펜체", "_redio"), BERRY("베리려원", "_berry");
+        GALMURI("갈무리", ""), REDIO("레디오 볼펜체", "_redio"), BERRY("베리려원", "_berry"),
+        /** 온글잎 호주나리체(사용자가 준 파일), 그리운 몽토리체·묘은또박체(그리운: 모든 사용 범위 가능, 개작·수정·판매 금지 → 파일 그대로) */
+        NARI("호주나리체", "_nari"), MONGTORI("몽토리체", "_mongtori"), DDOBAK("묘은또박체", "_ddobak"),
+        /** G마켓 산스(누구나 제약 없이 수정·재배포 가능, 유료 판매만 금지). 본문 Medium · 굵게 Bold */
+        GMARKET("G마켓 산스", "_gmarket");
 
         public final String label;
         /** assets/ddingmate/font 의 body·bold·title 뒤에 붙는 이름 */
@@ -251,6 +255,10 @@ public final class DdingMateConfig {
     /** 편집 화면에서 아래 가장자리로 정한 HUD 높이(HUD 좌표 px). 넘치는 줄은 옆 칸으로 */
     public Map<String, Integer> hudHeights = new LinkedHashMap<>();
     public HudStyle hudStyle = HudStyle.DARK;
+    /** HUD 테마(색 한 벌). 없으면 예전 hudStyle 에서 고른다. 바꾸면 hudStyle 도 그 테마의 판 모양으로 */
+    public kr.ddingmate.ui.HudTheme hudTheme;
+    /** HUD 테두리 장식(픽셀 아트) */
+    public kr.ddingmate.ui.HudFrame hudFrame = kr.ddingmate.ui.HudFrame.NONE;
     /** 띵메이트 창·HUD·알림 글꼴 */
     public FontStyle font = FontStyle.GALMURI;
     /** 고른 글꼴을 게임 전체(채팅·아이템 이름·메뉴 등 기본 글꼴로 그리는 글자)에도. 서버 아이콘·창 그림은 그대로 */
@@ -329,6 +337,9 @@ public final class DdingMateConfig {
         hudLines = Math.max(1, Math.min(10, hudLines));
         hudOpacity = Math.max(30, Math.min(100, hudOpacity));
         if (hudStyle == null) hudStyle = HudStyle.DARK;
+        if (hudTheme == null) hudTheme = kr.ddingmate.ui.HudTheme.of(hudStyle);
+        hudStyle = hudTheme.style;
+        if (hudFrame == null) hudFrame = kr.ddingmate.ui.HudFrame.NONE;
         if (font == null) font = FontStyle.GALMURI; // 빼 버린 글꼴(프리텐다드·네오둥근모)을 골라 두었던 설정은 갈무리로
         if (expert != null && expert.cropHotkey == null) expert.cropHotkey = new ArrayList<>();
         hudScale = Math.max(50, Math.min(100, hudScale));
