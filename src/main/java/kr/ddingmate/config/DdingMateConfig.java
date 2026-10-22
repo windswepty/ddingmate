@@ -154,6 +154,11 @@ public final class DdingMateConfig {
         public boolean notify = true;
         /** 일정 HUD 에 제작 중인 아이템과 남은 시간 표시 */
         public boolean showInHud = true;
+        /**
+         * 같은 아이템을 여러 번 넣었을 때 먼저 끝난 것을 "[1] 완료"로 따로 빼지 않고, 전부 끝날 때까지 한 줄로 두었다가
+         * "전부 완료!"로 보여 줌(2026-10-22 사용자 요청)
+         */
+        public boolean mergeDone = true;
         /** 제작 시간을 줄여 주는 전문가 스킬 레벨(0 = 안 배움, 1~5). 위키 기준 */
         public int mining;   // 채광 · 초고속 용광로: 채광물 가공·강화 제작 시설
         public int farming;  // 재배 · 불 더 올려!: 농작물 가공·요리 제작 시설

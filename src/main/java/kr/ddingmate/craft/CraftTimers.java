@@ -1113,7 +1113,9 @@ public final class CraftTimers {
     public static List<Group> groups() {
         long now = System.currentTimeMillis();
         Map<String, List<Job>> by = new LinkedHashMap<>();
-        for (Job j : jobs()) by.computeIfAbsent(groupKey(j) + (done(j, now) ? "!" : ""), k -> new ArrayList<>()).add(j);
+        // "전부 끝나면 한 번에" 켜짐: 끝난 것과 남은 것을 한 줄로(끝난 시각은 마지막 것). 꺼짐: 끝난 것은 따로 "[1] 완료"
+        boolean merge = DdingMate.config().craft.mergeDone;
+        for (Job j : jobs()) by.computeIfAbsent(groupKey(j) + (!merge && done(j, now) ? "!" : ""), k -> new ArrayList<>()).add(j);
         List<Group> out = new ArrayList<>();
         for (List<Job> g : by.values()) {
             Job first = g.get(0);
@@ -1160,6 +1162,7 @@ public final class CraftTimers {
     public static String remainingText(Group g, long now) {
         // 확실하지 않은 시각(서버에서 확인 전)은 어림 숫자 대신 확인 방법을 보여 준다
         if (g.unknown() || g.estimated()) return unknownText(g.name());
+        if (g.times() > 1 && DdingMate.config().craft.mergeDone && now >= g.endsAt()) return "전부 완료!";
         return text(g.endsAt(), g.estimated(), now);
     }
 

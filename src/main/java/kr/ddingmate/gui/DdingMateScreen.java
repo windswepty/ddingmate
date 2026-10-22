@@ -610,6 +610,13 @@ public class DdingMateScreen extends Screen {
             t.detail(nextText(e.getKey()));
             list.withUnit(t, leadsField(s), "분 전");
         }
+        list.header("서버 안내로 맞추는 일정", "서버 안내");
+        long clean = kr.ddingmate.game.ServerHud.cleanAt();
+        Widgets.Toggle cleanup = toggle("바닥 아이템 청소", cfg.cleanupTimer, v -> cfg.cleanupTimer = v);
+        cleanup.setTooltip(Tooltip.of(Text.literal("서버는 10분마다 떨어진 아이템을 청소해요. \"[청소] 5분 후 …\" 안내를 보면 다음 청소까지 남은 시간을 "
+                + "일정 HUD 에 보여 줘요. 채널마다 시각이 달라서 채널을 옮기면 다음 안내부터 다시 맞춰요(/개인설정 청소알림이 켜져 있어야 해요).")));
+        cleanup.detail(clean > 0 ? ScheduleEngine.formatRemaining(Duration.ofMillis(clean - System.currentTimeMillis())) + " 후" : "안내 기다리는 중");
+        list.pair(cleanup, null);
     }
 
     /** 일정의 다음 시각까지 남은 시간. 채널 번호를 정하지 않은 재시작 일정은 "채널 끔" */
@@ -844,7 +851,10 @@ public class DdingMateScreen extends Screen {
                     rebuild();
                 }), "제작·가공 시설에서 만드는 아이템마다 완료까지 남은 시간을 세요"),
                 tip(toggle("다 되면 알림", cr.notify, v -> cr.notify = v), "다 되면 소리와 팝업으로 알려 줘요"));
-        list.pair(tip(toggle("일정 HUD 에 표시", cr.showInHud, v -> cr.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"), null);
+        list.pair(tip(toggle("일정 HUD 에 표시", cr.showInHud, v -> cr.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"),
+                tip(toggle("전부 끝나면 한 번에 완료", cr.mergeDone, v -> cr.mergeDone = v),
+                        "켜면: 같은 아이템을 여러 번 넣었을 때 먼저 끝난 것을 \"[1] 완료\"로 따로 빼지 않고, 전부 끝날 때 \"전부 완료!\"로 보여 줘요.\n"
+                                + "끄면: 끝난 것은 따로 \"완료!\" 줄로 보여 줘요. 알림은 어느 쪽이든 전부 끝났을 때 한 번 와요."));
         list.note("제작을 시작하면 알아서 등록돼요. 시설 창을 한 번 열면 레시피의 \"제작 시간\"을 배워서, 넣은 순서대로 "
                 + "하나씩 끝나는 시각을 계산해요. 같은 걸 여러 번 넣으면 \"×7 [3]\" 처럼 한 줄로 묶고 마지막 것이 끝날 때까지 세요. 꺼내면 빠져요.");
         list.note("제작 시간을 줄여 주는 전문가 스킬 레벨은 [전문가] 탭에서 정해요(전문가 창을 열면 알아서 맞춰져요).");

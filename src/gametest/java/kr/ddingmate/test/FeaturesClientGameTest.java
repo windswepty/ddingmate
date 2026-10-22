@@ -980,6 +980,24 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         .filter(g -> g.name().equals("조약돌 뭉치")).findFirst().orElseThrow(), now + 74 * 60_000 + 1000).contains("대기"),
                         "앞 제작이 끝났는데도 대기 중으로 보임");
 
+                // 같은 아이템 여러 번: "전부 끝나면 한 번에 완료"(기본 켬)면 먼저 끝난 것도 한 줄에 두고, 전부 끝나야 "전부 완료!"
+                kr.ddingmate.craft.CraftTimers.debugAddJob("시험 묶음 아이템", 7, now - 60_000, now - 1000, "시험 대기열");
+                for (int k = 1; k <= 4; k++)
+                    kr.ddingmate.craft.CraftTimers.debugAddJob("시험 묶음 아이템", 7, now - 60_000, now + k * 60_000, "시험 대기열");
+                java.util.function.Supplier<java.util.List<kr.ddingmate.craft.CraftTimers.Group>> bundle = () -> kr.ddingmate.craft.CraftTimers.groups()
+                        .stream().filter(g -> g.name().equals("시험 묶음 아이템")).toList();
+                DdingMate.config().craft.mergeDone = true;
+                check(bundle.get().size() == 1 && bundle.get().get(0).times() == 5
+                                && !kr.ddingmate.craft.CraftTimers.remainingText(bundle.get().get(0), now).contains("완료"),
+                        "먼저 끝난 1개를 따로 뺌: " + bundle.get());
+                check(kr.ddingmate.craft.CraftTimers.remainingText(bundle.get().get(0), now + 5 * 60_000).equals("전부 완료!"),
+                        "전부 끝났는데 '전부 완료!'가 아님: " + kr.ddingmate.craft.CraftTimers.remainingText(bundle.get().get(0), now + 5 * 60_000));
+                DdingMate.config().craft.mergeDone = false;
+                check(bundle.get().size() == 2, "끄면 끝난 것을 따로 보여야 함: " + bundle.get());
+                DdingMate.config().craft.mergeDone = true;
+                kr.ddingmate.craft.CraftTimers.groups().stream().filter(g -> g.name().equals("시험 묶음 아이템"))
+                        .forEach(kr.ddingmate.craft.CraftTimers::remove);
+
                 // 형광 광산: 골렘 칸의 남은 시간으로 타이머, 남은 시간이 없는 칸이 되면(받아 감) 정리
                 net.minecraft.item.ItemStack mineItem = new net.minecraft.item.ItemStack(Items.PAPER);
                 mineItem.set(DataComponentTypes.CUSTOM_NAME, Text.literal("[ 형광 광물 채광 중 ]"));
@@ -1104,6 +1122,14 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(!kr.ddingmate.expert.OceanOrder.active(now + 4000), "오션오더 HUD 가 사라졌는데 계속 셈");
                 kr.ddingmate.expert.OceanOrder.debugHudReset();
                 kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);
+
+                // 바닥 아이템 청소(실제 로그: 10분마다, "[청소] 5분 후 …" → "[청소] 떨어진 아이템 N개가 청소되었습니다.")
+                kr.ddingmate.game.ServerHud.debugClean("[청소] 5분 후 떨어진 아이템이 전부 청소됩니다.", now);
+                check(Math.abs(kr.ddingmate.game.ServerHud.cleanAt() - (now + 5 * 60_000)) < 1500, "청소 5분 전 안내를 못 읽음");
+                kr.ddingmate.game.ServerHud.debugClean("[청소] 10초 후 떨어진 아이템이 전부 청소됩니다.", now);
+                check(Math.abs(kr.ddingmate.game.ServerHud.cleanAt() - (now + 10_000)) < 1500, "청소 10초 전 안내를 못 읽음");
+                kr.ddingmate.game.ServerHud.debugClean("[청소] 떨어진 아이템 170개가 청소되었습니다.", now);
+                check(Math.abs(kr.ddingmate.game.ServerHud.cleanAt() - (now + 10 * 60_000)) < 1500, "청소 뒤 다음 청소(10분)를 못 잡음");
 
                 // 광석 골렘: "광석 골렘이 등장했습니다!"(실제 채팅) → 5분 쿨타임. 5분 안 돼 또 나오면 프레스티지(하루 20마리까지 1분)
                 kr.ddingmate.expert.OreGolem.debugReset();

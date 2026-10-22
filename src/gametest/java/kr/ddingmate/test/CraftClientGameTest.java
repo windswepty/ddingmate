@@ -204,9 +204,15 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 int before = countDone();
                 CraftTimers.tick();
                 check(countDone() == before, "같은 제작이 남았는데 알림이 울림");
+                // 기본(전부 끝나면 한 번에 완료): 한 줄 그대로, 아직 "완료"가 아님
+                List<String> merged = labels(CraftTimers.groups());
+                check(merged.contains("조약돌 뭉치 ×7 [5]"), "일부만 끝났는데 줄이 나뉨: " + merged);
+                // 스위치를 끄면: 끝난 것과 남은 것을 나눈다
+                DdingMate.config().craft.mergeDone = false;
                 List<String> g = labels(CraftTimers.groups());
                 check(g.contains("조약돌 뭉치 ×7 [2]") && g.contains("조약돌 뭉치 ×7 [3]"), "끝난 것과 남은 것이 나뉘지 않음: " + g);
                 check(CraftTimers.groups().get(0).done(), "끝난 묶음이 맨 위가 아님");
+                DdingMate.config().craft.mergeDone = true;
                 for (int i = 2; i < 5; i++) jobs.get(i).endsAt = now - 500;
                 CraftTimers.tick();
                 CraftTimers.tick();
