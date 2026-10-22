@@ -182,6 +182,20 @@ public final class ScheduleHud {
             out.add(new Entry("바닥 아이템 청소", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초",
                     sec / 60, sec <= 60 ? Theme.GOLD : Theme.BLUE));
         }
+        // 단축키로 켠 아일랜드 작물 15분 타이머
+        if (kr.ddingmate.expert.CropTimer.running()) {
+            long left = kr.ddingmate.expert.CropTimer.remaining(nowMs0);
+            out.add(new Entry("아일랜드 작물", kr.ddingmate.expert.CropTimer.remainingText(nowMs0), left / 60000,
+                    kr.ddingmate.expert.CropTimer.paused() ? Theme.TEXT_SOFT : left <= 60_000 ? Theme.GOLD : Theme.BLUE));
+        }
+        // 마을 경작지 아일랜드 작물: 종류별로 다 자랄 때까지
+        if (cfg.expert.islandCrops) {
+            for (kr.ddingmate.expert.IslandCrops.Summary s : kr.ddingmate.expert.IslandCrops.summaries(nowMs0).values()) {
+                boolean done = s.ready() == s.count();
+                out.add(new Entry(kr.ddingmate.expert.IslandCrops.label(s), kr.ddingmate.expert.IslandCrops.status(s, nowMs0),
+                        done ? 0 : Math.max(0, (s.allReadyAt() - nowMs0) / 60000), done ? Theme.GREEN : Theme.BLUE));
+            }
+        }
         // 광석 골렘: 다시 나올 수 있을 때까지(쿨타임 중에만)
         if (kr.ddingmate.expert.OreGolem.remaining(nowMs0) > 0) {
             out.add(new Entry("광석 골렘 쿨타임", kr.ddingmate.expert.OreGolem.remainingText(nowMs0),

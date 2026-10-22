@@ -73,6 +73,11 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(20);
             ctx.runOnClient(c -> {
                 for (String line : CHAT) c.inGameHud.getChatHud().addMessage(Text.literal(line));
+                // 아일랜드 작물 단계 표: 서버 리소스팩의 트립와이어 상태에서 토마토 6단계·양파 4단계·마늘 4단계(위키와 같아야)
+                int size = kr.ddingmate.expert.IslandCrops.debugTableSize();
+                var max = kr.ddingmate.expert.IslandCrops.debugMaxStages();
+                if (size < 14 || !java.util.Map.of("tomato", 6, "onion", 4, "garlic", 4).equals(max))
+                    throw new AssertionError("리소스팩의 작물 단계 표가 다름: " + size + " " + max);
             });
             // 게임 전체 글꼴: 끔(서버 글꼴 그대로) → 레디오 볼펜체 → 베리려원. 칭호·아이콘 그림이 그대로여야 한다
             for (Object[] f : new Object[][]{{false, DdingMateConfig.FontStyle.GALMURI, "off"},

@@ -66,6 +66,18 @@ public final class Notifier {
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.AMETHYST_SHARD), Theme.GREEN, false);
     }
 
+    /** 단축키로 켠 아일랜드 작물 15분 타이머가 끝났을 때 */
+    public static void cropTimerDone() {
+        notify("제작", "아일랜드 작물 다 자랐어요", "15분이 지났어요 · 경작지에서 수확하세요",
+                SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.WHEAT), Theme.GREEN, false);
+    }
+
+    /** 마을 경작지의 아일랜드 작물이 모두 다 자랐을 때 */
+    public static void cropsReady(String crop, int count) {
+        notify("제작", crop + " 다 자랐어요", count + "칸 · 경작지에서 수확할 수 있어요",
+                SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.WHEAT), Theme.GREEN, false);
+    }
+
     public static void voyageDone(String island) {
         notify("제작", "항해 완료: " + island, "항해선이 돌아왔어요 · 항해 창에서 보상을 받으세요",
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);

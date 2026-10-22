@@ -101,6 +101,7 @@ public final class DdingMate implements ClientModInitializer {
                     @Override
                     public void reload(net.minecraft.resource.ResourceManager manager) {
                         kr.ddingmate.craft.IslandIcons.clearFonts();
+                        kr.ddingmate.expert.IslandCrops.onResourceReload(); // 작물 단계 표(트립와이어 상태)를 새 리소스팩에서
                         Notifier.onResourceReload();
                     }
                 });
@@ -221,6 +222,7 @@ public final class DdingMate implements ClientModInitializer {
         BagTracker.tick(client);
         PlaytimeTracker.tick(client);
         kr.ddingmate.skill.SkillSignals.tick(client); // 스킬 효과가 남은 틱으로 지속 시간 맞추기
+        kr.ddingmate.expert.CropTimer.tick(client); // 아일랜드 작물 15분 타이머 단축키(눌리는 순간만)
         tickCounter++;
         // 시설 창은 0.1초마다 읽는다: "제작이 완료되었습니다"로 바뀌는 순간을 잡아 완료 시각을 0.1초 안으로 맞춘다
         if (tickCounter % 2 == 0 && client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?>) {
@@ -263,6 +265,7 @@ public final class DdingMate implements ClientModInitializer {
         TodoList.tick(now);
         long ms = System.currentTimeMillis();
         kr.ddingmate.expert.PetFish.tick(ms);
+        kr.ddingmate.expert.IslandCrops.tick(client); // 마을 경작지 아일랜드 작물 단계(주변 블록만 읽음)
         kr.ddingmate.expert.OceanOrder.tick(ms);
     }
 

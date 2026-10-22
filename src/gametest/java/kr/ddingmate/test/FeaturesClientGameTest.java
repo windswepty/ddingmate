@@ -1123,6 +1123,50 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.OceanOrder.debugHudReset();
                 kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);
 
+                // 아일랜드 작물 15분 타이머(단축키): 누르면 시작, 한 번 더 누르면 취소, 멈춤 표시
+                kr.ddingmate.expert.CropTimer.cancel();
+                kr.ddingmate.expert.CropTimer.debugToggle(now);
+                check(kr.ddingmate.expert.CropTimer.running() && kr.ddingmate.expert.CropTimer.remaining(now) == 15 * 60_000,
+                        "단축키로 15분 타이머가 안 켜짐");
+                kr.ddingmate.expert.CropTimer.debugSetPaused(5 * 60_000);
+                check(kr.ddingmate.expert.CropTimer.remainingText(now).equals("5분 0초 · 멈춤(마을 밖)"), "멈춤 표시: " + kr.ddingmate.expert.CropTimer.remainingText(now));
+                kr.ddingmate.expert.CropTimer.debugSetPaused(0);
+                kr.ddingmate.expert.CropTimer.debugToggle(now);
+                check(!kr.ddingmate.expert.CropTimer.running(), "단축키를 한 번 더 눌렀는데 안 꺼짐");
+                check(kr.ddingmate.expert.CropTimer.keyName(java.util.List.of(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_CONTROL, org.lwjgl.glfw.GLFW.GLFW_KEY_G)).contains(" + ")
+                        && kr.ddingmate.expert.CropTimer.keyName(java.util.List.of()).equals("지정 안 함"), "단축키 이름");
+                // 단축키 지정 창: 함께 누른 키(최대 3개)를 떼는 순간 정한다
+                java.util.List<java.util.List<Integer>> captured = new java.util.ArrayList<>();
+                kr.ddingmate.gui.KeyCaptureScreen cap = new kr.ddingmate.gui.KeyCaptureScreen(null, captured::add);
+                c.setScreen(cap);
+                cap.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_CONTROL, 0, 0);
+                cap.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT, 0, 0);
+                cap.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_G, 0, 0);
+                cap.keyReleased(org.lwjgl.glfw.GLFW.GLFW_KEY_G, 0, 0);
+                check(captured.size() == 1 && captured.get(0).equals(java.util.List.of(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_CONTROL,
+                        org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT, org.lwjgl.glfw.GLFW.GLFW_KEY_G)), "키 조합을 못 정함: " + captured);
+                c.setScreen(null);
+                // 작물 자동 읽기(실험): 1단계를 보면 막 심은 것(정확, 15분), 단계가 바뀌면 그 순간으로 맞춤, 중간 단계는 '최대'
+                kr.ddingmate.expert.IslandCrops.debugReset();
+                long c0 = now;
+                kr.ddingmate.expert.IslandCrops.debugObserve(new net.minecraft.util.math.BlockPos(1, 64, 1), "tomato", 1, 6, c0);
+                var tom = kr.ddingmate.expert.IslandCrops.summaries(c0).get("tomato");
+                check(tom != null && tom.allReadyAt() == c0 + 15 * 60_000 && tom.exact()
+                        && kr.ddingmate.expert.IslandCrops.status(tom, c0).equals("15분 뒤"), "막 심은 토마토 15분이 아님: " + tom);
+                kr.ddingmate.expert.IslandCrops.debugObserve(new net.minecraft.util.math.BlockPos(1, 64, 1), "tomato", 2, 6, c0 + 200_000);
+                tom = kr.ddingmate.expert.IslandCrops.summaries(c0 + 200_000).get("tomato");
+                check(tom.allReadyAt() == c0 + 200_000 + 4 * 3 * 60_000, "단계가 바뀐 순간으로 안 맞춤: " + (tom.allReadyAt() - c0));
+                kr.ddingmate.expert.IslandCrops.debugObserve(new net.minecraft.util.math.BlockPos(2, 64, 1), "onion", 3, 4, c0);
+                var oni = kr.ddingmate.expert.IslandCrops.summaries(c0).get("onion");
+                check(kr.ddingmate.expert.IslandCrops.status(oni, c0).equals("최대 5분 뒤"), "중간 단계 양파: " + kr.ddingmate.expert.IslandCrops.status(oni, c0));
+                int cropAlerts = AlertLog.entries().size();
+                kr.ddingmate.expert.IslandCrops.debugObserve(new net.minecraft.util.math.BlockPos(2, 64, 1), "onion", 4, 4, c0 + 1000);
+                kr.ddingmate.expert.IslandCrops.debugAnnounce(c0 + 1000);
+                kr.ddingmate.expert.IslandCrops.debugAnnounce(c0 + 2000);
+                check(AlertLog.entries().size() == cropAlerts + 1 && AlertLog.entries().get(0).title.equals("양파 다 자랐어요"),
+                        "양파가 다 자랐는데 한 번 알리지 않음");
+                kr.ddingmate.expert.IslandCrops.debugReset();
+
                 // 바닥 아이템 청소(실제 로그: 10분마다, "[청소] 5분 후 …" → "[청소] 떨어진 아이템 N개가 청소되었습니다.")
                 kr.ddingmate.game.ServerHud.debugClean("[청소] 5분 후 떨어진 아이템이 전부 청소됩니다.", now);
                 check(Math.abs(kr.ddingmate.game.ServerHud.cleanAt() - (now + 5 * 60_000)) < 1500, "청소 5분 전 안내를 못 읽음");

@@ -1079,6 +1079,39 @@ public class DdingMateScreen extends Screen {
                 kr.ddingmate.expert.OreGolem.remaining(now) > 0 ? Theme.BLUE : Theme.GREEN_ON_LIGHT, null));
         list.note("위키 기준: 광석을 캘 때 0.5% 확률로 나오고, 한 번 나오면 모든 광석에 5분 쿨타임이 걸려요(프레스티지 멤버십은 하루 처음 "
                 + "20마리까지 1분). 5분이 안 돼 다시 나온 적이 있으면 프레스티지로 보고 1분으로 세요. /광석골렘 으로 서버에서도 확인할 수 있어요.");
+
+        // 재배 · 아일랜드 작물 15분 타이머(단축키)
+        Widgets.Button keyBtn = new Widgets.Button(half(), 20,
+                Text.literal("작물 타이머 단축키: " + kr.ddingmate.expert.CropTimer.keyName(cfg.expert.cropHotkey)), false, b -> {
+                    savedScroll = list.getScrollY();
+                    client.setScreen(new KeyCaptureScreen(this, keys -> {
+                        cfg.expert.cropHotkey = new ArrayList<>(keys);
+                        cfg.save();
+                    }));
+                });
+        keyBtn.setTooltip(Tooltip.of(Text.literal("눌러서 단축키를 정해요. 한 키(예: F6)나 최대 3개 조합(예: Ctrl + Shift + G)\n"
+                + "채집하고 다시 심은 뒤 단축키를 누르면 15분을 세고, 세는 중에 한 번 더 누르면 취소돼요. 채팅 창 등 다른 창이 열려 있을 땐 반응하지 않아요.")));
+        boolean running = kr.ddingmate.expert.CropTimer.running();
+        Widgets.Button startBtn = new Widgets.Button(half(), 20, Text.literal(running ? "작물 타이머 취소" : "작물 타이머 시작(15분)"), !running, b -> {
+            if (kr.ddingmate.expert.CropTimer.running()) kr.ddingmate.expert.CropTimer.cancel();
+            else kr.ddingmate.expert.CropTimer.start(System.currentTimeMillis());
+            rebuild();
+        });
+        list.pair(keyBtn, startBtn);
+        if (running) list.single(new InfoRow(kr.ddingmate.skill.SkillIcons.sageTool("재배"), "아일랜드 작물",
+                kr.ddingmate.expert.CropTimer.remainingText(now), Theme.BLUE, null));
+        list.pair(tip(toggle("마을 밖에서는 멈춤", cfg.expert.cropPauseAway, v -> cfg.expert.cropPauseAway = v),
+                        "위키: 작물은 마을에 사람이 있을 때만 자라요. 켜면 내가 마을 밖에 있는 동안 타이머를 멈춰요. 마을원이 마을에 남아 있으면 꺼 두세요"),
+                tip(toggle("작물 자동 읽기(실험)", cfg.expert.islandCrops, v -> cfg.expert.islandCrops = v),
+                        "마을 경작지의 토마토·양파·마늘이 몇 단계인지 주변 블록(서버 리소스팩의 작물 단계)을 읽어 종류별로 남은 시간을 보여 줘요. 실제 마을에서 아직 확인 전이에요"));
+        var crops = kr.ddingmate.expert.IslandCrops.summaries(now);
+        for (kr.ddingmate.expert.IslandCrops.Summary s : crops.values()) {
+            list.single(new InfoRow(kr.ddingmate.skill.SkillIcons.sageTool("재배"), kr.ddingmate.expert.IslandCrops.label(s),
+                    kr.ddingmate.expert.IslandCrops.status(s, now), s.ready() == s.count() ? Theme.GREEN_ON_LIGHT : Theme.BLUE, null));
+        }
+        list.note((crops.isEmpty() ? "마을 경작지 근처에 가면 심은 작물을 읽어요. " : "")
+                + "위키 기준: 심은 뒤 15분이면 다 자라요(토마토 6단계는 단계마다 3분, 양파·마늘 4단계는 5분). 마을에 사람이 있을 때만 자라서 "
+                + "마을 밖에 있는 동안은 멈춰 둬요. 단계가 바뀌는 걸 못 본 작물은 '최대 N분'으로 넉넉히 잡고, 바뀌는 순간 정확히 맞춰요.");
     }
 
     /** 판매가를 올려 주는 전문가 스킬: 지금 비율(스킬 창에서 읽음)과 바뀐 판매가 예시 */

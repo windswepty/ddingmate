@@ -184,6 +184,15 @@ public final class DdingMateConfig {
         public boolean oceanOrder = true;
         /** 광석 골렘 출현 쿨타임(5분, 프레스티지 1분)을 일정 HUD 에 */
         public boolean oreGolem = true;
+        /**
+         * 마을 경작지 아일랜드 작물을 주변 블록(리소스팩의 트립와이어 단계)으로 자동으로 읽기. 실제 마을에서 아직 확인 전이라
+         * 기본은 끔(실험). 단축키 타이머(cropHotkey)가 기본
+         */
+        public boolean islandCrops = false;
+        /** 아일랜드 작물 15분 타이머 단축키: GLFW 키 번호 1~3개(함께 눌렀을 때). 비어 있으면 단축키 없음 */
+        public List<Integer> cropHotkey = new ArrayList<>();
+        /** 마을 밖에 있는 동안 작물 타이머를 멈춤(위키: 마을에 사람이 있을 때만 자람) */
+        public boolean cropPauseAway = true;
         /** 판매가 전문가 스킬(이름 → 지금 증가율 %). /전문가 스킬 창에서 자동으로 읽음 */
         public Map<String, Double> priceSkills = new LinkedHashMap<>();
     }
@@ -321,6 +330,7 @@ public final class DdingMateConfig {
         hudOpacity = Math.max(30, Math.min(100, hudOpacity));
         if (hudStyle == null) hudStyle = HudStyle.DARK;
         if (font == null) font = FontStyle.GALMURI; // 빼 버린 글꼴(프리텐다드·네오둥근모)을 골라 두었던 설정은 갈무리로
+        if (expert != null && expert.cropHotkey == null) expert.cropHotkey = new ArrayList<>();
         hudScale = Math.max(50, Math.min(100, hudScale));
         if (hudPos == null) hudPos = new LinkedHashMap<>();
         if (hudSizes == null) hudSizes = new LinkedHashMap<>();
