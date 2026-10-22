@@ -40,9 +40,9 @@ final class Tutorial {
                     "알림은 세 가지로 받아요. 소리는 \"띵\", 팝업은 오른쪽 위 알림 상자, 채팅은 [띵메이트] 줄(나만 보여요). 원하는 것만 켜세요."),
             new Step(DdingMateScreen.Tab.NOTIFY, false, "소리 크기", "소리 크기",
                     "알림 소리 크기를 막대를 끌어 정해요. 0% 면 소리가 나지 않아요."),
-            new Step(DdingMateScreen.Tab.NOTIFY, false, "HUD 테마", "HUD 테마 · 테두리 장식",
-                    "띵타이쿤 파랑·다크·라이트·파스텔·고대비·클래식 중에서 HUD 색을 골라요. 테두리 장식으로 귀퉁이에 꽃·별·하트·잎사귀 픽셀 그림이나 "
-                            + "나무 테두리를 얹을 수 있고, 진하기로 배경이 얼마나 비칠지 정해요."),
+            new Step(DdingMateScreen.Tab.NOTIFY, false, "HUD 테마", "HUD 테마 · 꾸미기",
+                    "띵타이쿤 파랑·다크·라이트·파스텔·고대비·클래식 중에서 HUD 색을 골라요. 꾸미기로 꽃 정원·별빛·하트·숲·나무 판자 픽셀 그림을 둘레·귀퉁이·"
+                            + "가운데에 얹을 수 있고, 진하기로 배경이 얼마나 비칠지 정해요."),
             new Step(DdingMateScreen.Tab.NOTIFY, false, "HUD 전체 크기", "HUD 크기 · 서버 HUD 피하기",
                     "HUD 를 한꺼번에 줄이거나 키워요. \"서버 HUD 피하기\"를 켜 두면 서버의 재화 바·날짜 줄과 채팅창을 가리지 않게 자리를 잡아요."),
             new Step(DdingMateScreen.Tab.NOTIFY, false, "HUD 위치·크기 설정", "HUD 위치·크기 설정",

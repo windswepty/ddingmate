@@ -72,7 +72,8 @@ public final class SkillHud {
         int cy = y + ScheduleHud.HEAD_H + 2;
         for (SkillTimers.Row r : rows) {
             int rx = x + 6;
-            Theme.item(ctx, SkillTimers.icon(r.skill()), rx, cy, ICON);
+            // 스킬 트리 창의 전문가 보석(리소스팩에 없으면 스킬 그림)
+            if (!kr.ddingmate.skill.SkillIcons.drawGem(ctx, r.skill().tool, true, rx, cy, ICON)) Theme.item(ctx, SkillTimers.icon(r.skill()), rx, cy, ICON);
             String v = SkillTimers.text(r, now);
             boolean known = SkillTimers.ratio(r, now) >= 0;
             int color = switch (r.phase()) {
