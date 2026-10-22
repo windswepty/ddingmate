@@ -36,28 +36,14 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext ctx) {
-        String env = System.getenv("DDINGMATE_SERVER_PACK");
-        if (env == null || env.isBlank()) return;
-        Path source = findPack(env);
-        if (source == null) throw new AssertionError("서버 리소스팩을 못 찾음: " + env);
-
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
             sp.getClientWorld().waitForChunksRender();
+            boolean[] on = new boolean[1];
+            ctx.runOnClient(c -> on[0] = TestPack.active(c));
+            if (!on[0]) return; // 맨 처음 시험(ServerPackSetup)이 켜 둔 리소스팩이 없으면 건너뜀
             DdingMateConfig.FontStyle[] keepFont = new DdingMateConfig.FontStyle[1];
             boolean[] keep = new boolean[3];
             ctx.runOnClient(c -> {
-                try {
-                    Path dir = c.getResourcePackDir();
-                    Files.createDirectories(dir);
-                    Path dest = dir.resolve(PACK_FILE);
-                    if (!Files.exists(dest) || Files.size(dest) != Files.size(source)) Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING);
-                } catch (Exception e) {
-                    throw new AssertionError("서버 리소스팩 복사 실패", e);
-                }
-                ResourcePackManager m = c.getResourcePackManager();
-                m.scanPacks();
-                if (!m.enable(PACK_ID)) throw new AssertionError("서버 리소스팩을 켜지 못함: " + m.getIds());
-                c.options.refreshResourcePacks(m);
                 DdingMateConfig cfg = DdingMate.config();
                 keepFont[0] = cfg.font;
                 keep[0] = cfg.fontEverywhere;
@@ -69,7 +55,6 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
                 c.options.getGuiScale().setValue(3);
                 c.onResolutionChanged();
             });
-            ctx.waitFor(c -> c.getOverlay() == null, 20 * 120);
             ctx.waitTicks(20);
             ctx.runOnClient(c -> {
                 for (String line : CHAT) c.inGameHud.getChatHud().addMessage(Text.literal(line));
@@ -105,7 +90,7 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(10);
             ctx.takeScreenshot("serverpack-expert-sage-tools");
 
-            // 원래대로: 리소스팩 끄기, 설정·창 크기 되돌리기
+            // 원래대로: 설정·창 크기 되돌리기(리소스팩은 켜 둔 채 다음 시험으로)
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 DdingMateConfig cfg = DdingMate.config();
@@ -114,35 +99,11 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
                 cfg.opened = keep[1];
                 cfg.tutorialDone = keep[2];
                 cfg.save();
-                ResourcePackManager m = c.getResourcePackManager();
-                m.disable(PACK_ID);
-                c.options.refreshResourcePacks(m);
                 kr.ddingmate.hud.HudLayout.bounds().clear();
                 c.getWindow().setWindowedSize(854, 480);
                 c.options.getGuiScale().setValue(0);
                 c.onResolutionChanged();
             });
-            ctx.waitFor(c -> c.getOverlay() == null, 20 * 120);
-        }
-    }
-
-    /** 경로면 그 파일, "1"이면 띵타이쿤 테스트 프로필 downloads 의 가장 최근 서버 리소스팩 */
-    private static Path findPack(String env) {
-        if (!env.equals("1")) {
-            Path p = Path.of(env);
-            return Files.isRegularFile(p) ? p : null;
-        }
-        String appdata = System.getenv("APPDATA");
-        if (appdata == null) return null;
-        Path downloads = Path.of(appdata, "ModrinthApp", "profiles", "띵타이쿤-띵메이트-테스트", "downloads");
-        if (!Files.isDirectory(downloads)) return null;
-        try (Stream<Path> s = Files.walk(downloads, 2)) {
-            return s.filter(Files::isRegularFile)
-                    .filter(p -> !p.getFileName().toString().endsWith(".json"))
-                    .max(Comparator.comparingLong(p -> p.toFile().lastModified()))
-                    .orElse(null);
-        } catch (Exception e) {
-            return null;
         }
     }
 }
