@@ -43,7 +43,7 @@ public final class CookingPanel {
         if (!DdingMate.config().expert.cookingPanel || !Cooking.shopOpen()) return;
         MinecraftClient client = MinecraftClient.getInstance();
         TextRenderer tr = client.textRenderer;
-        SidePanel.Palette p = SidePanel.KITCHEN;
+        SidePanel.Palette p = SidePanel.themed(SidePanel.KITCHEN);
         List<Item> items = items(client, p);
         if (items.isEmpty()) return;
         String title = "요리 판매 도우미";
@@ -55,10 +55,10 @@ public final class CookingPanel {
             int rw = it.right().isEmpty() ? 0 : Theme.boldWidth(tr, it.right()) + 8;
             w = Math.max(w, lw + rw + 14);
         }
-        w = Math.max(128, Math.min(SidePanel.maxWidth(screen.width), w));
+        w = Math.max(128, Math.min(SidePanel.maxWidth(SidePanel.vw(screen)), w));
         int h = SidePanel.HEAD_H + 6 + 4;
         for (Item it : items) h += it.divider() ? 5 : ROW;
-        int[] at = SidePanel.place(screen.width, screen.height, w, h);
+        int[] at = SidePanel.place(SidePanel.vw(screen), SidePanel.vh(screen), w, h);
         int x = at[0], y = at[1];
 
         ctx.getMatrices().push();

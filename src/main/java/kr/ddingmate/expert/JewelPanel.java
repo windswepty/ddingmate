@@ -28,7 +28,7 @@ public final class JewelPanel {
         List<ShopPrices.Jewel> jewels = ShopPrices.jewels();
         if (jewels.isEmpty() || !DdingMate.config().expert.shopPanel) return;
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
-        SidePanel.Palette p = SidePanel.KITCHEN;
+        SidePanel.Palette p = SidePanel.themed(SidePanel.KITCHEN);
         String title = "귀중품 가격";
         int rows = Math.min(MAX_ROWS, jewels.size());
         long box = 0, all = 0;
@@ -47,9 +47,9 @@ public final class JewelPanel {
             w = Math.max(w, 19 + Theme.itemNameWidth(tr, j.name() + " ×" + j.count()) + 12
                     + Theme.boldWidth(tr, ShopPrices.money(j.total(), j.total())) + 7);
         }
-        w = Math.min(w, SidePanel.maxWidth(screen.width));
+        w = Math.min(w, SidePanel.maxWidth(SidePanel.vw(screen)));
         int h = SidePanel.HEAD_H + 5 + rows * ROW + (jewels.size() > rows ? ROW : 0) + 5 + 2 * ROW + 4;
-        int[] at = SidePanel.place(screen.width, screen.height, w, h);
+        int[] at = SidePanel.place(SidePanel.vw(screen), SidePanel.vh(screen), w, h);
         int x = at[0], y = at[1];
         ctx.getMatrices().push();
         ctx.getMatrices().translate(0, 0, 300);

@@ -29,7 +29,7 @@ public final class ShopPanel {
         if (shop == null || !DdingMate.config().expert.shopPanel) return;
         MinecraftClient client = MinecraftClient.getInstance();
         TextRenderer tr = client.textRenderer;
-        SidePanel.Palette p = SidePanel.KITCHEN;
+        SidePanel.Palette p = SidePanel.themed(SidePanel.KITCHEN);
         List<ShopPrices.Owned> owned = ShopPrices.owned(client, null, shop);
         String title = shop + " · 보유 판매품";
         int rows = Math.min(MAX_ROWS, owned.size());
@@ -41,9 +41,9 @@ public final class ShopPanel {
                     + (o.bonus() > 0 ? Theme.width(tr, " +" + o.bonus() + "%") : 0) + 12 + Theme.boldWidth(tr, ShopPrices.money(o.low(), o.high())) + 7;
             w = Math.max(w, need);
         }
-        w = Math.min(w, SidePanel.maxWidth(screen.width));
+        w = Math.min(w, SidePanel.maxWidth(SidePanel.vw(screen)));
         int h = SidePanel.HEAD_H + 5 + Math.max(1, rows) * ROW + (owned.size() > rows ? ROW : 0) + 5 + 12 + 4 + 10;
-        int[] at = SidePanel.place(screen.width, screen.height, w, h);
+        int[] at = SidePanel.place(SidePanel.vw(screen), SidePanel.vh(screen), w, h);
         int x = at[0], y = at[1];
         ctx.getMatrices().push();
         ctx.getMatrices().translate(0, 0, 300);

@@ -41,7 +41,7 @@ public final class BaristaPanel {
         if (Barista.kind() == Barista.Kind.NONE) return;
         MinecraftClient client = MinecraftClient.getInstance();
         TextRenderer tr = client.textRenderer;
-        SidePanel.Palette p = SidePanel.CAFE;
+        SidePanel.Palette p = SidePanel.themed(SidePanel.CAFE);
         List<Item> items = items(client, p);
         String title = "오늘의 주문";
 
@@ -58,7 +58,7 @@ public final class BaristaPanel {
         for (Item it : items) h += it.divider() ? 5 : ROW;
         h += 4;
 
-        int[] at = SidePanel.place(screen.width, screen.height, w, h);
+        int[] at = SidePanel.place(SidePanel.vw(screen), SidePanel.vh(screen), w, h);
         int x = at[0], y = at[1];
 
         ctx.getMatrices().push();

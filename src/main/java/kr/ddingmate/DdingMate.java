@@ -87,7 +87,8 @@ public final class DdingMate implements ClientModInitializer {
                                 || !kr.ddingmate.expert.ShopPrices.jewels().isEmpty()
                                 || !kr.ddingmate.craft.FacilityPanel.click(mx, my, button));
                 net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register(
-                        (s, mx, my, h2, v) -> !kr.ddingmate.craft.FacilityPanel.scrolled(mx, my, v));
+                        (s, mx, my, h2, v) -> !(kr.ddingmate.ui.SidePanel.resizeScroll(mx, my, v)
+                                || kr.ddingmate.craft.FacilityPanel.scrolled(mx, my, v)));
             }
         });
         // 서버 리소스팩을 받거나 바꾸면 섬 그림 글꼴을 다시 읽는다
@@ -197,16 +198,28 @@ public final class DdingMate implements ClientModInitializer {
     /** 한 창에는 판 하나만: 바리스타 → 요리 상점 → 제작 시설 순 */
     private static void renderSidePanel(net.minecraft.client.gui.screen.Screen screen, net.minecraft.client.gui.DrawContext ctx,
                                         int mouseX, int mouseY, float delta) {
-        if (kr.ddingmate.expert.Barista.kind() != kr.ddingmate.expert.Barista.Kind.NONE) {
-            kr.ddingmate.expert.BaristaPanel.render(ctx, screen);
-        } else if (kr.ddingmate.expert.Cooking.shopOpen()) {
-            kr.ddingmate.expert.CookingPanel.render(ctx, screen, mouseX, mouseY);
-        } else if (kr.ddingmate.expert.ShopPrices.openShop() != null) {
-            kr.ddingmate.expert.ShopPanel.render(ctx, screen, mouseX, mouseY);
-        } else if (!kr.ddingmate.expert.ShopPrices.jewels().isEmpty()) {
-            kr.ddingmate.expert.JewelPanel.render(ctx, screen, mouseX, mouseY);
-        } else {
-            kr.ddingmate.craft.FacilityPanel.render(ctx, screen, mouseX, mouseY);
+        kr.ddingmate.ui.SidePanel.beginFrame();
+        if (kr.ddingmate.expert.Barista.kind() == kr.ddingmate.expert.Barista.Kind.NONE
+                && !kr.ddingmate.expert.Cooking.shopOpen() && kr.ddingmate.expert.ShopPrices.openShop() == null
+                && kr.ddingmate.expert.ShopPrices.jewels().isEmpty()) {
+            kr.ddingmate.craft.FacilityPanel.render(ctx, screen, mouseX, mouseY); // 판 배율은 안에서(서버 칸 강조는 실제 자리)
+            return;
+        }
+        // 나머지 판은 통째로 판 배율 안에서 그린다(마우스도 판 좌표로)
+        int mx = kr.ddingmate.ui.SidePanel.mouse(mouseX), my = kr.ddingmate.ui.SidePanel.mouse(mouseY);
+        kr.ddingmate.ui.SidePanel.push(ctx);
+        try {
+            if (kr.ddingmate.expert.Barista.kind() != kr.ddingmate.expert.Barista.Kind.NONE) {
+                kr.ddingmate.expert.BaristaPanel.render(ctx, screen);
+            } else if (kr.ddingmate.expert.Cooking.shopOpen()) {
+                kr.ddingmate.expert.CookingPanel.render(ctx, screen, mx, my);
+            } else if (kr.ddingmate.expert.ShopPrices.openShop() != null) {
+                kr.ddingmate.expert.ShopPanel.render(ctx, screen, mx, my);
+            } else {
+                kr.ddingmate.expert.JewelPanel.render(ctx, screen, mx, my);
+            }
+        } finally {
+            kr.ddingmate.ui.SidePanel.pop(ctx);
         }
     }
 

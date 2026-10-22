@@ -157,7 +157,7 @@ public final class FacilityPanel {
         if (out.size() <= MAX_ROWS) expanded = false;
     }
 
-    public static void render(DrawContext ctx, Screen screen, int mouseX, int mouseY) {
+    public static void render(DrawContext ctx, Screen screen, int realX, int realY) {
         pw = 0;
         tip = null;
         if (detail == null) detailRect = new int[4];
@@ -169,7 +169,10 @@ public final class FacilityPanel {
         }
         MinecraftClient client = MinecraftClient.getInstance();
         TextRenderer tr = client.textRenderer;
-        SidePanel.Palette p = SidePanel.WORKSHOP;
+        SidePanel.Palette p = SidePanel.themed(SidePanel.WORKSHOP);
+        // 판 크기(설정·Ctrl+휠): 판은 배율만큼 키워 그리고, 자리·마우스는 그 배율의 판 좌표로
+        int mouseX = SidePanel.mouse(realX), mouseY = SidePanel.mouse(realY);
+        int vw = SidePanel.vw(screen), vh = SidePanel.vh(screen);
         shown = Math.min(MAX_ROWS, entries.size());
         String title = "보유 재료로 만들기";
         int w = Theme.boldWidth(tr, title) + 26;
@@ -178,12 +181,13 @@ public final class FacilityPanel {
             int pinW = pinnedIndex(e.recipe()) >= 0 ? Theme.width(tr, "[핀] ") : 0;
             w = Math.max(w, 13 + pinW + Theme.itemNameWidth(tr, e.recipe().displayName()) + 8 + Theme.boldWidth(tr, right(e)) + 14);
         }
-        w = Math.max(132, Math.min(SidePanel.maxWidth(screen.width), w));
+        w = Math.max(132, Math.min(SidePanel.maxWidth(vw), w));
         String foot = DdingMate.config().counter.facilityHighlight ? "클릭: 핀 넣기·길 강조 / 한 번 더: 빼기" : "클릭: 핀 넣기 / 한 번 더: 빼기";
         String foot2 = DdingMate.config().counter.facilityHighlight ? "쉬프트+클릭: 재료·칸 보기 / 닫기" : "쉬프트+클릭: 레시피 보기 / 닫기";
         int h = SidePanel.HEAD_H + 5 + shown * ROW + 4 + (entries.size() > shown ? 11 : 0) + 12 + 10;
-        int[] at = SidePanel.place(screen.width, screen.height, w, h);
+        int[] at = SidePanel.place(vw, vh, w, h);
         int x = at[0], y = at[1];
+        SidePanel.push(ctx);
         px = x;
         py = y;
         pw = w;
@@ -226,27 +230,28 @@ public final class FacilityPanel {
         if (detail != null) {
             int dh = detailHeight(detail);
             int dx = x, dy = y + h + 3, dw = w;
-            if (dy + dh > screen.height - 2) {
+            if (dy + dh > vh - 2) {
                 if (y - dh - 3 >= 2) {
                     dy = y - dh - 3;
                 } else {
                     // 위아래 어디에도 안 들어가면 상자 창 왼쪽 빈자리에(작은 판은 옮기지 않는다: 줄이 커서 밑에서 움직이면
                     // 같은 자리를 다시 쉬프트+클릭해도 닫히지 않고 다른 레시피가 열린다). 전체 목록 판과 겹치면 레시피 판이 위,
                     // 그 자리의 클릭·툴팁은 레시피 판 몫이다
-                    int room = screen.width / 2 - 92 - 6;
+                    int room = vw / 2 - SidePanel.off(92) - 6;
                     dw = Math.max(110, Math.min(w, room));
-                    dx = Math.max(2, screen.width / 2 - 92 - 4 - dw);
-                    dy = Math.max(2, Math.min(y, screen.height - 2 - dh));
+                    dx = Math.max(2, vw / 2 - SidePanel.off(92) - 4 - dw);
+                    dy = Math.max(2, Math.min(y, vh - 2 - dh));
                 }
             }
             renderDetail(ctx, screen, tr, p, dx, dy, dw);
         }
-        highlight(ctx, screen);
+        SidePanel.pop(ctx);
+        highlight(ctx, screen); // 서버 창의 칸 강조는 배율 없이 실제 자리에
         // 이름이 … 로 잘린 줄에 마우스를 올리면 서버 이름 그대로 보여 준다
         if (tip != null) {
             ctx.getMatrices().push();
             ctx.getMatrices().translate(0, 0, 310);
-            ctx.drawTooltip(tr, net.minecraft.text.Text.literal(tip), mouseX, mouseY);
+            ctx.drawTooltip(tr, net.minecraft.text.Text.literal(tip), realX, realY);
             ctx.getMatrices().pop();
         }
     }
@@ -659,11 +664,12 @@ public final class FacilityPanel {
 
     /** 전체 목록 판: 창 왼쪽에 크게. 휠로 넘기고, 줄은 작은 판과 똑같이 왼쪽 클릭 핀 넣기 · 오른쪽 클릭 핀 빼기 */
     private static void renderList(DrawContext ctx, Screen screen, TextRenderer tr, SidePanel.Palette p, int mouseX, int mouseY) {
-        int mid = screen.width / 2;
-        int w = Math.max(132, Math.min(200, mid - 92 - 6));
-        int x = Math.max(2, mid - 92 - 4 - w);
+        int mid = SidePanel.vw(screen) / 2;
+        int edge = SidePanel.off(92);
+        int w = Math.max(132, Math.min(200, mid - edge - 6));
+        int x = Math.max(2, mid - edge - 4 - w);
         int y = 6;
-        int h = screen.height - 12;
+        int h = SidePanel.vh(screen) - 12;
         String title = "만들 수 있는 레시피 " + entries.size() + "개";
         listRows = Math.max(1, (h - SidePanel.HEAD_H - 5 - 16) / ROW);
         scroll = Math.max(0, Math.min(scroll, Math.max(0, entries.size() - listRows)));
@@ -708,7 +714,8 @@ public final class FacilityPanel {
     }
 
     /** 전체 목록 판 위에서 휠을 굴렸으면 넘기고 true */
-    public static boolean scrolled(double mouseX, double mouseY, double vertical) {
+    public static boolean scrolled(double realX, double realY, double vertical) {
+        double mouseX = SidePanel.mouse(realX), mouseY = SidePanel.mouse(realY);
         if (!expanded || lw <= 0) return false;
         if (mouseX < lx || mouseX >= lx + lw || mouseY < ly || mouseY >= ly + lh) return false;
         scroll = Math.max(0, Math.min(Math.max(0, entries.size() - listRows), scroll + (vertical > 0 ? -3 : 3)));
@@ -721,7 +728,7 @@ public final class FacilityPanel {
 
     /** 판 안을 눌렀으면 처리하고 true(창으로는 넘기지 않음). 왼쪽: 핀 넣기, 오른쪽: 핀 빼기 */
     public static boolean click(double mouseX, double mouseY, int button) {
-        boolean ours = clickPanel(mouseX, mouseY, button);
+        boolean ours = clickPanel(SidePanel.mouse(mouseX), SidePanel.mouse(mouseY), button); // 판은 판 좌표, 서버 칸은 실제 좌표
         if (!ours && button == 0) noteSlotClick(mouseX, mouseY);
         return ours;
     }
@@ -849,6 +856,13 @@ public final class FacilityPanel {
     /** 시험용: i번째 줄 가운데 화면 좌표(아직 안 그렸으면 null) */
     public static int[] debugRow(int i) {
         return pw <= 0 ? null : new int[]{px + pw / 2, rowsTop - 1 + i * ROW + ROW / 2};
+    }
+
+    /** 시험용: i 번째 줄 가운데의 실제 화면 좌표(판 배율을 곱한 자리) */
+    public static double[] debugRowReal(int i) {
+        int[] at = debugRow(i);
+        float s = SidePanel.scale();
+        return at == null ? null : new double[]{(at[0] + 0.5) * s, (at[1] + 0.5) * s};
     }
 
     /** 시험용 */

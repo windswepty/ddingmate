@@ -560,6 +560,36 @@ public class CraftClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(12);
             ctx.takeScreenshot("facility-1-craftable-panel");
+            // 판 크기 150% + HUD 꾸미기 따라가기(하니 세트): 커진 판의 실제 자리를 누르면 그 줄이 눌린다(2026-10-23)
+            Object[] keepLook = new Object[5];
+            ctx.runOnClient(c -> {
+                var cfg0 = DdingMate.config();
+                keepLook[0] = cfg0.hudPanel; keepLook[1] = cfg0.hudHeader; keepLook[2] = cfg0.hudMascot; keepLook[3] = cfg0.hudTheme; keepLook[4] = cfg0.hudStyle;
+                DdingMate.config().sidePanelScale = 150;
+                DdingMate.config().sidePanelFollowHud = true;
+                kr.ddingmate.ui.HudSkins.applySet(DdingMate.config(), kr.ddingmate.ui.HudSkins.byId("hani"));
+            });
+            ctx.waitTicks(3);
+            ctx.takeScreenshot("facility-1b-panel-150-hani");
+            ctx.runOnClient(c -> {
+                var es = kr.ddingmate.craft.FacilityPanel.entries();
+                double[] real = kr.ddingmate.craft.FacilityPanel.debugRowReal(0);
+                check(real != null, "150% 판을 그리지 않음");
+                boolean passed = net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
+                        .allowMouseClick(c.currentScreen, real[0], real[1], 0);
+                check(!passed && DdingMate.config().counter.pins.get(0).recipe.equals(es.get(0).recipe().id),
+                        "150% 판의 줄을 눌렀는데 그 레시피가 핀에 안 들어감");
+                net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(c.currentScreen).invoker()
+                        .allowMouseClick(c.currentScreen, real[0], real[1], 1);
+                check(DdingMate.config().counter.pins.get(0).recipe.isEmpty(), "150% 판에서 오른쪽 클릭으로 핀이 안 빠짐");
+                kr.ddingmate.craft.FacilityPanel.debugDetail(null);
+                DdingMate.config().sidePanelScale = 100;
+                DdingMate.config().sidePanelFollowHud = false;
+                var cfg1 = DdingMate.config();
+                cfg1.hudPanel = (String) keepLook[0]; cfg1.hudHeader = (String) keepLook[1]; cfg1.hudMascot = (String) keepLook[2];
+                cfg1.hudTheme = (kr.ddingmate.ui.HudTheme) keepLook[3]; cfg1.hudStyle = (DdingMateConfig.HudStyle) keepLook[4];
+            });
+            ctx.waitTicks(3);
             ctx.runOnClient(c -> {
                 var es = kr.ddingmate.craft.FacilityPanel.entries();
                 check(!es.isEmpty() && es.stream().allMatch(e -> e.recipe().facility.equals("강화 제작 시설") && e.owned() > 0),

@@ -269,6 +269,10 @@ public final class DdingMateConfig {
     public boolean fontEverywhere = false;
     /** 바닥 아이템 청소까지 남은 시간을 일정 HUD 에(서버 [청소] 안내로 맞춤) */
     public boolean cleanupTimer = true;
+    /** 서버 창 옆 판(보유 재료로 만들기·카페·부엌·상점·보석) 크기 50~150 (%). 판 위에서 Ctrl+휠로도 바꾼다 */
+    public int sidePanelScale = 100;
+    /** 서버 창 옆 판도 HUD 꾸미기(판·제목 줄·글자색)를 따라갈지. 끄면 창에 맞춘 색(카페 갈색·부엌 토마토색 등) */
+    public boolean sidePanelFollowHud = false;
     /** HUD 판 진하기 30~100 (%) */
     public int hudOpacity = 85;
     /** HUD 크기 50~100 (%) */
@@ -340,6 +344,8 @@ public final class DdingMateConfig {
         if (hudCorner == null) hudCorner = Corner.TOP_LEFT;
         hudLines = Math.max(1, Math.min(10, hudLines));
         hudOpacity = Math.max(30, Math.min(100, hudOpacity));
+        sidePanelScale = Math.max(kr.ddingmate.ui.SidePanel.MIN_SCALE, Math.min(kr.ddingmate.ui.SidePanel.MAX_SCALE,
+                sidePanelScale <= 0 ? 100 : sidePanelScale));
         if (hudStyle == null) hudStyle = HudStyle.DARK;
         if (hudTheme == null) hudTheme = kr.ddingmate.ui.HudTheme.of(hudStyle);
         hudStyle = hudTheme.style;

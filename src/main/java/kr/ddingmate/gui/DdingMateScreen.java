@@ -655,6 +655,12 @@ public class DdingMateScreen extends Screen {
         });
         look.setTooltip(Tooltip.of(Text.literal("세트 · 판 · 제목 줄 · 친구 후보를 실제 HUD 모양 그대로 늘어놓고 비교하며 골라요.")));
         list.single(look);
+        Widgets.Cycle<Integer> side = new Widgets.Cycle<>(half(), "서버 창 옆 판 크기", List.of(50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150),
+                nearestOf(cfg.sidePanelScale, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150), v -> v + "%", v -> cfg.sidePanelScale = v);
+        side.setTooltip(Tooltip.of(Text.literal("제작 시설 창 옆 '보유 재료로 만들기' 판과 카페·부엌·상점·보석 판 크기예요. 판 위에서 Ctrl+휠로도 바로 바꿀 수 있어요.")));
+        Widgets.Toggle follow = toggle("옆 판도 HUD 꾸미기로", cfg.sidePanelFollowHud, v -> cfg.sidePanelFollowHud = v);
+        follow.setTooltip(Tooltip.of(Text.literal("켜면: 서버 창 옆 판도 지금 고른 HUD 판·제목 줄·글자색으로 그려요.\n끄면: 창에 맞춘 색(카페는 갈색 차양, 부엌은 토마토색 등)이에요.")));
+        list.pair(side, follow);
     }
 
     private void buildEvents() {
