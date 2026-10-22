@@ -47,8 +47,13 @@ public final class BagTracker {
 
     /** 단축어를 보낸 뒤 이 시간 안에 열린 창만 그 번호의 가방으로 본다. */
     private static final long PENDING_MS = 5000;
-    /** 창이 열린 뒤 내용이 도착할 때까지 기다리는 틱 수 */
+    /** 창이 열린 뒤 내용이 도착할 때까지 기다리는 최소 틱 수 */
     private static final int SETTLE_TICKS = 6;
+    /**
+     * 내용(칸)이 하나도 안 왔으면 이만큼(2초)까지 판단을 미룬다. 실제 서버에서 가방 창은 열린 뒤 0.5초쯤 지나 내용이 왔고
+     * (2026-10-22 개발 기록), 0.3초에 빈 창으로 판단해 번호를 못 정하면 그 창을 닫을 때까지 기록하지 않아 가끔 기록이 씹혔다
+     */
+    private static final int WAIT_CONTENT_TICKS = 40;
     /** 번호 없이 열렸을 때 같은 가방으로 볼 최소 칸 일치율 */
     private static final double MATCH_THRESHOLD = 0.6;
 
@@ -84,6 +89,8 @@ public final class BagTracker {
 
     private static GenericContainerScreen openScreen;
     private static int openTicks;
+    /** 지금 창이 가방인지·몇 번인지 판단을 마쳤는가 */
+    private static boolean decided;
     private static boolean openIsBag;
     private static int openBag;
     /** 지금 연 가방의 번호가 짐작한 번호인가(기록할 때 함께 남긴다) */
@@ -152,14 +159,26 @@ public final class BagTracker {
             closeOpen();
             openScreen = screen;
             openTicks = 0;
+            decided = false;
             openIsBag = false;
             openBag = 0;
             openIsStorage = false;
         }
         openTicks++;
-        if (openTicks == SETTLE_TICKS) decide(screen);
-        if (openTicks >= SETTLE_TICKS && openBag > 0 && ticks % 5 == 0) record(screen, openBag);
-        if (openTicks >= SETTLE_TICKS && openIsStorage && ticks % 5 == 0) recordStorage(screen);
+        // 내용이 도착한 뒤에 판단한다(빈 가방이면 2초 뒤)
+        if (!decided && openTicks >= SETTLE_TICKS && (hasItems(screen) || openTicks >= WAIT_CONTENT_TICKS)) {
+            decided = true;
+            decide(screen);
+        }
+        if (decided && openBag > 0 && ticks % 5 == 0) record(screen, openBag);
+        if (decided && openIsStorage && ticks % 5 == 0) recordStorage(screen);
+    }
+
+    private static boolean hasItems(GenericContainerScreen screen) {
+        Inventory inv = screen.getScreenHandler().getInventory();
+        int size = containerSize(screen);
+        for (int i = 0; i < size; i++) if (!inv.getStack(i).isEmpty()) return true;
+        return false;
     }
 
     // ---------------------------------------------------------------- 창 제목 글리프
@@ -314,6 +333,19 @@ public final class BagTracker {
 
     private static void closeOpen() {
         if (openScreen != null) {
+            // 닫기 직전의 모습까지 남긴다: 꺼내자마자(0.25초 안에) 닫으면 마지막 변화가 기록에서 빠졌다.
+            // 아주 빨리 닫아 아직 판단 전이면 내용이 와 있을 때만 지금 판단한다(내용 없이 판단하면 빈 가방으로 덮어쓸 수 있어서)
+            try {
+                if (!decided && hasItems(openScreen)) {
+                    decided = true;
+                    decide(openScreen);
+                }
+                if (decided && openBag > 0) record(openScreen, openBag);
+                if (decided && openIsStorage) recordStorage(openScreen);
+            } catch (RuntimeException e) {
+                DdingMate.LOG.warn("가방 창을 닫으며 기록하지 못했어요", e);
+            }
+            decided = false;
             openScreen = null;
             openIsBag = false;
             openBag = 0;

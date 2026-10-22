@@ -51,7 +51,7 @@ public final class HudLayout {
     static final int ISLAND_PROFILE_RIGHT = 138;
 
     /** 서버가 그리는 HUD 중 피해야 할 자리(화면 GUI 좌표). 아일랜드 왼쪽 위 프로필 */
-    private static List<Rect> serverAreas(int sw, int sh) {
+    static List<Rect> serverAreas(int sw, int sh) {
         if (!DdingMate.config().avoidServerHud) return List.of();
         return serverAreasFor(sw, sh, kr.ddingmate.game.ServerHud.onDdingtycoon(net.minecraft.client.MinecraftClient.getInstance()),
                 kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND);

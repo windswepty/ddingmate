@@ -614,6 +614,11 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 DdingMate.config().counter.facilityHighlight = true;
                 kr.ddingmate.craft.FacilityPanel.debugDetail(null);
                 check(kr.ddingmate.craft.FacilityPanel.debugFocus() == null, "재료 판을 닫았는데 강조가 남음");
+                // 핀만 있고 누르지 않은 레시피는 강조하지 않는다(다른 걸 만들 때 핀 쪽 칸이 반짝이면 헷갈림, 2026-10-22)
+                String keep = DdingMate.config().counter.pins.get(0).recipe;
+                DdingMate.config().counter.pins.get(0).recipe = es.get(0).recipe().id;
+                check(kr.ddingmate.craft.FacilityPanel.debugFocus() == null, "누르지 않은 핀 레시피를 강조함");
+                DdingMate.config().counter.pins.get(0).recipe = keep;
             });
             // 경로 배우기: 창에 없는 레시피는, 사용자가 한 번 칸(예: 레시피 목록)을 눌러 그 레시피가 나타나면 그 길을 기억해 다음부터 그 칸을 강조
             String[] target = new String[1];

@@ -92,6 +92,29 @@ public class CounterClientGameTest implements FabricClientGameTest {
                 check(BagTracker.recordedCount() == 1, "같은 가방이 두 번 기록됨");
             });
 
+            // 내용이 늦게 오는 가방 창(실제 서버: 열린 뒤 0.5초쯤 지나 칸이 옴, 2026-10-22 기록) + 번호 단추·명령어 없음.
+            // 예전엔 0.3초에 빈 창으로 판단하고 끝나 그 창을 기록하지 않았다("가방 기록이 가끔 씹힘")
+            SimpleInventory[] late = new SimpleInventory[1];
+            ctx.runOnClient(c -> {
+                late[0] = new SimpleInventory(54);
+                GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(78, c.player.getInventory(), late[0]);
+                c.setScreen(new GenericContainerScreen(h, c.player.getInventory(), Text.literal("모험 가방")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> fillBag(late[0], 33));
+            ctx.waitTicks(10);
+            ctx.runOnClient(c -> check(BagTracker.openBagNumber() == 3, "늦게 온 가방 내용을 3번 가방으로 찾지 못함: " + BagTracker.openState()));
+            // 꺼내자마자(다음 기록 전에) 닫아도 마지막 모습이 남는다
+            ctx.runOnClient(c -> {
+                late[0].setStack(0, new ItemStack(Items.COPPER_BLOCK, 31));
+                c.setScreen(null);
+            });
+            ctx.waitTicks(15); // 재료 줄은 주기적으로 다시 계산된다(다른 단계와 같은 기다림)
+            ctx.runOnClient(c -> {
+                expect("구리 블록", 12, 31, 96);
+                check(BagTracker.recordedCount() == 1, "늦게 온 가방이 새 가방으로 기록됨");
+            });
+
             // 가방이 아닌 창(상점 등)은 세지 않는다.
             ctx.runOnClient(c -> c.setScreen(bagScreen(c, "상점", 64)));
             ctx.waitTicks(20);
@@ -106,7 +129,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> c.setScreen(null));
             ctx.waitTicks(15);
             ctx.runOnClient(c -> {
-                expect("구리 블록", 12, 30, 96);
+                expect("구리 블록", 12, 31, 96); // 위에서 늦게 온 창으로 31개가 됨
                 check(BagTracker.recordedCount() == 1, "가방이 아닌 창이 기록됨");
             });
 
@@ -137,7 +160,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(15);
             ctx.runOnClient(c -> {
-                expect("구리 블록", 12, 35, 96);
+                expect("구리 블록", 12, 36, 96); // 3번 31개 + 7번 5개
                 check(BagTracker.recordedCount() == 2, "가방 기록 수가 2가 아님: " + BagTracker.recordedCount());
             });
 
@@ -210,14 +233,17 @@ public class CounterClientGameTest implements FabricClientGameTest {
     /** 54칸 창을 내 화면에만 띄운다. 구리 블록·조약돌·조약돌 뭉치(이름 붙인 종이)를 넣어 둔다. */
     private static GenericContainerScreen bagScreen(MinecraftClient c, Text title, int copper) {
         SimpleInventory inv = new SimpleInventory(54);
-        inv.setStack(0, new ItemStack(Items.COPPER_BLOCK, copper));
-        inv.setStack(1, new ItemStack(Items.COBBLESTONE, 10));
-        ItemStack bundle = TestItems.server("조약돌 뭉치", 2); // 실제 서버 모양(종이 2006023)
-        inv.setStack(5, bundle);
-        inv.setStack(9, new ItemStack(Items.DIAMOND_PICKAXE));
-        inv.setStack(20, new ItemStack(Items.GLASS_BOTTLE, 3));
+        fillBag(inv, copper);
         GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(77, c.player.getInventory(), inv);
         return new GenericContainerScreen(h, c.player.getInventory(), title);
+    }
+
+    private static void fillBag(SimpleInventory inv, int copper) {
+        inv.setStack(0, new ItemStack(Items.COPPER_BLOCK, copper));
+        inv.setStack(1, new ItemStack(Items.COBBLESTONE, 10));
+        inv.setStack(5, TestItems.server("조약돌 뭉치", 2)); // 실제 서버 모양(종이 2006023)
+        inv.setStack(9, new ItemStack(Items.DIAMOND_PICKAXE));
+        inv.setStack(20, new ItemStack(Items.GLASS_BOTTLE, 3));
     }
 
     private static void expect(String material, int inventory, int bags, int need) {

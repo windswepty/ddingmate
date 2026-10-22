@@ -92,25 +92,74 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(2);
             ctx.takeScreenshot("smoke-1-light-style");
-            // 테마 × 테두리 장식: 장식이 있어도 HUD 배치는 그대로, 테마마다 한 장씩 찍는다
-            kr.ddingmate.ui.HudFrame[] frames = kr.ddingmate.ui.HudFrame.values();
-            kr.ddingmate.ui.HudTheme[] themes = kr.ddingmate.ui.HudTheme.values();
-            for (int i = 0; i < themes.length; i++) {
-                kr.ddingmate.ui.HudTheme theme = themes[i];
-                kr.ddingmate.ui.HudFrame frame = frames[(i + 1) % frames.length];
-                ctx.runOnClient(c -> {
-                    DdingMate.config().hudTheme = theme;
-                    DdingMate.config().hudStyle = theme.style;
-                    DdingMate.config().hudFrame = frame;
-                });
+            // 기본 테마 6가지: HUD 배치는 그대로
+            for (kr.ddingmate.ui.HudTheme theme : kr.ddingmate.ui.HudTheme.values()) {
+                ctx.runOnClient(c -> kr.ddingmate.ui.HudSkins.applyTheme(DdingMate.config(), theme));
                 ctx.waitTicks(2);
-                ctx.runOnClient(c -> checkLayout(c, theme + "+" + frame, true, true));
-                ctx.takeScreenshot("smoke-theme-" + theme.name().toLowerCase() + "-" + frame.name().toLowerCase());
+                ctx.runOnClient(c -> checkLayout(c, theme.name(), true, true));
+                ctx.takeScreenshot("smoke-theme-" + theme.name().toLowerCase());
             }
+            // NPC 세트 17벌: 그림 세 장(판·제목 줄·친구)이 GUI 아틀라스에 올라왔고, 판 · 친구가 있어도 HUD 배치는 그대로
             ctx.runOnClient(c -> {
-                DdingMate.config().hudTheme = kr.ddingmate.ui.HudTheme.LIGHT;
-                DdingMate.config().hudStyle = DdingMateConfig.HudStyle.LIGHT;
-                DdingMate.config().hudFrame = kr.ddingmate.ui.HudFrame.NONE;
+                var skins = kr.ddingmate.ui.HudSkins.all();
+                if (skins.size() != 17) throw new AssertionError("NPC 세트 수: " + skins.size());
+                var missing = net.minecraft.client.texture.MissingSprite.getMissingSpriteId();
+                for (var s : skins) {
+                    for (var id : List.of(s.panel(), s.head(), s.mascot())) {
+                        if (c.getGuiAtlasManager().getSprite(id).getContents().getId().equals(missing))
+                            throw new AssertionError("HUD 그림이 없음: " + id);
+                    }
+                }
+            });
+            for (var skin : kr.ddingmate.ui.HudSkins.all()) {
+                ctx.runOnClient(c -> kr.ddingmate.ui.HudSkins.applySet(DdingMate.config(), skin));
+                ctx.waitTicks(2);
+                ctx.runOnClient(c -> {
+                    checkLayout(c, skin.id(), true, true);
+                    if (kr.ddingmate.ui.HudSkins.set() != skin) throw new AssertionError("세트가 안 맞음: " + skin.id());
+                    // 친구 자리를 일정 판 위에 잡아 두므로 늘 어딘가에 앉는다
+                    if (DdingMate.config().hudEnabled && c.getWindow().getScaledHeight() >= kr.ddingmate.hud.HudMascot.RESERVE_MIN_HEIGHT
+                            && kr.ddingmate.hud.HudMascot.debugLastDrawn() == null)
+                        throw new AssertionError("HUD 친구가 앉을 판을 못 찾음: " + skin.id());
+                });
+                ctx.takeScreenshot("smoke-set-" + skin.id());
+            }
+            // 따로 고르기: 판 · 제목 줄 · 친구를 섞으면 직접 조합
+            ctx.runOnClient(c -> {
+                DdingMateConfig cfg = DdingMate.config();
+                kr.ddingmate.ui.HudSkins.applyPanel(cfg, kr.ddingmate.ui.HudSkins.byId("roni"));
+                cfg.hudHeader = "sharky";
+                cfg.hudMascot = "hani";
+                if (kr.ddingmate.ui.HudSkins.set() != null) throw new AssertionError("섞었는데 세트로 보임");
+                if (cfg.hudStyle != DdingMateConfig.HudStyle.LIGHT) throw new AssertionError("로니 판은 밝은 판");
+            });
+            ctx.waitTicks(2);
+            ctx.takeScreenshot("smoke-set-mixed");
+            // 꾸미기 한눈에 보기 창: 탭마다 카드 수, 누르면 바로 바뀜(세트 → 세트가 맞음, 판 → 판만 바뀌어 직접 조합)
+            ctx.runOnClient(c -> {
+                var look = new kr.ddingmate.gui.HudLookScreen(null);
+                c.setScreen(look);
+                if (look.debugCards("세트") != 17 || look.debugCards("판 디자인") != 23 || look.debugCards("제목 줄") != 19
+                        || look.debugCards("HUD 친구") != 18) throw new AssertionError("꾸미기 카드 수가 다름");
+                look.debugChoose("세트", 12); // 샤키
+                if (kr.ddingmate.ui.HudSkins.set() == null || !"sharky".equals(kr.ddingmate.ui.HudSkins.set().id()))
+                    throw new AssertionError("세트 카드를 눌렀는데 안 바뀜");
+                look.debugChoose("판 디자인", 0); // 띵타이쿤 파랑
+                if (DdingMate.config().hudPanel != null || kr.ddingmate.ui.HudSkins.set() != null)
+                    throw new AssertionError("판 카드를 눌렀는데 판만 안 바뀜");
+                look.debugChoose("세트", 12);
+            });
+            for (String tab : new String[]{"세트", "판 디자인", "제목 줄", "HUD 친구"}) {
+                ctx.runOnClient(c -> ((kr.ddingmate.gui.HudLookScreen) c.currentScreen).debugCards(tab));
+                ctx.waitTicks(2);
+                ctx.takeScreenshot("smoke-look-" + tab.replace(' ', '-'));
+            }
+            ctx.runOnClient(c -> c.setScreen(null));
+            ctx.runOnClient(c -> {
+                DdingMateConfig cfg = DdingMate.config();
+                kr.ddingmate.ui.HudSkins.applyTheme(cfg, kr.ddingmate.ui.HudTheme.LIGHT);
+                cfg.hudHeader = kr.ddingmate.ui.HudSkins.AUTO;
+                cfg.hudMascot = kr.ddingmate.ui.HudSkins.NONE;
             });
 
             // 2) 네 HUD 를 한 구석에 몰아도 화면 밖으로 나가거나 오류가 나지 않는다(작은 창에서는 겹칠 수 있음)

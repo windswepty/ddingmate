@@ -3,7 +3,7 @@ package kr.ddingmate.test;
 import kr.ddingmate.DdingMate;
 import kr.ddingmate.config.DdingMateConfig;
 import kr.ddingmate.gui.DdingMateScreen;
-import kr.ddingmate.ui.HudFrame;
+import kr.ddingmate.ui.HudSkins;
 import kr.ddingmate.ui.HudTheme;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -15,7 +15,7 @@ import net.minecraft.text.Text;
 
 /**
  * 보여 주기용 촬영(DDINGMATE_SHOWCASE=1 일 때만): 실제 화면 크기(1920×1080, GUI 3)에 띵타이쿤 리소스팩을 켜고 HUD 를
- * 실제 플레이처럼 채운 뒤 테마 6종 · 테두리 장식 6종 · 글꼴 7종 · 설정 창을 찍는다. 끝나면 설정을 되돌린다.
+ * 실제 플레이처럼 채운 뒤 테마 6종 · NPC 세트 17벌 · 글꼴 7종 · 설정 창을 찍는다. 끝나면 설정을 되돌린다.
  */
 public class ShowcaseClientGameTest implements FabricClientGameTest {
 
@@ -26,12 +26,14 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
             sp.getClientWorld().waitForChunksRender();
             DdingMateConfig.FontStyle[] keepFont = new DdingMateConfig.FontStyle[1];
             HudTheme[] keepTheme = new HudTheme[1];
-            HudFrame[] keepFrame = new HudFrame[1];
+            String[] keepLook = new String[3];
             ctx.runOnClient(c -> {
                 DdingMateConfig cfg = DdingMate.config();
                 keepFont[0] = cfg.font;
                 keepTheme[0] = HudTheme.current();
-                keepFrame[0] = cfg.hudFrame;
+                keepLook[0] = cfg.hudPanel;
+                keepLook[1] = cfg.hudHeader;
+                keepLook[2] = cfg.hudMascot;
                 cfg.opened = true;
                 cfg.tutorialDone = true;
                 cfg.guideSeen = true;
@@ -80,34 +82,46 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(40);
 
-            // 1) 테마 6종(장식 없음)
+            // 1) 기본 테마 6종(NPC 판·친구 없음)
             for (HudTheme t : HudTheme.values()) {
                 ctx.runOnClient(c -> {
-                    DdingMate.config().hudTheme = t;
-                    DdingMate.config().hudStyle = t.style;
-                    DdingMate.config().hudFrame = HudFrame.NONE;
+                    HudSkins.applyTheme(DdingMate.config(), t);
+                    DdingMate.config().hudHeader = HudSkins.AUTO;
+                    DdingMate.config().hudMascot = HudSkins.NONE;
                 });
                 ctx.waitTicks(6);
                 ctx.takeScreenshot("show-theme-" + t.name().toLowerCase());
             }
-            // 2) 테두리 장식 6종(띵타이쿤 파랑·라이트에서 하나씩)
-            for (HudFrame f : HudFrame.values()) {
-                for (HudTheme t : new HudTheme[]{HudTheme.BLUE, HudTheme.PASTEL}) {
-                    ctx.runOnClient(c -> {
-                        DdingMate.config().hudTheme = t;
-                        DdingMate.config().hudStyle = t.style;
-                        DdingMate.config().hudFrame = f;
-                    });
-                    ctx.waitTicks(6);
-                    ctx.takeScreenshot("show-frame-" + f.name().toLowerCase() + "-" + t.name().toLowerCase());
-                }
+            // 2) NPC 세트 17벌 + 섞은 것 하나
+            for (HudSkins.Skin skin : HudSkins.all()) {
+                ctx.runOnClient(c -> HudSkins.applySet(DdingMate.config(), skin));
+                ctx.waitTicks(6);
+                ctx.takeScreenshot("show-set-" + skin.id());
             }
+            ctx.runOnClient(c -> {
+                HudSkins.applyPanel(DdingMate.config(), HudSkins.byId("lua"));
+                DdingMate.config().hudHeader = "roni";
+                DdingMate.config().hudMascot = "sharky";
+            });
+            ctx.waitTicks(6);
+            ctx.takeScreenshot("show-set-mixed");
+            // 꾸미기 한눈에 보기 창(탭 네 개)
+            ctx.runOnClient(c -> {
+                HudSkins.applySet(DdingMate.config(), HudSkins.byId("hani"));
+                c.setScreen(new kr.ddingmate.gui.HudLookScreen(null));
+            });
+            for (String tab : new String[]{"세트", "판 디자인", "제목 줄", "HUD 친구"}) {
+                ctx.runOnClient(c -> ((kr.ddingmate.gui.HudLookScreen) c.currentScreen).debugCards(tab));
+                ctx.waitTicks(6);
+                ctx.takeScreenshot("show-look-" + tab.replace(' ', '-'));
+            }
+            ctx.runOnClient(c -> c.setScreen(null));
             // 3) 글꼴 7종: HUD + 띵메이트 창(알림 방식 탭)
             for (DdingMateConfig.FontStyle f : DdingMateConfig.FontStyle.values()) {
                 ctx.runOnClient(c -> {
-                    DdingMate.config().hudTheme = HudTheme.BLUE;
-                    DdingMate.config().hudStyle = HudTheme.BLUE.style;
-                    DdingMate.config().hudFrame = HudFrame.NONE;
+                    HudSkins.applyTheme(DdingMate.config(), HudTheme.BLUE);
+                    DdingMate.config().hudHeader = HudSkins.AUTO;
+                    DdingMate.config().hudMascot = HudSkins.NONE;
                     DdingMate.config().font = f;
                     c.setScreen(null);
                 });
@@ -156,7 +170,9 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 cfg.font = keepFont[0];
                 cfg.hudTheme = keepTheme[0];
                 cfg.hudStyle = keepTheme[0].style;
-                cfg.hudFrame = keepFrame[0];
+                cfg.hudPanel = keepLook[0];
+                cfg.hudHeader = keepLook[1];
+                cfg.hudMascot = keepLook[2];
                 cfg.fontEverywhere = false;
                 cfg.save();
                 kr.ddingmate.expert.CropTimer.cancel();

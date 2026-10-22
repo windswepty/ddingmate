@@ -8,3 +8,5 @@ docs/
 
 # 문의 보낼 곳(디스코드 웹후크 주소) — 저장소에 올리지 않는다
 src/main/resources/assets/ddingmate/inquiry.properties
+
+__pycache__/

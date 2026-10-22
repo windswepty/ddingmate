@@ -73,31 +73,43 @@ public final class Theme {
     }
 
     public static int red(boolean dark) {
+        HudSkins.Skin s = HudSkins.panel(dark);
+        if (s != null) return s.red();
         HudTheme t = hud(dark);
         return t != null ? t.red : dark ? RED_ON_DARK : RED_ON_LIGHT;
     }
 
     public static int gold(boolean dark) {
+        HudSkins.Skin s = HudSkins.panel(dark);
+        if (s != null) return s.gold();
         HudTheme t = hud(dark);
         return t != null ? t.gold : dark ? GOLD_ON_DARK : GOLD_ON_LIGHT;
     }
 
     public static int blue(boolean dark) {
+        HudSkins.Skin s = HudSkins.panel(dark);
+        if (s != null) return s.blue();
         HudTheme t = hud(dark);
         return t != null ? t.blue : dark ? BLUE_ON_DARK : BLUE_ON_LIGHT;
     }
 
     public static int green(boolean dark) {
+        HudSkins.Skin s = HudSkins.panel(dark);
+        if (s != null) return s.green();
         HudTheme t = hud(dark);
         return t != null ? t.green : dark ? GREEN_ON_DARK : GREEN_ON_LIGHT;
     }
 
     public static int text(boolean dark) {
+        HudSkins.Skin s = HudSkins.panel(dark);
+        if (s != null) return s.text();
         HudTheme t = hud(dark);
         return t != null ? t.text : dark ? TEXT_ON_DARK : TEXT;
     }
 
     public static int soft(boolean dark) {
+        HudSkins.Skin s = HudSkins.panel(dark);
+        if (s != null) return s.soft();
         HudTheme t = hud(dark);
         return t != null ? t.soft : dark ? SOFT_ON_DARK : TEXT_SOFT;
     }
@@ -379,6 +391,11 @@ public final class Theme {
 
     /** 서버 HUD 처럼 어두운 반투명 판 + 얇은 테두리 + 위쪽 파란 선 */
     public static void hudDark(DrawContext ctx, int x, int y, int w, int h, int alpha) {
+        HudSkins.Skin skin = HudSkins.panel(true);
+        if (skin != null) {
+            HudSkins.drawPanel(ctx, skin, x, y, w, h, alpha);
+            return;
+        }
         HudTheme t = hud(true);
         if (t == null || t.style != kr.ddingmate.config.DdingMateConfig.HudStyle.DARK) t = HudTheme.BLUE;
         alpha = t.alpha(alpha);
@@ -389,6 +406,11 @@ public final class Theme {
 
     /** 창처럼 밝은 HUD 판 */
     public static void hudLight(DrawContext ctx, int x, int y, int w, int h, int alpha) {
+        HudSkins.Skin skin = HudSkins.panel(false);
+        if (skin != null) {
+            HudSkins.drawPanel(ctx, skin, x, y, w, h, alpha);
+            return;
+        }
         HudTheme t = hud(false);
         if (t == null) t = HudTheme.LIGHT;
         outline(ctx, x, y, w, h, withAlpha(t.outer, alpha));

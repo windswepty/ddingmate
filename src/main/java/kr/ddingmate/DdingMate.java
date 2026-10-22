@@ -166,11 +166,13 @@ public final class DdingMate implements ClientModInitializer {
     }
 
     private static void drawAll(net.minecraft.client.gui.DrawContext ctx, net.minecraft.client.render.RenderTickCounter tick) {
+        kr.ddingmate.hud.HudMascot.begin();
         ScheduleHud.render(ctx, tick);
         TodoHud.render(ctx, tick);
         CounterHud.render(ctx, tick);
         DurabilityHud.render(ctx, tick);
         kr.ddingmate.hud.SkillHud.render(ctx, tick);
+        kr.ddingmate.hud.HudMascot.end(ctx); // HUD 친구는 판을 다 그린 뒤 자리 나는 판 위에
     }
 
     /** 지금 Tab(접속자 목록)이 화면에 떠 있는지 — 바닐라와 같은 조건 */

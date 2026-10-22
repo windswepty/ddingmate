@@ -278,16 +278,14 @@ public final class FacilityPanel {
         return out;
     }
 
-    /** 강조할 레시피 id: 판에서 연 레시피, 없으면 이 시설에서 만드는 첫 핀(핀만 해 두고 시설 창을 열어도 길이 보이게). 강조를 꺼 두었으면 null */
+    /**
+     * 강조할 레시피 id: 판에서 직접 누른 레시피만. 강조를 꺼 두었으면 null.
+     * 예전엔 아무것도 안 눌렀을 때 이 시설의 첫 핀도 강조했는데, 다른 걸 만들려는데 핀 쪽 칸이 반짝여 헷갈렸다
+     * (2026-10-22 사용자: "강조하지 않는 아이템인데 강조되고 있는 문제")
+     */
     private static String focus() {
         if (!DdingMate.config().counter.facilityHighlight) return null;
-        if (detail != null) return detail.id;
-        if (lastFacility == null) return null;
-        for (DdingMateConfig.Pin pin : DdingMate.config().counter.pins) {
-            RecipeBook.Recipe r = RecipeBook.get(pin.recipe);
-            if (r != null && lastFacility.equals(r.facility)) return r.id;
-        }
-        return null;
+        return detail != null ? detail.id : null;
     }
 
     /** 쉬프트 또는 앉기 키(다른 키로 바꿔 쓰는 사람도 있어서) */

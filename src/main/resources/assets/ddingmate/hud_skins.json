@@ -1,0 +1,297 @@
+{
+  "outset": 3,
+  "headHeight": 17,
+  "mascotSize": 40,
+  "pawRow": 36,
+  "skins": [
+    {
+      "id": "bori",
+      "name": "보리",
+      "role": "강아지 농부",
+      "place": "햇살 농가",
+      "dark": false,
+      "title": "4a2e10",
+      "titleShadow": false,
+      "colors": {
+        "text": "3e2a14",
+        "soft": "8a7262",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "dodam",
+      "name": "도담",
+      "role": "염소 농부",
+      "place": "햇살 농가",
+      "dark": false,
+      "title": "fff6e0",
+      "titleShadow": true,
+      "colors": {
+        "text": "2a3a1e",
+        "soft": "6a7a5a",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "seoki",
+      "name": "석이",
+      "role": "카피바라 광부",
+      "place": "강철 채석장",
+      "dark": true,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "f2eee8",
+        "soft": "aca49c",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "ffd060",
+        "blue": "8ab4f8"
+      }
+    },
+    {
+      "id": "duri",
+      "name": "두리",
+      "role": "두더지 대장장이",
+      "place": "강철 채석장",
+      "dark": true,
+      "title": "fff4d8",
+      "titleShadow": true,
+      "colors": {
+        "text": "fff2e0",
+        "soft": "b8a89c",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "f2c860",
+        "blue": "8ab4f8"
+      }
+    },
+    {
+      "id": "deumjik",
+      "name": "듬직",
+      "role": "황소 나무꾼",
+      "place": "숲속 공방",
+      "dark": false,
+      "title": "fff2e6",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a2412",
+        "soft": "8a7262",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "hotang",
+      "name": "호탕",
+      "role": "늑대 사냥꾼",
+      "place": "숲속 공방",
+      "dark": true,
+      "title": "ffe8d0",
+      "titleShadow": true,
+      "colors": {
+        "text": "f6ece4",
+        "soft": "aca49c",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "f2c860",
+        "blue": "8ab4f8"
+      }
+    },
+    {
+      "id": "hani",
+      "name": "하니",
+      "role": "토끼 디자이너",
+      "place": "꽃잎 공방",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "4a3048",
+        "soft": "8a7488",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "bareum",
+      "name": "바름",
+      "role": "라쿤 건축가",
+      "place": "꽃잎 공방",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "22324a",
+        "soft": "6a7686",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "nuri",
+      "name": "누리",
+      "role": "펠리컨 어부",
+      "place": "갯바위 선착장",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "1e3450",
+        "soft": "667a8e",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "kai",
+      "name": "카이",
+      "role": "원숭이 농부",
+      "place": "세레니티 상점가",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "2e3a14",
+        "soft": "6a7650",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "roni",
+      "name": "로니",
+      "role": "곰 대장장이",
+      "place": "세레니티 상점가",
+      "dark": false,
+      "title": "fff4e0",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a2418",
+        "soft": "8a7262",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "milky",
+      "name": "밀키",
+      "role": "소 요리사",
+      "place": "세레니티 상점가",
+      "dark": false,
+      "title": "8e2620",
+      "titleShadow": false,
+      "colors": {
+        "text": "4a1e1a",
+        "soft": "8a6a66",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "sharky",
+      "name": "샤키",
+      "role": "상어 어부",
+      "place": "세레니티 상점가",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "163463",
+        "soft": "5a7090",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "pos",
+      "name": "포스",
+      "role": "문어 해적",
+      "place": "세레니티 상점가",
+      "dark": true,
+      "title": "f2d06a",
+      "titleShadow": true,
+      "colors": {
+        "text": "f2ece0",
+        "soft": "aca49c",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "f2d06a",
+        "blue": "8ab4f8"
+      }
+    },
+    {
+      "id": "fix",
+      "name": "픽스",
+      "role": "독수리 사냥꾼",
+      "place": "세레니티 상점가",
+      "dark": true,
+      "title": "e8d8ff",
+      "titleShadow": true,
+      "colors": {
+        "text": "efe8f8",
+        "soft": "a8a0b8",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "f2c860",
+        "blue": "8ab4f8"
+      }
+    },
+    {
+      "id": "garam",
+      "name": "가람",
+      "role": "양 디자이너",
+      "place": "코스메틱 스토어",
+      "dark": false,
+      "title": "6a3a1a",
+      "titleShadow": false,
+      "colors": {
+        "text": "4a2a14",
+        "soft": "8a6a52",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      }
+    },
+    {
+      "id": "lua",
+      "name": "루아",
+      "role": "사슴 지배인",
+      "place": "로얄 상점",
+      "dark": true,
+      "title": "ffe9a8",
+      "titleShadow": true,
+      "colors": {
+        "text": "f6f0ff",
+        "soft": "b0a8c8",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "ffe08a",
+        "blue": "9ad0ff"
+      }
+    }
+  ]
+}

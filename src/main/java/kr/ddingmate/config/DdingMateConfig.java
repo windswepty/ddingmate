@@ -257,8 +257,12 @@ public final class DdingMateConfig {
     public HudStyle hudStyle = HudStyle.DARK;
     /** HUD 테마(색 한 벌). 없으면 예전 hudStyle 에서 고른다. 바꾸면 hudStyle 도 그 테마의 판 모양으로 */
     public kr.ddingmate.ui.HudTheme hudTheme;
-    /** HUD 테두리 장식(픽셀 아트) */
-    public kr.ddingmate.ui.HudFrame hudFrame = kr.ddingmate.ui.HudFrame.NONE;
+    /** HUD 판: NPC 판 아이디(hud_skins.json, 예: "hani"). 없으면 위 HUD 테마 판 */
+    public String hudPanel;
+    /** HUD 제목 줄: "auto"(판에 맞춤) · "plain"(띠 없이 글자만) · NPC 아이디 */
+    public String hudHeader = kr.ddingmate.ui.HudSkins.AUTO;
+    /** HUD 친구(판 윗변에 기대는 NPC 그림): "none" · NPC 아이디 */
+    public String hudMascot = kr.ddingmate.ui.HudSkins.NONE;
     /** 띵메이트 창·HUD·알림 글꼴 */
     public FontStyle font = FontStyle.GALMURI;
     /** 고른 글꼴을 게임 전체(채팅·아이템 이름·메뉴 등 기본 글꼴로 그리는 글자)에도. 서버 아이콘·창 그림은 그대로 */
@@ -339,7 +343,13 @@ public final class DdingMateConfig {
         if (hudStyle == null) hudStyle = HudStyle.DARK;
         if (hudTheme == null) hudTheme = kr.ddingmate.ui.HudTheme.of(hudStyle);
         hudStyle = hudTheme.style;
-        if (hudFrame == null) hudFrame = kr.ddingmate.ui.HudFrame.NONE;
+        // NPC 판·제목 줄·친구: 모르는 아이디(지운 세트 등)는 기본으로, 글자 밝기는 NPC 판에 맞춰
+        if (hudPanel != null && kr.ddingmate.ui.HudSkins.byId(hudPanel) == null) hudPanel = null;
+        kr.ddingmate.ui.HudSkins.Skin panelSkin = kr.ddingmate.ui.HudSkins.byId(hudPanel);
+        if (panelSkin != null) hudStyle = panelSkin.dark() ? HudStyle.DARK : HudStyle.LIGHT;
+        if (hudHeader == null || !(kr.ddingmate.ui.HudSkins.AUTO.equals(hudHeader) || kr.ddingmate.ui.HudSkins.PLAIN.equals(hudHeader)
+                || kr.ddingmate.ui.HudSkins.byId(hudHeader) != null)) hudHeader = kr.ddingmate.ui.HudSkins.AUTO;
+        if (hudMascot == null || kr.ddingmate.ui.HudSkins.byId(hudMascot) == null) hudMascot = kr.ddingmate.ui.HudSkins.NONE;
         if (font == null) font = FontStyle.GALMURI; // 빼 버린 글꼴(프리텐다드·네오둥근모)을 골라 두었던 설정은 갈무리로
         if (expert != null && expert.cropHotkey == null) expert.cropHotkey = new ArrayList<>();
         hudScale = Math.max(50, Math.min(100, hudScale));

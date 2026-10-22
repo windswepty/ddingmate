@@ -81,9 +81,12 @@ public final class ScheduleHud {
         int boxW = Math.max(12 + labelW + 10 + leftW, 18 + Theme.boldWidth(tr, header)) + 10;
         int boxH = HEAD_H + cached.size() * rowH + 5;
         boxW = HudLayout.widen(HudLayout.SCHEDULE, boxW); // 편집 화면에서 가로로 늘린 너비
-        int[] o = HudLayout.place(ctx, HudLayout.SCHEDULE, cfg.hudCorner, boxW, boxH);
-        int x = o[0], y = o[1];
+        // HUD 친구를 골랐으면 일정 판 위에 친구 자리를 같이 잡는다(화면 맨 위에 붙은 판이면 친구가 앉을 곳이 없어서)
+        int lift = HudMascot.reserve(ctx);
+        int[] o = HudLayout.place(ctx, HudLayout.SCHEDULE, cfg.hudCorner, boxW, boxH + lift);
+        int x = o[0], y = o[1] + lift;
 
+        HudMascot.prefer();
         panel(ctx, x, y, boxW, boxH, alpha, dark);
         header(ctx, tr, x, y, boxW, header, CLOCK, dark, alpha);
         int ty = y + HEAD_H + 2;
@@ -107,9 +110,7 @@ public final class ScheduleHud {
     static void panel(DrawContext ctx, int x, int y, int w, int h, int alpha, boolean dark) {
         if (dark) Theme.hudDark(ctx, x, y, w, h, alpha);
         else Theme.hudLight(ctx, x, y, w, h, alpha);
-        // 테두리 장식(픽셀 아트): 판을 다 그린 뒤 귀퉁이에
-        kr.ddingmate.config.DdingMateConfig cfg = DdingMate.config();
-        if (cfg != null && cfg.hudFrame != null) cfg.hudFrame.draw(ctx, x, y, w, h, alpha);
+        HudMascot.record(ctx, x, y, w, h); // HUD 친구가 기댈 판 후보
     }
 
     /** HUD 판 위쪽 제목 줄: 작은 아이콘 + 굵은 제목 + 파란 밑줄 */
@@ -117,6 +118,18 @@ public final class ScheduleHud {
                        boolean dark, int alpha) {
         kr.ddingmate.ui.HudTheme t = kr.ddingmate.ui.HudTheme.current();
         boolean themed = (t.style != DdingMateConfig.HudStyle.LIGHT) == dark;
+        // NPC 제목 줄(세트에서 고른 그림) 또는 띠 없이 글자만
+        kr.ddingmate.ui.HudSkins.Skin head = kr.ddingmate.ui.HudSkins.header();
+        boolean plain = kr.ddingmate.ui.HudSkins.plainHeader();
+        if (head != null || plain || kr.ddingmate.ui.HudSkins.panel() != null) {
+            if (head != null) kr.ddingmate.ui.HudSkins.drawHeader(ctx, head, x, y, boxW, alpha);
+            int color = head != null ? head.title() : Theme.text(dark);
+            boolean shadow = head != null ? head.titleShadow() : dark;
+            Theme.item(ctx, icon, x + 4, y + 2, 10);
+            Theme.boldText(ctx, tr, title, x + 16, y + 3, color, shadow);
+            if (head == null) ctx.fill(x + 3, y + HEAD_H - 1, x + boxW - 3, y + HEAD_H, Theme.withAlpha(Theme.soft(dark), 140));
+            return;
+        }
         if (!dark) {
             if (themed && t.headMid != 0) {
                 // 테마 제목 줄: 가운데 → 가장자리 색으로

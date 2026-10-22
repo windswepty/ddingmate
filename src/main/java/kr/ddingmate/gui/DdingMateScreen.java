@@ -558,17 +558,7 @@ public class DdingMateScreen extends Screen {
         list.pair(hudButton(),
                 new Widgets.Cycle<>(half(), "보일 일정 수", IntStream.rangeClosed(1, 10).boxed().toList(), cfg.hudLines,
                         n -> n + "개", v -> cfg.hudLines = v));
-        Widgets.Cycle<kr.ddingmate.ui.HudFrame> frame = new Widgets.Cycle<>(half(), "HUD 꾸미기", List.of(kr.ddingmate.ui.HudFrame.values()),
-                cfg.hudFrame, f -> f.label, v -> cfg.hudFrame = v);
-        frame.setTooltip(Tooltip.of(Text.literal("HUD 판을 픽셀 그림으로 꾸며요: 둘레 무늬 · 네 귀퉁이 · 위쪽 가운데 큰 그림 · 아주 옅은 바탕 무늬\n"
-                + "꽃 정원 · 별빛 · 하트 · 숲 · 나무 판자")));
-        Widgets.Cycle<kr.ddingmate.ui.HudTheme> theme = new Widgets.Cycle<>(half(), "HUD 테마", List.of(kr.ddingmate.ui.HudTheme.values()),
-                kr.ddingmate.ui.HudTheme.current(), t -> t.label, v -> {
-                    cfg.hudTheme = v;
-                    cfg.hudStyle = v.style;
-                });
-        theme.setTooltip(Tooltip.of(Text.literal("HUD 판 색 한 벌: 띵타이쿤 파랑(기본) · 다크 · 라이트 · 파스텔 · 고대비(진하기를 낮춰도 또렷하게) · 클래식(예전 반투명 상자)")));
-        list.pair(theme, frame);
+        hudLookRows();
         list.pair(new Widgets.Cycle<>(half(), "HUD 진하기", List.of(30, 40, 50, 60, 70, 80, 85, 90, 100), nearest(cfg.hudOpacity),
                         v -> v + "%", v -> cfg.hudOpacity = v), null);
         Widgets.Cycle<DdingMateConfig.FontStyle> font = new Widgets.Cycle<>(half(), "글꼴", List.of(DdingMateConfig.FontStyle.values()),
@@ -603,6 +593,68 @@ public class DdingMateScreen extends Screen {
         list.header("처음 쓰는 사람을 위한 안내", "안내");
         list.pair(tip(toggle("접속할 때 사용법 안내", cfg.joinTip, v -> cfg.joinTip = v),
                 "게임을 켜고 처음 접속할 때 채팅에 '/띵메이트 로 열 수 있어요' 를 한 번 남겨요"), null);
+    }
+
+    /**
+     * HUD 꾸미기(2026-10-22 사용자 요청): 띵타이쿤 동물 NPC 세트로 한 번에 끼거나, 판 · 제목 줄 · 친구를 따로 골라 섞는다.
+     * 하나를 바꾸면 세트 칸이 "직접 조합"으로 바뀌어 보이도록 다시 그린다.
+     */
+    private void hudLookRows() {
+        List<kr.ddingmate.ui.HudSkins.Skin> npcs = kr.ddingmate.ui.HudSkins.all();
+        List<Object> sets = new ArrayList<>();
+        sets.add("직접 조합");
+        sets.addAll(npcs);
+        kr.ddingmate.ui.HudSkins.Skin current = kr.ddingmate.ui.HudSkins.set();
+        Widgets.Cycle<Object> set = new Widgets.Cycle<>(half(), "HUD 세트", sets, current != null ? current : "직접 조합",
+                o -> o instanceof kr.ddingmate.ui.HudSkins.Skin k ? k.name() + " · " + k.place() : "직접 조합", v -> {
+                    if (v instanceof kr.ddingmate.ui.HudSkins.Skin k) kr.ddingmate.ui.HudSkins.applySet(cfg, k);
+                    rebuild();
+                });
+        set.setTooltip(Tooltip.of(Text.literal("띵타이쿤 동물 NPC 한 명의 판 · 제목 줄 · HUD 친구를 한꺼번에 껴요.\n"
+                + "아래에서 하나씩 따로 바꾸면 '직접 조합'이 돼요.")));
+        List<Object> panels = new ArrayList<>(List.of(kr.ddingmate.ui.HudTheme.values()));
+        panels.addAll(npcs);
+        Object panelNow = kr.ddingmate.ui.HudSkins.panel() != null ? kr.ddingmate.ui.HudSkins.panel() : kr.ddingmate.ui.HudTheme.current();
+        Widgets.Cycle<Object> panel = new Widgets.Cycle<>(half(), "판 디자인", panels, panelNow,
+                o -> o instanceof kr.ddingmate.ui.HudSkins.Skin k ? k.name() + "의 " + k.place() : ((kr.ddingmate.ui.HudTheme) o).label, v -> {
+                    if (v instanceof kr.ddingmate.ui.HudSkins.Skin k) kr.ddingmate.ui.HudSkins.applyPanel(cfg, k);
+                    else kr.ddingmate.ui.HudSkins.applyTheme(cfg, (kr.ddingmate.ui.HudTheme) v);
+                    rebuild();
+                });
+        panel.setTooltip(Tooltip.of(Text.literal("HUD 판 바탕 · 테두리 · 글자색 한 벌이에요.\n"
+                + "기본: 띵타이쿤 파랑 · 다크 · 라이트 · 파스텔 · 고대비 · 클래식\n"
+                + "NPC 판: 그 NPC 가 일하는 곳 느낌(햇살 농가 · 강철 채석장 · 숲속 공방 · 꽃잎 공방 · 선착장 · 세레니티 상점가 …). 가운데는 글자가 잘 보이게 깨끗하게 뒀어요.")));
+        list.pair(set, panel);
+        List<String> heads = new ArrayList<>(List.of(kr.ddingmate.ui.HudSkins.AUTO, kr.ddingmate.ui.HudSkins.PLAIN));
+        npcs.forEach(k -> heads.add(k.id()));
+        Widgets.Cycle<String> head = new Widgets.Cycle<>(half(), "제목 줄", heads, cfg.hudHeader, id -> {
+            if (kr.ddingmate.ui.HudSkins.AUTO.equals(id)) return "판에 맞춤";
+            if (kr.ddingmate.ui.HudSkins.PLAIN.equals(id)) return "띠 없이 글자만";
+            var k = kr.ddingmate.ui.HudSkins.byId(id);
+            return k == null ? id : k.name() + "의 제목 줄";
+        }, v -> {
+            cfg.hudHeader = v;
+            rebuild();
+        });
+        head.setTooltip(Tooltip.of(Text.literal("HUD 위쪽 제목 띠예요. 제목 글자색은 띠에 맞춰 바뀌어요.")));
+        List<String> friends = new ArrayList<>(List.of(kr.ddingmate.ui.HudSkins.NONE));
+        npcs.forEach(k -> friends.add(k.id()));
+        Widgets.Cycle<String> friend = new Widgets.Cycle<>(half(), "HUD 친구", friends, cfg.hudMascot, id -> {
+            var k = kr.ddingmate.ui.HudSkins.byId(id);
+            return k == null ? "없음" : k.label();
+        }, v -> {
+            cfg.hudMascot = v;
+            rebuild();
+        });
+        friend.setTooltip(Tooltip.of(Text.literal("고른 NPC 가 HUD 판 윗변에 앞발을 올리고 기대 있어요(한 마리만).\n"
+                + "판 위가 서버 HUD 나 다른 HUD 와 겹치면 반대쪽 끝이나 다른 HUD 로 옮겨 앉아요.")));
+        list.pair(head, friend);
+        Widgets.Button look = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 꾸미기 한눈에 보고 고르기"), true, b -> {
+            savedScroll = list.getScrollY();
+            client.setScreen(new HudLookScreen(this));
+        });
+        look.setTooltip(Tooltip.of(Text.literal("세트 · 판 · 제목 줄 · 친구 후보를 실제 HUD 모양 그대로 늘어놓고 비교하며 골라요.")));
+        list.single(look);
     }
 
     private void buildEvents() {
