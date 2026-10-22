@@ -63,65 +63,6 @@ public final class SkillIcons {
         };
     }
 
-    // ---------------------------------------------------------------- 전문가 보석(스킬 트리 창 위쪽 전문가 단추)
-
-    /**
-     * 띵타이쿤 스킬 트리 창의 전문가 단추 그림(2026-10-21 리소스팩 textures/font/skill_tree/ui/button/work_skilltree_*.png,
-     * 18×18 파란 보석: mining 곡괭이 · ocean 낚싯대 · cultivation 괭이 · hunting 대검). 아이템이 아니라 창 그림이라
-     * 지금 켜진 리소스팩에서 그 파일을 찾아 직접 그린다(이름공간이 바뀌어도 경로 끝으로 찾음). 안 배운 것은 흐린 보석(_none)
-     */
-    private static Map<String, net.minecraft.util.Identifier> gems;
-
-    public static void onResourceReload() {
-        gems = null;
-    }
-
-    private static Map<String, net.minecraft.util.Identifier> gems() {
-        if (gems != null) return gems;
-        Map<String, net.minecraft.util.Identifier> out = new HashMap<>();
-        try {
-            var found = net.minecraft.client.MinecraftClient.getInstance().getResourceManager()
-                    .findResources("textures/font/skill_tree/ui/button", id -> id.getPath().contains("/work_skilltree_") && id.getPath().endsWith(".png"));
-            for (net.minecraft.util.Identifier id : found.keySet()) {
-                String file = id.getPath().substring(id.getPath().lastIndexOf('/') + 1, id.getPath().length() - 4);
-                out.put(file.substring("work_skilltree_".length()), id);
-            }
-        } catch (Exception e) {
-            DdingMate.LOG.warn("전문가 보석 그림을 찾지 못했어요", e);
-        }
-        gems = out;
-        return gems;
-    }
-
-    /** "pickaxe"·"채광" → "mining" … 모르면 null */
-    static String gemKey(String expertOrTool) {
-        if (expertOrTool == null) return null;
-        return switch (expertOrTool) {
-            case "pickaxe", "채광" -> "mining";
-            case "rod", "해양" -> "ocean";
-            case "hoe", "재배" -> "cultivation";
-            case "sword", "axe", "사냥" -> "hunting";
-            default -> null;
-        };
-    }
-
-    /** 전문가 보석을 (x, y)에 size 크기로. 리소스팩에 그림이 없으면 false(그때는 세이지 도구를 그리면 된다) */
-    public static boolean drawGem(net.minecraft.client.gui.DrawContext ctx, String expertOrTool, boolean learned, int x, int y, int size) {
-        String key = gemKey(expertOrTool);
-        if (key == null) return false;
-        net.minecraft.util.Identifier tex = gems().get(learned ? key : key + "_none");
-        if (tex == null) tex = gems().get(key);
-        if (tex == null) return false;
-        ctx.drawTexture(net.minecraft.client.render.RenderLayer::getGuiTextured, tex, x, y, 0, 0, size, size, 18, 18, 18, 18);
-        return true;
-    }
-
-    /** 시험용: 리소스팩에서 찾은 보석 그림 수 */
-    public static int debugGemCount() {
-        gems = null;
-        return gems().size();
-    }
-
     private static ItemStack model(Item item, int cmd) {
         ItemStack s = new ItemStack(item);
         s.set(DataComponentTypes.CUSTOM_MODEL_DATA, new CustomModelDataComponent(List.of((float) cmd), List.of(), List.of(), List.of()));

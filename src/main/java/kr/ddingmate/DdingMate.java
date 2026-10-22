@@ -102,7 +102,6 @@ public final class DdingMate implements ClientModInitializer {
                     public void reload(net.minecraft.resource.ResourceManager manager) {
                         kr.ddingmate.craft.IslandIcons.clearFonts();
                         kr.ddingmate.expert.IslandCrops.onResourceReload(); // 작물 단계 표(트립와이어 상태)를 새 리소스팩에서
-                        kr.ddingmate.skill.SkillIcons.onResourceReload(); // 전문가 보석 그림(스킬 트리 창 단추)
                         Notifier.onResourceReload();
                     }
                 });

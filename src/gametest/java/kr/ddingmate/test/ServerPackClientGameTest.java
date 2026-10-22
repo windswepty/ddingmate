@@ -63,9 +63,6 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
                 var max = kr.ddingmate.expert.IslandCrops.debugMaxStages();
                 if (size < 14 || !java.util.Map.of("tomato", 6, "onion", 4, "garlic", 4).equals(max))
                     throw new AssertionError("리소스팩의 작물 단계 표가 다름: " + size + " " + max);
-                // 전문가 보석(스킬 트리 창 단추): 채광·해양·재배·사냥 × 보통·고른 것·흐린 것 = 12장
-                int gems = kr.ddingmate.skill.SkillIcons.debugGemCount();
-                if (gems < 12) throw new AssertionError("리소스팩에서 전문가 보석 그림을 다 못 찾음: " + gems);
             });
             // 게임 전체 글꼴: 끔(서버 글꼴 그대로) → 레디오 볼펜체 → 베리려원. 칭호·아이콘 그림이 그대로여야 한다
             for (Object[] f : new Object[][]{{false, DdingMateConfig.FontStyle.GALMURI, "off"},

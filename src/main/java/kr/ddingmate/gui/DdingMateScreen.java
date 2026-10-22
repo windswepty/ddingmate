@@ -1030,7 +1030,7 @@ public class DdingMateScreen extends Screen {
         List<kr.ddingmate.skill.SkillTimers.Skill> skills = kr.ddingmate.skill.SkillTimers.known();
         for (kr.ddingmate.skill.SkillTimers.Skill s : skills) {
             list.single(new InfoRow(kr.ddingmate.skill.SkillTimers.icon(s), skillLabel(s), skillDetail(s),
-                    s.cooldownSec > 0 ? Theme.TEXT_SOFT : Theme.GOLD, null).gem(s.tool, true));
+                    s.cooldownSec > 0 ? Theme.TEXT_SOFT : Theme.GOLD, null));
         }
         list.note(skills.stream().anyMatch(s -> s.cooldownSec > 0)
                 ? "스킬을 강화했다면 /전문가 스킬 창을 한 번 열어 주세요. 바뀐 시간을 다시 읽어요."
@@ -1135,7 +1135,7 @@ public class DdingMateScreen extends Screen {
             String value = pct < 0 ? "스킬 창 열면 표시" : pct == 0 ? "안 배움" : "+" + fmtPct(pct) + "%";
             list.single(new InfoRow(kr.ddingmate.skill.SkillIcons.forSkill(k.name(), pct != 0, k.expert()),
                     "[" + k.expert() + "] " + k.name() + " · " + k.goods(), value,
-                    pct > 0 ? Theme.GREEN_ON_LIGHT : Theme.TEXT_SOFT, null).sub(k.note() + levels).gem(k.expert(), pct != 0));
+                    pct > 0 ? Theme.GREEN_ON_LIGHT : Theme.TEXT_SOFT, null).sub(k.note() + levels));
             if (pct <= 0) continue;
             // 바뀐 판매가 예시
             List<String[]> ex = new ArrayList<>();
@@ -1605,15 +1605,6 @@ public class DdingMateScreen extends Screen {
         private final Tab target;
         /** 항해 줄이면 그 섬 그림("토르엔 항해") */
         private String island;
-        /** 전문가 스킬 줄이면 그 전문가 보석(채광·해양·재배·사냥 또는 도구 이름)과 배웠는지 */
-        private String gem;
-        private boolean gemLearned = true;
-
-        InfoRow gem(String expertOrTool, boolean learned) {
-            this.gem = expertOrTool;
-            this.gemLearned = learned;
-            return this;
-        }
         /** 이름 아래 작은 설명(있으면 두 줄로 그린다) */
         private String sub;
         private boolean tipSet;
@@ -1646,8 +1637,7 @@ public class DdingMateScreen extends Screen {
         @Override
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
             Theme.row(ctx, getX(), getY(), width, height, target != null && isSelected());
-            if (!kr.ddingmate.craft.IslandIcons.draw(ctx, island, getX() + 4, getY() + 2, 16)
-                    && !(gem != null && kr.ddingmate.skill.SkillIcons.drawGem(ctx, gem, gemLearned, getX() + 4, getY() + 2, 16)))
+            if (!kr.ddingmate.craft.IslandIcons.draw(ctx, island, getX() + 4, getY() + 2, 16))
                 Theme.item(ctx, icon, getX() + 4, getY() + 2, 16);
             int right = getX() + width - (target != null ? 14 : 6);
             int vw = Theme.boldWidth(textRenderer, value);

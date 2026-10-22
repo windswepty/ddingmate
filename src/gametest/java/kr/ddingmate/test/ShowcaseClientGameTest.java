@@ -122,7 +122,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 ctx.waitTicks(8);
                 ctx.takeScreenshot("show-font-window-" + f.name().toLowerCase());
             }
-            // 4) 전문가 탭: 스킬 줄·스킬 판매가(보석), 판매 시세(세이지 도구)
+            // 4) 전문가 탭: 스킬 줄·스킬 판매가(스킬마다 자기 그림), 판매 시세(세이지 도구)
             ctx.runOnClient(c -> {
                 DdingMate.config().font = DdingMateConfig.FontStyle.GALMURI;
                 DdingMateScreen s = new DdingMateScreen(null);
