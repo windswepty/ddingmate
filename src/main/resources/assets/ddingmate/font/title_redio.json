@@ -1,6 +1,6 @@
 {
   "providers": [
-    {"type": "ttf", "file": "ddingmate:ownglyph-redio.ttf", "size": 11.5, "oversample": 8.0},
+    {"type": "ttf", "file": "ddingmate:ownglyph-redio.ttf", "size": 11.9, "oversample": 8.0, "shift": [0.0, -1.3]},
     {"type": "reference", "id": "minecraft:default"}
   ]
 }

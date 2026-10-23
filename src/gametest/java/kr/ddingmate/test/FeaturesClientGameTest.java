@@ -1120,6 +1120,55 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.OceanOrder.hudPresent(false, now + 4000);
                 check(!kr.ddingmate.expert.OceanOrder.active(now + 4000), "오션오더 HUD 가 사라졌는데 계속 셈");
                 kr.ddingmate.expert.OceanOrder.debugHudReset();
+                // 2026-10-23 사용자: 오션오더가 오면 띵메이트 HUD 가 모두 사라짐 → 재화 바·채널 표시 보스바에 오션오더 HUD 가 함께 실려도
+                // 채널 표시는 계속 읽는다(같은 보스바 한 줄)
+                net.minecraft.text.Text merged = net.minecraft.text.Text.literal("1,187,020 2026.10.23 17:16 에버그린 마을 (스폰4)").copy()
+                        .append(oceanBar);
+                check(kr.ddingmate.expert.OceanOrder.hudText(merged) != null
+                        && kr.ddingmate.expert.OceanOrder.withoutHud(merged).contains("(스폰4)")
+                        && !kr.ddingmate.expert.OceanOrder.withoutHud(merged).contains("도미"), "합쳐진 보스바에서 채널 표시를 못 가름");
+                var bars = ((kr.ddingmate.mixin.BossBarHudAccessor) MinecraftClient.getInstance().inGameHud.getBossBarHud()).ddingmate$bossBars();
+                java.util.UUID barId = java.util.UUID.randomUUID();
+                bars.put(barId, new net.minecraft.client.gui.hud.ClientBossBar(barId, merged, 0f, net.minecraft.entity.boss.BossBar.Color.WHITE,
+                        net.minecraft.entity.boss.BossBar.Style.PROGRESS, false, false, false));
+                int keepVillage = DdingMate.config().villageChannel, keepSpawn = DdingMate.config().spawnChannel;
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.VILLAGE, 7);
+                kr.ddingmate.game.ServerHud.tick(MinecraftClient.getInstance());
+                bars.remove(barId);
+                DdingMate.config().villageChannel = keepVillage; // 채널 자동 인식이 바꾼 '내 채널'을 되돌린다
+                DdingMate.config().spawnChannel = keepSpawn;
+                DdingMate.rebuildRules();
+                check(kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.SPAWN && kr.ddingmate.game.ServerHud.channel() == 4,
+                        "오션오더 HUD 가 실린 보스바에서 채널 표시를 못 읽음: " + kr.ddingmate.game.ServerHud.area() + " " + kr.ddingmate.game.ServerHud.channel());
+                check(kr.ddingmate.expert.OceanOrder.active(System.currentTimeMillis()), "합쳐진 보스바의 오션오더 HUD 로 타이머를 못 켬");
+                // 끝난 뒤 남은 서버 HUD 로 다시 '도착'을 세지 않는다(2026-10-23: 성공 후 "오션오더 도착!"과 횟수 +1)
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.OceanOrder.debugHudReset();
+                kr.ddingmate.expert.OceanOrder.onHud("도미 (0/1) | 4:10", now);
+                int n1 = kr.ddingmate.expert.OceanOrder.todayCount();
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더 물고기 도미 를 낚았습니다. (1/1)", now);
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더를 성공하여 골든티켓 10장을 획득하였습니다.", now);
+                kr.ddingmate.expert.OceanOrder.onHud("도미 (0/1) | 4:10", now + 500);
+                kr.ddingmate.expert.OceanOrder.onHud("도미 (1/1) | 4:08", now + 1000);
+                check(!kr.ddingmate.expert.OceanOrder.active(now + 1000) && kr.ddingmate.expert.OceanOrder.todayCount() == n1,
+                        "끝난 오션오더 HUD 로 다시 셈: " + kr.ddingmate.expert.OceanOrder.todayCount());
+                kr.ddingmate.expert.OceanOrder.onHud("새우 (0/2) | 4:59", now + 2000); // 새 주문(글이 바뀌고 거의 5분)
+                check(kr.ddingmate.expert.OceanOrder.active(now + 2000) && kr.ddingmate.expert.OceanOrder.todayCount() == n1 + 1, "새 오션오더를 못 셈");
+                // 서버의 오늘 횟수 "[오션오더] 8/10" 로 맞춤(물고기 진행으로 착각하지 않음)
+                kr.ddingmate.expert.OceanOrder.debugHandle("[오션오더] 8/10", now + 2500);
+                check(kr.ddingmate.expert.OceanOrder.todayCount() == 8 && kr.ddingmate.expert.OceanOrder.label().contains("8/10")
+                        && kr.ddingmate.expert.OceanOrder.label().contains("0/2"), "서버 오늘 횟수로 못 맞춤: " + kr.ddingmate.expert.OceanOrder.label());
+                // 해양 스킬 "오션오더 더 더!": 지금 레벨 설명만 읽고 다음 레벨 미리보기는 건너뜀
+                kr.ddingmate.expert.OceanOrder.debugSkill("오션오더 더 더! (+2)", java.util.List.of("[마을/야생]",
+                        "수령할 수 있는 오션오더의 일일제한이 14회로 증가합니다.", "─────────", "강화 시", "수령할 수 있는 오션오더의 일일제한이 16회로 증가합니다."));
+                check(kr.ddingmate.expert.OceanOrder.limit() == 14 && kr.ddingmate.expert.OceanOrder.label().contains("/14"),
+                        "오션오더 더 더! 스킬 한도를 못 읽음: " + kr.ddingmate.expert.OceanOrder.limit());
+                kr.ddingmate.expert.OceanOrder.debugHandle("[오션오더] 9/16", now + 3000);
+                check(kr.ddingmate.expert.OceanOrder.limit() == 16 && kr.ddingmate.expert.OceanOrder.todayCount() == 9, "서버 한도로 못 맞춤");
+                kr.ddingmate.expert.OceanOrder.debugSkill("오션오더 더 더! (+0)", java.util.List.of("수령할 수 있는 오션오더의 일일제한이 12회로 증가합니다."));
+                check(kr.ddingmate.expert.OceanOrder.limit() == 10, "안 배운 스킬인데 한도가 늘어남");
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.OceanOrder.debugHudReset();
                 kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);
 
                 // 아일랜드 작물 15분 타이머(단축키): 누르면 시작, 한 번 더 누르면 취소, 멈춤 표시

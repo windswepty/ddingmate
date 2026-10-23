@@ -135,6 +135,15 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 });
                 ctx.waitTicks(8);
                 ctx.takeScreenshot("show-font-window-" + f.name().toLowerCase());
+                // 글꼴마다 칸 밖으로 나가는 글자가 없는지 보려고 탭 여러 개와 꾸미기 창도(2026-10-23 글꼴 점검)
+                for (String tab : new String[]{"홈", "일정", "재료", "할 일", "전문가"}) {
+                    ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTabNamed(tab));
+                    ctx.waitTicks(4);
+                    ctx.takeScreenshot("show-font-tab-" + f.name().toLowerCase() + "-" + tab.replace(' ', '_'));
+                }
+                ctx.runOnClient(c -> c.setScreen(new kr.ddingmate.gui.HudLookScreen(null)));
+                ctx.waitTicks(4);
+                ctx.takeScreenshot("show-font-look-" + f.name().toLowerCase());
             }
             // 글꼴 한눈에 보기 창
             ctx.runOnClient(c -> {

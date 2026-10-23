@@ -59,6 +59,7 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                 cfg.fontEverywhere = keepEverywhere;
                 cfg.font = keep[0];
             });
+            if (System.getenv("DDINGMATE_FONTCAL") != null) calibrate(ctx);
             if (System.getenv("DDINGMATE_FONT_COMPARE") == null) return;
             ctx.runOnClient(c -> {
                 c.getWindow().setWindowedSize(1920, 1080);
@@ -97,19 +98,73 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                 ctx.waitTicks(10);
                 ctx.takeScreenshot("font-everywhere-" + f.name().toLowerCase());
             }
-            ctx.runOnClient(c -> {
-                c.setScreen(null);
-                DdingMate.config().fontEverywhere = false;
-                DdingMate.config().font = keep[0];
-                // 다음 시험은 '처음 설치' 상태로 시작해야 한다
-                DdingMate.config().opened = keepOpened[0];
-                DdingMate.config().tutorialDone = keepOpened[1];
-                DdingMate.config().save();
-                kr.ddingmate.hud.HudLayout.bounds().clear(); // 여기서 그린 HUD 자리가 다음 시험의 '아직 HUD 없음' 확인에 남지 않게
-                c.getWindow().setWindowedSize(854, 480);
-                c.options.getGuiScale().setValue(0);
-                c.onResolutionChanged();
-            });
+            restore(ctx, keep[0], keepOpened);
         }
+    }
+
+    /** 글꼴 측정(DDINGMATE_FONTCAL=1): 글꼴 7종 × 본문·굵게·제목을 흰 바탕에 1920×1080 GUI 3 으로 찍고, 줄마다 그린 y·폭을 남긴다 */
+    static final String CAL_SAMPLE = "가나다 한글 일정 보상 ABCgjpq 0123 [3] ×7";
+    static final int CAL_ROW = 16, CAL_X = 12;
+
+    private static void calibrate(ClientGameTestContext ctx) {
+        ctx.runOnClient(c -> {
+            c.getWindow().setWindowedSize(1920, 1080);
+            c.options.getGuiScale().setValue(3);
+            c.onResolutionChanged();
+            c.setScreen(new net.minecraft.client.gui.screen.Screen(net.minecraft.text.Text.literal("글꼴 측정")) {
+                @Override
+                public void render(net.minecraft.client.gui.DrawContext g, int mx, int my, float d) {
+                    g.fill(0, 0, width, height, 0xFFFFFFFF);
+                    DdingMateConfig cfg = DdingMate.config();
+                    DdingMateConfig.FontStyle keepF = cfg.font;
+                    int row = 0;
+                    for (DdingMateConfig.FontStyle f : DdingMateConfig.FontStyle.values()) {
+                        cfg.font = f;
+                        for (int kind = 0; kind < 3; kind++) {
+                            int y = 4 + row * CAL_ROW;
+                            g.fill(CAL_X - 4, y, CAL_X - 2, y + 9, 0xFFFF0000); // 줄 칸(그린 y ~ y+9)
+                            net.minecraft.text.Text t = kind == 0 ? Theme.body(CAL_SAMPLE) : kind == 1 ? Theme.bold(CAL_SAMPLE) : Theme.title(CAL_SAMPLE);
+                            g.drawText(textRenderer, t, CAL_X, y, 0xFF000000, false);
+                            row++;
+                        }
+                    }
+                    cfg.font = keepF;
+                }
+            });
+        });
+        ctx.waitTicks(10);
+        ctx.takeScreenshot("fontcal");
+        ctx.runOnClient(c -> {
+            DdingMateConfig cfg = DdingMate.config();
+            DdingMateConfig.FontStyle keepF = cfg.font;
+            StringBuilder sb = new StringBuilder();
+            for (DdingMateConfig.FontStyle f : DdingMateConfig.FontStyle.values()) {
+                cfg.font = f;
+                sb.append(f.name()).append(' ').append(Theme.width(c.textRenderer, CAL_SAMPLE)).append(' ')
+                        .append(Theme.boldWidth(c.textRenderer, CAL_SAMPLE)).append(' ').append(c.textRenderer.getWidth(Theme.title(CAL_SAMPLE))).append("; ");
+            }
+            cfg.font = keepF;
+            DdingMate.LOG.info("FONTCAL scale={} rowH={} x={} widths(body bold title)={}", c.getWindow().getScaleFactor(), CAL_ROW, CAL_X, sb);
+            c.setScreen(null);
+            c.getWindow().setWindowedSize(854, 480);
+            c.options.getGuiScale().setValue(0);
+            c.onResolutionChanged();
+        });
+    }
+
+    private static void restore(ClientGameTestContext ctx, DdingMateConfig.FontStyle font, boolean[] keepOpened) {
+        ctx.runOnClient(c -> {
+            c.setScreen(null);
+            DdingMate.config().fontEverywhere = false;
+            DdingMate.config().font = font;
+            // 다음 시험은 '처음 설치' 상태로 시작해야 한다
+            DdingMate.config().opened = keepOpened[0];
+            DdingMate.config().tutorialDone = keepOpened[1];
+            DdingMate.config().save();
+            kr.ddingmate.hud.HudLayout.bounds().clear(); // 여기서 그린 HUD 자리가 다음 시험의 '아직 HUD 없음' 확인에 남지 않게
+            c.getWindow().setWindowedSize(854, 480);
+            c.options.getGuiScale().setValue(0);
+            c.onResolutionChanged();
+        });
     }
 }

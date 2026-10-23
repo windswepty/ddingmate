@@ -1149,7 +1149,7 @@ public class DdingMateScreen extends Screen {
         list.note("위키 기준: 허기·기분·활력은 10분마다 가장 높은 것부터 20~25% 줄고, 하나라도 0% 면 폐사해요. 평균이 80% 아래면 성장이 "
                 + "느려지고, 넣은 뒤 2시간이 지났을 때 성장도가 90 이상이면 더 줄지 않아요. 밥: 허기 빵 · 기분 덩굴 · 활력 뼈 블록"
                 + "(들고 쉬프트+좌클릭하면 100%). 안전하게 한 번에 25%씩 준다고 보고 계산해요.");
-        list.note("오션오더: 오늘 " + kr.ddingmate.expert.OceanOrder.todayCount() + "/" + kr.ddingmate.expert.OceanOrder.DAILY_MAX
+        list.note("오션오더: 오늘 " + kr.ddingmate.expert.OceanOrder.todayCount() + "/" + kr.ddingmate.expert.OceanOrder.limit()
                 + "번 받음(03시 초기화). 받은 뒤 다른 채널로 옮기면 실패해요.");
     }
 

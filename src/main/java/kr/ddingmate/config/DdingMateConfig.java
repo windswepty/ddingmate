@@ -180,7 +180,7 @@ public final class DdingMateConfig {
         public boolean shopPanel = true;
         /** 반려어(수족관) 밥 타이머: 어항 창의 허기·기분·활력을 읽어 밥 줄 때·폐사 위험·다 컸을 때 알림 */
         public boolean petFish = true;
-        /** 오션오더 타이머: 도착하면 5분 남은 시간과 오늘 받은 횟수(10번까지) */
+        /** 오션오더 타이머: 도착하면 5분 남은 시간과 오늘 받은 횟수(하루 한도: oceanLimit) */
         public boolean oceanOrder = true;
         /** 광석 골렘 출현 쿨타임(5분, 프레스티지 1분)을 일정 HUD 에 */
         public boolean oreGolem = true;
@@ -195,6 +195,8 @@ public final class DdingMateConfig {
         public boolean cropPauseAway = true;
         /** 판매가 전문가 스킬(이름 → 지금 증가율 %). /전문가 스킬 창에서 자동으로 읽음 */
         public Map<String, Double> priceSkills = new LinkedHashMap<>();
+        /** 오션오더 하루 한도(기본 10, 해양 스킬 "오션오더 더 더!" Lv1~5 → 12·14·16·18·20). /전문가 스킬 창이나 서버 "[오션오더] n/m" 에서 읽음 */
+        public int oceanLimit = 10;
     }
 
     public static final class Playtime {
@@ -368,6 +370,7 @@ public final class DdingMateConfig {
         hudWidths.values().removeIf(v -> v == null || v <= 0);
         if (hudHeights == null) hudHeights = new LinkedHashMap<>();
         if (expert != null && expert.priceSkills == null) expert.priceSkills = new LinkedHashMap<>();
+        if (expert != null && (expert.oceanLimit < 10 || expert.oceanLimit > 30)) expert.oceanLimit = 10;
         hudHeights.values().removeIf(v -> v == null || v <= 0);
         hudSizes.values().removeIf(java.util.Objects::isNull);
         hudSizes.replaceAll((k, v) -> Math.max(50, Math.min(150, v)));

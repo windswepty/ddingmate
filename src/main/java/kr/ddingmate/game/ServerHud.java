@@ -52,20 +52,24 @@ public final class ServerHud {
         boolean ocean = false, channelSeen = false;
         for (ClientBossBar bar : ((BossBarHudAccessor) client.inGameHud.getBossBarHud()).ddingmate$bossBars().values()) {
             // 오션오더 HUD: 서버 리소스팩의 오션오더 HUD 글꼴로 그린 보스바(2026-10-21 리소스팩 hud_oceanorder_hud_*)
+            // 재화 바·날짜·채널 표시가 한 보스바로 와서, 오션오더 HUD 가 같은 줄에 실려도 나머지(채널 표시)는 계속 읽는다
+            // (예전에는 오션오더 줄을 통째로 건너뛰어 채널 표시를 3초 넘게 못 봐 '게임 밖'으로 보고 HUD 를 모두 숨겼다)
             String oceanHud = kr.ddingmate.expert.OceanOrder.hudText(bar.getName());
+            String rest = bar.getName().getString();
             if (oceanHud != null) {
                 ocean = true;
                 kr.ddingmate.expert.OceanOrder.onHud(oceanHud, System.currentTimeMillis());
-                continue;
+                rest = kr.ddingmate.expert.OceanOrder.withoutHud(bar.getName());
             }
-            kr.ddingmate.expert.OceanOrder.onMessage(bar.getName().getString()); // 오션오더 남은 시간이 보스바로 올 수도
+            kr.ddingmate.expert.OceanOrder.onMessage(rest); // 오션오더 남은 시간·오늘 횟수가 보스바로 올 수도
             if (channelSeen) continue;
-            Matcher m = CHANNEL.matcher(ItemKeys.stripGlyphs(bar.getName().getString()));
+            String plain = ItemKeys.stripGlyphs(rest);
+            Matcher m = CHANNEL.matcher(plain);
             if (!m.find()) continue;
             Area a = areaOf(m.group(1));
             int ch = Integer.parseInt(m.group(2));
             if (a == null || ch <= 0) continue;
-            String before = ItemKeys.stripGlyphs(bar.getName().getString()).substring(0, m.start());
+            String before = plain.substring(0, m.start());
             Matcher pm = PLACE.matcher(before);
             String nowPlace = "";
             while (pm.find()) nowPlace = pm.group().trim();

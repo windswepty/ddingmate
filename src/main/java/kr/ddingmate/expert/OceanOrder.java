@@ -31,6 +31,7 @@ public final class OceanOrder {
     private OceanOrder() {}
 
     public static final long LIMIT_MS = 300_000;
+    /** 스킬 없이 하루 한도(위키). 지금 한도는 limit() */
     public static final int DAILY_MAX = 10;
 
     private static final Pattern FAIL = Pattern.compile("실패|취소|만료|시간\\s*초과|시간이\\s*(?:다\\s*)?(?:지나|끝)");
@@ -43,6 +44,18 @@ public final class OceanOrder {
     private static final Pattern CANDIDATE = Pattern.compile("주문.*(?:물고기|낚)|(?:물고기|낚).*주문|골든\\s*티켓");
     /** "(2/3)" 같은 진행 */
     private static final Pattern PROGRESS = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
+    /**
+     * 서버가 오션오더 중 띄우는 오늘 횟수 "[오션오더] 8/10"(2026-10-23 사용자 화면). 물고기 진행 "(2/2)"와는 분모로 가른다:
+     * 물고기 요구량은 많아야 3마리·5종이고, 하루 한도는 10~20
+     */
+    private static final Pattern DAILY = Pattern.compile("오션오더\\s*]?\\s*:?\\s*(\\d+)\\s*/\\s*(\\d+)");
+    /** 해양 스킬 "오션오더 더 더!": 설명 "수령할 수 있는 오션오더의 일일제한이 12회로 증가합니다." */
+    private static final Pattern SKILL_LIMIT = Pattern.compile("일일\\s*제한이\\s*(\\d+)\\s*회");
+    private static final Pattern SKILL_PREVIEW = Pattern.compile("─{3,}|강화\\s*시|습득\\s*시|배울\\s*시|다음\\s*레벨");
+
+    /** 성공·실패 문구를 본 뒤: 서버 오션오더 HUD 가 아직 남아 있어도 새로 도착한 것으로 보지 않는다(2026-10-23 끝난 것을 또 셈) */
+    private static boolean finished;
+    private static String finishedHud = "";
 
     private static long endsAt;
     private static long startedAt;
@@ -82,14 +95,20 @@ public final class OceanOrder {
     }
 
     static void handle(String t, long now) {
+        // 오늘 횟수 "[오션오더] 8/10": 서버 값으로 맞추고 물고기 진행으로는 쓰지 않는다
+        Matcher daily = DAILY.matcher(t);
+        if (daily.find() && Integer.parseInt(daily.group(2)) >= DAILY_MAX) {
+            syncDaily(Integer.parseInt(daily.group(1)), Integer.parseInt(daily.group(2)));
+            return;
+        }
         // 끝 → 성공 → 도착 순서로 본다("오션오더 성공! 보상을 수령했습니다"를 도착으로 착각하지 않게)
         if (FAIL.matcher(t).find()) {
             if (active(now)) DdingMate.LOG.info("오션오더 끝(실패): {}", t);
-            clear();
+            finish();
             return;
         }
         if (SUCCESS.matcher(t).find()) {
-            clear();
+            finish();
             return;
         }
         long left = remainingIn(t);
@@ -122,10 +141,10 @@ public final class OceanOrder {
         warned = false;
         lastChannel = kr.ddingmate.game.ServerHud.channel(); // 이 채널에서 받았다(다른 채널로 옮기면 실패)
         Day d = today();
-        d.count = Math.min(DAILY_MAX, d.count + 1);
+        d.count = Math.min(limit(), d.count + 1);
         save();
         Notifier.oceanOrder("오션오더 도착!", (limitMs / 1000 / 60) + "분 " + (limitMs / 1000 % 60) + "초 안에 주문한 물고기를 낚아 주세요 · 오늘 "
-                + d.count + "/" + DAILY_MAX);
+                + d.count + "/" + limit());
     }
 
     private static void clear() {
@@ -133,6 +152,35 @@ public final class OceanOrder {
         startedAt = 0;
         progress = "";
         lastChannel = -1;
+    }
+
+    /** 성공·실패로 끝남: 남아 있는 서버 HUD 로 다시 켜지지 않게 표시해 둔다 */
+    private static void finish() {
+        clear();
+        finished = true;
+        finishedHud = lastHud;
+    }
+
+    /** 서버가 알려 준 오늘 횟수·한도로 맞춘다 */
+    private static void syncDaily(int count, int max) {
+        boolean save = false;
+        if (max >= DAILY_MAX && max <= 30 && DdingMate.config().expert.oceanLimit != max) {
+            DdingMate.config().expert.oceanLimit = max;
+            DdingMate.config().save();
+            DdingMate.LOG.info("오션오더 하루 한도(서버): {}", max);
+        }
+        Day d = today();
+        if (count >= 0 && count <= max && d.count != count) {
+            DdingMate.LOG.info("오션오더 오늘 횟수(서버): {} → {}", d.count, count);
+            d.count = count;
+            save = true;
+        }
+        if (save) save();
+    }
+
+    /** 오늘 받을 수 있는 오션오더 수: 10, "오션오더 더 더!"를 배웠으면 12~20 */
+    public static int limit() {
+        return Math.max(DAILY_MAX, DdingMate.config().expert.oceanLimit);
     }
 
     // ---------------------------------------------------------------- 서버 오션오더 HUD(보스바)
@@ -166,6 +214,22 @@ public final class OceanOrder {
         return String.join(" | ", out);
     }
 
+    /**
+     * 보스바 글에서 오션오더 HUD 글꼴 부분을 뺀 나머지. 띵타이쿤은 재화 바·날짜·채널 표시를 보스바 한 줄로 보내서
+     * (2026-10-23 기록), 오션오더 HUD 가 같은 줄에 실리면 이걸로 채널 표시를 계속 읽어야 한다
+     * (오션오더 중 채널 표시를 못 읽어 '게임 밖'으로 보고 띵메이트 HUD 가 모두 사라졌다)
+     */
+    public static String withoutHud(net.minecraft.text.Text name) {
+        if (name == null) return "";
+        StringBuilder sb = new StringBuilder();
+        name.visit((style, s) -> {
+            net.minecraft.util.Identifier f = style.getFont();
+            if (f == null || !f.getPath().startsWith(HUD_FONT)) sb.append(s);
+            return java.util.Optional.empty();
+        }, net.minecraft.text.Style.EMPTY);
+        return sb.toString();
+    }
+
     /** 오션오더 HUD 가 보이면: 진행 중. 처음 보면 시작(도착 문구를 놓쳐도), 적힌 남은 시간·진행으로 맞춘다 */
     public static void onHud(String text, long now) {
         if (!DdingMate.config().expert.oceanOrder) return;
@@ -176,6 +240,11 @@ public final class OceanOrder {
         hudShown = true;
         hudSeenAt = now;
         long left = hudRemaining(text);
+        if (finished) {
+            // 끝난 뒤 남아 있는 HUD: 새 주문(글이 바뀌고 남은 시간이 거의 5분)일 때만 다시 센다
+            if (text.equals(finishedHud) || left < LIMIT_MS - 15_000) return;
+            finished = false;
+        }
         if (!active(now)) start(now, left > 0 && left <= LIMIT_MS ? left : LIMIT_MS);
         else if (left > 0 && left <= LIMIT_MS) endsAt = now + left;
         // 물고기 줄마다 "(n/m)": 하나면 그대로, 여럿이면 다 잡은 줄 수/줄 수
@@ -204,6 +273,7 @@ public final class OceanOrder {
     public static void hudPresent(boolean shown, long now) {
         if (shown || !hudShown || now - hudSeenAt < 3000) return;
         hudShown = false;
+        finished = false; // HUD 가 사라졌으니 다음에 보이는 HUD 는 새 주문
         if (active(now)) {
             DdingMate.LOG.info("오션오더 HUD 가 사라져 타이머를 끔");
             clear();
@@ -224,6 +294,10 @@ public final class OceanOrder {
             if (!slot.hasStack()) continue;
             net.minecraft.item.ItemStack s = slot.getStack();
             String name = ItemKeys.stripGlyphs(s.getName().getString()).trim();
+            if (name.replace(" ", "").contains("오션오더더더")) {
+                readSkill(name, s.get(net.minecraft.component.DataComponentTypes.LORE));
+                continue;
+            }
             if (!title.contains("오션오더") && !name.replace(" ", "").contains("오션오더")) continue;
             net.minecraft.component.type.LoreComponent lore = s.get(net.minecraft.component.DataComponentTypes.LORE);
             StringBuilder sb = new StringBuilder(name);
@@ -246,6 +320,41 @@ public final class OceanOrder {
                     endsAt = now + left;
                 }
             }
+        }
+    }
+
+    private static boolean skillConfirmed;
+
+    /**
+     * /전문가 스킬 창의 해양 스킬 "오션오더 더 더!"(위키 해양 전문가: Lv1~5 일일제한 12·14·16·18·20회).
+     * 설명에서 지금 레벨의 "일일제한이 N회"를 읽는다(다음 레벨 미리보기 줄은 건너뜀). 안 배웠으면 10회
+     */
+    static void readSkill(String name, net.minecraft.component.type.LoreComponent lore) {
+        int limit = DAILY_MAX;
+        if (lore != null) {
+            for (net.minecraft.text.Text l : lore.lines()) {
+                String line = ItemKeys.stripGlyphs(l.getString());
+                if (SKILL_PREVIEW.matcher(line).find()) break;
+                Matcher m = SKILL_LIMIT.matcher(line);
+                if (m.find()) {
+                    limit = Integer.parseInt(m.group(1));
+                    break;
+                }
+            }
+        }
+        if (name.matches(".*\\(\\s*\\+?\\s*0\\s*\\).*") || name.contains("잠김")) limit = DAILY_MAX;
+        limit = Math.max(DAILY_MAX, Math.min(30, limit));
+        int old = DdingMate.config().expert.oceanLimit;
+        boolean changed = old != limit;
+        if (changed) {
+            DdingMate.config().expert.oceanLimit = limit;
+            DdingMate.config().save();
+            DdingMate.LOG.info("오션오더 하루 한도(스킬): {} → {}", old, limit);
+        }
+        if (!skillConfirmed || changed) {
+            skillConfirmed = true;
+            kr.ddingmate.skill.SkillReport.add("오션오더", "해양", "오션오더 더 더!",
+                    limit > DAILY_MAX ? "오션오더 더 더!(하루 " + limit + "번)" : "오션오더 더 더! 안 배움", changed);
         }
     }
 
@@ -276,7 +385,7 @@ public final class OceanOrder {
 
     /** HUD 줄: "오션오더 (오늘 3/10)" · "4분 32초" */
     public static String label() {
-        return "오션오더" + (progress.isEmpty() ? "" : " " + progress) + " (오늘 " + today().count + "/" + DAILY_MAX + ")";
+        return "오션오더" + (progress.isEmpty() ? "" : " " + progress) + " (오늘 " + today().count + "/" + limit() + ")";
     }
 
     public static String remainingText(long now) {
@@ -338,6 +447,9 @@ public final class OceanOrder {
 
     public static void debugReset() {
         clear();
+        finished = false;
+        finishedHud = "";
+        skillConfirmed = false;
         warned = false;
         lastChannel = -1;
         if (days == null) load();
@@ -347,6 +459,12 @@ public final class OceanOrder {
 
     public static void debugHandle(String text, long now) {
         handle(text, now);
+    }
+
+    /** 시험용: 스킬 창 칸 하나를 읽은 것처럼 */
+    public static void debugSkill(String name, java.util.List<String> lore) {
+        readSkill(name, new net.minecraft.component.type.LoreComponent(lore.stream().map(net.minecraft.text.Text::literal)
+                .map(t -> (net.minecraft.text.Text) t).toList()));
     }
 
     public static void debugHudReset() {
