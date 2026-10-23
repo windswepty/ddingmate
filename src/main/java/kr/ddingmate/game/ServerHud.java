@@ -35,6 +35,8 @@ public final class ServerHud {
 
     private static Area area;
     private static int channel;
+    /** 채널 표시 앞의 장소 이름("세레니티 (아일랜드6)" → "세레니티"). 판 자동 바꾸기(지역)에 쓴다 */
+    private static String place = "";
     /** 이번 접속에서 게임 화면(채널 표시)을 본 적이 있는지 */
     private static boolean seen;
     /** 채널 표시(오른쪽 위 보스바)를 마지막으로 본 시각 */
@@ -63,6 +65,12 @@ public final class ServerHud {
             Area a = areaOf(m.group(1));
             int ch = Integer.parseInt(m.group(2));
             if (a == null || ch <= 0) continue;
+            String before = ItemKeys.stripGlyphs(bar.getName().getString()).substring(0, m.start());
+            Matcher pm = PLACE.matcher(before);
+            String nowPlace = "";
+            while (pm.find()) nowPlace = pm.group().trim();
+            if (!nowPlace.equals(place)) DdingMate.LOG.info("장소 인식: {}", nowPlace);
+            place = nowPlace;
             boolean changed = a != area || ch != channel;
             if (changed) rebootAt = 0; // 채널을 옮기면 이전 채널의 재부팅 예고는 더 이상 내 일이 아니다
             area = a;
@@ -116,6 +124,19 @@ public final class ServerHud {
     public static Area area() {
         return area;
     }
+
+    /** 채널 표시 앞의 장소 이름(모르면 "") */
+    public static String place() {
+        return place;
+    }
+
+    /** 시험용 */
+    public static void debugPlace(Area a, String p) {
+        area = a;
+        place = p == null ? "" : p;
+    }
+
+    private static final Pattern PLACE = Pattern.compile("[가-힣A-Za-z][가-힣A-Za-z0-9 ]*[가-힣A-Za-z0-9]|[가-힣]");
 
     public static int channel() {
         return channel;

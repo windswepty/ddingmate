@@ -13,6 +13,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import mascots  # noqa: E402
 import skins as S  # noqa: E402
+import skins_more  # noqa: E402,F401  지역·계절·사람·전문가·시간대 판(SKINS 에 더한다)
 
 RES = os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'ddingmate')
 SPR = os.path.join(RES, 'textures', 'gui', 'sprites', 'hud')
@@ -36,10 +37,12 @@ def main():
         hp = os.path.join(SPR, 'head_%s.png' % sk['id'])
         head.save(hp)
         mcmeta(hp, S.PW, S.HH, {'left': 10, 'top': 0, 'right': 10, 'bottom': 0})
-        m = roles[sk['id']]
-        m[3]().render().save(os.path.join(SPR, 'mascot_%s.png' % sk['id']))
-        out.append({'id': sk['id'], 'name': sk['name'], 'role': m[2], 'place': sk['place'], 'dark': sk['dark'],
-                    'title': sk['title'], 'titleShadow': sk['titleShadow'], 'colors': sk['colors']})
+        m = roles.get(sk['id'])
+        if sk['hasMascot']:
+            m[3]().render().save(os.path.join(SPR, 'mascot_%s.png' % sk['id']))
+        out.append({'id': sk['id'], 'name': sk['name'], 'role': m[2] if m else sk['role'], 'place': sk['place'], 'dark': sk['dark'],
+                    'title': sk['title'], 'titleShadow': sk['titleShadow'], 'colors': sk['colors'],
+                    'group': sk['group'], 'hasMascot': sk['hasMascot']})
     meta = {'outset': S.O, 'headHeight': S.HH, 'mascotSize': mascots.W, 'pawRow': mascots.PAW_ROW, 'skins': out}
     with open(os.path.join(RES, 'hud_skins.json'), 'w', encoding='utf-8', newline='\n') as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)

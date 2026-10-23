@@ -606,17 +606,17 @@ public class DdingMateScreen extends Screen {
         sets.addAll(npcs);
         kr.ddingmate.ui.HudSkins.Skin current = kr.ddingmate.ui.HudSkins.set();
         Widgets.Cycle<Object> set = new Widgets.Cycle<>(half(), "HUD 세트", sets, current != null ? current : "직접 조합",
-                o -> o instanceof kr.ddingmate.ui.HudSkins.Skin k ? k.name() + " · " + k.place() : "직접 조합", v -> {
+                o -> o instanceof kr.ddingmate.ui.HudSkins.Skin k ? k.display() : "직접 조합", v -> {
                     if (v instanceof kr.ddingmate.ui.HudSkins.Skin k) kr.ddingmate.ui.HudSkins.applySet(cfg, k);
                     rebuild();
                 });
-        set.setTooltip(Tooltip.of(Text.literal("띵타이쿤 동물 NPC 한 명의 판 · 제목 줄 · HUD 친구를 한꺼번에 껴요.\n"
+        set.setTooltip(Tooltip.of(Text.literal("동물 NPC · 지역 · 계절·행사 · 사람 NPC · 전문가 · 시간대 세트의 판 · 제목 줄(· HUD 친구)을 한꺼번에 껴요.\n"
                 + "아래에서 하나씩 따로 바꾸면 '직접 조합'이 돼요.")));
         List<Object> panels = new ArrayList<>(List.of(kr.ddingmate.ui.HudTheme.values()));
         panels.addAll(npcs);
-        Object panelNow = kr.ddingmate.ui.HudSkins.panel() != null ? kr.ddingmate.ui.HudSkins.panel() : kr.ddingmate.ui.HudTheme.current();
+        Object panelNow = kr.ddingmate.ui.HudSkins.chosenPanel() != null ? kr.ddingmate.ui.HudSkins.chosenPanel() : kr.ddingmate.ui.HudTheme.current();
         Widgets.Cycle<Object> panel = new Widgets.Cycle<>(half(), "판 디자인", panels, panelNow,
-                o -> o instanceof kr.ddingmate.ui.HudSkins.Skin k ? k.name() + "의 " + k.place() : ((kr.ddingmate.ui.HudTheme) o).label, v -> {
+                o -> o instanceof kr.ddingmate.ui.HudSkins.Skin k ? k.panelLabel() : ((kr.ddingmate.ui.HudTheme) o).label, v -> {
                     if (v instanceof kr.ddingmate.ui.HudSkins.Skin k) kr.ddingmate.ui.HudSkins.applyPanel(cfg, k);
                     else kr.ddingmate.ui.HudSkins.applyTheme(cfg, (kr.ddingmate.ui.HudTheme) v);
                     rebuild();
@@ -631,14 +631,14 @@ public class DdingMateScreen extends Screen {
             if (kr.ddingmate.ui.HudSkins.AUTO.equals(id)) return "판에 맞춤";
             if (kr.ddingmate.ui.HudSkins.PLAIN.equals(id)) return "띠 없이 글자만";
             var k = kr.ddingmate.ui.HudSkins.byId(id);
-            return k == null ? id : k.name() + "의 제목 줄";
+            return k == null ? id : k.headLabel();
         }, v -> {
             cfg.hudHeader = v;
             rebuild();
         });
         head.setTooltip(Tooltip.of(Text.literal("HUD 위쪽 제목 띠예요. 제목 글자색은 띠에 맞춰 바뀌어요.")));
         List<String> friends = new ArrayList<>(List.of(kr.ddingmate.ui.HudSkins.NONE));
-        npcs.forEach(k -> friends.add(k.id()));
+        kr.ddingmate.ui.HudSkins.mascots().forEach(k -> friends.add(k.id()));
         Widgets.Cycle<String> friend = new Widgets.Cycle<>(half(), "HUD 친구", friends, cfg.hudMascot, id -> {
             var k = kr.ddingmate.ui.HudSkins.byId(id);
             return k == null ? "없음" : k.label();
@@ -654,7 +654,18 @@ public class DdingMateScreen extends Screen {
             client.setScreen(new HudLookScreen(this));
         });
         look.setTooltip(Tooltip.of(Text.literal("세트 · 판 · 제목 줄 · 친구 후보를 실제 HUD 모양 그대로 늘어놓고 비교하며 골라요.")));
-        list.single(look);
+        Widgets.Cycle<kr.ddingmate.ui.HudAuto.Mode> auto = new Widgets.Cycle<>(half(), "판 자동 바꾸기", List.of(kr.ddingmate.ui.HudAuto.Mode.values()),
+                kr.ddingmate.ui.HudAuto.mode(), m -> m.label, v -> {
+                    cfg.hudAuto = v.id;
+                    kr.ddingmate.ui.HudAuto.update(client, java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")), System.currentTimeMillis());
+                });
+        auto.setTooltip(Tooltip.of(Text.literal("판 · 제목 줄을 저절로 바꿔요(HUD 친구는 그대로).\n"
+                + "지역: 스폰 · 야생 · 마을 · 세레니티 · 타이니랜드 · 노크틸라\n"
+                + "계절·행사: 1주년 · 추석 기간엔 행사 판, 그 밖엔 겨울 · 봄 · 여름 · 가을(달토끼)\n"
+                + "전문가: 켜진 스킬의 채광 · 해양 · 재배 · 사냥 판\n"
+                + "게임 시간: 새벽 · 낮 · 노을 · 밤\n"
+                + "맞는 판이 없을 땐(켜진 스킬 없음 등) 위에서 고른 판이에요.")));
+        list.pair(auto, look);
         Widgets.Cycle<Integer> side = new Widgets.Cycle<>(half(), "서버 창 옆 판 크기", List.of(50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150),
                 nearestOf(cfg.sidePanelScale, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150), v -> v + "%", v -> cfg.sidePanelScale = v);
         side.setTooltip(Tooltip.of(Text.literal("제작 시설 창 옆 '보유 재료로 만들기' 판과 카페·부엌·상점·보석 판 크기예요. 판 위에서 Ctrl+휠로도 바로 바꿀 수 있어요.")));

@@ -102,10 +102,17 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             // NPC 세트 17벌: 그림 세 장(판·제목 줄·친구)이 GUI 아틀라스에 올라왔고, 판 · 친구가 있어도 HUD 배치는 그대로
             ctx.runOnClient(c -> {
                 var skins = kr.ddingmate.ui.HudSkins.all();
-                if (skins.size() != 17) throw new AssertionError("NPC 세트 수: " + skins.size());
+                // 동물 NPC 17 · 지역 6 · 계절·행사 6 · 사람 NPC 9 · 전문가 4 · 시간대 4
+                if (skins.size() != 46) throw new AssertionError("HUD 세트 수: " + skins.size());
+                var groups = new java.util.LinkedHashMap<String, Integer>();
+                skins.forEach(s -> groups.merge(s.group(), 1, Integer::sum));
+                if (!groups.equals(java.util.Map.of("동물 NPC", 17, "지역", 6, "계절·행사", 6, "사람 NPC", 9, "전문가", 4, "시간대", 4)))
+                    throw new AssertionError("묶음별 수가 다름: " + groups);
+                // HUD 친구는 동물 NPC 17명만(사람 캐릭터는 2026-10-23 뺐다)
+                if (kr.ddingmate.ui.HudSkins.mascots().size() != 17) throw new AssertionError("HUD 친구 수: " + kr.ddingmate.ui.HudSkins.mascots().size());
                 var missing = net.minecraft.client.texture.MissingSprite.getMissingSpriteId();
                 for (var s : skins) {
-                    for (var id : List.of(s.panel(), s.head(), s.mascot())) {
+                    for (var id : s.hasMascot() ? List.of(s.panel(), s.head(), s.mascot()) : List.of(s.panel(), s.head())) {
                         if (c.getGuiAtlasManager().getSprite(id).getContents().getId().equals(missing))
                             throw new AssertionError("HUD 그림이 없음: " + id);
                     }
@@ -139,7 +146,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 var look = new kr.ddingmate.gui.HudLookScreen(null);
                 c.setScreen(look);
-                if (look.debugCards("세트") != 17 || look.debugCards("판 디자인") != 23 || look.debugCards("제목 줄") != 19
+                if (look.debugCards("세트") != 46 || look.debugCards("판 디자인") != 52 || look.debugCards("제목 줄") != 48
                         || look.debugCards("HUD 친구") != 18) throw new AssertionError("꾸미기 카드 수가 다름");
                 look.debugChoose("세트", 12); // 샤키
                 if (kr.ddingmate.ui.HudSkins.set() == null || !"sharky".equals(kr.ddingmate.ui.HudSkins.set().id()))
@@ -155,8 +162,50 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 ctx.takeScreenshot("smoke-look-" + tab.replace(' ', '-'));
             }
             ctx.runOnClient(c -> c.setScreen(null));
+            // 판 자동 바꾸기(2026-10-23): 계절·행사 날짜, 게임 시각, 지역·장소, 켜진 스킬 → 그 판. 맞는 판이 없으면 고른 판, 글자 밝기도 따라감
             ctx.runOnClient(c -> {
                 DdingMateConfig cfg = DdingMate.config();
+                kr.ddingmate.ui.HudSkins.applySet(cfg, kr.ddingmate.ui.HudSkins.byId("hani"));
+                java.util.Map<String, String> dates = java.util.Map.of("2026-10-20", "season_anniv", "2026-09-25", "season_chuseok",
+                        "2026-12-25", "season_winter", "2027-02-10", "season_winter", "2026-04-05", "season_spring",
+                        "2026-08-01", "season_summer", "2026-11-10", "season_moon", "2026-10-10", "season_moon");
+                dates.forEach((d, want) -> {
+                    String got = kr.ddingmate.ui.HudAuto.season(java.time.LocalDate.parse(d));
+                    if (!want.equals(got)) throw new AssertionError(d + " 계절 판: " + got + " (기대 " + want + ")");
+                });
+                java.util.Map<Long, String> times = java.util.Map.of(0L, "time_day", 6000L, "time_day", 12000L, "time_sunset",
+                        18000L, "time_night", 23500L, "time_dawn", 30000L, "time_day");
+                times.forEach((t, want) -> {
+                    if (!want.equals(kr.ddingmate.ui.HudAuto.time(t))) throw new AssertionError(t + " 시간대 판: " + kr.ddingmate.ui.HudAuto.time(t));
+                });
+                // 지역: 아일랜드의 세레니티 → 세레니티 판(밝은 판), 노크틸라 → 어두운 판으로 글자 밝기도
+                cfg.hudAuto = "region";
+                kr.ddingmate.game.ServerHud.debugPlace(kr.ddingmate.game.ServerHud.Area.ISLAND, "세레니티");
+                kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
+                if (kr.ddingmate.ui.HudSkins.panel() == null || !"region_serenity".equals(kr.ddingmate.ui.HudSkins.panel().id()))
+                    throw new AssertionError("세레니티에서 세레니티 판이 아님: " + kr.ddingmate.ui.HudSkins.panel());
+                kr.ddingmate.game.ServerHud.debugPlace(kr.ddingmate.game.ServerHud.Area.HUNT, "");
+                kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
+                if (!"region_noctila".equals(kr.ddingmate.ui.HudSkins.panel().id()) || cfg.hudStyle != DdingMateConfig.HudStyle.DARK)
+                    throw new AssertionError("노크틸라 판·어두운 글자로 안 바뀜: " + kr.ddingmate.ui.HudSkins.panel().id() + " " + cfg.hudStyle);
+                if (kr.ddingmate.ui.HudSkins.set() == null || !"hani".equals(kr.ddingmate.ui.HudSkins.set().id()))
+                    throw new AssertionError("자동 판 때문에 고른 세트가 바뀜");
+                // 전문가: 켜진 스킬이 없으면 고른 판(하니)
+                cfg.hudAuto = "expert";
+                kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), Long.MAX_VALUE / 2);
+                if (kr.ddingmate.ui.HudSkins.panel() == null || !"hani".equals(kr.ddingmate.ui.HudSkins.panel().id())
+                        || cfg.hudStyle != DdingMateConfig.HudStyle.LIGHT)
+                    throw new AssertionError("켜진 스킬이 없는데 고른 판으로 안 돌아옴: " + kr.ddingmate.ui.HudSkins.panel());
+                cfg.hudAuto = "region";
+                kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
+            });
+            ctx.waitTicks(2);
+            ctx.takeScreenshot("smoke-auto-noctila");
+            ctx.runOnClient(c -> {
+                DdingMateConfig cfg = DdingMate.config();
+                cfg.hudAuto = "off";
+                kr.ddingmate.game.ServerHud.debugPlace(null, "");
+                kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
                 kr.ddingmate.ui.HudSkins.applyTheme(cfg, kr.ddingmate.ui.HudTheme.LIGHT);
                 cfg.hudHeader = kr.ddingmate.ui.HudSkins.AUTO;
                 cfg.hudMascot = kr.ddingmate.ui.HudSkins.NONE;

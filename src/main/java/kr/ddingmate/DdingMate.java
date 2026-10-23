@@ -224,6 +224,7 @@ public final class DdingMate implements ClientModInitializer {
     }
 
     private static void onTick(MinecraftClient client) {
+        kr.ddingmate.ui.HudAuto.tick(client);
         Notifier.tick(client);
         kr.ddingmate.inquiry.Replies.tick(client);
         while (toggleHudKey.wasPressed()) {

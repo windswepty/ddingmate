@@ -32,8 +32,15 @@ public final class HudSkins {
     /** HUD 친구 없음 */
     public static final String NONE = "none";
 
+    /** 동물 NPC 묶음 이름(친구가 있는 세트) */
+    public static final String GROUP_NPC = "동물 NPC";
+
+    /**
+     * @param group     묶음(동물 NPC · 지역 · 계절·행사 · 사람 NPC · 전문가 · 시간대)
+     * @param hasMascot 이 세트에 HUD 친구 그림이 있는지(지역·계절 등은 판·제목 줄만)
+     */
     public record Skin(String id, String name, String role, String place, boolean dark, int title, boolean titleShadow,
-                       int text, int soft, int green, int red, int gold, int blue) {
+                       int text, int soft, int green, int red, int gold, int blue, String group, boolean hasMascot) {
         public Identifier panel() {
             return Identifier.of(DdingMate.MOD_ID, "hud/panel_" + id);
         }
@@ -49,6 +56,25 @@ public final class HudSkins {
         /** "하니 · 토끼 디자이너" */
         public String label() {
             return name + " · " + role;
+        }
+
+        public boolean npc() {
+            return hasMascot;
+        }
+
+        /** 세트 이름: "하니 · 꽃잎 공방" / "지역 · 마을" */
+        public String display() {
+            return npc() ? name + " · " + place : group + " · " + name;
+        }
+
+        /** 판 이름: "하니의 꽃잎 공방" / "마을 판" */
+        public String panelLabel() {
+            return npc() ? name + "의 " + place : name + " 판";
+        }
+
+        /** 제목 줄 이름 */
+        public String headLabel() {
+            return name + "의 제목 줄";
         }
     }
 
@@ -83,7 +109,9 @@ public final class HudSkins {
                         o.get("place").getAsString(), o.get("dark").getAsBoolean(), rgb(o.get("title").getAsString()),
                         o.get("titleShadow").getAsBoolean(), rgb(c.get("text").getAsString()), rgb(c.get("soft").getAsString()),
                         rgb(c.get("green").getAsString()), rgb(c.get("red").getAsString()), rgb(c.get("gold").getAsString()),
-                        rgb(c.get("blue").getAsString())));
+                        rgb(c.get("blue").getAsString()),
+                        o.has("group") ? o.get("group").getAsString() : GROUP_NPC,
+                        !o.has("hasMascot") || o.get("hasMascot").getAsBoolean()));
             }
         } catch (Exception e) {
             DdingMate.LOG.warn("HUD 세트 목록을 읽지 못했어요", e);
@@ -95,10 +123,23 @@ public final class HudSkins {
         return 0xFF000000 | Integer.parseInt(hex, 16);
     }
 
+    /** HUD 친구 그림이 있는 세트들 */
+    public static List<Skin> mascots() {
+        return all().stream().filter(Skin::hasMascot).toList();
+    }
+
     // ---------------------------------------------------------------- 지금 고른 것
 
-    /** 지금 HUD 판으로 고른 NPC 판(기본 테마 판이면 null) */
+    /** 지금 HUD 판(자동 바꾸기가 고른 판이 있으면 그 판, 아니면 고른 NPC 판, 기본 테마 판이면 null) */
     public static Skin panel() {
+        DdingMateConfig cfg = DdingMate.config();
+        if (cfg == null) return null;
+        Skin auto = HudAuto.effective();
+        return auto != null ? auto : byId(cfg.hudPanel);
+    }
+
+    /** 자동 바꾸기와 상관없이 설정에서 고른 판 */
+    public static Skin chosenPanel() {
         DdingMateConfig cfg = DdingMate.config();
         return cfg == null ? null : byId(cfg.hudPanel);
     }
@@ -125,24 +166,25 @@ public final class HudSkins {
 
     public static Skin mascot() {
         DdingMateConfig cfg = DdingMate.config();
-        return cfg == null ? null : byId(cfg.hudMascot);
+        Skin s = cfg == null ? null : byId(cfg.hudMascot);
+        return s != null && s.hasMascot ? s : null;
     }
 
-    /** 세 가지가 한 NPC 로 맞춰져 있으면 그 NPC(세트), 아니면 null(직접 조합) */
+    /** 고른 판·제목 줄(·친구)이 한 세트로 맞춰져 있으면 그 세트, 아니면 null(직접 조합). 친구가 없는 세트는 친구를 따지지 않는다 */
     public static Skin set() {
         DdingMateConfig cfg = DdingMate.config();
         if (cfg == null) return null;
-        Skin p = panel();
+        Skin p = chosenPanel();
         if (p == null) return null;
         boolean head = AUTO.equals(cfg.hudHeader) || p.id.equals(cfg.hudHeader);
-        return head && p.id.equals(cfg.hudMascot) ? p : null;
+        return head && (!p.hasMascot || p.id.equals(cfg.hudMascot)) ? p : null;
     }
 
-    /** 세트로 끼기: 판 · 제목 줄 · 친구를 이 NPC 로 */
+    /** 세트로 끼기: 판 · 제목 줄(· 친구가 있는 세트면 친구까지)을 이 세트로 */
     public static void applySet(DdingMateConfig cfg, Skin s) {
         cfg.hudPanel = s.id;
         cfg.hudHeader = AUTO;
-        cfg.hudMascot = s.id;
+        if (s.hasMascot) cfg.hudMascot = s.id;
         cfg.hudStyle = s.dark ? DdingMateConfig.HudStyle.DARK : DdingMateConfig.HudStyle.LIGHT;
     }
 

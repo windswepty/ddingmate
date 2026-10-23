@@ -261,6 +261,8 @@ public final class DdingMateConfig {
     public String hudPanel;
     /** HUD 제목 줄: "auto"(판에 맞춤) · "plain"(띠 없이 글자만) · NPC 아이디 */
     public String hudHeader = kr.ddingmate.ui.HudSkins.AUTO;
+    /** 판 자동 바꾸기: "off" · "region"(지역) · "season"(계절·행사) · "expert"(켜진 전문가 스킬) · "time"(게임 시간) */
+    public String hudAuto = "off";
     /** HUD 친구(판 윗변에 기대는 NPC 그림): "none" · NPC 아이디 */
     public String hudMascot = kr.ddingmate.ui.HudSkins.NONE;
     /** 띵메이트 창·HUD·알림 글꼴 */
@@ -356,6 +358,7 @@ public final class DdingMateConfig {
         if (hudHeader == null || !(kr.ddingmate.ui.HudSkins.AUTO.equals(hudHeader) || kr.ddingmate.ui.HudSkins.PLAIN.equals(hudHeader)
                 || kr.ddingmate.ui.HudSkins.byId(hudHeader) != null)) hudHeader = kr.ddingmate.ui.HudSkins.AUTO;
         if (hudMascot == null || kr.ddingmate.ui.HudSkins.byId(hudMascot) == null) hudMascot = kr.ddingmate.ui.HudSkins.NONE;
+        if (kr.ddingmate.ui.HudAuto.Mode.of(hudAuto) == null) hudAuto = "off";
         if (font == null) font = FontStyle.GALMURI; // 빼 버린 글꼴(프리텐다드·네오둥근모)을 골라 두었던 설정은 갈무리로
         if (expert != null && expert.cropHotkey == null) expert.cropHotkey = new ArrayList<>();
         hudScale = Math.max(50, Math.min(100, hudScale));

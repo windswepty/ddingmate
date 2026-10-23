@@ -19,7 +19,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "dodam",
@@ -36,7 +38,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "seoki",
@@ -53,7 +57,9 @@
         "red": "ff7b72",
         "gold": "ffd060",
         "blue": "8ab4f8"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "duri",
@@ -70,7 +76,9 @@
         "red": "ff7b72",
         "gold": "f2c860",
         "blue": "8ab4f8"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "deumjik",
@@ -87,7 +95,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "hotang",
@@ -104,7 +114,9 @@
         "red": "ff7b72",
         "gold": "f2c860",
         "blue": "8ab4f8"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "hani",
@@ -121,7 +133,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "bareum",
@@ -138,7 +152,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "nuri",
@@ -155,7 +171,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "kai",
@@ -172,7 +190,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "roni",
@@ -189,7 +209,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "milky",
@@ -206,7 +228,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "sharky",
@@ -223,7 +247,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "pos",
@@ -240,7 +266,9 @@
         "red": "ff7b72",
         "gold": "f2d06a",
         "blue": "8ab4f8"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "fix",
@@ -257,7 +285,9 @@
         "red": "ff7b72",
         "gold": "f2c860",
         "blue": "8ab4f8"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "garam",
@@ -274,7 +304,9 @@
         "red": "c8402f",
         "gold": "a86a10",
         "blue": "2f62b0"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
     },
     {
       "id": "lua",
@@ -291,7 +323,560 @@
         "red": "ff7b72",
         "gold": "ffe08a",
         "blue": "9ad0ff"
-      }
+      },
+      "group": "동물 NPC",
+      "hasMascot": true
+    },
+    {
+      "id": "region_spawn",
+      "name": "스폰",
+      "role": "지역",
+      "place": "스폰 광장",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "2e2a40",
+        "soft": "6e6880",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "지역",
+      "hasMascot": false
+    },
+    {
+      "id": "region_wild",
+      "name": "야생",
+      "role": "지역",
+      "place": "야생 들판",
+      "dark": false,
+      "title": "1e3048",
+      "titleShadow": false,
+      "colors": {
+        "text": "233a1e",
+        "soft": "5e7050",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "지역",
+      "hasMascot": false
+    },
+    {
+      "id": "region_village",
+      "name": "마을",
+      "role": "지역",
+      "place": "에버그린 마을",
+      "dark": false,
+      "title": "fff4e0",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a2a1e",
+        "soft": "8a7262",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "지역",
+      "hasMascot": false
+    },
+    {
+      "id": "region_serenity",
+      "name": "세레니티",
+      "role": "지역",
+      "place": "세레니티 섬 마을",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "1e3a44",
+        "soft": "5a7a80",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "지역",
+      "hasMascot": false
+    },
+    {
+      "id": "region_tinyland",
+      "name": "타이니랜드",
+      "role": "지역",
+      "place": "타이니랜드",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "4a3a5a",
+        "soft": "8a7a98",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "지역",
+      "hasMascot": false
+    },
+    {
+      "id": "region_noctila",
+      "name": "노크틸라",
+      "role": "지역",
+      "place": "노크틸라 사냥터",
+      "dark": true,
+      "title": "f2e6ff",
+      "titleShadow": true,
+      "colors": {
+        "text": "f2ecfa",
+        "soft": "a89cbc",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "f2c860",
+        "blue": "8ab4f8"
+      },
+      "group": "지역",
+      "hasMascot": false
+    },
+    {
+      "id": "season_winter",
+      "name": "겨울·크리스마스",
+      "role": "계절·행사",
+      "place": "눈 오는 크리스마스",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a1e1e",
+        "soft": "7a5a5a",
+        "green": "2e7a3e",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "계절·행사",
+      "hasMascot": false
+    },
+    {
+      "id": "season_spring",
+      "name": "봄노래",
+      "role": "계절·행사",
+      "place": "벚꽃 봄노래",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "4a2a3a",
+        "soft": "8a6a7a",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "계절·행사",
+      "hasMascot": false
+    },
+    {
+      "id": "season_summer",
+      "name": "여름 해변",
+      "role": "계절·행사",
+      "place": "여름 휴양지 해변",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "1e3a50",
+        "soft": "5a7488",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "계절·행사",
+      "hasMascot": false
+    },
+    {
+      "id": "season_moon",
+      "name": "가을 달토끼",
+      "role": "계절·행사",
+      "place": "보름달 달토끼",
+      "dark": true,
+      "title": "ffe9b0",
+      "titleShadow": true,
+      "colors": {
+        "text": "f4f0ff",
+        "soft": "aaa6c8",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "ffd870",
+        "blue": "8ab4f8"
+      },
+      "group": "계절·행사",
+      "hasMascot": false
+    },
+    {
+      "id": "season_chuseok",
+      "name": "추석",
+      "role": "계절·행사",
+      "place": "한가위 추석",
+      "dark": false,
+      "title": "f2d07a",
+      "titleShadow": true,
+      "colors": {
+        "text": "2a2438",
+        "soft": "6a6478",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "계절·행사",
+      "hasMascot": false
+    },
+    {
+      "id": "season_anniv",
+      "name": "1주년",
+      "role": "계절·행사",
+      "place": "띵타이쿤 1주년",
+      "dark": false,
+      "title": "ffe38a",
+      "titleShadow": true,
+      "colors": {
+        "text": "2a2a4a",
+        "soft": "6a6a88",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a87a10",
+        "blue": "2f62b0"
+      },
+      "group": "계절·행사",
+      "hasMascot": false
+    },
+    {
+      "id": "ivy",
+      "name": "아이비",
+      "role": "바리스타 손님",
+      "place": "분홍빛 카페 손님",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a2a34",
+        "soft": "7a6474",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "sally",
+      "name": "샐리",
+      "role": "바리스타 손님",
+      "place": "빨간 두건 손님",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "2a2a44",
+        "soft": "6a6a84",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "vincent",
+      "name": "빈센트",
+      "role": "바리스타 손님",
+      "place": "체크 재킷 손님",
+      "dark": false,
+      "title": "f2d6a0",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a2a1e",
+        "soft": "7a6858",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "wendy",
+      "name": "웬디",
+      "role": "바리스타 손님",
+      "place": "리본 단 손님",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a2a24",
+        "soft": "7a6860",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "evan",
+      "name": "에반",
+      "role": "밀렵꾼",
+      "place": "남색 재킷 밀렵꾼",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "1e2a44",
+        "soft": "5e6a84",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "jack",
+      "name": "잭",
+      "role": "밀렵꾼",
+      "place": "목도리 밀렵꾼",
+      "dark": false,
+      "title": "fff0e6",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a221a",
+        "soft": "7a625a",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "joy",
+      "name": "조이",
+      "role": "밀렵꾼",
+      "place": "강철 갑옷 밀렵꾼",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "1e2234",
+        "soft": "5e6274",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "lia",
+      "name": "리아",
+      "role": "밀렵꾼",
+      "place": "금발 기사 밀렵꾼",
+      "dark": false,
+      "title": "4a3410",
+      "titleShadow": false,
+      "colors": {
+        "text": "3a2e12",
+        "soft": "7a6e52",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "paul",
+      "name": "폴",
+      "role": "밀렵꾼",
+      "place": "고글 쓴 밀렵꾼",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "2e281e",
+        "soft": "6e6858",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "사람 NPC",
+      "hasMascot": false
+    },
+    {
+      "id": "expert_mining",
+      "name": "채광",
+      "role": "전문가",
+      "place": "깊은 광산",
+      "dark": true,
+      "title": "ffd86a",
+      "titleShadow": true,
+      "colors": {
+        "text": "f4f0e8",
+        "soft": "b0a89c",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "ffd86a",
+        "blue": "8ab4f8"
+      },
+      "group": "전문가",
+      "hasMascot": false
+    },
+    {
+      "id": "expert_ocean",
+      "name": "해양",
+      "role": "전문가",
+      "place": "깊고 푸른 바다",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "16304e",
+        "soft": "56708e",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "전문가",
+      "hasMascot": false
+    },
+    {
+      "id": "expert_farm",
+      "name": "재배",
+      "role": "전문가",
+      "place": "푸른 텃밭",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "2a3a1a",
+        "soft": "6a7650",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "전문가",
+      "hasMascot": false
+    },
+    {
+      "id": "expert_hunt",
+      "name": "사냥",
+      "role": "전문가",
+      "place": "깊은 사냥 숲",
+      "dark": false,
+      "title": "f6eed8",
+      "titleShadow": true,
+      "colors": {
+        "text": "2a2014",
+        "soft": "6a5e4e",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "전문가",
+      "hasMascot": false
+    },
+    {
+      "id": "time_dawn",
+      "name": "새벽",
+      "role": "시간대",
+      "place": "동트는 새벽",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a304a",
+        "soft": "7a7088",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "시간대",
+      "hasMascot": false
+    },
+    {
+      "id": "time_day",
+      "name": "낮",
+      "role": "시간대",
+      "place": "맑은 한낮",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "1e3048",
+        "soft": "5a6e84",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "시간대",
+      "hasMascot": false
+    },
+    {
+      "id": "time_sunset",
+      "name": "노을",
+      "role": "시간대",
+      "place": "붉은 노을",
+      "dark": false,
+      "title": "ffffff",
+      "titleShadow": true,
+      "colors": {
+        "text": "3a1e14",
+        "soft": "7a5a50",
+        "green": "2f8a3a",
+        "red": "c8402f",
+        "gold": "a86a10",
+        "blue": "2f62b0"
+      },
+      "group": "시간대",
+      "hasMascot": false
+    },
+    {
+      "id": "time_night",
+      "name": "밤",
+      "role": "시간대",
+      "place": "별 밤",
+      "dark": true,
+      "title": "e8ecff",
+      "titleShadow": true,
+      "colors": {
+        "text": "eef0ff",
+        "soft": "a8acc8",
+        "green": "7bd88f",
+        "red": "ff7b72",
+        "gold": "ffe08a",
+        "blue": "8ab4f8"
+      },
+      "group": "시간대",
+      "hasMascot": false
     }
   ]
 }

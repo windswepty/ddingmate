@@ -114,10 +114,11 @@ def band_x():
 SKINS = []
 
 
-def skin(id_, name, place, dark, colors, title, title_shadow=True):
+def skin(id_, name, place, dark, colors, title, title_shadow=True, group='동물 NPC', mascot=True, role=None):
+    """판 한 벌 등록. group: 묶음(설정·꾸미기 창에서 나눠 보임), mascot: HUD 친구 그림이 있는지, role: 친구 설명(없으면 묶음 이름)"""
     def deco(fn):
         SKINS.append(dict(id=id_, name=name, place=place, dark=dark, colors=colors, title=title,
-                          titleShadow=title_shadow, build=fn))
+                          titleShadow=title_shadow, build=fn, group=group, hasMascot=mascot, role=role or group))
         return fn
     return deco
 

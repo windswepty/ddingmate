@@ -7,6 +7,7 @@ sys.path.insert(0, HERE)
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 import mascots  # noqa: E402
 import skins as S  # noqa: E402
+import skins_more  # noqa: E402,F401
 
 FONT_DIR = os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'ddingmate', 'font')
 BODY = ImageFont.truetype(os.path.join(FONT_DIR, 'galmuri9.ttf'), 10)
@@ -52,8 +53,8 @@ def text(d, xy, s, col, font, shadow):
 def mock(sk, mascot_im):
     panel, head = S.build(sk)
     w, h = 132, 70
-    can = Image.new('RGBA', (w + 40, h + 46), (0, 0, 0, 0))
-    x, y = 8, 34
+    can = Image.new("RGBA", (w + 40, h + 54), (0, 0, 0, 0))
+    x, y = 8, 42
     can.alpha_composite(nine(panel, w + 2 * S.O, h + 2 * S.O, S.B), (x - S.O, y - S.O))
     can.alpha_composite(nine(head, w + 2 * S.O, S.HH, (10, 0, 10, 0)), (x - S.O, y - S.O))
     d = ImageDraw.Draw(can)
@@ -70,16 +71,19 @@ def mock(sk, mascot_im):
         lw = d.textlength(left, font=BODY)
         text(d, (x + w - 6 - lw, ty), left, c, BODY, dark)
         ty += 12
-    can.alpha_composite(mascot_im, (x + w - 30 - 6, y - mascots.PAW_ROW))
+    if mascot_im is not None:
+        can.alpha_composite(mascot_im, (x + w - mascots.W - 6, y - mascots.PAW_ROW))
     return can
 
 
-def main(out):
+def main(out, group=None):
     by_id = {m[0]: m for m in mascots.ALL}
     tiles = []
     for sk in S.SKINS:
-        m = by_id[sk['id']]
-        im = mock(sk, m[3]().render())
+        if group and sk.get('group') != group:
+            continue
+        m = by_id.get(sk['id'])
+        im = mock(sk, m[3]().render() if m and sk.get('hasMascot', True) else None)
         big = im.resize((im.width * K, im.height * K), Image.NEAREST)
         t = Image.new('RGBA', (big.width, big.height + 30), (54, 60, 54, 255))
         # 게임 화면 같은 바탕(풀·하늘 느낌)
@@ -100,4 +104,4 @@ def main(out):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
