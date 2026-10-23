@@ -610,7 +610,7 @@ public class DdingMateScreen extends Screen {
                     if (v instanceof kr.ddingmate.ui.HudSkins.Skin k) kr.ddingmate.ui.HudSkins.applySet(cfg, k);
                     rebuild();
                 });
-        set.setTooltip(Tooltip.of(Text.literal("동물 NPC · 지역 · 계절·행사 · 사람 NPC · 전문가 · 시간대 세트의 판 · 제목 줄(· HUD 친구)을 한꺼번에 껴요.\n"
+        set.setTooltip(Tooltip.of(Text.literal("동물 NPC · 지역 · 계절·행사 · 전문가 · 시간대 세트의 판 · 제목 줄(· HUD 친구)을 한꺼번에 껴요.\n"
                 + "아래에서 하나씩 따로 바꾸면 '직접 조합'이 돼요.")));
         List<Object> panels = new ArrayList<>(List.of(kr.ddingmate.ui.HudTheme.values()));
         panels.addAll(npcs);

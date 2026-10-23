@@ -102,11 +102,11 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             // NPC 세트 17벌: 그림 세 장(판·제목 줄·친구)이 GUI 아틀라스에 올라왔고, 판 · 친구가 있어도 HUD 배치는 그대로
             ctx.runOnClient(c -> {
                 var skins = kr.ddingmate.ui.HudSkins.all();
-                // 동물 NPC 17 · 지역 6 · 계절·행사 6 · 사람 NPC 9 · 전문가 4 · 시간대 4
-                if (skins.size() != 46) throw new AssertionError("HUD 세트 수: " + skins.size());
+                // 동물 NPC 17 · 지역 6 · 계절·행사 6 · 전문가 4 · 시간대 4 (사람 NPC 묶음은 2026-10-23 뺐다)
+                if (skins.size() != 37) throw new AssertionError("HUD 세트 수: " + skins.size());
                 var groups = new java.util.LinkedHashMap<String, Integer>();
                 skins.forEach(s -> groups.merge(s.group(), 1, Integer::sum));
-                if (!groups.equals(java.util.Map.of("동물 NPC", 17, "지역", 6, "계절·행사", 6, "사람 NPC", 9, "전문가", 4, "시간대", 4)))
+                if (!groups.equals(java.util.Map.of("동물 NPC", 17, "지역", 6, "계절·행사", 6, "전문가", 4, "시간대", 4)))
                     throw new AssertionError("묶음별 수가 다름: " + groups);
                 // HUD 친구는 동물 NPC 17명만(사람 캐릭터는 2026-10-23 뺐다)
                 if (kr.ddingmate.ui.HudSkins.mascots().size() != 17) throw new AssertionError("HUD 친구 수: " + kr.ddingmate.ui.HudSkins.mascots().size());
@@ -146,7 +146,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 var look = new kr.ddingmate.gui.HudLookScreen(null);
                 c.setScreen(look);
-                if (look.debugCards("세트") != 46 || look.debugCards("판 디자인") != 52 || look.debugCards("제목 줄") != 48
+                if (look.debugCards("세트") != 37 || look.debugCards("판 디자인") != 43 || look.debugCards("제목 줄") != 39
                         || look.debugCards("HUD 친구") != 18) throw new AssertionError("꾸미기 카드 수가 다름");
                 look.debugChoose("세트", 12); // 샤키
                 if (kr.ddingmate.ui.HudSkins.set() == null || !"sharky".equals(kr.ddingmate.ui.HudSkins.set().id()))

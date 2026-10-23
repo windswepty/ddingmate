@@ -1,4 +1,5 @@
-"""HUD 판 더 많이(2026-10-23 사용자 요청 순서): 지역 → 계절·행사 → 사람 NPC → 전문가 → 시간대.
+"""HUD 판 더 많이(2026-10-23 사용자 요청 순서): 지역 → 계절·행사 → 전문가 → 시간대.
+사람 NPC(바리스타 손님·밀렵꾼) 묶음은 만들었다가 사용자 요청으로 통째로 뺐다(2026-10-23).
 
 skins.py 와 같은 틀(판 40×40 나인슬라이스, 제목 줄 40×17)을 쓰고 SKINS 에 더한다.
 가운데 바탕은 늘 깨끗하게(무늬 없음), 장식은 테두리·귀퉁이·제목 줄·판 밖 3칸에만.
@@ -30,7 +31,6 @@ def frame_blocks(p, colors, size=6):
 
 GROUP_REGION = '지역'
 GROUP_SEASON = '계절·행사'
-GROUP_PEOPLE = '사람 NPC'
 GROUP_EXPERT = '전문가'
 GROUP_TIME = '시간대'
 
@@ -289,146 +289,6 @@ def season_anniv(p, h):
     for x, col in ((1, 'f08ab8'), (h.w - 3, '4a9ae8')):  # 풍선(판 위로)
         h.rect(x, 0, x + 2, 2, col)
         h.px(x, 2, '8a8aa0')
-
-
-# ================================================================ 5. 사람 NPC(바리스타 손님·밀렵꾼)
-# 판·제목 줄만. 사람 HUD 친구는 그려 봤지만 판과 어울리지 않아 뺐다(2026-10-23 사용자 "캐릭터는 삭제해줘")
-
-HEART = [".a.a.", "abaaa", "aaaaa", ".aaa.", "..a.."]
-
-
-@skin('ivy', '아이비', '분홍빛 카페 손님', False, lt(text='3a2a34', soft='7a6474'), 'ffffff', group=GROUP_PEOPLE, mascot=False, role='바리스타 손님')
-def ivy(p, h):
-    """아이비: 검은 테두리에 분홍 안쪽 선, 분홍 제목 줄 끝에 음료 컵, 하트 귀퉁이"""
-    frame(p, '1a1a20', '4e4e58', '2e2e36', 'fff8fb', thick=2, hi='f6aac8', lo='f6eef2')
-    for x, k in edge_x():
-        if k % 6 == 3:
-            p.px(x, P0 + 1, 'f6aac8'); p.px(P1 - 2, x, 'f6aac8')
-    p.corners(HEART, {'a': 'f06a98', 'b': 'ffc0d8'}, inset=0)
-    head_band(h, '5a1a3a', 'f08ab0', 'ffaecb', 'd86a94')
-    h.sprite(h.w - O - 7, O + 3, ["aaaa.", "abba.", "abbaa", "abba.", ".aa.."], {'a': 'ffffff', 'b': 'c89070'})  # 라떼 컵
-    for x, k in band_x():
-        if k % 7 == 2:
-            h.px(x, O + 2, 'ffe0ec')
-
-
-FLOWER = [".a.a.", "aabaa", ".aaa.", "..c..", ".cc.."]
-
-
-@skin('sally', '샐리', '빨간 두건 손님', False, lt(text='2a2a44', soft='6a6a84'), 'ffffff', group=GROUP_PEOPLE, mascot=False, role='바리스타 손님')
-def sally(p, h):
-    """샐리: 빨간 체크 테두리, 파란 제목 줄 아래 흰 레이스, 빨간 꽃 귀퉁이"""
-    frame(p, '5a1010', 'e0423a', 'b02a24', 'fffdf8', thick=3, hi='ffffff', lo='f4eee8')
-    for x in range(P0 + 1, P1 - 1):
-        for y in range(P0 + 1, P1 - 1):
-            if P0 + 4 <= x < P1 - 4 and P0 + 4 <= y < P1 - 4:
-                continue
-            if (x // 2 + y // 2) % 2 == 0:
-                p.px(x, y, 'f6908a')
-    p.corners(FLOWER, {'a': 'e0423a', 'b': 'ffd84a', 'c': '4e9a3c'}, inset=0)
-    head_band(h, '142a5a', '3a62c0', '5a82e0', '2a4a98')
-    for x, k in band_x():  # 레이스
-        h.px(x, HH - 2, 'ffffff' if k % 2 == 0 else 'd8e0f4')
-
-
-@skin('vincent', '빈센트', '체크 재킷 손님', False, lt(text='3a2a1e', soft='7a6858'), 'f2d6a0', group=GROUP_PEOPLE, mascot=False, role='바리스타 손님')
-def vincent(p, h):
-    """빈센트: 베이지 체크 재킷 같은 테두리, 짙은 갈색 제목 줄에 금선, 커피콩 귀퉁이"""
-    frame(p, '3a2a1a', 'd6c09a', 'aa9068', 'fbf7f0', thick=3, hi='ffffff', lo='f0e8dc')
-    for x, k in edge_x():
-        if k % 4 == 0:
-            for y in (P0 + 1, P0 + 2, P0 + 3, P1 - 4, P1 - 3, P1 - 2):
-                p.px(x, y, '9a8058')
-            for yy in (P0 + 1, P0 + 2, P0 + 3, P1 - 4, P1 - 3, P1 - 2):
-                p.px(yy, x, '9a8058')
-    p.corners([".aa.", "abba", "abba", ".aa."], {'a': '5a3a24', 'b': '8a5a3a'}, inset=O)  # 커피콩
-    head_band(h, '1a120c', '4e3c30', '6a5444', '362a20')
-    for x in range(O + 1, h.w - O - 1):
-        h.px(x, HH - 2, 'c8a050')
-
-
-BOW = ["aa.aa", "abcba", "aa.aa"]
-
-
-@skin('wendy', '웬디', '리본 단 손님', False, lt(text='3a2a24', soft='7a6860'), 'ffffff', group=GROUP_PEOPLE, mascot=False, role='바리스타 손님')
-def wendy(p, h):
-    """웬디: 부드러운 갈색 테두리에 검은 안쪽 선, 갈색 제목 줄 끝에 검은 리본"""
-    frame(p, '2a1a12', 'c09074', '9a6e54', 'fffaf6', thick=2, hi='3a3a42', lo='f2ebe6')
-    p.corners(BOW, {'a': '2e2e36', 'b': '4e4e58', 'c': '6a6a74'}, inset=1)
-    head_band(h, '3a2014', '9a6e54', 'b88a6e', '7a523c')
-    h.sprite(h.w - 10, O + 4, BOW, {'a': '2e2e36', 'b': '4e4e58', 'c': '6a6a74'})
-    for x, k in band_x():
-        if k % 8 == 4:
-            h.px(x, O + 2, 'd8b49a')
-
-
-@skin('evan', '에반', '남색 재킷 밀렵꾼', False, lt(text='1e2a44', soft='5e6a84'), 'ffffff', group=GROUP_PEOPLE, mascot=False, role='밀렵꾼')
-def evan(p, h):
-    """에반: 남색 재킷 테두리에 금 단추, 남색 제목 줄 아래 회색 깃"""
-    frame(p, '0e1a3a', '3a5a98', '1e3466', 'f4f6fa', thick=2, hi='ffffff', lo='e8ecf2')
-    for x, k in edge_x():
-        if k % 8 == 4:
-            p.px(x, P0 + 1, 'f2c63a'); p.px(P1 - 2, x, 'f2c63a'); p.px(x, P1 - 2, 'f2c63a'); p.px(P0 + 1, x, 'f2c63a')
-    p.corners(["aaa.", "abba", "abba", ".aa."], {'a': 'a8b4c8', 'b': 'e2e8f0'}, inset=O)
-    head_band(h, '0a1430', '2c4a86', '4a6aa8', '1e3466')
-    for x in range(O + 1, h.w - O - 1):
-        h.px(x, HH - 2, 'a8b4c8')
-
-
-@skin('jack', '잭', '목도리 밀렵꾼', False, lt(text='3a221a', soft='7a625a'), 'fff0e6', group=GROUP_PEOPLE, mascot=False, role='밀렵꾼')
-def jack(p, h):
-    """잭: 가죽 테두리에 바느질, 적갈색 목도리 줄무늬 제목 줄, 화살촉 귀퉁이"""
-    frame(p, '24140e', '8a6450', '5a3e30', 'faf4ee', thick=2, hi='ffffff', lo='f0e6dc')
-    for x, k in edge_x():
-        if k % 3 == 0:
-            p.px(x, P0 + 1, 'd8b890'); p.px(P1 - 2, x, 'c8a87e')
-    p.corners(["..a", ".ab", "abb", ".c.", "c.."], {'a': 'c8ccd4', 'b': '8a909c', 'c': '7a5232'}, inset=0)
-    head_band(h, '360e0c', '8e3a34', 'b45a52', '6a2622')
-    for x, k in band_x():
-        if k % 4 == 0:
-            h.px(x, O + 2, '6a2622'); h.px(x, HH - 3, '6a2622')
-
-
-SHIELD = ["aaaaa", "abbba", "abcba", ".aba.", "..a.."]
-
-
-@skin('joy', '조이', '강철 갑옷 밀렵꾼', False, lt(text='1e2234', soft='5e6274'), 'ffffff', group=GROUP_PEOPLE, mascot=False, role='밀렵꾼')
-def joy(p, h):
-    """조이: 강철 갑옷 테두리에 리벳, 파란 제목 줄에 강철 테, 방패 귀퉁이"""
-    frame(p, '22242a', 'd2d6de', '8a909c', 'f4f6fa', thick=3, hi='ffffff', lo='e6eaf0')
-    for x, k in edge_x():
-        if k % 6 == 3:
-            p.px(x, P0 + 2, 'ffffff'); p.px(x, P1 - 3, '5e646e'); p.px(P0 + 2, x, 'ffffff'); p.px(P1 - 3, x, '5e646e')
-    p.corners(SHIELD, {'a': '5e646e', 'b': '3a62c0', 'c': 'e2e8f0'}, inset=0)
-    head_band(h, '142a5a', '3a62c0', '5a82e0', '2a4a98')
-    for x in range(O + 1, h.w - O - 1):
-        h.px(x, O + 1, 'd2d6de'); h.px(x, HH - 2, 'd2d6de')
-
-
-@skin('lia', '리아', '금발 기사 밀렵꾼', False, lt(text='3a2e12', soft='7a6e52'), '4a3410', False, group=GROUP_PEOPLE, mascot=False, role='밀렵꾼')
-def lia(p, h):
-    """리아: 강철에 금테를 두른 테두리, 금발빛 제목 줄, 별 귀퉁이"""
-    frame(p, '2a2414', 'd2d6de', '8a909c', 'fffdf4', thick=3, hi='f2c64a', lo='f2eee0')
-    for x, k in edge_x():
-        if k % 8 == 0:
-            p.px(x, P0 + 2, 'f2c64a'); p.px(P0 + 2, x, 'f2c64a'); p.px(x, P1 - 3, 'c89a26'); p.px(P1 - 3, x, 'c89a26')
-    p.corners(["..a..", ".aba.", "abbba", ".aba.", "..a.."], {'a': 'f2c64a', 'b': 'fff6c0'}, inset=0)
-    head_band(h, '5a4410', 'f6d886', 'fff2b8', 'dab45a')
-    for x, k in band_x():
-        if k % 5 == 2:
-            h.px(x, O + 2, 'fffbe0')
-
-
-@skin('paul', '폴', '고글 쓴 밀렵꾼', False, lt(text='2e281e', soft='6e6858'), 'ffffff', group=GROUP_PEOPLE, mascot=False, role='밀렵꾼')
-def paul(p, h):
-    """폴: 황갈색 가죽 테두리, 카키 제목 줄 끝에 파란 고글, 빨간 반다나 귀퉁이"""
-    frame(p, '3a2e1e', 'ccbc9c', 'a49478', 'fbf8f0', thick=2, hi='ffffff', lo='f0ebe0')
-    for x, k in edge_x():
-        if k % 6 == 0:
-            p.px(x, P0 + 1, '8a7a5a'); p.px(P1 - 2, x, '8a7a5a')
-    p.corners(["aaaaa", ".aba.", "..a.."], {'a': 'd8473f', 'b': 'ff8a7a'}, inset=O)
-    head_band(h, '2a2214', '8a7a5a', 'a89878', '6a5c42')
-    h.sprite(h.w - 10, O + 4, [".aa..aa.", "abbaabba", "abbaabba", ".aa..aa."], {'a': '5a4434', 'b': '7ab0f0'})  # 고글
 
 
 # ================================================================ 6. 전문가

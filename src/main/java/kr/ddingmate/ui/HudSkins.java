@@ -36,7 +36,7 @@ public final class HudSkins {
     public static final String GROUP_NPC = "동물 NPC";
 
     /**
-     * @param group     묶음(동물 NPC · 지역 · 계절·행사 · 사람 NPC · 전문가 · 시간대)
+     * @param group     묶음(동물 NPC · 지역 · 계절·행사 · 전문가 · 시간대)
      * @param hasMascot 이 세트에 HUD 친구 그림이 있는지(지역·계절 등은 판·제목 줄만)
      */
     public record Skin(String id, String name, String role, String place, boolean dark, int title, boolean titleShadow,
