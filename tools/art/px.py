@@ -28,9 +28,45 @@ class Tone:
         self.rim = mix(self.shade, self.dark, 0.35)  # 가장 바깥 그늘(한 칸)
 
 
+def _toward(h, target, deg):
+    """색상 h(0~1)를 target 쪽으로 deg 도만큼(짧은 쪽으로) 돌린다"""
+    d = ((target - h + 0.5) % 1.0) - 0.5
+    step = deg / 360.0
+    return (h + max(-step, min(step, d))) % 1.0
+
+
+def _shift(c, target, deg, sat=1.0, val=1.0):
+    import colorsys
+    r, g, b = c[0] / 255, c[1] / 255, c[2] / 255
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    if s < 0.06:  # 회색·흰색은 색이 거의 없으니 조금만
+        deg *= 0.3
+    h = _toward(h, target, deg)
+    r, g, b = colorsys.hsv_to_rgb(h, min(1.0, s * sat), min(1.0, v * val))
+    return (round(r * 255), round(g * 255), round(b * 255), 255)
+
+
+_HD = {}
+
+
+def hd_tone(t):
+    """HD 색 띠(2026-10-23, PIXEL_GUIDE.md 3장): 그늘은 보라(270°) 쪽으로 차갑게·조금 진하게, 밝음은 노랑(55°) 쪽으로 따뜻하게"""
+    k = id(t)
+    if k not in _HD:
+        n = Tone.__new__(Tone)
+        n.base = t.base
+        n.light = _shift(t.light, 55 / 360, 8, 1.0, 1.0)
+        n.shade = _shift(t.shade, 270 / 360, 12, 1.08, 0.97)
+        n.dark = _shift(t.dark, 270 / 360, 14, 1.05, 0.95)
+        n.rim = mix(n.shade, n.dark, 0.35)
+        _HD[k] = (t, n)  # t 를 쥐고 있어 id 가 재사용되지 않게
+    return _HD[k][1]
+
+
 class Canvas:
     def __init__(self, w, h, oy=0):
         self.w, self.h, self.oy = w, h, oy
+        self.hd = False  # True: add() 하는 색 띠를 hd_tone 으로
         self.layers = []  # (mask set, tone, opts)
         self.dots = {}
         self.softs = []  # (x, y, rgba, alpha)
@@ -80,7 +116,7 @@ class Canvas:
     def add(self, mask, tone, line=False, shade=1, light=False):
         """shade: 오른쪽 아래 그늘 두께(0~3, 2 이상이면 맨 가장자리 한 칸은 더 짙게), light: 왼쪽 위 밝은 테두리,
         line: 아래 층과 맞닿은 곳에 안쪽 선"""
-        self.layers.append((set(mask), tone, dict(line=line, shade=int(shade), light=light)))
+        self.layers.append((set(mask), hd_tone(tone) if self.hd else tone, dict(line=line, shade=int(shade), light=light)))
         return mask
 
     def dot(self, x, y, color):

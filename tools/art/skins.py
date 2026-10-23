@@ -8,7 +8,7 @@
 """
 from PIL import Image
 
-from px import hexc, mix
+from px import _shift, hexc, mix
 
 O = 3          # 판 밖 장식 자리
 PW = 40        # 판 그림 크기
@@ -61,7 +61,10 @@ def edge_x():
 
 
 def frame(t, outline, light, dark, body, thick=2, hi=None, lo=None, round_=True):
-    """판 기본: 둥근 외곽선 + 두께 thick 의 테두리(위·왼쪽 밝게, 아래·오른쪽 어둡게) + 바탕"""
+    """판 기본: 둥근 외곽선 + 두께 thick 의 테두리(위·왼쪽 밝게, 아래·오른쪽 어둡게) + 바탕.
+    HD(2026-10-23): 밝은 면은 노랑 쪽으로 따뜻하게, 그늘 면은 보라 쪽으로 차갑게 살짝 돌린다"""
+    light = _shift(c_(light), 55 / 360, 6)
+    dark = _shift(c_(dark), 270 / 360, 10, 1.06, 0.96)
     t.rect(P0 + 1, P0 + 1, P1 - 1, P1 - 1, body)
     for i in range(thick):
         a, b = P0 + 1 + i, P1 - 2 - i
@@ -139,25 +142,80 @@ def dk(**kw):
     return d
 
 
-SUNFLOWER = ["..aba..", ".abbba.", "abbcbba", "bbcdcbb", "abbcbba", ".abbba.", "..aba.."]
+
+
+# 보리 HD 판(2026-10-23): 판자 결 · 이음매 · 못이 있는 울타리, 씨앗 있는 해바라기(귀퉁이 8칸 안), 밀짚 엮음 + 빨간 체크 리본 제목 줄
+WOOD = ['5a3420', '9c6440', 'c98a52', 'e6ad6c', 'f6d29a']  # 외곽 · 그늘 · 기본 · 밝음 · 하이라이트(hue shift)
+# 귀퉁이 그림은 나인슬라이스 귀퉁이(8칸) 안에만: 7×7(8번째 칸부터는 변이라 되풀이된다)
+SUNFLOWER_HD = [
+    "..aba..",
+    ".abfba.",
+    "abcdcba",
+    "bfdedfb",
+    "abcdcba",
+    ".abfba.",
+    "..aba..",
+]
+SUN_PAL = {'a': 'e2861c', 'b': 'ffcd3a', 'c': 'a85a24', 'd': '6e3612', 'e': 'b8742e', 'f': 'fff0a0'}
 
 
 @skin('bori', '보리', '햇살 농가', False, lt(text='3e2a14'), '4a2e10', False)
 def bori(p, h):
-    frame(p, '5a3a1e', 'e6b878', 'b98448', 'fff9ec', thick=2, hi='ffffff', lo='f2e6cc')
-    for x, k in edge_x():  # 울타리 판자 이음매
-        if k % 6 == 0:
-            for y in (P0 + 1, P0 + 2, P1 - 3, P1 - 2):
-                p.px(x, y, '8a5a2e')
-            p.px(P0 + 1, x, '8a5a2e'); p.px(P0 + 2, x, '8a5a2e')
-            p.px(P1 - 3, x, '8a5a2e'); p.px(P1 - 2, x, '8a5a2e')
-    p.corners(SUNFLOWER, {'a': 'f4b41a', 'b': 'ffd23a', 'c': 'a8642a', 'd': '6a3a14'})
-    head_band(h, '5a3a1e', 'efc660', 'ffe08a', 'c99a35')
-    for x, k in band_x():
-        if k % 4 == 0:
-            h.px(x, O + 2, 'e0b44e'); h.px(x + 2, HH - 3, 'e0b44e')
-    h.sprite(0, 0, SUNFLOWER, {'a': 'f4b41a', 'b': 'ffd23a', 'c': 'a8642a', 'd': '6a3a14'})
-    h.sprite(h.w - 7, 0, SUNFLOWER, {'a': 'f4b41a', 'b': 'ffd23a', 'c': 'a8642a', 'd': '6a3a14'}, flip_x=True)
+    p.rect(P0 + 1, P0 + 1, P1 - 1, P1 - 1, 'fffaf0')  # 가운데: 따뜻한 크림, 무늬 없음
+    # 울타리 판자 테두리 3칸: 위·왼쪽 밝게, 아래·오른쪽 그늘(빛은 왼쪽 위)
+    for i, (li, dk) in enumerate([(WOOD[4], WOOD[1]), (WOOD[3], WOOD[2]), (WOOD[3], WOOD[2])]):
+        a, b = P0 + 1 + i, P1 - 2 - i
+        p.rect(a, a, b + 1, a + 1, li); p.rect(a, a, a + 1, b + 1, li)
+        p.rect(a, b, b + 1, b + 1, dk); p.rect(b, a, b + 1, b + 1, dk)
+    # 판자 결: 줄마다 길이를 다르게(같은 길이로 나란히 서면 밴딩)
+    for x, k in edge_x():
+        if k in (2, 3, 4, 11, 12, 17, 18, 19, 20):
+            p.px(x, P0 + 2, WOOD[2]); p.px(x, P1 - 3, WOOD[1])
+        if k in (6, 7, 14, 15, 16, 22):
+            p.px(P0 + 2, x, WOOD[2]); p.px(P1 - 3, x, WOOD[1])
+        if k == 9:  # 판자 이음매 + 못
+            for y in (P0 + 1, P0 + 2, P0 + 3):
+                p.px(x, y, WOOD[1])
+            for y in (P1 - 4, P1 - 3, P1 - 2):
+                p.px(x, y, WOOD[1])
+            for y in (P0 + 1, P0 + 2, P0 + 3):
+                p.px(y, x, WOOD[1])
+            for y in (P1 - 4, P1 - 3, P1 - 2):
+                p.px(y, x, WOOD[1])
+            p.px(x + 2, P0 + 2, '6e5a4e'); p.px(x + 2, P1 - 3, '6e5a4e')
+    # 안쪽 테두리 한 줄: 위·왼쪽 흰 빛, 아래·오른쪽 옅은 그늘
+    a, b = P0 + 4, P1 - 5
+    p.rect(a, a, b + 1, a + 1, 'ffffff'); p.rect(a, a, a + 1, b + 1, 'ffffff')
+    p.rect(a, b, b + 1, b + 1, 'f1e2c6'); p.rect(b, a + 1, b + 1, b + 1, 'f1e2c6')
+    # 외곽선(둥근 귀퉁이)
+    o = WOOD[0]
+    p.rect(P0 + 1, P0, P1 - 1, P0 + 1, o); p.rect(P0 + 1, P1 - 1, P1 - 1, P1, o)
+    p.rect(P0, P0 + 1, P0 + 1, P1 - 1, o); p.rect(P1 - 1, P0 + 1, P1, P1 - 1, o)
+    for x, y in ((P0 + 1, P0 + 1), (P1 - 2, P0 + 1), (P0 + 1, P1 - 2), (P1 - 2, P1 - 2)):
+        p.px(x, y, o)
+    # 귀퉁이 해바라기(7×7)
+    p.corners(SUNFLOWER_HD, SUN_PAL)
+    # 제목 줄: 금빛 띠
+    gold = ['5a3a1e', 'c99035', 'eebd52', 'ffd977', 'fff1b8']
+    h.rect(O + 1, O + 1, h.w - O - 1, HH - 1, gold[2])
+    h.rect(O + 2, O + 1, h.w - O - 2, O + 2, gold[4])          # 윗줄 빛
+    h.rect(O + 1, HH - 2, h.w - O - 1, HH - 1, gold[1])        # 아랫줄 그늘
+    # 밀짚 엮음: 글자 자리(6~13줄)는 한 색, 위 4·5줄과 아래 14줄에만 엇갈린 벽돌
+    for x in range(O + 1, h.w - O - 1):
+        if (x + 0) % 4 == 0:
+            h.px(x, O + 2, gold[1])
+        if (x + 2) % 4 == 0:
+            h.px(x, HH - 3, gold[1])
+        if x % 4 == 1:
+            h.px(x, O + 2, gold[3])
+    # 빨간 체크 리본 한 줄(위)
+    for x in range(O + 1, h.w - O - 1):
+        h.px(x, O + 1, 'e2574a' if x % 2 else 'ff8a7a')
+    o = gold[0]
+    h.rect(O + 1, O, h.w - O - 1, O + 1, o); h.rect(O + 1, HH - 1, h.w - O - 1, HH, o)
+    h.rect(O, O + 1, O + 1, HH - 1, o); h.rect(h.w - O - 1, O + 1, h.w - O, HH - 1, o)
+    h.sprite(0, 0, SUNFLOWER_HD, SUN_PAL)
+    h.sprite(h.w - 7, 0, SUNFLOWER_HD, SUN_PAL, flip_x=True)
 
 
 SPROUT = ["......", ".aa.bb", "aaacbb", ".a.c..", "...c..", "...c.."]
@@ -180,6 +238,14 @@ def dodam(p, h):
             h.px(x, HH - 4, '946640')
     for x in (O + 3, h.w - O - 4):  # 못
         h.px(x, O + 3, 'e6e0d0'); h.px(x, HH - 4, 'e6e0d0')
+    # HD: 테두리 풀잎 결(길이 엇갈림), 새싹 윤기
+    for x, k in edge_x():
+        if k in (5, 6, 13, 19, 20, 21):
+            p.px(x, P0 + 2, 'a8dc8a')
+        if k in (2, 9, 10, 16):
+            p.px(x, P1 - 3, '3f7f32')
+    for x, y in ((1, 1), (PW - 2, 1), (1, PW - 2), (PW - 2, PW - 2)):
+        p.px(x + (1 if x < 5 else -1), y + (1 if y < 5 else -1), 'c8f0a8')
 
 
 BOLT = [".aa.", "abba", "abca", ".aa."]
@@ -197,6 +263,16 @@ def seoki(p, h):
     for x in range(O + 1, h.w - O - 1):  # 위 두 줄 안전 줄무늬(노랑·검정 사선)
         for y in (O + 1, O + 2):
             h.px(x, y, 'f2c230' if ((x + y) // 3) % 2 == 0 else '2a2a2e')
+    # HD: 돌 테두리 금(짧고 길게 엇갈림) + 위쪽 밝은 돌 조각, 볼트 윤기
+    for x, k in edge_x():
+        if k in (5, 6, 18):
+            p.px(x, P0 + 2, '6e737c')
+        if k in (12, 13, 14):
+            p.px(x, P1 - 3, '3a3d44')
+        if k in (7, 21):
+            p.px(P0 + 2, x, '6e737c')
+    for x, y in ((O + 2, O + 2), (PW - O - 3, O + 2), (O + 2, PW - O - 3), (PW - O - 3, PW - O - 3)):
+        p.px(x, y, 'e6e9ee')
 
 
 @skin('duri', '두리', '강철 채석장', True, dk(text='fff2e0', soft='b8a89c'), 'fff4d8')
@@ -216,6 +292,12 @@ def duri(p, h):
             h.px(x, 1, 'ffd860')
         if k == 8:
             h.px(x, 0, 'ffb030')
+    # HD: 쇠 리벳 윤기 + 리벳 아래 그늘, 쇳판 긁힌 자국
+    for x, k in edge_x():
+        if k % 8 == 4:
+            p.px(x, P0 + 2, '3a3e46'); p.px(P0 + 2, x, '3a3e46')
+        if k in (9, 10, 17):
+            p.px(x, P1 - 3, '5a5e66')
 
 
 LOG = [".aaaa.", "abbbba", "abccba", "abccba", "abbbba", ".aaaa."]
@@ -234,6 +316,12 @@ def deumjik(p, h):
         for y in (O + 1, O + 2, HH - 3, HH - 2):
             if (x // 2 + y // 2) % 2 == 0:
                 h.px(x, y, '6e1a17')
+    # HD: 나무껍질 결을 길고 짧게(같은 간격 줄무늬 없이), 통나무 귀퉁이 나이테 윤기
+    for x, k in edge_x():
+        if k in (2, 3, 11, 12, 13, 19):
+            p.px(x, P0 + 3, '7a5232')
+        if k in (7, 8, 16, 22):
+            p.px(P0 + 3, x, '7a5232')
 
 
 CLAW = ["a...", ".a.a", "..a.", "...a"]
@@ -251,6 +339,10 @@ def hotang(p, h):
     for x, k in band_x():  # 아래 털 장식
         if k % 3 == 0:
             h.px(x, HH - 2, 'f2ede4'); h.px(x + 1, HH - 1, 'd8d2c6')
+    # HD: 가죽 위쪽 윤기(성기게), 귀퉁이 발톱 끝 밝게
+    for x, k in edge_x():
+        if k in (4, 5, 13, 14, 15, 21):
+            p.px(x, P0 + 2, 'b8885e')
 
 
 RAINBOW = ['ff6b6b', 'ffa54a', 'ffd84a', '6fcf6a', '5aa8f0', 'b07ce8']
@@ -268,6 +360,10 @@ def hani(p, h):
     head_band(h, '1d2347', '4e5c9a', '6a7ab6', '3a4680')
     for x, k in band_x():  # 아래 무지개 띠
         h.px(x, HH - 2, RAINBOW[(k // 4) % 6])
+    # HD: 물감 점마다 왼쪽 위 흰 윤기, 테두리 안쪽 분홍 빛
+    for x, k in edge_x():
+        if k % 4 == 1:
+            p.px(x, P0 + 2, 'ffffff'); p.px(P0 + 2, x, 'ffffff')
 
 
 BRICK_PAL = {'a': 'b5563f', 'b': 'e8d6c6', 'c': '8e3e2c'}
@@ -289,6 +385,12 @@ def bareum(p, h):
             h.px(x, O + 1, '8ab4e8'); h.px(x, HH - 2, '8ab4e8')
         if k % 4 == 2:
             h.px(x, O + 2, '6a9ad8')
+    # HD: 벽돌마다 위쪽 밝은 모서리(한 장 걸러), 줄눈 아래 그늘
+    for x, k in edge_x():
+        if k % 12 in (1, 2, 3):
+            p.px(x, P0 + 1, 'e08a72')
+        if k % 6 == 1:
+            p.px(x, P0 + 3, '7a3626')
 
 
 BUOY = [".aaaa.", "abbcca", "ab..ca", "ac..ba", "accbba", ".aaaa."]
@@ -305,6 +407,10 @@ def nuri(p, h):
     head_band(h, '0e1e3a', '2f5e9e', '4a7cc0', '234a80')
     for x in range(O + 1, h.w - O - 1):  # 선원 줄무늬
         h.px(x, O + 2, 'ffffff'); h.px(x, HH - 3, 'ffffff')
+    # HD: 꼰 밧줄 윤기(꼬임마다 밝은 점)
+    for x, k in edge_x():
+        if k % 4 == 2:
+            p.px(x, P0 + 1, 'fff0c8'); p.px(P0 + 1, x, 'fff0c8')
 
 
 @skin('kai', '카이', '세레니티 상점가', False, lt(text='2e3a14', soft='6a7650'), 'ffffff')
@@ -322,6 +428,14 @@ def kai(p, h):
             h.px(x, HH - 1, '3a8a35'); h.px(x + 1, HH, '3a8a35') if HH < h.h else None
         if k % 4 == 2:
             h.px(x, O + 2, '8fd86a')
+    # HD: 대나무 마디 위아래 밝은 띠, 줄기 세로 결
+    for x, k in edge_x():
+        if k % 8 == 1:
+            for y in (P0 + 1, P1 - 3):
+                p.px(x, y, 'fff4b0')
+            p.px(P0 + 1, x, 'fff4b0')
+        if k % 8 in (4, 5):
+            p.px(x, P0 + 2, 'cdb85a')
 
 
 BRACKET = ["aaaaa.", "abbbba", "ab....", "ab....", "ab....", ".a...."]
@@ -348,6 +462,12 @@ def roni(p, h):
     for x, k in band_x():  # 기와 비늘(아래 두 줄)
         if k % 5 == 0:
             h.px(x, HH - 3, '962a20'); h.px(x + 1, HH - 2, '962a20'); h.px(x - 1, HH - 2, '962a20')
+    # HD: 쇠 귀퉁이 장식 윤기, 나무 못
+    for x, k in edge_x():
+        if k == 12:
+            p.px(x, P0 + 2, 'c9b49a'); p.px(P0 + 2, x, 'c9b49a')
+    for x, y in ((O + 1, O + 1), (PW - O - 2, O + 1), (O + 1, PW - O - 2), (PW - O - 2, PW - O - 2)):
+        p.px(x, y, 'd8dce4')
 
 
 @skin('milky', '밀키', '세레니티 상점가', False, lt(text='4a1e1a', soft='8a6a66'), '8e2620', False)
@@ -366,6 +486,10 @@ def milky(p, h):
     for x in range(O + 1, h.w - O - 1):  # 위·아래 빨간 체크 줄
         for y in (O + 1, O + 2, HH - 3, HH - 2):
             h.px(x, y, 'd9473f' if (x // 2 + y // 2) % 2 == 0 else 'f6b4ae')
+    # HD: 깅엄 위쪽 줄은 한 단 밝게(빛 받는 쪽)
+    for x in range(P0 + 1, P1 - 1):
+        if (x - B) % 2 == 1:
+            p.px(x, P0 + 1, 'ffb0a8')
 
 
 @skin('sharky', '샤키', '세레니티 상점가', False, lt(text='163463', soft='5a7090'), 'ffffff')
@@ -383,6 +507,12 @@ def sharky(p, h):
             h.px(x, HH - 2, 'cfe6fa')
         if k % 6 in (2, 3):
             h.px(x, HH - 3, 'ffffff')
+    # HD: 테두리 물빛 반짝(성기게), 물방울 윤기
+    for x, k in edge_x():
+        if k in (3, 15):
+            p.px(x, P0 + 1, 'ffffff'); p.px(x + 1, P0 + 1, 'cfe6fa')
+        if k == 9:
+            p.px(P0 + 1, x, 'ffffff')
 
 
 ANCHOR = ["..a..", ".aba.", "..a..", "a.a.a", ".aaa."]
@@ -402,6 +532,12 @@ def pos(p, h):
     for x in range(O + 1, h.w - O - 1):
         h.px(x, O + 1, 'd9b04a'); h.px(x, HH - 2, 'd9b04a')
     h.sprite(h.w - O - 7, O + 4, [".aaa.", "abcba", "aaaaa", ".a.a."], {'a': 'f2ece0', 'b': '1a1a22', 'c': 'f2ece0'})  # 해골
+    # HD: 갑판 판자 못(이음매 옆) + 판자 결
+    for x, k in edge_x():
+        if k % 12 == 2:
+            p.px(x, P0 + 2, 'b89a6a'); p.px(P0 + 2, x, 'b89a6a')
+        if k in (5, 6, 7, 17, 18):
+            p.px(x, P1 - 3, '3a2414')
 
 
 FEATHER = ["....a", "...ab", "..abb", ".abb.", "abb..", "c...."]
@@ -425,6 +561,12 @@ def fix(p, h):
             h.px(x, 1, 'c8a8ff'); h.px(x, 2, '8a6ad8')
         if k == 9:
             h.px(x, 0, '7ae8ff')
+    # HD: 나무 테두리 결(엇갈림)
+    for x, k in edge_x():
+        if k in (2, 3, 12, 13, 14, 20):
+            p.px(x, P0 + 2, '9a6c44')
+        if k in (6, 7, 16):
+            p.px(P0 + 2, x, '9a6c44')
 
 
 BELL = ["..a..", ".aba.", ".abb.", "abbba", "aaaaa", "..c.."]
@@ -449,6 +591,10 @@ def garam(p, h):
     for x in (O + 3, h.w - O - 4):
         h.rect(x, 0, x + 1, O, 'c9a874')
         h.px(x, O + 1, '8a6a3a')
+    # HD: 기와 비늘마다 아래 그늘 한 칸
+    for x, k in edge_x():
+        if k % 4 == 2:
+            p.px(x, P0 + 2, 'e07a32'); p.px(P0 + 2, x, 'e07a32')
 
 
 GEM = ["..a..", ".abc.", "abbcd", ".bcd.", "..d.."]
@@ -467,6 +613,12 @@ def lua(p, h):
         h.px(x, HH - 2, 'd9b04a')
     h.sprite(O + 2, 0, ["a.a.a", "aaaaa", "abbba"], {'a': 'f2c230', 'b': 'ffe08a'})  # 작은 왕관
     h.sprite(h.w - O - 7, 0, ["a.a.a", "aaaaa", "abbba"], {'a': 'f2c230', 'b': 'ffe08a'})
+    # HD: 금 테두리 반짝(별빛 두 점), 마름모 사이 짙은 금
+    for x, k in edge_x():
+        if k in (0, 12):
+            p.px(x, P0 + 1, 'ffffff')
+        if k % 6 == 0:
+            p.px(x, P1 - 2, 'c8a040')
 
 
 def build(sk):

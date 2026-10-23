@@ -28,7 +28,9 @@ HX, HY, HRX, HRY = AX, 21.6, 15.4, 11.8  # 머리(찹쌀떡): 9.8~33.4줄
 
 
 def canvas():
-    return Canvas(W, H, 0)
+    c = Canvas(W, H, 0)
+    c.hd = True  # HD 색 띠(2026-10-23): 그늘은 차갑게, 밝음은 따뜻하게
+    return c
 
 
 def m(x):
@@ -54,8 +56,9 @@ def _eye(c, x0, y, color=EYE, color2=EYE2):
             if dy in (0, 4) and dx in (0, 3):
                 continue
             c.dot(x0 + dx, y + dy, color2 if dy >= 3 and dx in (1, 2) else color)
-    c.dot(x0 + 1, y + 1, WHITE)  # 반짝은 한 점이 가장 깔끔했다(2×2·두 칸과 나란히 비교, 2026-10-22)
-    c.dot(x0 + 2, y + 3, 'b8aed6')
+    # 반짝 두 개(2026-10-23 HD): 큰 것 왼쪽 위 세로 2칸 + 작은 것 오른쪽 아래(옅은 보라)
+    c.dot(x0 + 1, y + 1, WHITE); c.dot(x0 + 1, y + 2, WHITE)
+    c.dot(x0 + 2, y + 3, 'c9bdf0')
 
 
 def eyes(c, y=22, lx=10, color=EYE):
@@ -92,6 +95,7 @@ def wink(c, y=22, lx=10, closed='right', color=EYE):
 def blush(c, y=27, lx=6, alpha=0.55):
     pts = [(lx + dx, y) for dx in range(4)] + [(lx + 1, y + 1), (lx + 2, y + 1)]
     c.soft(pts + [(m(x), yy) for x, yy in pts], BLUSH, alpha)
+    c.dot(lx + 1, y, 'ffc0cc'); c.dot(m(lx + 1), y, 'ffc0cc')  # 빗금 한 점(HD)
 
 
 def nose(c, y=25, color='2e2228'):
@@ -159,36 +163,107 @@ def ellipse_pair(c, cx, cy, rx, ry):
     return c.ellipse(cx, cy, rx, ry) | c.ellipse(40 - cx, cy, rx, ry)
 
 
+# ---------------------------------------------------------------- HD 손질 부품(2026-10-23, PIXEL_GUIDE.md)
+
+def cast(c, y, x0, x1, color, alpha=0.32):
+    """모자·고글이 이마에 드리우는 그림자 한 줄(양끝 세 칸은 옅게)"""
+    for x in range(x0, x1 + 1):
+        edge = min(x - x0, x1 - x)
+        c.soft([(x, y)], color, alpha * (0.55 if edge < 3 else 1))
+
+
+def tufts(c, tone, pts=((5.4, 25.6), (2.8, 27.4), (5.4, 28.2), (4, 30.4), (7.6, 29.8))):
+    """볼 옆 털 뭉치(좌우 대칭): 매끈한 찹쌀떡 윤곽을 깨서 털 느낌"""
+    pts = list(pts)
+    c.add(c.poly(pts) | c.poly(c.mirror(pts, AX)), tone, shade=1, light=True)
+
+
+def crown_tuft(c, tone, x=20):
+    """정수리 삐죽 털"""
+    c.add(c.poly([(x - 2.4, 10.8), (x - 1.4, 7.4), (x, 9.6), (x + 1.4, 6.8), (x + 2.6, 10.8)]), tone, shade=1, light=True)
+
+
+def stitch(c, y, x0, x1, color, step=2):
+    """옷 바늘땀"""
+    for x in range(x0, x1 + 1, step):
+        c.dot(x, y, color)
+
+
+def glint(c, x, y, hi='fff6c8'):
+    """단추·금속 윤기: 왼쪽 위 한 칸"""
+    c.dot(x, y, hi)
+
 # ================================================================ 스폰 상점
 
+# 보리 HD 색 띠: 그늘은 붉은·보라 쪽, 밝음은 레몬 쪽(손으로 고름)
+FUR = Tone('fffbf2', 'f3dcb6', 'd8ae8e', '8f6656')       # 그늘이 붉은 갈색 쪽(차갑게)
+EAR = Tone('ecc89a', 'd6a476', 'b07c62', '6e4636')
+STRAW = Tone('fff6c2', 'f5d168', 'd9a64a', '7f5520')     # 밝음은 레몬, 그늘은 주황 갈색
+BAND = Tone('ffc07a', 'f08a3e', 'c45e34', '6e2a14')
+OVER = Tone('a6c8fa', '6694dc', '4a6cb8', '23346e')      # 그늘이 보라 쪽
+SHIRT = Tone('ffffff', 'fbf7f0', 'e6dcd0', '9a8c80')
+
+
 def bori():
-    """보리 · 햇살 농가의 성실한 강아지 농부: 크림색 털, 늘어진 귀, 해바라기 단 밀짚모자, 흰 셔츠에 파란 멜빵, 활짝 웃는 입"""
-    c = canvas()
-    fur = Tone('fff8ec', 'f4e0c0', 'dfc49e', '9a7e5c')
-    ear = Tone('f0d0a4', 'dcb486', 'c09466', '7a5c3a')
-    straw = Tone('fff4b8', 'f6d470', 'd8b04c', '8c6a20')
-    band = Tone('ffbc76', 'f48e3c', 'cc6c2a', '7a3a10')
-    over = Tone('94bcf6', '5e8ed8', '4270b8', '23447a')
-    body(c, over)
-    c.add(c.ellipse(AX, 33.8, 5, 1.6), Tone('ffffff', 'ffffff', 'e6e6ea'), shade=0)  # 셔츠 깃
-    c.add(ellipse_pair(c, 5.4, 22.8, 4.2, 7.6), ear, shade=2, light=True)
-    head(c, fur)
-    c.add(c.ellipse(AX, 27.6, 6, 3.8), Tone('ffffff', 'fffbf4', 'f2e6d4'), shade=1)  # 하얀 주둥이
-    c.add(c.ellipse(AX, 7.4, 8.8, 5.2) - c.rect(0, 10, W, H), straw, shade=2, light=True)  # 모자 윗부분
-    c.add(c.ellipse(AX, 10.8, 17, 3.1), straw, shade=2, light=True)  # 넓은 챙
-    c.add(c.rect(11, 7, 30, 9.6) & c.ellipse(AX, 7.4, 8.8, 5.2), band, shade=0)
-    paws(c, fur)
-    for x in range(5, 36, 3):  # 밀짚 결
-        c.dot(x, 11, 'e2bc58'); c.dot(x + 1, 12, 'c8a040')
-    c.dot_all([(25, 6), (27, 6), (26, 5), (26, 7)], 'ffd23a'); c.dot(26, 6, '8a4a1a')  # 해바라기
-    c.dot_all([(14, 4), (15, 4), (14, 5)], 'fffbe0')
-    shine(c, 10, 15)
+    """보리 · 햇살 농가의 성실한 강아지 농부(2026-10-23 HD 판: 털 뭉치 윤곽, 챙 그림자, 엮은 밀짚, 분홍 발바닥)"""
+    c = Canvas(W, H, 0)  # 손으로 고른 HD 색 띠라 자동 hue shift 는 끈다
+    # 몸: 흰 셔츠 위 파란 멜빵바지(가운데 가슴판 + 멜빵 두 줄)
+    c.add(c.ellipse(AX, 37.6, 10.6, 4.6), SHIRT, shade=2, light=True)
+    c.add(c.ellipse(AX, 38.4, 7.4, 3.6) | c.rect(13, 35, 15, 40) | c.rect(25, 35, 27, 40), OVER, shade=2, light=True)
+    # 귀: 늘어진 귀 + 끝의 털 뭉치
+    ears = ellipse_pair(c, 5.4, 23.4, 4.4, 7.8) | ellipse_pair(c, 4.6, 30.4, 2.6, 2.2)
+    c.add(ears, EAR, shade=2, light=True)
+    # 머리 + 볼 털 뭉치(실루엣이 매끈한 타원이 되지 않게)
+    head = c.ellipse(AX, 21.8, 15.2, 11.6) | ellipse_pair(c, 6.6, 27.6, 2.4, 2.2) | ellipse_pair(c, 8.4, 30.2, 2.2, 1.8)
+    c.add(head, FUR, shade=3, light=True)
+    c.add(c.ellipse(AX, 27.8, 6.2, 3.9), Tone('ffffff', 'fffcf6', 'f0e2d0', 'a89480'), shade=1)  # 흰 주둥이
+    # 모자: 위 덩어리 + 넓은 챙 + 띠
+    crown = c.ellipse(AX, 7.2, 8.8, 5.4) - c.rect(0, 10, W, H)
+    c.add(crown, STRAW, shade=2, light=True)
+    brim = c.ellipse(AX, 10.8, 17.2, 3.2)
+    c.add(brim, STRAW, shade=2, light=True)
+    c.add(c.rect(11, 7, 30, 9.6) & c.ellipse(AX, 7.2, 8.8, 5.4), BAND, shade=0)
+    # 앞발(분홍 발바닥이 살짝 보이게)
+    for lx in (12.6, 27.4):
+        c.add(c.ellipse(lx, 35.4, 3.9, 2.8), FUR, shade=2, light=True)
+    # ---- 그리기 위에 얹는 칸들
+    # 모자 챙이 이마에 드리우는 그림자(가운데 진하게, 양끝 옅게)
+    for x in range(8, 32):
+        a = 0.42 if 12 <= x <= 27 else 0.25
+        c.soft([(x, 14), (x, 15)] if 10 <= x <= 29 else [(x, 14)], '8f6656', a)
+    # 밀짚 엮음: 챙에만, 두 줄마다 엇갈린 짧은 결(점이 흩뿌려진 노이즈가 되지 않게 성기게)
+    for y in (10, 12):
+        for x in range(5, 36):
+            if (x, y) in brim and (x + (y // 2) * 3) % 6 in (0, 1):
+                c.dot(x, y, 'e2b252')
+    for x in range(12, 30, 3):  # 띠 결
+        c.dot(x, 8, 'ffb26a')
+    # 해바라기(5×5, 꽃잎 두 단 + 씨 두 단)
+    for (x, y), col in {(25, 5): 'ffd23a', (27, 5): 'ffd23a', (26, 4): 'ffe27a', (26, 6): 'f4a81a', (24, 5): 'f4a81a', (28, 5): 'f4a81a',
+                        (26, 3): 'ffd23a', (26, 7): 'e8901a'}.items():
+        c.dot(x, y, col)
+    c.dot(26, 5, '7a3e14'); c.dot(25, 4, 'ffd23a'); c.dot(27, 6, 'e8901a')
+    shine(c, 10, 16)
+    c.dot(14, 4, 'fffbe0'); c.dot(15, 4, 'fffbe0'); c.dot(14, 5, 'fffbe0')  # 모자 윤기
+    # 눈 · 코 · 입
     eyes(c, 20)
-    blush(c, 26, 5)
-    nose(c, 24)
+    c.dot_all([(18, 24), (19, 24), (20, 24), (21, 24), (19, 25), (20, 25)], '2e2228')
+    c.dot(19, 24, '7a6a74')  # 코 윤기
     mouth_open(c, 27)
-    c.dot(15, 35, 'ffd65a'); c.dot(m(15), 35, 'ffd65a')  # 멜빵 단추
-    toes(c, 'c8ab84')
+    c.dot(19, 29, 'ffc4d0')
+    # 볼터치(반투명 + 빗금 두 점)
+    pts = [(6, 26), (7, 26), (8, 26), (9, 26), (7, 27), (8, 27)]
+    c.soft(pts + [(m(x), y) for x, y in pts], 'ff8fa8', 0.55)
+    c.dot_all([(7, 26), (m(7), 26)], 'ffc0cc')
+    # 멜빵 단추 · 가슴 주머니 바늘땀
+    for x in (14, m(14)):
+        c.dot(x, 36, 'ffd65a'); c.dot(x, 35, 'fff2a8')
+    for x in range(17, 23, 2):
+        c.dot(x, 37, '8fb4f0')
+    # 발가락 사이 · 분홍 발바닥
+    for x in (11, 14, m(11), m(14)):
+        c.dot(x, 36, 'c49a80')
+    c.dot_all([(12, 37), (13, 37), (m(12), 37), (m(13), 37)], 'f6b0b8')
     return c
 
 
@@ -217,6 +292,10 @@ def dodam():
     c.dot_all([(22, 29), (23, 29), (24, 28), (25, 28), (26, 27), (27, 27)], 'f2cc50')  # 입에 문 지푸라기
     c.dot_all([(31, 4), (32, 4), (33, 4), (32, 5), (31, 6), (32, 6), (33, 6)], '9cb6e8')  # 졸음 z
     c.dot_all([(35, 1), (36, 1), (35, 2), (36, 2)], 'b8ccf0')
+    # HD: 볼 털 뭉치, 뿔 윤기, 앞치마 주머니 바늘땀
+    tufts(c, fur)
+    c.dot_all([(9, 4), (10, 3), (m(9), 4), (m(10), 3)], 'fffdf2')
+    stitch(c, 37, 15, 25, 'a8e08e')
     return c
 
 
@@ -247,6 +326,11 @@ def seoki():
     mouth_flat(c, 29, '5a3818')
     c.dot_all([(31, 17), (31, 18), (30, 18), (31, 19)], 'b8e2ff'); c.dot(31, 17, 'ffffff')  # 땀 한 방울
     toes(c, '7a5432')
+    # HD: 안전모 챙 그림자, 모자 윗줄 윤기, 볼 털 뭉치, 반사띠 반짝
+    cast(c, 16, 7, 33, '5e4024', 0.38)
+    c.dot_all([(x, 8) for x in range(14, 17)], 'fffbe0')
+    tufts(c, fur, ((5.6, 25), (3, 27), (5.6, 27.6), (4.4, 29.6), (7.6, 29.2)))
+    c.dot_all([(12, 36), (26, 36)], 'ffffff')
     return c
 
 
@@ -277,6 +361,10 @@ def duri():
     blush(c, 24, 5, 0.5)
     for x0 in (10, 26):  # 하얀 발톱
         c.dot_all([(x0, 37), (x0 + 2, 37), (x0 + 4, 37)], 'fff8f8')
+    # HD: 안전모 챙 그림자, 멜빵 단추 윤기
+    cast(c, 16, 6, 34, '2c1e18', 0.4)
+    c.dot_all([(14, 35), (m(14), 35)], 'f6cc3a'); glint(c, 14, 34); glint(c, m(14), 34)
+    c.dot_all([(x, 8) for x in range(13, 16)], 'fffbe0')
     return c
 
 
@@ -306,6 +394,10 @@ def deumjik():
     c.dot_all([(16, 27), (17, 27), (22, 27), (23, 27)], 'f2a2ae')  # 분홍 콧구멍
     mouth_smile(c, 29, 'a89a90')
     c.dot_all([(15, 37), (16, 37), (15, 38), (16, 38)], '3a62a8'); c.dot_all([(14, 37), (17, 38)], 'ffffff')  # 기운 자국
+    # HD: 볼 털 뭉치, 주둥이 윤기, 멜빵 바늘땀
+    tufts(c, fur)
+    c.dot_all([(15, 26), (16, 26)], 'ffffff')
+    stitch(c, 39, 19, 27, '8fb4f0')
     return c
 
 
@@ -332,6 +424,10 @@ def hotang():
     c.dot(16, 26, 'ffffff'); c.dot(23, 26, 'ffffff')  # 송곳니
     c.dot_all([(16, 36), (16, 38), (m(16), 36), (m(16), 38)], 'f6ca3a')  # 금 단추
     toes(c, '8e94a2')
+    # HD: 정수리 삐죽 털, 귀 안 그늘, 코트 깃 그늘
+    crown_tuft(c, fur)
+    c.dot_all([(9, 9), (m(9), 9)], 'da929e')
+    c.soft([(x, 35) for x in range(12, 29)], '6a1810', 0.25)
     return c
 
 
@@ -363,6 +459,10 @@ def hani():
     c.dot_all([(1, 8), (1, 9), (1, 10), (0, 10), (2, 6), (3, 7), (2, 7)], 'ff8ab0')  # 수다 음표
     c.dot_all([(14, 36), (15, 36)], 'f05a5a'); c.dot_all([(23, 37), (24, 37)], '4a7ae0'); c.dot(19, 38, 'f6c63a')  # 물감 자국
     toes(c, 'd0ccdc')
+    # HD: 베레모 그림자, 볼 털 뭉치, 앞치마 주머니 바늘땀
+    cast(c, 14, 15, 32, '9a96aa', 0.3)
+    tufts(c, fur, ((5.6, 26), (3.2, 27.6), (5.6, 28.4), (4.6, 30.2), (7.6, 29.6)))
+    stitch(c, 38, 15, 25, 'd8a080')
     return c
 
 
@@ -392,6 +492,10 @@ def bareum():
     blush(c, 26, 4, 0.45)
     c.dot_all([(8, 34), (12, 33), (16, 32)], '5a8ae0')  # 설계도 선
     c.dot_all([(14, 10), (15, 10), (16, 10)], 'd6d2cc')
+    # HD: 납작 모자 그림자, 흰 볼 털 뭉치, 조끼 단추 윤기
+    cast(c, 15, 7, 33, '544c44', 0.32)
+    tufts(c, white, ((5.4, 26.4), (2.8, 28.4), (5.6, 28.8), (4.4, 30.8), (7.8, 30.2)))
+    c.dot_all([(20, 36), (20, 38)], 'd8c8b4'); glint(c, 20, 35, 'ffffff')
     return c
 
 
@@ -416,6 +520,10 @@ def nuri():
     c.dot_all([(14, 24), (15, 24), (16, 24)], 'ffecc4')
     c.dot_all([(x, 27) for x in range(13, 27)], 'c4681c')  # 부리 맞물림
     c.dot_all([(17, 25), (22, 25)], 'c4681c')  # 콧구멍
+    # HD: 정수리 깃털, 스카프 매듭 그늘, 부리 윤기
+    crown_tuft(c, feather)
+    c.dot_all([(19, 35), (20, 35), (21, 35)], 'ba362e')
+    c.dot_all([(15, 24), (16, 24), (17, 24)], 'fff4d8')
     return c
 
 
@@ -444,6 +552,11 @@ def kai():
     c.dot_all([(19, 25), (20, 25)], '8a5a3a')
     mouth_tongue(c, 28, '7a4430')
     toes(c, '7a4c2e')
+    # HD: 정수리 털, 고글 띠 그림자, 재킷 지퍼
+    crown_tuft(c, fur)
+    cast(c, 16, 9, 31, '42261a', 0.28)
+    for y in (37, 39):
+        c.dot(20, y, 'd8e8c0')
     return c
 
 
@@ -474,6 +587,10 @@ def roni():
     mouth_flat(c, 29, '6a4632')
     blush(c, 26, 4, 0.4)
     c.dot(16, 36, 'd8b47a'); c.dot(m(16), 36, 'd8b47a')
+    # HD: 고글 띠 그림자, 귀 안 윤기, 앞치마 주머니 바늘땀
+    cast(c, 17, 7, 33, '1a1412', 0.35)
+    c.dot_all([(6, 11), (m(6), 11)], 'f0b4a4')
+    stitch(c, 37, 15, 25, 'd0aa86')
     return c
 
 
@@ -503,6 +620,10 @@ def milky():
     blush(c, 23, 4, 0.6)
     c.dot_all([(20, 36), (20, 38)], 'c0c0c6')  # 요리사 옷 단추
     toes(c, 'cfc8c0')
+    # HD: 요리사 모자 그림자, 볼 털 뭉치, 주둥이 윤기
+    cast(c, 12, 11, 28, '9a928a', 0.3)
+    tufts(c, fur)
+    c.dot_all([(17, 26), (18, 26)], 'ffecec')
     return c
 
 
@@ -528,6 +649,10 @@ def sharky():
         c.dot(x, 28, 'ffffff')
     c.dot_all([(18, 29), (19, 29), (20, 29), (21, 29)], 'ff8fa3')
     toes(c, '3c70be')
+    # HD: 머리 위 물빛 윤기 곡선, 지느러미 끝 밝게, 배 아래 옅은 그늘
+    c.soft([(x, 11 + (abs(x - 15) // 3)) for x in range(10, 20)], 'ffffff', 0.45)
+    c.dot_all([(22, 3), (23, 3)], 'c8e4ff')
+    c.soft([(x, 33) for x in range(12, 29)], '7a8aa0', 0.25)
     return c
 
 
@@ -582,6 +707,10 @@ def pos():
     for x, y in ((10, 37), (12, 36), (27, 37), (29, 36), (4, 33), (35, 33), (4, 31), (35, 31)):
         c.dot(x, y, 'f8eeff')
     c.dot_all([(20, 35), (20, 37)], 'f4c84c')  # 코트 금 단추
+    # HD: 모자 챙 그림자, 머리 무늬 점(문어 피부 결)
+    cast(c, 16, 9, 31, '4a2a70', 0.3)
+    for x, y in ((8, 26), (9, 27), (31, 22), (30, 23), (28, 30), (13, 31)):
+        c.dot(x, y, 'a87ad8')
     return c
 
 
@@ -609,6 +738,10 @@ def fix():
     c.dot_all([(23, 27), (24, 27)], '7a4a06')  # 콧구멍
     c.dot_all([(34, 6), (33, 5), (35, 5), (34, 4), (33, 7), (35, 7)], 'ffb03a'); c.dot(34, 5, 'fff0a0'); c.dot(34, 6, 'fff6c8')  # 열정 반짝
     toes(c, '54443a')
+    # HD: 머리 옆 깃털 결(겹친 비늘 모양), 보라 깃털 윤기
+    for x, y in ((6, 21), (7, 22), (5, 26), (6, 27), (m(6), 21), (m(7), 22), (m(5), 26), (m(6), 27)):
+        c.dot(x, y, 'e2ddd2')
+    c.dot_all([(3, 4), (4, 5), (5, 7)], 'fbf2ff')
     return c
 
 
@@ -641,6 +774,11 @@ def garam():
     c.dot_all([(19, 26), (20, 26)], '5a4c48')
     mouth_w(c, 27, '9a8a82')
     toes(c, 'd8d2c8')
+    # HD: 복슬 털 결(곱슬 점), 앞머리 그림자, 앞치마 바늘땀
+    for x, y in ((8, 14), (11, 9), (16, 7), (24, 7), (29, 9), (32, 14), (5, 21), (34, 21), (20, 6)):
+        c.dot(x, y, 'e4dfd6'); c.dot(x + 1, y + 1, 'ffffff')
+    cast(c, 18, 11, 29, 'a29c92', 0.25)
+    stitch(c, 38, 15, 25, 'd8a882')
     return c
 
 
@@ -668,6 +806,10 @@ def lua():
     blush(c, 25, 5, 0.6)
     c.dot_all([(20, 36), (19, 36), (20, 37), (19, 37)], 'f2c63a'); c.dot(19, 36, 'fff0a0')  # 망토 금 단추
     toes(c, '8e5e38')
+    # HD: 볼 털 뭉치, 뿔 윤기, 망토 깃 그늘
+    tufts(c, fur)
+    c.dot_all([(7, 2), (11, 1), (m(7), 2), (m(11), 1)], 'd8b898')
+    c.soft([(x, 35) for x in range(13, 28)], '22421a', 0.22)
     return c
 
 
