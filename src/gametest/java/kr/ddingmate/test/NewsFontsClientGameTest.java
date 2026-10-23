@@ -79,6 +79,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 cfg.notesSeenVersion = "0.3.1";
                 cfg.updateNotes = true;
                 check(UpdateNotes.pending(cfg).size() == 1, "0.3.1 에서 올라왔는데 소식이 없음");
+                cfg.font = DdingMateConfig.FontStyle.MONGTORI; // 사용자 글꼴(손글씨는 글자가 높아 맨 위 줄이 잘렸었다)
                 c.setScreen(new kr.ddingmate.gui.UpdateNotesScreen(null, UpdateNotes.pending(cfg)));
                 UpdateNotes.markSeen(cfg);
                 check(UpdateNotes.pending(cfg).isEmpty(), "본 뒤에도 소식이 남음");
@@ -86,6 +87,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("news-3-update-notes");
+            ctx.runOnClient(c -> DdingMate.config().font = DdingMateConfig.FontStyle.GALMURI);
 
             // 3) 개발자 공지: 처음 보는 공지만 알리고, 기록 탭에 남고, 다시 받아도 또 울리지 않는다
             ctx.runOnClient(c -> {

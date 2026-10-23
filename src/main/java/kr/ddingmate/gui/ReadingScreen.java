@@ -49,7 +49,7 @@ abstract class ReadingScreen extends Screen {
         ph = height - 20;
         px = (width - pw) / 2;
         py = 10;
-        top = py + 40;
+        top = py + 38;
         bottom = py + ph - 30;
         Widgets.Button ok = new Widgets.Button(110, 20, Text.literal("확인"), action == null, b -> close());
         ok.setX(action == null ? px + (pw - 110) / 2 : px + pw / 2 + 3);
@@ -67,10 +67,11 @@ abstract class ReadingScreen extends Screen {
 
     private List<Line> lay() {
         List<Line> out = new ArrayList<>();
-        int y = 0;
+        // 제목 글씨(크게)는 글자 위쪽이 줄 위로 올라가서, 맨 위 줄도 잘리지 않게 조금 내려 시작한다(손글씨 글꼴은 더 높다)
+        int y = 6;
         int w = pw - 24;
         for (Block b : blocks()) {
-            y += b.gap();
+            y += b.gap() + (b.head() ? 3 : 0);
             int indent = b.bullet() ? 10 : 0;
             Text t = b.head() ? Theme.title(b.text()) : Theme.body(b.text());
             List<OrderedText> wrapped = textRenderer.wrapLines(t, w - indent);
