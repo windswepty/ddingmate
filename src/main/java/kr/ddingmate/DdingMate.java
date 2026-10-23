@@ -58,6 +58,8 @@ public final class DdingMate implements ClientModInitializer {
     private static boolean joinTipShown;
     /** 지난 틱에 실제 게임(스폰 이후)에 있었는지. 대기 서버에서 게임으로 넘어오는 순간을 안다 */
     private static boolean wasInGame;
+    /** 업데이트 소식을 이번 실행에서 이미 확인했는지(타이틀 화면이나 접속 때 한 번) */
+    private static boolean notesChecked;
 
     @Override
     public void onInitializeClient() {
@@ -79,6 +81,17 @@ public final class DdingMate implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(DdingMate::onTick);
         // 서버 창 옆 도우미 판: 바리스타 손님 창 → 카페 판, 밀키 요리 상점 → 부엌 판, 제작 시설 → 가진 재료로 만들기 판
         net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> {
+            // 새 버전으로 처음 켰을 때: 타이틀 화면 위에 업데이트 소식 창(한 번만)
+            // 자동 시험(fabric.client.gametest)에서는 띄우지 않는다(시험이 창을 직접 연다)
+            if (screen instanceof net.minecraft.client.gui.screen.TitleScreen && !notesChecked && System.getProperty("fabric.client.gametest") == null) {
+                notesChecked = true;
+                java.util.List<kr.ddingmate.news.UpdateNotes.Release> notes = kr.ddingmate.news.UpdateNotes.pending(config);
+                if (!notes.isEmpty()) client.send(() -> {
+                    kr.ddingmate.gui.UpdateNotesScreen s = new kr.ddingmate.gui.UpdateNotesScreen(screen, notes);
+                    kr.ddingmate.news.UpdateNotes.markSeen(config);
+                    client.setScreen(s);
+                });
+            }
             if (screen instanceof net.minecraft.client.gui.screen.ingame.HandledScreen<?>) {
                 net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterRender(screen).register(DdingMate::renderSidePanel);
                 net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register(
@@ -118,10 +131,27 @@ public final class DdingMate implements ClientModInitializer {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             Notifier.onJoin();
             kr.ddingmate.inquiry.Replies.onJoin(); // 보낸 문의에 답변이 왔는지(접속 직후·10분마다)
+            kr.ddingmate.news.Notices.onJoin(); // 개발자 공지(접속 직후·30분마다)
+            // 타이틀 화면을 거치지 않고 바로 접속했으면 업데이트 소식은 채팅에 [바뀐 점 보기]로
+            notesChecked = true;
+            java.util.List<kr.ddingmate.news.UpdateNotes.Release> notes = System.getProperty("fabric.client.gametest") != null
+                    ? java.util.List.of() : kr.ddingmate.news.UpdateNotes.pending(config);
+            if (!notes.isEmpty()) {
+                // 누르면 /띵메이트 → 소식 창이 먼저 열린다(명령어는 /띵메이트 하나)
+                String fromTo = kr.ddingmate.news.UpdateNotes.fromTo(config.notesSeenVersion);
+                kr.ddingmate.news.UpdateNotes.holdUnread(notes);
+                kr.ddingmate.news.UpdateNotes.markSeen(config);
+                client.execute(() -> Notifier.chat(net.minecraft.text.Text.literal("띵메이트가 새 버전이에요 (" + fromTo + ") ")
+                        .formatted(net.minecraft.util.Formatting.WHITE)
+                        .append(net.minecraft.text.Text.literal("[바뀐 점 보기]").styled(st -> st.withColor(net.minecraft.util.Formatting.AQUA)
+                                .withUnderline(true)
+                                .withClickEvent(new net.minecraft.text.ClickEvent(net.minecraft.text.ClickEvent.Action.RUN_COMMAND, "/띵메이트"))))));
+            }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             ServerHud.reset();
             kr.ddingmate.inquiry.Replies.onDisconnect();
+            kr.ddingmate.news.Notices.onDisconnect();
             wasInGame = false;
             BagTracker.save();
             PlaytimeTracker.save();
@@ -227,6 +257,7 @@ public final class DdingMate implements ClientModInitializer {
         kr.ddingmate.ui.HudAuto.tick(client);
         Notifier.tick(client);
         kr.ddingmate.inquiry.Replies.tick(client);
+        kr.ddingmate.news.Notices.tick(client);
         while (toggleHudKey.wasPressed()) {
             config.hudEnabled = !config.hudEnabled;
             config.save();

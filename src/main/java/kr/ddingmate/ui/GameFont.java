@@ -12,7 +12,7 @@ import net.minecraft.util.Identifier;
 import java.util.List;
 
 /**
- * "게임 전체에 적용"(알림 방식 탭 → 글꼴): 기본 글꼴(minecraft:default)의 글자 가운데 <b>글자 글꼴(TTF·유니폰트)로 그리는 글자만</b>
+ * "게임 전체에 적용"(HUD 탭 → 글꼴): 기본 글꼴(minecraft:default)의 글자 가운데 <b>글자 글꼴(TTF·유니폰트)로 그리는 글자만</b>
  * 고른 글꼴로 그린다.
  * <p>
  * 띵타이쿤 리소스팩(2026-10-21 판)은 기본 글꼴에 갈무리9(TTF)를 넣고, 채팅 칭호·등급 별·실루엣·진행 막대 같은 그림을

@@ -125,6 +125,9 @@ public final class Theme {
 
     private static Identifier font(String kind) {
         kr.ddingmate.config.DdingMateConfig cfg = DdingMate.config();
+        // 내 글꼴 · 띵타이쿤 글꼴(게임 기본 글꼴 따라가기). 고른 내 글꼴이 아직 안 읽혔으면 아래 띵메이트 글꼴로
+        Identifier custom = UserFonts.fontId(cfg, kind);
+        if (custom != null) return custom;
         String suffix = cfg == null || cfg.font == null ? "" : cfg.font.suffix;
         return FONT_IDS.computeIfAbsent(kind + suffix, k -> Identifier.of(DdingMate.MOD_ID, k));
     }

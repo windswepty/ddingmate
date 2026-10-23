@@ -19,7 +19,19 @@ import java.util.List;
  * 카드는 그리는 동안만 설정의 글꼴을 그 후보로 바꿔 끼우고 곧바로 되돌린다(HudLookScreen 과 같은 방식).
  */
 public class FontLookScreen extends Screen {
-    private record Card(String group, FontStyle font, String sub) {
+    /** 글꼴 카드. custom 이 비어 있지 않으면 내 글꼴·띵타이쿤 글꼴(UserFonts 키) */
+    private record Card(String group, FontStyle font, String custom, String sub) {
+        Card(String group, FontStyle font, String sub) {
+            this(group, font, "", sub);
+        }
+
+        String key() {
+            return custom.isEmpty() ? font.name() : custom;
+        }
+
+        String label() {
+            return custom.isEmpty() ? font.label : kr.ddingmate.ui.UserFonts.label(custom);
+        }
     }
 
     /** 배치된 카드(그리드 좌표, 스크롤 전) 또는 묶음 제목(card == null) */
@@ -55,6 +67,11 @@ public class FontLookScreen extends Screen {
         out.add(new Card("손글씨", FontStyle.NARI, "온글잎 · 귀여운 손글씨"));
         out.add(new Card("손글씨", FontStyle.MONGTORI, "그리운 · 몽글몽글"));
         out.add(new Card("손글씨", FontStyle.DDOBAK, "그리운 · 또박또박"));
+        // 게임 기본 글꼴(띵타이쿤 리소스팩·내 글꼴 리소스팩) 따라가기 · 내가 넣은 글꼴(이 컴퓨터에서만)
+        out.add(new Card("게임 · 내 글꼴", FontStyle.GALMURI, kr.ddingmate.ui.UserFonts.GAME, "게임 글꼴(띵타이쿤 리소스팩) 따라가기"));
+        for (kr.ddingmate.ui.UserFonts.Entry e : kr.ddingmate.ui.UserFonts.entries()) {
+            out.add(new Card("게임 · 내 글꼴", FontStyle.GALMURI, e.key(), "내가 넣은 글꼴 · 나만 보여요"));
+        }
         return out;
     }
 
@@ -118,6 +135,8 @@ public class FontLookScreen extends Screen {
         Theme.textShadow(ctx, textRenderer, "카드를 누르면 바로 그 글꼴로 바뀌어요. 띵메이트 창 · HUD · 알림 글자예요.", 10, 20, 0xFFB8C0CC, true);
         DdingMateConfig c = cfg();
         FontStyle keep = c.font;
+        String keepCustom = c.customFont;
+        String chosenKey = currentKey();
         List<Placed> placed = place(cards());
         double max = Math.max(0, contentHeight(placed) - gridH);
         scroll = Math.max(0, Math.min(max, scroll));
@@ -130,28 +149,32 @@ public class FontLookScreen extends Screen {
                 if (p.card == null) {
                     if (cy + HEAD_H < gridY || cy > gridY + gridH) continue;
                     c.font = keep;
+                    c.customFont = keepCustom;
                     Theme.boldText(ctx, textRenderer, p.header, cx + 2, cy + 4, 0xFFF2C230, true);
                     ctx.fill(cx + 4 + Theme.boldWidth(textRenderer, p.header), cy + 8, gridX + gridW - 4, cy + 9, 0x60F2C230);
                     continue;
                 }
                 if (cy + h < gridY || cy > gridY + gridH) continue;
                 Card card = p.card;
-                boolean chosen = card.font == keep;
+                boolean chosen = card.key().equals(chosenKey);
                 boolean hover = mouseX >= cx && mouseX < cx + CARD_W - 6 && mouseY >= cy && mouseY < cy + h - 6
                         && mouseY >= gridY && mouseY < gridY + gridH;
                 ctx.fill(cx, cy, cx + CARD_W - 6, cy + h - 6, chosen ? 0xFF3A3420 : hover ? 0xFF2E3440 : 0xFF20242C);
                 if (chosen || hover) Theme.outline(ctx, cx, cy, CARD_W - 6, h - 6, chosen ? 0xFFF2C230 : 0xFF6A7488);
                 c.font = card.font; // 이 카드만 그 글꼴로
+                c.customFont = card.custom;
                 int tw = CARD_W - 18;
-                ctx.drawText(textRenderer, Theme.title(Theme.ellipsize(textRenderer, card.font.label, tw, true)), cx + 6, cy + 5, chosen ? 0xFFF2C230 : Theme.WHITE, true);
+                ctx.drawText(textRenderer, Theme.title(Theme.ellipsize(textRenderer, card.label(), tw, true)), cx + 6, cy + 5, chosen ? 0xFFF2C230 : Theme.WHITE, true);
                 Theme.textShadow(ctx, textRenderer, Theme.ellipsize(textRenderer, card.sub, tw), cx + 6, cy + 17, 0xFF9AA4B4, true);
                 Theme.textShadow(ctx, textRenderer, Theme.ellipsize(textRenderer, SAMPLE, tw), cx + 6, cy + 28, 0xFFE8ECF2, true);
                 Theme.textShadow(ctx, textRenderer, Theme.ellipsize(textRenderer, DIGITS, tw), cx + 6, cy + 38, 0xFFC8D0DC, true);
                 HudPreview.draw(ctx, textRenderer, cx + 7, cy + 50, PANEL_W, ROWS, false);
                 c.font = keep;
+                c.customFont = keepCustom;
             }
         } finally {
             c.font = keep;
+            c.customFont = keepCustom;
             ctx.disableScissor();
         }
         // 지금 고른 글꼴(크게)
@@ -160,7 +183,7 @@ public class FontLookScreen extends Screen {
             int px = width - pw - 8;
             ctx.fill(px, gridY, px + pw, gridY + gridH, 0xFF181C24);
             Theme.boldText(ctx, textRenderer, "지금 고른 글꼴", px + 8, gridY + 6, Theme.WHITE, true);
-            ctx.drawText(textRenderer, Theme.title(Theme.ellipsize(textRenderer, keep.label, pw - 16, true)), px + 8, gridY + 20, 0xFFF2C230, true);
+            ctx.drawText(textRenderer, Theme.title(Theme.ellipsize(textRenderer, kr.ddingmate.ui.UserFonts.label(chosenKey), pw - 16, true)), px + 8, gridY + 20, 0xFFF2C230, true);
             ctx.getMatrices().push();
             ctx.getMatrices().translate(px + 10, gridY + 36, 0);
             ctx.getMatrices().scale(1.3f, 1.3f, 1);
@@ -207,7 +230,7 @@ public class FontLookScreen extends Screen {
                 if (p.card == null) continue;
                 int cx = gridX + p.x, cy = gridY + p.y - (int) scroll;
                 if (mouseX >= cx && mouseX < cx + CARD_W - 6 && mouseY >= cy && mouseY < cy + h - 6) {
-                    choose(p.card.font);
+                    choose(p.card.key());
                     return true;
                 }
             }
@@ -215,10 +238,18 @@ public class FontLookScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    private static void choose(FontStyle f) {
+    private static void choose(String key) {
         DdingMateConfig c = cfg();
-        c.font = f;
+        kr.ddingmate.ui.UserFonts.choose(c, key);
         c.save();
+    }
+
+    /** 지금 고른 글꼴의 키(내 글꼴이 아직 안 읽혔으면 띵메이트 글꼴) */
+    private static String currentKey() {
+        DdingMateConfig c = cfg();
+        String k = c.customFont;
+        if (k != null && !k.isEmpty() && cards().stream().anyMatch(x -> x.key().equals(k))) return k;
+        return c.font.name();
     }
 
     /** 시험용: 카드 수(글꼴마다 하나) */
@@ -228,7 +259,7 @@ public class FontLookScreen extends Screen {
 
     /** 시험용: i 번째 카드를 누른 것처럼 */
     public static void debugChoose(int i) {
-        choose(cards().get(i).font);
+        choose(cards().get(i).key());
     }
 
     @Override

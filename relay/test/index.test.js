@@ -3,7 +3,7 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import worker, { validateInquiry, realAccount, sha256, verifyDiscord, cleanup, LIMITS } from '../src/index.js';
+import worker, { validateInquiry, realAccount, sha256, verifyDiscord, cleanup, LIMITS, NOTICE_COMMAND } from '../src/index.js';
 
 const DEV = '726781498606354452';
 const CHANNEL = '111111111111111111';
@@ -12,7 +12,7 @@ const CHANNEL = '111111111111111111';
 class FakeD1 {
   constructor() {
     this.db = new DatabaseSync(':memory:');
-    this.db.exec(readFileSync(new URL('../migrations/0001_init.sql', import.meta.url), 'utf-8'));
+    for (const m of ['0001_init.sql', '0002_notices.sql']) this.db.exec(readFileSync(new URL('../migrations/' + m, import.meta.url), 'utf-8'));
     this.writes = 0;
   }
   prepare(sql) {
@@ -70,7 +70,7 @@ beforeEach(async () => {
     if (body instanceof FormData) {
       files = [...body.entries()].filter(([k]) => k.startsWith('files[')).map(([, v]) => v.name);
       body = JSON.parse(body.get('payload_json'));
-    } else body = JSON.parse(body);
+    } else body = body === undefined ? null : JSON.parse(body);
     sent.push({ url, method: init.method, auth: init.headers.authorization, body, files });
     return new Response(JSON.stringify({ id: String(nextMessage++) }), { status: 200 });
   };
@@ -293,4 +293,88 @@ test('검사 함수', async () => {
   assert.equal(nicked('가'.repeat(17)), 'bad nick');
   assert.equal(nicked(3), 'bad nick');
   assert.equal(await verifyDiscord('zz', 'zz', '1', 'x'), false);
+});
+
+// ---------------------------------------------------------------- 개발자 공지
+
+async function getNotices() {
+  const res = await worker.fetch(new Request('https://relay.test/notices'), env, ctx());
+  return { status: res.status, body: await res.json() };
+}
+
+function noticeSubmit(title, text, id = 'i1', user = DEV) {
+  return signed({
+    id, type: 5, member: { user: { id: user } },
+    data: { custom_id: 'notice:new', components: [
+      { type: 1, components: [{ custom_id: 'title', value: title }] },
+      { type: 1, components: [{ custom_id: 'text', value: text }] },
+    ] },
+  });
+}
+
+test('공지: /공지 → 입력창 → 저장·채널 기록 → 띵메이트가 받아 감 → [공지 내리기]로 내리면 더는 안 감', async () => {
+  const modal = await signed({ type: 2, member: { user: { id: DEV } }, data: { name: '공지' } });
+  assert.equal(modal.body.type, 9);
+  assert.equal(modal.body.data.custom_id, 'notice:new');
+  assert.deepEqual(modal.body.data.components.map((r) => r.components[0].custom_id), ['title', 'text']);
+
+  const r = await noticeSubmit('점검 안내', '오늘 밤 띵메이트 업데이트가 있어요\n@everyone');
+  assert.equal(r.body.type, 4);
+  assert.equal(r.body.data.flags, 64);
+  await settle();
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].body.content, /^📢 \*\*공지 · 점검 안내\*\*\n> 오늘 밤/);
+  assert.deepEqual(sent[0].body.allowed_mentions, { parse: [] });
+  const button = sent[0].body.components[0].components[0];
+  assert.equal(button.label, '공지 내리기');
+  const id = button.custom_id.slice('unnotice:'.length);
+  assert.match(id, /^[0-9a-f]{8}$/);
+  assert.equal(env.DB.rows('SELECT message_id FROM notices')[0].message_id, '1000');
+
+  const got = await getNotices();
+  assert.equal(got.status, 200);
+  assert.equal(got.body.pollMin, 30);
+  assert.equal(got.body.notices.length, 1);
+  assert.deepEqual(Object.keys(got.body.notices[0]).sort(), ['at', 'id', 'text', 'title']);
+  assert.equal(got.body.notices[0].title, '점검 안내');
+
+  const down = await signed({ type: 3, member: { user: { id: DEV } }, data: { custom_id: `unnotice:${id}` } });
+  assert.equal(down.body.type, 7);
+  assert.deepEqual(down.body.data.components, []);
+  assert.match(down.body.data.content, /내린 공지/);
+  assert.equal((await getNotices()).body.notices.length, 0);
+});
+
+test('공지: 개발자만, 같은 제출은 한 번만, 새것부터 5개·30일까지', async () => {
+  const other = await noticeSubmit('장난', '내용', 'x', '999');
+  assert.match(other.body.data.content, /개발자만/);
+  const cmd = await signed({ type: 2, member: { user: { id: '999' } }, data: { name: '공지' } });
+  assert.match(cmd.body.data.content, /개발자만/);
+  await noticeSubmit('첫 공지', '내용', 'same');
+  const again = await noticeSubmit('첫 공지', '내용', 'same');
+  assert.match(again.body.data.content, /이미 올린/);
+  for (let i = 0; i < 6; i++) await noticeSubmit(`공지 ${i}`, '내용', `n${i}`);
+  env.DB.db.prepare('UPDATE notices SET at = ? WHERE title = ?').run(Date.now() - 31 * 24 * 3600 * 1000, '공지 5');
+  const got = (await getNotices()).body.notices;
+  assert.equal(got.length, LIMITS.maxNotices);
+  assert.ok(!got.some((n) => n.title === '공지 5'), '30일 지난 공지가 감');
+  // 90일 지나면 정리
+  env.DB.db.prepare('UPDATE notices SET at = 0').run();
+  await cleanup(env, Date.now());
+  assert.equal(env.DB.rows('SELECT * FROM notices').length, 0);
+});
+
+test('/공지 명령 등록: 열쇠가 맞을 때만, 앱 번호를 알아내 /공지 하나를 등록', async () => {
+  env.ADMIN_KEY_HASH = await sha256('secret-key');
+  const no = await post('/admin/commands', {});
+  assert.equal(no.status, 403);
+  const bad = await post('/admin/commands', {}, { 'x-admin-key': 'wrong' });
+  assert.equal(bad.status, 403);
+  const ok = await post('/admin/commands', {}, { 'x-admin-key': 'secret-key' });
+  assert.equal(ok.status, 200);
+  assert.equal(sent[0].method, 'GET');
+  assert.equal(sent[0].url, 'https://discord.com/api/v10/oauth2/applications/@me');
+  assert.equal(sent[1].method, 'PUT');
+  assert.equal(sent[1].url, 'https://discord.com/api/v10/applications/1000/commands');
+  assert.deepEqual(sent[1].body, [NOTICE_COMMAND]);
 });

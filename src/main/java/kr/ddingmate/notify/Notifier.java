@@ -151,6 +151,27 @@ public final class Notifier {
         }
     }
 
+    /** 개발자 공지(relay /notices): 기록 탭·소리·팝업·채팅(내 화면만). 공지는 알림 방식 스위치와 상관없이 기록에는 남긴다 */
+    public static void notice(String title, String text) {
+        AlertLog.add("공지", "띵메이트 공지 · " + title, text);
+        MinecraftClient client = MinecraftClient.getInstance();
+        DdingMateConfig cfg = DdingMate.config();
+        if (cfg.soundEnabled && cfg.soundVolume > 0f) {
+            client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), 1.2f, cfg.soundVolume));
+        }
+        if (cfg.toastEnabled) {
+            String body = text.replaceAll("\\s+", " ").trim();
+            ItemStack icon = new ItemStack(Items.BELL);
+            if (toastReady(client)) client.getToastManager().add(new DdingMateToast("공지 · " + title, body, icon, Theme.GOLD));
+            else HELD.add(new Held("공지 · " + title, body, icon, Theme.GOLD));
+        }
+        chat(Text.literal("공지 · " + title).formatted(Formatting.YELLOW, Formatting.BOLD));
+        for (String line : text.split("\n")) {
+            if (line.isBlank()) continue;
+            chat(Text.literal(line.strip()).formatted(Formatting.YELLOW));
+        }
+    }
+
     // ---------------------------------------------------------------- 접속 직후 팝업 미루기
 
     /**

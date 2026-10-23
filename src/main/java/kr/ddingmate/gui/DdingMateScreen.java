@@ -60,8 +60,9 @@ public class DdingMateScreen extends Screen {
     private static final int ITEM_H = 24;
 
     enum Tab {
-        HOME("홈", Items.RED_BED), NOTIFY("알림 방식", Items.BELL), EVENTS("일정", Items.CLOCK),
-        KEYWORDS("키워드", Items.NAME_TAG), COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
+        // 2026-10-24 사용자 요청: "알림 방식" → "알림"(키워드도 여기로), HUD 관련 설정은 모두 새 HUD 탭으로
+        HOME("홈", Items.RED_BED), NOTIFY("알림", Items.BELL), HUD("HUD", Items.ITEM_FRAME), EVENTS("일정", Items.CLOCK),
+        COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
         TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK), EXPERT("전문가", Items.EXPERIENCE_BOTTLE),
         INQUIRY("문의", Items.FEATHER);
 
@@ -378,13 +379,17 @@ public class DdingMateScreen extends Screen {
     private void buildRows() {
         switch (tab) {
             case HOME -> buildHome();
-            case NOTIFY -> buildNotify();
+            case NOTIFY -> {
+                buildNotify();
+                buildKeywords();
+                buildNews();
+            }
+            case HUD -> buildHud();
             case EVENTS -> {
                 // 내 채널은 채널 재시작 일정에만 쓰여서 일정 탭 아래에 함께 둔다(탭 10개, 2026-10-17)
                 buildEvents();
                 buildChannels();
             }
-            case KEYWORDS -> buildKeywords();
             case COUNTER -> buildCounter();
             case GEAR -> buildGear();
             case TODO -> buildTodo();
@@ -544,45 +549,53 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildNotify() {
-        list.guide("알림을 어떻게 받을지 정해요. HUD 는 화면 구석에 늘 떠 있는 작은 정보 판이에요.");
+        list.guide("알림을 어떻게 받을지 정해요. 키워드 알림, 개발자 공지와 업데이트 소식도 여기 있어요. HUD 설정은 [HUD] 탭이에요.");
         list.header("알림을 받을 방법", "알림 방법");
-        list.pair(tip(toggle("일정 HUD", cfg.hudEnabled, v -> cfg.hudEnabled = v), "다음 일정과 남은 시간을 화면 구석에 늘 보여 줘요"),
-                tip(toggle("소리", cfg.soundEnabled, v -> cfg.soundEnabled = v), "알림이 올 때 '띵' 소리를 내요"));
-        list.pair(tip(toggle("팝업 알림", cfg.toastEnabled, v -> cfg.toastEnabled = v), "화면 오른쪽 위에 잠깐 떴다 사라지는 알림 상자예요"),
-                tip(toggle("채팅 알림 (내 화면만)", cfg.chatEnabled, v -> cfg.chatEnabled = v),
-                        "채팅창에 [띵메이트] 로 시작하는 줄을 남겨요. 다른 사람에게는 보이지 않아요"));
+        list.pair(tip(toggle("소리", cfg.soundEnabled, v -> cfg.soundEnabled = v), "알림이 올 때 '띵' 소리를 내요"),
+                tip(toggle("팝업 알림", cfg.toastEnabled, v -> cfg.toastEnabled = v), "화면 오른쪽 위에 잠깐 떴다 사라지는 알림 상자예요"));
+        list.pair(tip(toggle("채팅 알림 (내 화면만)", cfg.chatEnabled, v -> cfg.chatEnabled = v),
+                "채팅창에 [띵메이트] 로 시작하는 줄을 남겨요. 다른 사람에게는 보이지 않아요"), null);
         list.single(new Widgets.Slider(rowWidth(), cfg.soundVolume,
                 v -> "소리 크기  " + Math.round(v * 100) + "%", v -> cfg.soundVolume = (float) v));
+    }
 
-        list.header("HUD 모양", "HUD 모양");
-        list.pair(hudButton(),
-                new Widgets.Cycle<>(half(), "보일 일정 수", IntStream.rangeClosed(1, 10).boxed().toList(), cfg.hudLines,
-                        n -> n + "개", v -> cfg.hudLines = v));
+    /** HUD 탭: HUD 켜고 끄기 · 일정 HUD 에 함께 보일 것 · 꾸미기 · 크기·자리 · 글꼴(2026-10-24 사용자 요청으로 한 탭에 모음) */
+    private void buildHud() {
+        list.guide("HUD 는 게임 화면 구석에 늘 떠 있는 작은 정보 판이에요. 켜고 끄기 · 꾸미기 · 크기와 자리 · 글꼴을 여기서 정해요.");
+        list.header("HUD 켜고 끄기", "켜고 끄기");
+        DdingMateConfig.Counter cc = cfg.counter;
+        DdingMateConfig.Durability dc = cfg.durability;
+        DdingMateConfig.Todo tc = cfg.todo;
+        DdingMateConfig.Skills sc = cfg.skills;
+        list.pair(tip(toggle("일정 HUD", cfg.hudEnabled, v -> cfg.hudEnabled = v), "다음 일정과 남은 시간을 화면 구석에 늘 보여 줘요"),
+                tip(toggle("할 일 HUD", tc.hudEnabled, v -> tc.hudEnabled = v), "아직 안 한 할 일을 화면 구석에 보여 줘요"));
+        list.pair(tip(toggle("카운터 HUD", cc.enabled, v -> cc.enabled = v), "핀한 레시피의 재료 현황을 화면 구석에 보여 줘요(핀은 [재료] 탭)"),
+                tip(toggle("내구도 HUD", dc.enabled, v -> dc.enabled = v), "켜 둔 장비의 남은 내구도를 화면 구석에 보여 줘요(장비는 [장비] 탭)"));
+        list.pair(tip(toggle("스킬 HUD", sc.enabled, v -> sc.enabled = v),
+                "스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 보여 줘요. 안 쓸 때는 숨어 있어요"), hudButton());
+
+        list.header("일정 HUD 에 함께 보일 것", "일정 HUD");
+        // 1~10개 + 제한 없음(켜 둔 일정 모두, 2026-10-24 사용자 요청)
+        List<Integer> counts = new ArrayList<>(IntStream.rangeClosed(1, 10).boxed().toList());
+        counts.add(DdingMateConfig.HUD_LINES_ALL);
+        list.pair(new Widgets.Cycle<>(half(), "보일 일정 수", counts, cfg.hudLines,
+                        n -> n == DdingMateConfig.HUD_LINES_ALL ? "제한 없음" : n + "개", v -> cfg.hudLines = v),
+                tip(toggle("오늘 접속 시간", cfg.playtime.showInHud, v -> cfg.playtime.showInHud = v), "일정 HUD 맨 위에 오늘 접속 시간을 보여 줘요"));
+        list.pair(tip(toggle("제작 중인 것", cfg.craft.showInHud, v -> cfg.craft.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"),
+                null);
+
+        list.header("HUD 꾸미기", "꾸미기");
         hudLookRows();
         list.pair(new Widgets.Cycle<>(half(), "HUD 진하기", List.of(30, 40, 50, 60, 70, 80, 85, 90, 100), nearest(cfg.hudOpacity),
                         v -> v + "%", v -> cfg.hudOpacity = v), null);
-        Widgets.Cycle<DdingMateConfig.FontStyle> font = new Widgets.Cycle<>(half(), "글꼴", List.of(DdingMateConfig.FontStyle.values()),
-                cfg.font, f -> f.label, v -> {
-                    cfg.font = v;
-                    rebuild(); // 글자 폭이 달라 줄 배치를 다시
-                });
-        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요. 레디오 볼펜체·베리려원·호주나리체는 온글잎, 몽토리체·묘은또박체는 그리운 손글씨 글꼴, G마켓 산스는 반듯한 고딕이에요.")));
-        Widgets.Toggle everywhere = toggle("게임 전체에 적용", cfg.fontEverywhere, v -> cfg.fontEverywhere = v);
-        everywhere.setTooltip(Tooltip.of(Text.literal("켜면: 고른 글꼴로 채팅·아이템 이름과 설명·메뉴 등 게임 글자도 그려요.\n"
-                + "띵타이쿤 아이콘·창 그림은 그대로예요. 글자 폭이 달라 서버 HUD(위쪽 재화 바 등) 글자가 배경에서 조금 밀릴 수 있어요.\n"
-                + "끄면: 띵메이트 창·HUD·알림만 이 글꼴이에요.")));
-        list.pair(font, everywhere);
-        Widgets.Button fontLook = new Widgets.Button(rowWidth(), 20, Text.literal("글꼴 한눈에 보고 고르기"), true, b -> {
-            savedScroll = list.getScrollY();
-            client.setScreen(new FontLookScreen(this));
-        });
-        fontLook.setTooltip(Tooltip.of(Text.literal("글꼴마다 예문 · 숫자 · 실제 HUD 모양을 늘어놓고 비교하며 골라요.")));
-        list.single(fontLook);
+
+        list.header("HUD 크기 · 자리", "크기·자리");
         Widgets.Cycle<Integer> size = new Widgets.Cycle<>(half(), "HUD 전체 크기", List.of(50, 60, 70, 80, 90, 100),
                 nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
         size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 설정'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));
         Widgets.Toggle avoid = toggle("서버 HUD 피하기", cfg.avoidServerHud, v -> cfg.avoidServerHud = v);
-        avoid.setTooltip(Tooltip.of(Text.literal("구석 HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.")));
+        avoid.setTooltip(Tooltip.of(Text.literal("HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.\n"
+                + "채팅창 자리에 옮겨 둔 HUD 도 채팅창 위로 비키고, 재료 카운터는 넘치는 줄을 옆 칸으로 보내 채팅에 잘리지 않게 해요.")));
         list.pair(size, avoid);
         Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 설정"), true, b -> {
             savedScroll = list.getScrollY();
@@ -596,9 +609,104 @@ public class DdingMateScreen extends Screen {
         list.single(move);
         list.note("HUD 남은 시간 색: 빨강 = 10분 안, 노랑 = 1시간 안, 파랑 = 그보다 많이 남음");
         list.note("HUD 는 화면 구석에만 그려요. 화면 위 가운데(서버 HUD·NPC 말풍선 자리)는 비워 둬요.");
-        list.header("처음 쓰는 사람을 위한 안내", "안내");
-        list.pair(tip(toggle("접속할 때 사용법 안내", cfg.joinTip, v -> cfg.joinTip = v),
-                "게임을 켜고 처음 접속할 때 채팅에 '/띵메이트 로 열 수 있어요' 를 한 번 남겨요"), null);
+
+        fontRows();
+    }
+
+    // ---------------------------------------------------------------- 글꼴(HUD 탭)
+
+    /** 내 글꼴 추가 결과 등(아래 안내 줄) */
+    private static String fontStatus = "";
+
+    /**
+     * 글꼴: 띵메이트 글꼴 7종 + 내가 넣은 글꼴(config/ddingmate/fonts) + "띵타이쿤 글꼴 따라가기"(게임 기본 글꼴 = 서버 리소스팩·내 리소스팩).
+     * 내가 넣은 글꼴은 내 컴퓨터에서만 쓰여요(다른 사람 화면·서버에는 아무 영향 없음)
+     */
+    private void fontRows() {
+        list.header("글꼴", "글꼴");
+        List<String> choices = new ArrayList<>();
+        for (DdingMateConfig.FontStyle f : DdingMateConfig.FontStyle.values()) choices.add(f.name());
+        choices.add(kr.ddingmate.ui.UserFonts.GAME);
+        for (kr.ddingmate.ui.UserFonts.Entry e : kr.ddingmate.ui.UserFonts.entries()) choices.add(e.key());
+        String now = cfg.customFont != null && !cfg.customFont.isEmpty() && choices.contains(cfg.customFont) ? cfg.customFont : cfg.font.name();
+        Widgets.Cycle<String> font = new Widgets.Cycle<>(half(), "글꼴", choices, now, kr.ddingmate.ui.UserFonts::label, v -> {
+            kr.ddingmate.ui.UserFonts.choose(cfg, v);
+            rebuild(); // 글자 폭이 달라 줄 배치를 다시
+        });
+        font.setTooltip(Tooltip.of(Text.literal("띵메이트 창·HUD·알림 글꼴이에요.\n"
+                + "레디오 볼펜체·베리려원·호주나리체는 온글잎, 몽토리체·묘은또박체는 그리운 손글씨 글꼴, G마켓 산스는 반듯한 고딕이에요.\n"
+                + "띵타이쿤 글꼴: 게임이 쓰는 기본 글꼴(띵타이쿤 리소스팩, 내가 낀 글꼴 리소스팩)을 그대로 따라가요.\n"
+                + "'내 글꼴'은 아래 [내 글꼴 추가]로 넣은 글꼴이에요.")));
+        Widgets.Toggle everywhere = toggle("게임 전체에 적용", cfg.fontEverywhere, v -> cfg.fontEverywhere = v);
+        everywhere.setTooltip(Tooltip.of(Text.literal("켜면: 고른 글꼴로 채팅·아이템 이름과 설명·메뉴 등 게임 글자도 그려요.\n"
+                + "띵타이쿤 아이콘·창 그림은 그대로예요. 글자 폭이 달라 서버 HUD(위쪽 재화 바 등) 글자가 배경에서 조금 밀릴 수 있어요.\n"
+                + "끄면: 띵메이트 창·HUD·알림만 이 글꼴이에요.")));
+        list.pair(font, everywhere);
+        Widgets.Button fontLook = new Widgets.Button(rowWidth(), 20, Text.literal("글꼴 한눈에 보고 고르기"), true, b -> {
+            savedScroll = list.getScrollY();
+            client.setScreen(new FontLookScreen(this));
+        });
+        fontLook.setTooltip(Tooltip.of(Text.literal("글꼴마다 예문 · 숫자 · 실제 HUD 모양을 늘어놓고 비교하며 골라요.")));
+        list.single(fontLook);
+
+        Widgets.Button add = new Widgets.Button(half(), 20, Text.literal("내 글꼴 추가"), false, b -> addUserFont());
+        add.setTooltip(Tooltip.of(Text.literal("내 컴퓨터의 글꼴 파일(.ttf · .otf)을 골라 넣어요. 넣으면 글꼴 목록에 '내 글꼴'로 나와요.\n"
+                + "글꼴은 이 컴퓨터의 띵메이트에서만 쓰여요. 다른 플레이어 화면이나 서버에는 아무것도 바뀌지 않아요.\n"
+                + "글꼴마다 쓸 수 있는 범위(라이선스)가 달라요. 개인 사용이 허락된 글꼴만 넣어 주세요.")));
+        Widgets.Button folder = new Widgets.Button(half(), 20, Text.literal("내 글꼴 폴더 열기"), false, b -> {
+            java.nio.file.Path dir = kr.ddingmate.ui.UserFonts.folder();
+            net.minecraft.util.Util.getOperatingSystem().open(dir.toFile());
+            fontStatus = "폴더에 글꼴 파일을 넣거나 빼고 [다시 읽기]를 눌러 주세요";
+            rebuild();
+        });
+        folder.setTooltip(Tooltip.of(Text.literal("config/ddingmate/fonts 폴더를 열어요. 파일을 직접 넣거나 지워도 돼요.")));
+        list.pair(add, folder);
+        List<Integer> sizes = List.of(70, 80, 90, 100, 110, 120, 130);
+        Widgets.Cycle<Integer> userSize = new Widgets.Cycle<>(half(), "내 글꼴 크기", sizes, nearestOf(cfg.userFontSize, 70, 80, 90, 100, 110, 120, 130),
+                v -> v + "%", v -> {
+                    cfg.userFontSize = v;
+                    reloadUserFonts("크기를 바꿨어요");
+                });
+        userSize.setTooltip(Tooltip.of(Text.literal("글꼴마다 글자 크기가 달라서, 내 글꼴이 너무 크거나 작으면 여기서 맞춰요(바꾸면 리소스를 다시 읽어 잠깐 멈춰요).")));
+        Widgets.Button reload = new Widgets.Button(half(), 20, Text.literal("다시 읽기"), false, b -> reloadUserFonts("다시 읽었어요"));
+        reload.setTooltip(Tooltip.of(Text.literal("폴더에 넣거나 뺀 글꼴을 목록에 반영해요(리소스를 다시 읽어 잠깐 멈춰요).")));
+        list.pair(userSize, reload);
+        int n = kr.ddingmate.ui.UserFonts.entries().size();
+        list.note(!fontStatus.isEmpty() ? fontStatus
+                : n == 0 ? "넣은 내 글꼴이 없어요. 내 글꼴은 이 컴퓨터에서만 보여요(다른 사람에게는 안 보여요)."
+                : "내 글꼴 " + n + "개 · 이 컴퓨터에서만 보여요(다른 사람에게는 안 보여요).");
+    }
+
+    private void addUserFont() {
+        if (client == null) return;
+        fontStatus = "글꼴 파일 고르는 중…(열린 창에서 골라 주세요)";
+        rebuild();
+        kr.ddingmate.ui.UserFonts.pick(client, picked -> {
+            String result = kr.ddingmate.ui.UserFonts.add(picked);
+            if (result == null) {
+                fontStatus = "";
+            } else {
+                fontStatus = result;
+                if (!picked.isEmpty()) kr.ddingmate.ui.UserFonts.rebuildAndReload(client, () -> {
+                    if (client.currentScreen == this) rebuild();
+                });
+            }
+            if (client.currentScreen == this) rebuild();
+        });
+    }
+
+    private void reloadUserFonts(String done) {
+        if (client == null) return;
+        savedScroll = list.getScrollY();
+        kr.ddingmate.ui.UserFonts.rebuildAndReload(client, () -> {
+            fontStatus = done + " · 내 글꼴 " + kr.ddingmate.ui.UserFonts.entries().size() + "개";
+            if (client.currentScreen == this) rebuild();
+        });
+    }
+
+    /** 시험용 */
+    public static String fontStatus() {
+        return fontStatus;
     }
 
     /**
@@ -721,7 +829,7 @@ public class DdingMateScreen extends Screen {
             list.single(new InfoRow(new ItemStack(Items.CHEST), "① 만들 레시피 핀하기", "재료 탭", Theme.BLUE_MID, Tab.COUNTER));
             list.single(new InfoRow(new ItemStack(Items.WRITABLE_BOOK), "② 오늘 할 일 체크하기", "할 일 탭", Theme.BLUE_MID, Tab.TODO));
             list.single(new InfoRow(new ItemStack(Items.ANVIL), "③ 도구 내구도 지켜보기", "장비 탭", Theme.BLUE_MID, Tab.GEAR));
-            list.single(new InfoRow(new ItemStack(Items.BELL), "④ HUD 자리·크기 바꾸기", "알림 방식 탭", Theme.BLUE_MID, Tab.NOTIFY));
+            list.single(new InfoRow(new ItemStack(Items.BELL), "④ HUD 자리·크기 바꾸기", "HUD 탭", Theme.BLUE_MID, Tab.HUD));
             list.note("일정 알림은 이미 켜져 있어요. 각 탭 맨 위에 그 탭에서 할 수 있는 일이 적혀 있어요.");
             list.single(new Widgets.Button(rowWidth(), 20, Text.literal("알겠어요, 안내 숨기기"), true, b -> {
                 cfg.guideSeen = true;
@@ -826,9 +934,9 @@ public class DdingMateScreen extends Screen {
                 : "'끔'이면 그 채널 재시작은 알리지 않아요. 클릭하면 다음 번호, 오른쪽 클릭이나 Shift+클릭은 이전 번호예요.");
     }
 
+    /** 알림 탭 아래: 채팅에 정해 둔 단어가 뜨거나 누가 내 닉네임을 부르면 소리와 팝업으로 알린다 */
     private void buildKeywords() {
-        list.guide("채팅에 정해 둔 단어가 뜨거나 누가 내 닉네임을 부르면 소리와 팝업으로 알려 줘요.");
-        list.header("키워드 알림", "키워드");
+        list.header("키워드 알림 · 채팅에 정해 둔 단어나 내 닉네임이 뜨면", "키워드");
         list.pair(tip(toggle("키워드 알림", cfg.keywords.enabled, v -> cfg.keywords.enabled = v),
                         "아래 칸에 적은 단어가 채팅에 뜨면 알려 줘요"),
                 tip(toggle("내 닉네임 언급", cfg.keywords.includeOwnName, v -> cfg.keywords.includeOwnName = v),
@@ -839,10 +947,33 @@ public class DdingMateScreen extends Screen {
         words.setTooltip(Tooltip.of(Text.literal("쉼표로 구분해서 적어요. 예: 오션오더, 풍선, 경매")));
         words.setChangedListener(text -> cfg.keywords.words = splitList(text));
         list.labeled("키워드", words);
-        list.header("이렇게 울려요", "예시");
         list.note("채팅에 키워드가 들어간 메시지가 뜨면 소리와 함께 팝업 \"채팅에 '오션오더'\" 가 뜨고, 아래에 그 메시지가 그대로 보여요.");
         list.note("다른 사람이 채팅으로 내 닉네임을 부르면 \"누가 내 닉네임을 불렀어요\" 가 떠요. 내 이름이 들어간 시스템 공지에는 울리지 않아요.");
         list.note("내가 쓴 채팅에는 반응하지 않고, 같은 단어는 " + cfg.keywords.cooldownSeconds + "초 안에 다시 울리지 않아요. 영어는 대소문자를 가리지 않아요.");
+    }
+
+    /** 알림 탭 맨 아래: 개발자 공지 · 업데이트 소식 · 처음 쓰는 사람 안내 */
+    private void buildNews() {
+        list.header("띵메이트 공지 · 업데이트 소식", "공지·소식");
+        list.pair(tip(toggle("개발자 공지 받기", cfg.notices.enabled, v -> cfg.notices.enabled = v),
+                        "개발자가 띵메이트 사용자 모두에게 보내는 공지를 접속할 때·10분마다 받아 와 팝업과 채팅(내 화면만)으로 알려 줘요.\n"
+                                + "받아 올 때 띵메이트 버전만 함께 가요(닉네임·UUID 는 안 보내요)."),
+                tip(toggle("업데이트 소식 창", cfg.updateNotes, v -> cfg.updateNotes = v),
+                        "띵메이트를 새 버전으로 바꾸면 처음 켤 때 무엇이 추가되고 고쳐졌는지 창으로 보여 줘요"));
+        Widgets.Button notes = new Widgets.Button(half(), 20, Text.literal("업데이트 소식 보기"), false, b -> {
+            savedScroll = list.getScrollY();
+            client.setScreen(new UpdateNotesScreen(this, null));
+        });
+        notes.setTooltip(Tooltip.of(Text.literal("지금 버전(" + kr.ddingmate.news.UpdateNotes.currentVersion() + ")까지 바뀐 점을 다시 봐요")));
+        Widgets.Button notice = new Widgets.Button(half(), 20, Text.literal("받은 공지 보기 " + kr.ddingmate.news.Notices.received().size()), false, b -> {
+            savedScroll = list.getScrollY();
+            client.setScreen(new NoticeScreen(this));
+        });
+        notice.setTooltip(Tooltip.of(Text.literal("개발자에게 받은 공지를 다시 봐요(최근 30일)")));
+        list.pair(notes, notice);
+        list.header("처음 쓰는 사람을 위한 안내", "안내");
+        list.pair(tip(toggle("접속할 때 사용법 안내", cfg.joinTip, v -> cfg.joinTip = v),
+                "게임을 켜고 처음 접속할 때 채팅에 '/띵메이트 로 열 수 있어요' 를 한 번 남겨요"), null);
     }
 
     private void buildCounter() {
@@ -870,9 +1001,7 @@ public class DdingMateScreen extends Screen {
             }
         }
         list.header("표시와 알림", "표시·알림");
-        list.pair(tip(toggle("카운터 HUD", cc.enabled, v -> cc.enabled = v), "핀한 레시피의 재료 현황을 화면 구석에 보여 줘요"),
-                tip(toggle("가방도 합산", cc.includeBags, v -> cc.includeBags = v), "한 번 열어 본 모험 가방 안의 재료도 함께 세요"));
-        list.pair(hudButton(),
+        list.pair(tip(toggle("가방도 합산", cc.includeBags, v -> cc.includeBags = v), "한 번 열어 본 모험 가방 안의 재료도 함께 세요"),
                 toggle("다 모이면 알림", cc.notifyComplete, v -> cc.notifyComplete = v));
         Widgets.Toggle expand = toggle("하위 재료 보기", cc.expandSubMaterials, v -> cc.expandSubMaterials = v);
         expand.setTooltip(Tooltip.of(Text.literal("켜면: 모자란 재료가 다른 레시피로 만드는 것일 때(예: 조약돌 뭉치 = 조약돌 64개) 필요한 하위 재료를 아래 줄에 보여 줘요.\n끄면: 레시피의 재료만 보여요.")));
@@ -935,10 +1064,9 @@ public class DdingMateScreen extends Screen {
                     rebuild();
                 }), "제작·가공 시설에서 만드는 아이템마다 완료까지 남은 시간을 세요"),
                 tip(toggle("다 되면 알림", cr.notify, v -> cr.notify = v), "다 되면 소리와 팝업으로 알려 줘요"));
-        list.pair(tip(toggle("일정 HUD 에 표시", cr.showInHud, v -> cr.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"),
-                tip(toggle("전부 끝나면 한 번에 완료", cr.mergeDone, v -> cr.mergeDone = v),
+        list.pair(tip(toggle("전부 끝나면 한 번에 완료", cr.mergeDone, v -> cr.mergeDone = v),
                         "켜면: 같은 아이템을 여러 번 넣었을 때 먼저 끝난 것을 \"[1] 완료\"로 따로 빼지 않고, 전부 끝날 때 \"전부 완료!\"로 보여 줘요.\n"
-                                + "끄면: 끝난 것은 따로 \"완료!\" 줄로 보여 줘요. 알림은 어느 쪽이든 전부 끝났을 때 한 번 와요."));
+                                + "끄면: 끝난 것은 따로 \"완료!\" 줄로 보여 줘요. 알림은 어느 쪽이든 전부 끝났을 때 한 번 와요."), null);
         list.note("제작을 시작하면 알아서 등록돼요. 시설 창을 한 번 열면 레시피의 \"제작 시간\"을 배워서, 넣은 순서대로 "
                 + "하나씩 끝나는 시각을 계산해요. 같은 걸 여러 번 넣으면 \"×7 [3]\" 처럼 한 줄로 묶고 마지막 것이 끝날 때까지 세요. 꺼내면 빠져요.");
         list.note("제작 시간을 줄여 주는 전문가 스킬 레벨은 [전문가] 탭에서 정해요(전문가 창을 열면 알아서 맞춰져요).");
@@ -989,9 +1117,7 @@ public class DdingMateScreen extends Screen {
                         v -> DurabilityTracker.setTracked(t.key, t.name, v)).detail("인벤토리에 없음"));
             }
         }
-        list.header("표시와 알림", "표시·알림");
-        list.pair(tip(toggle("내구도 HUD", dc.enabled, v -> dc.enabled = v), "켜 둔 장비의 남은 내구도를 화면 구석에 보여 줘요"),
-                hudButton());
+        list.header("알림", "알림");
         list.pair(new Widgets.Cycle<>(half(), "부족 알림", List.of(0, 5, 10, 15, 20, 30),
                 nearestOf(dc.warnPercent, 0, 5, 10, 15, 20, 30),
                 v -> v == 0 ? "끔" : v + "% 이하", v -> dc.warnPercent = v), null);
@@ -1042,9 +1168,7 @@ public class DdingMateScreen extends Screen {
         }
         if (!any) list.note("알아서 셀 수 있는 할 일을 모두 넣었어요.");
 
-        list.header("표시와 알림", "표시·알림");
-        list.pair(tip(toggle("할 일 HUD", tc.hudEnabled, v -> tc.hudEnabled = v), "아직 안 한 할 일을 화면 구석에 보여 줘요"),
-                hudButton());
+        list.header("알림", "알림");
         list.pair(new Widgets.Cycle<>(half(), "남은 할 일 알림", List.of(0, 30, 60, 120),
                 nearestOf(tc.remindMinutes, 0, 30, 60, 120),
                 v -> v == 0 ? "끔" : "03시 " + v + "분 전", v -> tc.remindMinutes = v), null);
@@ -1063,8 +1187,7 @@ public class DdingMateScreen extends Screen {
                     : " · 다음 보상 " + next + "시간: " + PlaytimeTracker.REWARDS.get(next)));
         }
         list.pair(tip(toggle("보상 구간 알림", pc.enabled, v -> pc.enabled = v), "접속 1·2·3·4·5·8시간을 넘길 때마다 채팅으로 알려 줘요"),
-                tip(toggle("일정 HUD 에 표시", pc.showInHud, v -> pc.showInHud = v), "일정 HUD 맨 위에 오늘 접속 시간을 보여 줘요"));
-        list.pair(toggle("23:30 초기화 전 알림", pc.midnightReminder, v -> pc.midnightReminder = v), null);
+                toggle("23:30 초기화 전 알림", pc.midnightReminder, v -> pc.midnightReminder = v));
         list.note("보상 구간을 넘기면 채팅으로 알려 줘요. /접속시간 창을 열면 서버 기록(초 단위)과 받은 보상을 읽어 맞춰요. 보상은 그 창에서 직접 받아야 하고, 자정에 초기화돼요.");
     }
 
@@ -1100,8 +1223,7 @@ public class DdingMateScreen extends Screen {
 
         DdingMateConfig.Skills sc = cfg.skills;
         list.header("전문가 스킬 · 쉬프트 우클릭 스킬", "스킬");
-        list.pair(tip(toggle("스킬 HUD", sc.enabled, v -> sc.enabled = v),
-                "스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 보여 줘요. 안 쓸 때는 숨어 있어요"), hudButton());
+        list.note("스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 스킬 HUD 에 보여 줘요(켜고 끄기는 [HUD] 탭).");
         List<kr.ddingmate.skill.SkillTimers.Skill> skills = kr.ddingmate.skill.SkillTimers.known();
         for (kr.ddingmate.skill.SkillTimers.Skill s : skills) {
             list.single(new InfoRow(kr.ddingmate.skill.SkillTimers.icon(s), skillLabel(s), skillDetail(s),

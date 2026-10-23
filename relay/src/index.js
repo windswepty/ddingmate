@@ -3,6 +3,9 @@
 // 1) POST /inquiry      띵메이트 [문의 보내기] → 디스코드 채널에 임베드 + [답변 보내기] 단추로 올린다
 // 2) POST /interactions 디스코드 단추·입력창(개발자만) → 답변을 저장하고 채널에 "답변 보냄"을 남긴다
 // 3) POST /replies      띵메이트가 접속할 때·10분마다 자기 문의의 답변을 받아 간다(읽으면 채널에 "읽음" 표시)
+// 4) GET  /notices      띵메이트가 접속할 때·30분마다 개발자 공지(최근 30일, 내리지 않은 것)를 받아 간다
+//    공지는 디스코드에서 개발자만 /공지 → 입력창으로 올리고, 채널에 남는 기록의 [공지 내리기]로 내린다
+// 5) POST /admin/commands  디스코드에 /공지 명령을 등록(처음 한 번). x-admin-key 의 해시가 ADMIN_KEY_HASH 와 같아야 한다
 //
 // 문의마다 띵메이트가 만든 비밀 번호표(token)를 함께 받고, 저장은 그 해시로만 한다.
 // 답변은 번호표를 가진 그 컴퓨터만 받을 수 있다(닉네임·UUID 를 알아도 남의 답변은 못 본다).
@@ -14,6 +17,8 @@
 //   DEV_USER_ID         멘션·답변할 개발자 디스코드 사용자 ID
 //   DISCORD_TOKEN       (비밀) 봇 토큰
 //   DISCORD_PUBLIC_KEY  (비밀 아님, 그래도 secret 로 넣어도 됨) 앱 공개 키(16진수)
+//   ADMIN_KEY_HASH      (비밀 아님) /admin/commands 를 부를 열쇠의 SHA-256. 열쇠 자체는 저장소에 두지 않는다
+//   NOTICE_POLL_MIN     띵메이트가 공지를 다시 물을 간격(분, 10~180). 요청이 많아지면 늘린다
 
 const API = 'https://discord.com/api/v10';
 
@@ -38,6 +43,11 @@ export const LIMITS = {
   maxTokensPerPoll: 20,
   // 문의 기록은 90일 뒤 저절로 지운다
   ttlSec: 90 * 24 * 3600,
+  // 공지: 제목·내용 길이, 띵메이트에 보여 줄 기간과 개수
+  maxNoticeTitle: 60,
+  maxNoticeText: 1000,
+  noticeDays: 30,
+  maxNotices: 5,
 };
 
 const IMAGE_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
@@ -49,6 +59,8 @@ export default {
       if (request.method === 'POST' && url.pathname === '/inquiry') return await inquiry(request, env);
       if (request.method === 'POST' && url.pathname === '/interactions') return await interactions(request, env, ctx);
       if (request.method === 'POST' && url.pathname === '/replies') return await replies(request, env, ctx);
+      if (request.method === 'GET' && url.pathname === '/notices') return await notices(env);
+      if (request.method === 'POST' && url.pathname === '/admin/commands') return await registerCommands(request, env);
       if (request.method === 'GET' && url.pathname === '/') return text('ddingmate relay ok');
       return json({ error: 'not found' }, 404);
     } catch (e) {
@@ -68,6 +80,7 @@ export async function cleanup(env, now) {
     env.DB.prepare('DELETE FROM replies WHERE ticket_id IN (SELECT id FROM tickets WHERE created < ?)').bind(old),
     env.DB.prepare('DELETE FROM tickets WHERE created < ?').bind(old),
     env.DB.prepare('DELETE FROM limits WHERE until < ?').bind(now),
+    env.DB.prepare('DELETE FROM notices WHERE at < ?').bind(old),
   ]);
 }
 
@@ -193,7 +206,12 @@ async function interactions(request, env, ctx) {
 
   const user = (it.member && it.member.user) || it.user || {};
   const customId = (it.data && it.data.custom_id) || '';
-  if (user.id !== env.DEV_USER_ID) return ephemeral('개발자만 답변할 수 있어요.');
+  if (user.id !== env.DEV_USER_ID) return ephemeral('개발자만 쓸 수 있어요.');
+
+  // 공지: /공지 → 입력창 → 저장하고 채널에 기록([공지 내리기] 단추)
+  if (it.type === 2 && it.data && it.data.name === NOTICE_COMMAND.name) return json(noticeModal());
+  if (it.type === 5 && customId === 'notice:new') return await saveNotice(it, env, ctx);
+  if (it.type === 3 && customId.startsWith('unnotice:')) return await takeDownNotice(customId.slice(9), env);
 
   if (it.type === 3 && customId.startsWith('reply:')) {
     const ticket = await ticketById(env, customId.slice(6));
@@ -284,6 +302,88 @@ async function replies(request, env, ctx) {
   return json({ tickets: out, pollSec: Number(env.POLL_SEC) || 120 });
 }
 
+// ---------------------------------------------------------------- 개발자 공지
+
+export const NOTICE_COMMAND = {
+  name: '공지',
+  description: '띵메이트 사용자 모두에게 공지를 보내요(개발자만)',
+  type: 1,
+  // 서버 관리자에게만 보이게(실제로 쓸 수 있는 건 DEV_USER_ID 한 사람)
+  default_member_permissions: '0',
+};
+
+export function noticeModal() {
+  return {
+    type: 9,
+    data: {
+      custom_id: 'notice:new',
+      title: '띵메이트 공지 보내기',
+      components: [
+        { type: 1, components: [{ type: 4, custom_id: 'title', label: '제목 (팝업·채팅 첫 줄)', style: 1, min_length: 1, max_length: LIMITS.maxNoticeTitle, required: true }] },
+        { type: 1, components: [{ type: 4, custom_id: 'text', label: '내용 (띵메이트 채팅·알림 기록으로 가요)', style: 2, min_length: 1, max_length: LIMITS.maxNoticeText, required: true }] },
+      ],
+    },
+  };
+}
+
+async function saveNotice(it, env, ctx) {
+  const title = modalValue(it.data, 'title').trim();
+  const body = modalValue(it.data, 'text').trim();
+  if (!title || !body) return ephemeral('제목과 내용을 모두 적어 주세요.');
+  if (title.length > LIMITS.maxNoticeTitle || body.length > LIMITS.maxNoticeText) return ephemeral('너무 길어요.');
+  const id = randomId();
+  const at = Date.now();
+  // 같은 제출(디스코드 재전송)은 한 번만
+  const saved = await env.DB.prepare('INSERT INTO notices (id, title, text, at, interaction_id) VALUES (?, ?, ?, ?, ?) '
+    + 'ON CONFLICT DO NOTHING RETURNING id').bind(id, title, body, at, String(it.id || '')).first('id');
+  if (!saved) return ephemeral('이미 올린 공지예요.');
+  ctx.waitUntil(postNoticeNote(env, id, title, body));
+  return ephemeral('공지를 올렸어요. 띵메이트 사용자가 접속할 때(또는 30분 안에) 받아요.\n채널에 남은 기록의 [공지 내리기]로 내릴 수 있어요.');
+}
+
+export function noticeNote(title, text, down) {
+  const quoted = text.split('\n').map((l) => `> ${l}`).join('\n');
+  const state = down ? '🗑️ 내린 공지(더는 받지 않아요. 이미 받은 사람 화면에는 남아요)' : '📢 띵메이트 사용자에게 보내는 중(최근 30일)';
+  return cut(`📢 **공지 · ${title}**\n${quoted}\n${state}`, 2000);
+}
+
+async function postNoticeNote(env, id, title, body) {
+  const res = await discord(env, 'POST', `/channels/${env.CHANNEL_ID}/messages`, {
+    content: noticeNote(title, body, false),
+    allowed_mentions: { parse: [] },
+    components: [{ type: 1, components: [{ type: 2, style: 4, label: '공지 내리기', custom_id: `unnotice:${id}` }] }],
+  });
+  if (!res.ok) return console.error('notice note failed', res.status, res.body);
+  await env.DB.prepare('UPDATE notices SET message_id = ? WHERE id = ?').bind(res.body.id, id).run();
+}
+
+async function takeDownNotice(id, env) {
+  if (!/^[0-9a-f]{8}$/.test(id)) return ephemeral('알 수 없는 공지예요.');
+  const n = await env.DB.prepare('UPDATE notices SET deleted = 1 WHERE id = ? RETURNING title, text').bind(id).first();
+  if (!n) return ephemeral('이 공지 기록을 찾을 수 없어요(30일이 지났거나 지워졌어요).');
+  // 단추가 달린 그 기록을 바로 고친다(단추는 뺀다)
+  return json({ type: 7, data: { content: noticeNote(n.title, n.text, true), components: [], allowed_mentions: { parse: [] } } });
+}
+
+/** 띵메이트가 받아 갈 공지: 내리지 않은 최근 30일 것, 새것부터 5개. 닉네임 등은 받지 않는다 */
+async function notices(env) {
+  const since = Date.now() - LIMITS.noticeDays * 24 * 3600 * 1000;
+  const { results } = await env.DB.prepare('SELECT id, title, text, at FROM notices WHERE deleted = 0 AND at > ? ORDER BY at DESC LIMIT ?')
+    .bind(since, LIMITS.maxNotices).all();
+  const poll = Math.max(10, Math.min(180, Number(env.NOTICE_POLL_MIN) || 30));
+  return json({ notices: results.map((r) => ({ id: r.id, title: r.title, text: r.text, at: r.at })), pollMin: poll });
+}
+
+/** /공지 명령 등록(처음 한 번, 명령 모양을 바꿨을 때). 앱 번호는 봇 토큰으로 알아낸다 */
+async function registerCommands(request, env) {
+  const key = request.headers.get('x-admin-key') || '';
+  if (!env.ADMIN_KEY_HASH || !key || await sha256(key) !== env.ADMIN_KEY_HASH) return json({ error: 'forbidden' }, 403);
+  const app = await discord(env, 'GET', '/oauth2/applications/@me');
+  if (!app.ok || !app.body || !app.body.id) return json({ error: 'app', status: app.status }, 502);
+  const res = await discord(env, 'PUT', `/applications/${app.body.id}/commands`, [NOTICE_COMMAND]);
+  return json({ ok: res.ok, status: res.status, commands: Array.isArray(res.body) ? res.body.map((c) => c.name) : res.body }, res.ok ? 200 : 502);
+}
+
 // ---------------------------------------------------------------- 도움 함수
 
 async function ticketById(env, id) {
@@ -300,7 +400,9 @@ function modalValue(data, id) {
 
 async function discord(env, method, path, payload, files = [], names = []) {
   const init = { method, headers: { authorization: `Bot ${env.DISCORD_TOKEN}` } };
-  if (files.length) {
+  if (payload === undefined) {
+    // GET: 몸통 없음
+  } else if (files.length) {
     const form = new FormData();
     form.append('payload_json', JSON.stringify(payload));
     files.forEach((f, k) => form.append(`files[${k}]`, new Blob([f], { type: IMAGE_TYPES[ext(f.name)] }), names[k]));

@@ -275,7 +275,7 @@ public final class Inquiry {
     private static HttpClient http;
 
     /** 문의 보내기·답변 확인이 함께 쓰는 연결 하나(보낼 때마다 새로 만들면 10분마다 묻는 동안 연결 스레드가 쌓인다) */
-    static synchronized HttpClient http() {
+    public static synchronized HttpClient http() {
         if (http == null) http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
         return http;
     }

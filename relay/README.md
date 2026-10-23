@@ -33,6 +33,22 @@
    (디스코드가 서명 확인을 해 보고 통과해야 저장됨)
 6. 띵메이트 `src/main/resources/assets/ddingmate/inquiry.properties`(저장소에 안 올림)에 `relay=https://ddingmate-relay.<이름>.workers.dev`
 
+## 개발자 공지
+
+띵메이트 사용자 모두에게 공지를 보낸다. 띵메이트는 게임에 들어가 있을 때 접속 직후·30분마다(`NOTICE_POLL_MIN`)
+`GET /notices` 로 최근 30일 공지(새것부터 5개)를 받아 처음 보는 것만 팝업·채팅(내 화면만)·기록 탭으로 알린다.
+받아 갈 때 띵메이트 버전만 오고 닉네임·UUID 는 오지 않는다.
+
+- 올리기: 디스코드에서 **/공지** → 제목·내용 입력창 → 저장(개발자 `DEV_USER_ID` 만, 다른 사람은 거절).
+  문의 채널에 기록이 남고 그 아래 **[공지 내리기]** 를 누르면 더는 안 간다(이미 받은 사람 화면엔 남음).
+- 처음 한 번(또는 명령 모양을 바꿨을 때) `/공지` 명령 등록:
+  ```
+  npx wrangler d1 migrations apply ddingmate-relay --remote   # notices 표
+  npx wrangler deploy
+  curl -X POST https://ddingmate-relay.<이름>.workers.dev/admin/commands -H "x-admin-key: $(cat .admin-key)"
+  ```
+  열쇠는 `relay/.admin-key`(저장소에 안 올림), `wrangler.toml` 에는 그 SHA-256(`ADMIN_KEY_HASH`)만 둔다.
+
 ## 시험
 
 ```
@@ -44,4 +60,6 @@ node test/smoke.mjs   # 실제 Workers 실행기(wrangler dev)로 서명·D1·�
 
 요청 하루 10만 번, D1 읽기 하루 500만 행·쓰기 하루 10만 행. 문의 1건 ≈ 쓰기 4행, 답변 1건 ≈ 쓰기 3행,
 띵메이트의 답변 확인은 답을 기다리는 문의가 있을 때만(접속 직후·10분마다, 30일까지) 읽기 몇 행씩.
+공지 확인은 게임에 들어가 있는 띵메이트마다 접속 직후·30분마다 요청 1번(읽기 5행 이하). 사용자가 많아져 요청 한도에
+가까워지면 `NOTICE_POLL_MIN` 만 늘려 배포하면 띵메이트가 다음 응답부터 그 간격을 쓴다.
 한도를 넘으면 그날(한국 시간 오전 9시까지) 문의·답변 확인이 실패하고, 띵메이트는 다음 차례에 다시 묻는다.

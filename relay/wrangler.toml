@@ -9,6 +9,10 @@ CHANNEL_ID = "1560930202089955338"
 DEV_USER_ID = "726781498606354452"
 # 띵메이트가 답을 기다리는 문의(보낸 지 하루 안)를 몇 초마다 확인할지(60~1800). 요청이 많아지면 늘린다
 POLL_SEC = "120"
+# 띵메이트가 개발자 공지를 다시 물을 간격(분, 10~180). 사용자가 많아져 요청이 무료 한도에 가까우면 늘린다
+NOTICE_POLL_MIN = "30"
+# /admin/commands(디스코드에 /공지 등록)를 부를 열쇠의 SHA-256. 열쇠는 relay/.admin-key(저장소에 안 올림)
+ADMIN_KEY_HASH = "c19784f9b74424b0d45ccbcb19997528da55b60c9f8604bef1e1e52007a9491d"
 
 # 디스코드 앱 공개 키(General Information → PUBLIC KEY). 비밀 값 아님: 디스코드가 보낸 요청인지 서명을 확인하는 데만 쓴다
 DISCORD_PUBLIC_KEY = "f1d6305d8afacd52eee538d7862a3d71bc7f2e4581a77860d6cb54732fd79fd6"

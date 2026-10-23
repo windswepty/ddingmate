@@ -116,7 +116,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 ctx.takeScreenshot("show-look-" + tab.replace(' ', '-'));
             }
             ctx.runOnClient(c -> c.setScreen(null));
-            // 3) 글꼴 7종: HUD + 띵메이트 창(알림 방식 탭)
+            // 3) 글꼴 7종: HUD + 띵메이트 창(HUD 탭)
             for (DdingMateConfig.FontStyle f : DdingMateConfig.FontStyle.values()) {
                 ctx.runOnClient(c -> {
                     HudSkins.applyTheme(DdingMate.config(), HudTheme.BLUE);
@@ -130,7 +130,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 ctx.runOnClient(c -> {
                     DdingMateScreen s = new DdingMateScreen(null);
                     c.setScreen(s);
-                    s.openTabNamed("알림 방식");
+                    s.openTabNamed("HUD");
                     s.jumpTo("HUD 모양");
                 });
                 ctx.waitTicks(8);

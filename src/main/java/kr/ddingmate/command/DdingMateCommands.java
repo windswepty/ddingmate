@@ -21,7 +21,10 @@ public final class DdingMateCommands {
         d.register(literal("띵메이트").requires(s -> ServerHud.inGame()).executes(c -> {
             // 채팅창이 닫힌 다음 프레임에 연다.
             MinecraftClient client = MinecraftClient.getInstance();
-            client.send(() -> client.setScreen(new DdingMateScreen(null)));
+            // 아직 안 본 업데이트 소식이 있으면(접속할 때 채팅 [바뀐 점 보기]) 소식 창을 먼저, 닫으면 띵메이트 창
+            java.util.List<kr.ddingmate.news.UpdateNotes.Release> notes = kr.ddingmate.news.UpdateNotes.takeUnread();
+            client.send(() -> client.setScreen(notes.isEmpty() ? new DdingMateScreen(null)
+                    : new kr.ddingmate.gui.UpdateNotesScreen(new DdingMateScreen(null), notes)));
             return 1;
         }));
     }

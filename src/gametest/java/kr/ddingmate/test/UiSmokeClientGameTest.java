@@ -165,7 +165,8 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 var keepFont = DdingMate.config().font;
                 c.setScreen(new kr.ddingmate.gui.FontLookScreen(null));
-                if (kr.ddingmate.gui.FontLookScreen.debugCards() != DdingMateConfig.FontStyle.values().length)
+                // 띵메이트 글꼴 7종 + 띵타이쿤(게임) 글꼴 + 내가 넣은 글꼴
+                if (kr.ddingmate.gui.FontLookScreen.debugCards() != DdingMateConfig.FontStyle.values().length + 1 + kr.ddingmate.ui.UserFonts.entries().size())
                     throw new AssertionError("글꼴 카드 수가 글꼴 수와 다름: " + kr.ddingmate.gui.FontLookScreen.debugCards());
                 kr.ddingmate.gui.FontLookScreen.debugChoose(1); // G마켓 산스
                 if (DdingMate.config().font != DdingMateConfig.FontStyle.GMARKET) throw new AssertionError("글꼴 카드를 눌렀는데 안 바뀜");

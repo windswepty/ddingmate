@@ -50,11 +50,46 @@ public final class HudLayout {
     static final int ISLAND_PROFILE_TOP = 55;
     static final int ISLAND_PROFILE_RIGHT = 138;
 
-    /** 서버가 그리는 HUD 중 피해야 할 자리(화면 GUI 좌표). 아일랜드 왼쪽 위 프로필 */
+    /** 서버가 그리는 HUD 중 피해야 할 자리(화면 GUI 좌표). 아일랜드 왼쪽 위 프로필, 왼쪽 아래 채팅창 */
     static List<Rect> serverAreas(int sw, int sh) {
         if (!DdingMate.config().avoidServerHud) return List.of();
-        return serverAreasFor(sw, sh, kr.ddingmate.game.ServerHud.onDdingtycoon(net.minecraft.client.MinecraftClient.getInstance()),
-                kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND);
+        List<Rect> out = new ArrayList<>(serverAreasFor(sw, sh, kr.ddingmate.game.ServerHud.onDdingtycoon(MinecraftClient.getInstance()),
+                kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND));
+        Rect chat = chatRect(sh);
+        if (chat != null) out.add(chat);
+        return out;
+    }
+
+    /**
+     * 채팅창 자리(화면 GUI 좌표). 새 채팅이 올라오면 이 자리를 반투명 배경으로 덮어서, 그 아래에 있던 HUD 가 잘려 보였다
+     * (2026-10-24 사용자 제보). 바닐라 ChatHud 와 같은 계산: 아래 끝은 화면 아래에서 40, 높이는 '채팅 높이(닫힘)' × 채팅 크기,
+     * 너비는 '채팅 너비' × 채팅 크기 + 양옆 여백. 채팅을 숨긴 설정이면 null
+     */
+    public static Rect chatRect(int sh) {
+        MinecraftClient c = MinecraftClient.getInstance();
+        if (c == null || c.options == null || c.inGameHud == null) return null;
+        if (c.options.getChatVisibility().getValue() == net.minecraft.network.message.ChatVisibility.HIDDEN) return null;
+        double scale = c.inGameHud.getChatHud().getChatScale();
+        int h = (int) Math.ceil(net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightUnfocused().getValue()) * scale);
+        int w = (int) Math.ceil((c.inGameHud.getChatHud().getWidth() + 12) * scale);
+        int bottom = sh - 40;
+        return new Rect(0, bottom - h - CHAT_GAP, w, h + CHAT_GAP + 2);
+    }
+
+    /** 채팅창 위쪽과 HUD 사이 여백 */
+    static final int CHAT_GAP = 3;
+
+    /** 화면 아래에서 채팅창 위쪽까지(화면 GUI 픽셀). 채팅 설정을 키웠으면 그만큼 */
+    static int chatZone() {
+        MinecraftClient c = MinecraftClient.getInstance();
+        int sh = c != null && c.getWindow() != null ? c.getWindow().getScaledHeight() : 0;
+        Rect r = sh > 0 ? chatRect(sh) : null;
+        return r == null ? CHAT_ZONE : Math.max(CHAT_ZONE, sh - r.y());
+    }
+
+    /** 시험용: 지금 채팅창 위쪽까지 높이 */
+    public static int debugChatZone() {
+        return chatZone();
     }
 
     /**
@@ -153,7 +188,7 @@ public final class HudLayout {
     public static final int MIN_SIZE = 50;
     public static final int MAX_SIZE = 150;
 
-    /** 이 HUD 의 실제 배율 = 알림 방식 탭의 전체 크기 × 편집 화면의 HUD 별 크기 */
+    /** 이 HUD 의 실제 배율 = HUD 탭의 전체 크기 × 편집 화면의 HUD 별 크기 */
     public static float scale(String id) {
         return DdingMate.config().hudScale / 100f * size(id) / 100f;
     }
@@ -187,7 +222,25 @@ public final class HudLayout {
 
     private static int bottomReal(DdingMateConfig.Corner corner) {
         if (!DdingMate.config().avoidServerHud) return PLAIN_BOTTOM;
-        return corner == DdingMateConfig.Corner.BOTTOM_LEFT ? CHAT_ZONE : HOTBAR_GAP;
+        return corner == DdingMateConfig.Corner.BOTTOM_LEFT ? chatZone() : HOTBAR_GAP;
+    }
+
+    /**
+     * 옮긴 자리(가상 좌표 x·y)에 그리는 HUD 가 아래로 쓸 수 있는 높이(가상 좌표). 채팅창과 같은 가로 범위면 채팅창 위까지.
+     * 재료 카운터가 이 높이에 맞춰 넘치는 줄을 옆 칸으로 보낸다(채팅에 잘리지 않게)
+     */
+    static int roomBelow(DrawContext ctx, String id, int vy) {
+        int sh = ctx.getScaledWindowHeight();
+        int room = vh(ctx) - vy - 4;
+        DdingMateConfig.HudPos p = DdingMate.config().hudPos.get(id);
+        if (!DdingMate.config().avoidServerHud || p == null) return room;
+        Rect chat = chatRect(sh);
+        if (chat == null) return room;
+        // 너비를 아직 모르니 왼쪽 끝을 어림(HUD 가 120 픽셀 넘게 넓으면 실제보다 오른쪽으로 잡혀도 비율 0 이면 0)
+        int x = Math.round(p.x * Math.max(0, ctx.getScaledWindowWidth() - 120));
+        if (x >= chat.x() + chat.w()) return room; // 채팅창보다 오른쪽
+        int chatTop = (int) Math.floor(chat.y() / current);
+        return chatTop > vy + 40 ? Math.min(room, chatTop - vy) : room;
     }
 
     /** 시험용: 그 구석의 위쪽 여백(화면 GUI 픽셀) */
@@ -254,6 +307,14 @@ public final class HudLayout {
             List<Rect> avoid = new ArrayList<>(serverAreas(sw, sh));
             avoid.addAll(BOUNDS.values());
             int[] free = nearestFree(x, y, rw, rh, sw, sh, avoid);
+            if (hits(free[0], free[1], rw, rh, new ArrayList<>(BOUNDS.values()))) {
+                // 작은 화면이라 채팅창까지 피할 자리가 없으면, HUD 끼리 겹치는 것(못 읽음)보다 채팅창 자리에 걸치는 쪽
+                List<Rect> noChat = new ArrayList<>(serverAreasFor(sw, sh, kr.ddingmate.game.ServerHud.onDdingtycoon(MinecraftClient.getInstance()),
+                        kr.ddingmate.game.ServerHud.area() == kr.ddingmate.game.ServerHud.Area.ISLAND));
+                if (!DdingMate.config().avoidServerHud) noChat.clear();
+                noChat.addAll(BOUNDS.values());
+                free = nearestFree(x, y, rw, rh, sw, sh, noChat);
+            }
             x = free[0];
             y = free[1];
         } else {

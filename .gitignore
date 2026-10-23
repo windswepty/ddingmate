@@ -10,3 +10,6 @@ docs/
 src/main/resources/assets/ddingmate/inquiry.properties
 
 __pycache__/
+
+# 중계 /admin/commands 열쇠(해시만 wrangler.toml 에) — 저장소에 올리지 않는다
+relay/.admin-key

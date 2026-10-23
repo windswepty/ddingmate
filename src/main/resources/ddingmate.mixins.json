@@ -11,7 +11,8 @@
     "TextFieldWidgetAccessor",
     "TextFieldWidgetMixin",
     "FontStorageGameFontMixin",
-    "TextRendererAccessor"
+    "TextRendererAccessor",
+    "ResourcePackManagerUserFontsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

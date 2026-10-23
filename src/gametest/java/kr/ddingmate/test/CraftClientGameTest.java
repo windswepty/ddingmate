@@ -1245,7 +1245,8 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(30);
             ctx.runOnClient(c -> {
                 var s1 = kr.ddingmate.hud.HudLayout.bounds().get(kr.ddingmate.hud.HudLayout.SCHEDULE);
-                check(s1 != null && s1.y() >= 55, "아일랜드에서 직접 옮긴 일정 HUD 가 프로필 밑에 깔림: " + s1);
+                // 프로필 아래로 내려가거나(아래가 채팅창 자리면) 프로필 옆으로 비킨다
+                check(s1 != null && (s1.y() >= 55 || s1.x() >= 138), "아일랜드에서 직접 옮긴 일정 HUD 가 프로필 밑에 깔림: " + s1);
                 kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.VILLAGE, 30);
                 DdingMate.config().hudPos.clear();
                 CraftTimers.debugClear();

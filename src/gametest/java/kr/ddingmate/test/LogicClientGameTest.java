@@ -314,6 +314,12 @@ public class LogicClientGameTest implements FabricClientGameTest {
             loaded.counter.pins.get(0).crafts = -5;
             loaded.sanitize();
             check(loaded.hudScale == 100 && loaded.hudLines == 1 && loaded.counter.pins.get(0).crafts == 1, "범위 밖 값 보정 오류");
+            loaded.hudLines = DdingMateConfig.HUD_LINES_ALL;
+            loaded.sanitize();
+            check(loaded.hudLines == DdingMateConfig.HUD_LINES_ALL, "보일 일정 수 '제한 없음'이 보정되어 사라짐");
+            loaded.hudLines = 50;
+            loaded.sanitize();
+            check(loaded.hudLines == 10, "보일 일정 수 50 이 10 으로 보정되지 않음");
             // 깨진 설정 파일이면 기본값으로 시작하고 게임은 멈추지 않는다
             Files.writeString(p, "{ 이건 깨진 파일 ", StandardCharsets.UTF_8);
             DdingMateConfig broken = DdingMateConfig.load();

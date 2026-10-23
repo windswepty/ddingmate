@@ -28,6 +28,12 @@ public final class DdingMateConfig {
         public List<Integer> leads = new ArrayList<>();
     }
 
+    /** 개발자 공지(중계 /notices): 받기 켜기, 이미 본 공지 번호 */
+    public static final class Notices {
+        public boolean enabled = true;
+        public List<String> seen = new ArrayList<>();
+    }
+
     public static final class Keywords {
         public boolean enabled = true;
         /** 내 닉네임이 다른 사람 메시지에 나오면 알림 */
@@ -271,6 +277,17 @@ public final class DdingMateConfig {
     public FontStyle font = FontStyle.GALMURI;
     /** 고른 글꼴을 게임 전체(채팅·아이템 이름·메뉴 등 기본 글꼴로 그리는 글자)에도. 서버 아이콘·창 그림은 그대로 */
     public boolean fontEverywhere = false;
+    /**
+     * 내가 넣은 글꼴(config/ddingmate/fonts) 키 또는 {@link kr.ddingmate.ui.UserFonts#GAME}(게임 기본 글꼴 따라가기).
+     * 비어 있으면 위의 font(띵메이트 글꼴 7종). 내 컴퓨터에서만 쓰인다
+     */
+    public String customFont = "";
+    /** 내 글꼴 크기 70~130 (%) */
+    public int userFontSize = 100;
+    /** 새 버전으로 처음 켤 때 바뀐 점 창을 보여 줄지 */
+    public boolean updateNotes = true;
+    /** 바뀐 점 창을 마지막으로 보여 준(또는 처음 설치한) 띵메이트 버전. 비어 있으면 아직 모름 */
+    public String notesSeenVersion = "";
     /** 바닥 아이템 청소까지 남은 시간을 일정 HUD 에(서버 [청소] 안내로 맞춤) */
     public boolean cleanupTimer = true;
     /** 서버 창 옆 판(보유 재료로 만들기·카페·부엌·상점·보석) 크기 50~150 (%). 판 위에서 Ctrl+휠로도 바꾼다 */
@@ -287,6 +304,8 @@ public final class DdingMateConfig {
     public boolean galmuriFont = true;
     public Corner hudCorner = Corner.TOP_LEFT;
     public int hudLines = 4;
+    /** 일정 HUD '보일 일정 수'의 '제한 없음'(켜 둔 일정 모두) */
+    public static final int HUD_LINES_ALL = 99;
     public boolean soundEnabled = true;
     public float soundVolume = 1.0f;
     public boolean toastEnabled = true;
@@ -307,6 +326,7 @@ public final class DdingMateConfig {
     public Todo todo = new Todo();
     public Craft craft = new Craft();
     public Playtime playtime = new Playtime();
+    public Notices notices = new Notices();
 
     // ---------------------------------------------------------------- 저장·불러오기
 
@@ -346,7 +366,7 @@ public final class DdingMateConfig {
     /** 빠진 항목은 기본값으로 채우고 범위를 벗어난 값은 바로잡는다. */
     public void sanitize() {
         if (hudCorner == null) hudCorner = Corner.TOP_LEFT;
-        hudLines = Math.max(1, Math.min(10, hudLines));
+        if (hudLines != HUD_LINES_ALL) hudLines = Math.max(1, Math.min(10, hudLines));
         hudOpacity = Math.max(30, Math.min(100, hudOpacity));
         sidePanelScale = Math.max(kr.ddingmate.ui.SidePanel.MIN_SCALE, Math.min(kr.ddingmate.ui.SidePanel.MAX_SCALE,
                 sidePanelScale <= 0 ? 100 : sidePanelScale));
@@ -361,6 +381,12 @@ public final class DdingMateConfig {
                 || kr.ddingmate.ui.HudSkins.byId(hudHeader) != null)) hudHeader = kr.ddingmate.ui.HudSkins.AUTO;
         if (hudMascot == null || kr.ddingmate.ui.HudSkins.byId(hudMascot) == null) hudMascot = kr.ddingmate.ui.HudSkins.NONE;
         if (kr.ddingmate.ui.HudAuto.Mode.of(hudAuto) == null) hudAuto = "off";
+        if (customFont == null) customFont = "";
+        userFontSize = Math.max(70, Math.min(130, userFontSize <= 0 ? 100 : userFontSize));
+        if (notesSeenVersion == null) notesSeenVersion = "";
+        if (notices == null) notices = new Notices();
+        if (notices.seen == null) notices.seen = new ArrayList<>();
+        while (notices.seen.size() > 50) notices.seen.remove(0);
         if (font == null) font = FontStyle.GALMURI; // 빼 버린 글꼴(프리텐다드·네오둥근모)을 골라 두었던 설정은 갈무리로
         if (expert != null && expert.cropHotkey == null) expert.cropHotkey = new ArrayList<>();
         hudScale = Math.max(50, Math.min(100, hudScale));
