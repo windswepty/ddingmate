@@ -25,6 +25,27 @@ def fpaint(c, mask, color):
         c.fdot(x, y, color)
 
 
+def paw(c, x, y, r, tone, dx, dy, palm=False):
+    """손(40칸 좌표): 둥근 손바닥 + 끝에 손가락 세 마디(살짝 볼록) + 마디 사이 고운 주름 두 줄.
+    (dx, dy) 는 손가락이 향하는 쪽. palm=True 면 손바닥이 보이게 분홍 볼록살"""
+    import math
+    n = math.hypot(dx, dy) or 1.0
+    dx, dy = dx / n, dy / n
+    px_, py_ = -dy, dx
+    mask = c.ellipse(x, y, r * 0.95, r * 0.88)
+    for k in (-1, 0, 1):
+        mask |= c.ellipse(x + dx * r * 0.62 + px_ * k * r * 0.5, y + dy * r * 0.62 + py_ * k * r * 0.5, r * 0.44, r * 0.44)
+    c.add(mask, tone, shade=2, light=True, line=True)
+    crease = '%02x%02x%02x' % tuple(int(v) for v in mix(tone.shade, tone.dark, 0.4)[:3])
+    for k in (-0.5, 0.5):
+        bx, by = 2 * (x + px_ * k * r * 0.5), 2 * (y + py_ * k * r * 0.5)
+        fline(c, [(bx + dx * r * 1.9, by + dy * r * 1.9), (bx + dx * r * 1.0, by + dy * r * 1.0)], crease)
+    if palm:
+        fpaint(c, c.fellipse(2 * x - dx * r * 0.3, 2 * y - dy * r * 0.3, r * 0.7, r * 0.6), 'f8b6c6')
+        for k in (-1, 0, 1):
+            c.fdot(2 * (x + dx * r * 0.62 + px_ * k * r * 0.5), 2 * (y + dy * r * 0.62 + py_ * k * r * 0.5), 'f8b6c6')
+
+
 def lines(c, pts, color):
     """고운(80칸) 점 여러 개"""
     for x, y in pts:
@@ -61,12 +82,14 @@ def bori():
     c.add(c.ellipse_r(5.2, 29, 2.4, 1.1, -35), leaf, shade=1, light=True)
     c.add(c.ellipse(6.2, 19.8, 4.4, 4.4), petal, shade=2, light=True)
     c.add(c.ellipse(6.2, 19.8, 2.0, 2.0), seed, shade=1, light=True)
-    c.add(c.ellipse(10.6, 35.4, 3.8, 2.8), fur, shade=2, light=True)
-    # 오른팔: 번쩍 들어 흔들기
+    paw(c, 10.6, 35.2, 3.0, fur, 0.3, 1)
+    # 오른팔: 번쩍 들어 흔들기(손바닥이 보이게)
     c.add(c.capsule(27.6, 34, 33.4, 25.8, 2.3), fur, shade=2, light=True)
-    c.add(c.ellipse(34.2, 23.8, 3.2, 3.0), fur, shade=2, light=True)
+    paw(c, 34.2, 23.6, 3.0, fur, 0.45, -1, palm=True)
     # 얼굴
     eyes(c, 20)
+    fline(c, [(21, 37), (24, 35.4), (28, 35.4), (31, 37)], 'b08a62', 2)  # 다정한 아치 눈썹
+    fline(c, [(49, 37), (52, 35.4), (56, 35.4), (59, 37)], 'b08a62', 2)
     nose(c, 24)
     mouth_open(c, 26)
     blush(c, 25, 5)
@@ -80,7 +103,7 @@ def bori():
 
 
 def hani():
-    """하니: 한 손엔 팔레트, 다른 손엔 물감 묻은 붓을 들고 볼에 물감 한 방울, 한쪽 귀는 쫑긋·한쪽은 접힘, 기울인 베레모"""
+    """하니: 한 손엔 팔레트, 다른 손엔 분홍 물감을 듬뿍 머금은 붓(끝에서 물감이 살짝 튐)을 세워 들고, 줄무늬 셔츠·주머니 앞치마·분홍 스카프 볼에 물감 한 방울, 한쪽 귀는 쫑긋·한쪽은 접힘, 기울인 베레모"""
     c = canvas()
     fur = Tone('ffffff', 'f8f7fb', 'e2deea', '9a96aa')
     inner = Tone('ffdae2', 'ffb8c8', 'ec98ac')
@@ -89,7 +112,23 @@ def hani():
     wood = Tone('fbe4b8', 'e8c48a', 'c89a5c', '7a5428')
     brush = Tone('c89a5c', 'a8743c', '845428', '42260e')
     body(c, Tone('ffffff', 'f4f4f8', 'dadce4'))
+    # 줄무늬 화가 셔츠(앞치마 밖으로 보이는 어깨) + 가죽 앞치마: 멜빵·주머니(연필·붓)·물감 얼룩·바느질 단
+    shirt = c.ellipse(AX, 37.6, 10.4, 4.4) - c.rect(12, 34, 28, 40)
+    fpaint(c, {(x, y) for x, y in shirt if y % 4 == 1}, 'a8a2e0')
     c.add(c.rect(12, 34, 28, 40), apron, shade=1)
+    fline(c, [(26, 68), (29, 65)], '84543a', 2); fline(c, [(54, 68), (51, 65)], '84543a', 2)
+    for x in range(32, 48):
+        for y in range(72, 79):
+            c.fdot(x, y, '8e5a3e')
+    fline(c, [(32, 72), (47, 72)], 'c89272')
+    for x in range(33, 47, 2):
+        c.fdot(x, 77, 'e8c48a')
+    fline(c, [(35, 71), (34, 66)], 'f6c945', 2); c.fdot(34, 65, '5a4030')
+    fline(c, [(39, 71), (40, 67)], '5aa8f0', 2); c.fdot(40, 66, 'ff8fb0')
+    for x, y, r, col in ((27, 74, 1.3, 'ff8fb0'), (52, 76, 1.1, '5aa8f0')):
+        fpaint(c, c.fellipse(x, y, r, r), col)
+    for x in range(25, 56, 3):
+        c.fdot(x, 79, 'e8c48a')
     c.add(c.ellipse_r(13.2, 5.8, 2.9, 7.6, -10), fur, shade=2, light=True)   # 쫑긋 귀
     c.add(c.ellipse_r(13.4, 6.6, 1.3, 5.6, -10), inner, shade=0)
     c.add(c.ellipse_r(30.4, 10.4, 2.8, 7.0, 62), fur, shade=2, light=True)   # 접힌 귀
@@ -100,24 +139,41 @@ def hani():
     c.add(c.capsule(24.6, 7.2, 25.4, 5.4, 0.7), beret, shade=0)
     # 왼손: 나무 팔레트(엄지 구멍 + 물감 다섯 색)
     c.add(c.ellipse_r(7.4, 32.4, 6.4, 3.8, -18), wood, shade=2, light=True)
-    c.add(c.ellipse(9.6, 35.6, 3.0, 2.4), fur, shade=2, light=True)
-    # 오른팔: 붓을 들어 올림
-    c.add(c.capsule(27.4, 34, 31.6, 27.4, 2.2), fur, shade=2, light=True)
-    c.add(c.capsule(30.4, 30.4, 36.6, 19.6, 0.8), brush, shade=1, light=True)
-    c.add(c.ellipse_r(37.4, 18.2, 1.6, 2.6, 30), Tone('ffd0e0', 'ff8fb0', 'e0507a', '8a2040'), shade=1)
-    c.add(c.ellipse(32.2, 27.2, 2.8, 2.6), fur, shade=2, light=True)
+    paw(c, 9.6, 35.4, 2.6, fur, 0.4, 1)
+    # 목에 맨 분홍 스카프(매듭)
+    scarf = Tone('ffd0e0', 'ff8fb0', 'e0507a', '8a2040')
+    c.add(c.poly([(16.4, 32.4), (23.6, 32.4), (20, 35.6)]), scarf, shade=1, light=True, line=True)
+    c.add(c.ellipse(20, 32.8, 1.2, 0.9), scarf, shade=1, line=True)
     eyes(c, 21)
+    fline(c, [(21, 38.6), (24, 37), (28, 36.6), (31, 37.6)], '9a92b4', 2)  # 한쪽 살짝 치켜든 장난스러운 눈썹
+    fline(c, [(49, 38.4), (52, 37.4), (56, 37.4), (59, 38.6)], '9a92b4', 2)
     blush(c, 26, 5)
     lines(c, [(39, 52), (40, 52), (39, 53), (40, 53)], 'ff9aae')  # 분홍 코
     mouth_w(c, 27)
     M.shine(c, 9, 16)
+    # 오른팔: 볼 아래·바깥에서 붓을 세워 듦(볼터치보다 나중에 → 손이 가려지지 않음)
+    # 붓: 나무 자루 → 쇠 고리 → 분홍 물감을 듬뿍 머금은 뾰족한 붓털(물감 한 방울 맺힘)
+    pink = Tone('ffd0e0', 'ff8fb0', 'e0507a', '8a2040')
+    dx, dy, px_, py_ = 0.26, -0.966, 0.966, 0.26
+    sx, sy = 34.8, 36.6
+
+    def at(k, side=0.0):
+        return (sx + dx * k + px_ * side, sy + dy * k + py_ * side)
+    c.add(c.capsule(*at(0), *at(9), 0.75), brush, shade=1, light=True)
+    c.add(c.capsule(*at(9), *at(10.8), 0.95), Tone('eef2f8', 'b8c0cc', '8a94a4', '3a4250'), shade=1, light=True)
+    c.add(c.poly([at(11, 1.05), at(12.6, 1.2), at(14.6), at(12.6, -1.2), at(11, -1.05)]), pink, shade=1, light=True, line=True)
+    c.add(c.ellipse(*at(12.2, 1.7), 0.7, 0.9), pink, shade=0)  # 맺힌 물감 방울
+    c.add(c.capsule(27.6, 35, 34.8, 33, 2.1), fur, shade=2, light=True, line=True)
+    paw(c, 35.8, 32.4, 2.5, fur, 0.3, -1)
     # 팔레트 물감 · 볼에 묻은 물감 · 튄 물감
     for (x, y), col in {(4, 31): 'ff6b6b', (6, 29.6): 'ffd84a', (9, 29.4): '6fcf6a', (11.6, 30.4): '5aa8f0', (4.4, 34): 'b07ce8'}.items():
         c.add(c.ellipse(x, y, 1.1, 1.0), Tone('ffffff', col, '%02x%02x%02x' % mix(hexc(col), hexc('000000'), 0.25)[:3]), shade=0)
     c.add(c.ellipse(5.6, 33.2, 0.9, 0.8), Tone('5a3a1e', '7a5428', '5a3a1e'), shade=0)  # 엄지 구멍
     lines(c, [(58, 52), (59, 52), (58, 53)], 'ff8fb0')  # 볼에 물감
-    for x, y, col in ((74, 6, 'ff8fb0'), (77, 12, '5aa8f0'), (70, 2, 'ffd84a')):
-        c.add(c.fellipse(x, y, 1.6, 1.6), Tone('ffffff', col, col), shade=0)
+    # 붓 끝에서 살짝 튄 물감(크고 작은 방울 몇 개)
+    for x, y, r in ((79, 40, 1.1), (78, 35, 0.9), (73, 37, 0.7), (79, 46, 0.7)):
+        fpaint(c, c.fellipse(x, y, r, r), 'ff8fb0')
+    c.fdot(78, 39, 'ffd0e0')
     return c
 
 
@@ -267,6 +323,9 @@ def pos():
     M._eye(c, m(10) - 5, 20)
     fline(c, [(47, 41), (50, 40), (54, 40), (58, 40.6), (60, 42)], '3a1a5a', 2)
     fline(c, [(46, 36), (49, 33.4), (54, 32.6), (58, 33.4), (61, 35.6)], '4a2a70', 2)
+    # 안대 위 눈썹: 살짝 내려 깐 굵은 눈썹 + 가로지르는 흉터 한 줄
+    fline(c, [(18, 35.4), (22, 34.2), (27, 34.4), (32, 36.2)], '4a2a70', 2)
+    fline(c, [(23, 32), (25, 38)], 'd8b8f4')
     blush(c, 25, 5, 0.5)
     # 자연스러운 미소: 짧은 곡선, 오른쪽 끝만 살짝 올라감 + 작은 송곳니
     fline(c, [(34, 57), (36, 58.4), (39, 59), (42, 58.8), (45, 57.6), (47, 55.8)], '4a2070')
