@@ -572,6 +572,12 @@ public class DdingMateScreen extends Screen {
                 + "띵타이쿤 아이콘·창 그림은 그대로예요. 글자 폭이 달라 서버 HUD(위쪽 재화 바 등) 글자가 배경에서 조금 밀릴 수 있어요.\n"
                 + "끄면: 띵메이트 창·HUD·알림만 이 글꼴이에요.")));
         list.pair(font, everywhere);
+        Widgets.Button fontLook = new Widgets.Button(rowWidth(), 20, Text.literal("글꼴 한눈에 보고 고르기"), true, b -> {
+            savedScroll = list.getScrollY();
+            client.setScreen(new FontLookScreen(this));
+        });
+        fontLook.setTooltip(Tooltip.of(Text.literal("글꼴마다 예문 · 숫자 · 실제 HUD 모양을 늘어놓고 비교하며 골라요.")));
+        list.single(fontLook);
         Widgets.Cycle<Integer> size = new Widgets.Cycle<>(half(), "HUD 전체 크기", List.of(50, 60, 70, 80, 90, 100),
                 nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
         size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 설정'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));

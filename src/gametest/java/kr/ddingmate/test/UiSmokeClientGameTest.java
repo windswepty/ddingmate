@@ -161,6 +161,18 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 ctx.waitTicks(2);
                 ctx.takeScreenshot("smoke-look-" + tab.replace(' ', '-'));
             }
+            // 글꼴 한눈에 보기 창: 글꼴마다 카드 하나, 누르면 바로 그 글꼴
+            ctx.runOnClient(c -> {
+                var keepFont = DdingMate.config().font;
+                c.setScreen(new kr.ddingmate.gui.FontLookScreen(null));
+                if (kr.ddingmate.gui.FontLookScreen.debugCards() != DdingMateConfig.FontStyle.values().length)
+                    throw new AssertionError("글꼴 카드 수가 글꼴 수와 다름: " + kr.ddingmate.gui.FontLookScreen.debugCards());
+                kr.ddingmate.gui.FontLookScreen.debugChoose(1); // G마켓 산스
+                if (DdingMate.config().font != DdingMateConfig.FontStyle.GMARKET) throw new AssertionError("글꼴 카드를 눌렀는데 안 바뀜");
+                DdingMate.config().font = keepFont;
+            });
+            ctx.waitTicks(2);
+            ctx.takeScreenshot("smoke-font-look");
             ctx.runOnClient(c -> c.setScreen(null));
             // 판 자동 바꾸기(2026-10-23): 계절·행사 날짜, 게임 시각, 지역·장소, 켜진 스킬 → 그 판. 맞는 판이 없으면 고른 판, 글자 밝기도 따라감
             ctx.runOnClient(c -> {

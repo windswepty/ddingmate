@@ -136,6 +136,15 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 ctx.waitTicks(8);
                 ctx.takeScreenshot("show-font-window-" + f.name().toLowerCase());
             }
+            // 글꼴 한눈에 보기 창
+            ctx.runOnClient(c -> {
+                DdingMate.config().font = DdingMateConfig.FontStyle.GALMURI;
+                HudSkins.applySet(DdingMate.config(), HudSkins.byId("hani"));
+                c.setScreen(new kr.ddingmate.gui.FontLookScreen(null));
+            });
+            ctx.waitTicks(8);
+            ctx.takeScreenshot("show-font-look");
+            ctx.runOnClient(c -> c.setScreen(null));
             // 4) 전문가 탭: 스킬 줄·스킬 판매가(스킬마다 자기 그림), 판매 시세(세이지 도구)
             ctx.runOnClient(c -> {
                 DdingMate.config().font = DdingMateConfig.FontStyle.GALMURI;
