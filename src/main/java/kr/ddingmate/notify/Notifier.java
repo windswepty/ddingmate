@@ -172,6 +172,37 @@ public final class Notifier {
         }
     }
 
+    /**
+     * 새 버전이 나왔어요(업데이트 공지). 처음엔 소리·팝업·채팅·기록, 그 뒤엔 접속할 때마다 채팅 한 줄로만 다시 알린다.
+     * 채팅의 [바뀐 점 보기]는 /띵메이트(새 버전 창이 먼저), [다운로드]는 주소 열기(게임이 한 번 더 묻는다)
+     */
+    public static void updateAvailable(kr.ddingmate.news.Notices.Update u, boolean first) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        DdingMateConfig cfg = DdingMate.config();
+        String now = kr.ddingmate.news.UpdateNotes.currentVersion();
+        if (first) {
+            AlertLog.add("공지", "새 버전 " + u.version() + " 이 나왔어요", "지금 " + now + " · /띵메이트 에서 바뀐 점을 보고 받아 주세요");
+            if (cfg.soundEnabled && cfg.soundVolume > 0f) {
+                client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.ENTITY_PLAYER_LEVELUP, 1.0f, cfg.soundVolume));
+            }
+            if (cfg.toastEnabled) {
+                ItemStack icon = new ItemStack(Items.NETHER_STAR);
+                String body = "지금 " + now + " · /띵메이트 에서 바뀐 점 보기";
+                if (toastReady(client)) client.getToastManager().add(new DdingMateToast("띵메이트 새 버전 " + u.version(), body, icon, Theme.GOLD));
+                else HELD.add(new Held("띵메이트 새 버전 " + u.version(), body, icon, Theme.GOLD));
+            }
+        }
+        kr.ddingmate.news.Notices.requestOpenNewVersion();
+        MutableText line = Text.literal("새 버전 " + u.version() + " 이 나왔어요 (지금 " + now + ") ").formatted(Formatting.YELLOW)
+                .append(Text.literal("[바뀐 점 보기]").styled(st -> st.withColor(Formatting.AQUA).withUnderline(true)
+                        .withClickEvent(new net.minecraft.text.ClickEvent(net.minecraft.text.ClickEvent.Action.RUN_COMMAND, "/띵메이트"))));
+        if (!u.url().isEmpty()) {
+            line.append(Text.literal(" ")).append(Text.literal("[다운로드]").styled(st -> st.withColor(Formatting.GREEN).withUnderline(true)
+                    .withClickEvent(new net.minecraft.text.ClickEvent(net.minecraft.text.ClickEvent.Action.OPEN_URL, u.url()))));
+        }
+        chat(line);
+    }
+
     // ---------------------------------------------------------------- 접속 직후 팝업 미루기
 
     /**

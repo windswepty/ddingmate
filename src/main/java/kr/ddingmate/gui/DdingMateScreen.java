@@ -61,7 +61,7 @@ public class DdingMateScreen extends Screen {
 
     enum Tab {
         // 2026-10-24 사용자 요청: "알림 방식" → "알림"(키워드도 여기로), HUD 관련 설정은 모두 새 HUD 탭으로
-        HOME("홈", Items.RED_BED), NOTIFY("알림", Items.BELL), HUD("HUD", Items.ITEM_FRAME), EVENTS("일정", Items.CLOCK),
+        HOME("홈", Items.RED_BED), NOTIFY("알림", Items.BELL), HUD("HUD·꾸미기", Items.ITEM_FRAME), EVENTS("일정", Items.CLOCK),
         COUNTER("재료", Items.CHEST), GEAR("장비", Items.ANVIL),
         TODO("할 일", Items.WRITABLE_BOOK), LOG("기록", Items.BOOK), EXPERT("전문가", Items.EXPERIENCE_BOTTLE),
         INQUIRY("문의", Items.FEATHER);
@@ -549,7 +549,7 @@ public class DdingMateScreen extends Screen {
     }
 
     private void buildNotify() {
-        list.guide("알림을 어떻게 받을지 정해요. 키워드 알림, 개발자 공지와 업데이트 소식도 여기 있어요. HUD 설정은 [HUD] 탭이에요.");
+        list.guide("알림을 어떻게 받을지 정해요. 키워드 알림, 개발자 공지와 업데이트 소식도 여기 있어요. HUD 설정은 [HUD·꾸미기] 탭이에요.");
         list.header("알림을 받을 방법", "알림 방법");
         list.pair(tip(toggle("소리", cfg.soundEnabled, v -> cfg.soundEnabled = v), "알림이 올 때 '띵' 소리를 내요"),
                 tip(toggle("팝업 알림", cfg.toastEnabled, v -> cfg.toastEnabled = v), "화면 오른쪽 위에 잠깐 떴다 사라지는 알림 상자예요"));
@@ -824,12 +824,18 @@ public class DdingMateScreen extends Screen {
 
     private void buildHome() {
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        kr.ddingmate.news.Notices.Update newer = kr.ddingmate.news.Notices.newer();
+        if (newer != null) {
+            list.header("새 버전이 나왔어요", "새 버전");
+            list.single(new InfoRow(new ItemStack(Items.NETHER_STAR), "띵메이트 " + newer.version() + " (지금 " + kr.ddingmate.news.UpdateNotes.currentVersion() + ")",
+                    "알림 탭에서 받기", Theme.GOLD, Tab.NOTIFY));
+        }
         if (!cfg.guideSeen) {
             list.header("처음이세요? · 이것만 해 보세요", "처음");
             list.single(new InfoRow(new ItemStack(Items.CHEST), "① 만들 레시피 핀하기", "재료 탭", Theme.BLUE_MID, Tab.COUNTER));
             list.single(new InfoRow(new ItemStack(Items.WRITABLE_BOOK), "② 오늘 할 일 체크하기", "할 일 탭", Theme.BLUE_MID, Tab.TODO));
             list.single(new InfoRow(new ItemStack(Items.ANVIL), "③ 도구 내구도 지켜보기", "장비 탭", Theme.BLUE_MID, Tab.GEAR));
-            list.single(new InfoRow(new ItemStack(Items.BELL), "④ HUD 자리·크기 바꾸기", "HUD 탭", Theme.BLUE_MID, Tab.HUD));
+            list.single(new InfoRow(new ItemStack(Items.BELL), "④ HUD 자리·크기 바꾸기", "HUD·꾸미기 탭", Theme.BLUE_MID, Tab.HUD));
             list.note("일정 알림은 이미 켜져 있어요. 각 탭 맨 위에 그 탭에서 할 수 있는 일이 적혀 있어요.");
             list.single(new Widgets.Button(rowWidth(), 20, Text.literal("알겠어요, 안내 숨기기"), true, b -> {
                 cfg.guideSeen = true;
@@ -954,6 +960,19 @@ public class DdingMateScreen extends Screen {
 
     /** 알림 탭 맨 아래: 개발자 공지 · 업데이트 소식 · 처음 쓰는 사람 안내 */
     private void buildNews() {
+        kr.ddingmate.news.Notices.Update newer = kr.ddingmate.news.Notices.newer();
+        if (newer != null) {
+            list.header("새 버전 " + newer.version() + " 이 나왔어요 · 지금 " + kr.ddingmate.news.UpdateNotes.currentVersion(), "새 버전");
+            Widgets.Button what = new Widgets.Button(half(), 20, Text.literal("새 버전 바뀐 점 보기"), true, b -> {
+                savedScroll = list.getScrollY();
+                client.setScreen(UpdateNotesScreen.newVersion(this, newer));
+            });
+            Widgets.Button get = new Widgets.Button(half(), 20, Text.literal("다운로드 페이지 열기"), true,
+                    b -> net.minecraft.client.gui.screen.ConfirmLinkScreen.open(this, newer.url()));
+            get.active = !newer.url().isEmpty();
+            get.setTooltip(Tooltip.of(Text.literal(newer.url().isEmpty() ? "다운로드 주소가 없어요. 받았던 곳에서 새 버전을 받아 주세요" : newer.url())));
+            list.pair(what, get);
+        }
         list.header("띵메이트 공지 · 업데이트 소식", "공지·소식");
         list.pair(tip(toggle("개발자 공지 받기", cfg.notices.enabled, v -> cfg.notices.enabled = v),
                         "개발자가 띵메이트 사용자 모두에게 보내는 공지를 접속할 때·10분마다 받아 와 팝업과 채팅(내 화면만)으로 알려 줘요.\n"
@@ -1223,7 +1242,7 @@ public class DdingMateScreen extends Screen {
 
         DdingMateConfig.Skills sc = cfg.skills;
         list.header("전문가 스킬 · 쉬프트 우클릭 스킬", "스킬");
-        list.note("스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 스킬 HUD 에 보여 줘요(켜고 끄기는 [HUD] 탭).");
+        list.note("스킬을 쓰면 남은 지속 시간과 다시 쓸 수 있을 때까지 남은 시간을 스킬 HUD 에 보여 줘요(켜고 끄기는 [HUD·꾸미기] 탭).");
         List<kr.ddingmate.skill.SkillTimers.Skill> skills = kr.ddingmate.skill.SkillTimers.known();
         for (kr.ddingmate.skill.SkillTimers.Skill s : skills) {
             list.single(new InfoRow(kr.ddingmate.skill.SkillTimers.icon(s), skillLabel(s), skillDetail(s),

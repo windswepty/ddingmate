@@ -15,10 +15,24 @@ public class UpdateNotesScreen extends ReadingScreen {
     private final List<UpdateNotes.Release> releases;
 
     public UpdateNotesScreen(Screen parent, List<UpdateNotes.Release> releases) {
-        super("띵메이트 업데이트 소식", releases == null
+        this("띵메이트 업데이트 소식", releases == null
                 ? "지금 버전 " + UpdateNotes.currentVersion() + " · 휠로 넘겨 보세요"
-                : "새 버전으로 바뀌었어요 · " + UpdateNotes.fromTo(kr.ddingmate.DdingMate.config().notesSeenVersion), parent);
-        this.releases = releases != null ? releases : UpdateNotes.since("0", UpdateNotes.currentVersion());
+                : "새 버전으로 바뀌었어요 · " + UpdateNotes.fromTo(kr.ddingmate.DdingMate.config().notesSeenVersion), parent,
+                releases != null ? releases : UpdateNotes.since("0", UpdateNotes.currentVersion()));
+    }
+
+    private UpdateNotesScreen(String title, String subtitle, Screen parent, List<UpdateNotes.Release> releases) {
+        super(title, subtitle, parent);
+        this.releases = releases;
+    }
+
+    /** 업데이트 공지(/업데이트공지): 아직 받지 않은 새 버전의 바뀐 점 + [다운로드 페이지 열기] */
+    public static UpdateNotesScreen newVersion(Screen parent, kr.ddingmate.news.Notices.Update u) {
+        UpdateNotesScreen s = new UpdateNotesScreen("새 버전이 나왔어요", "지금 " + UpdateNotes.currentVersion() + " → 새 버전 " + u.version(), parent, List.of(u.release()));
+        if (!u.url().isEmpty()) {
+            s.action("다운로드 페이지 열기", () -> net.minecraft.client.gui.screen.ConfirmLinkScreen.open(s, u.url()));
+        }
+        return s;
     }
 
     @Override
@@ -28,8 +42,9 @@ public class UpdateNotesScreen extends ReadingScreen {
         for (UpdateNotes.Release r : releases) {
             out.add(new Block(r.version() + (r.date() == null || r.date().isEmpty() ? "" : "  ·  " + r.date()), 0xFFFFFFFF, true, false, out.isEmpty() ? 0 : 12));
             section(out, "새로 생긴 기능", 0xFF7DD379, r.added());
-            section(out, "바뀐 점", 0xFF8AB4F8, r.changed());
+            section(out, "바뀐 점 · 수정", 0xFF8AB4F8, r.changed());
             section(out, "고친 문제", 0xFFF2B06A, r.fixed());
+            section(out, "없어진 기능", 0xFFE07070, r.removed());
         }
         return out;
     }

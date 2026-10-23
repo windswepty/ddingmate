@@ -5,6 +5,7 @@
 // 3) POST /replies      띵메이트가 접속할 때·10분마다 자기 문의의 답변을 받아 간다(읽으면 채널에 "읽음" 표시)
 // 4) GET  /notices      띵메이트가 접속할 때·30분마다 개발자 공지(최근 30일, 내리지 않은 것)를 받아 간다
 //    공지는 디스코드에서 개발자만 /공지 → 입력창으로 올리고, 채널에 남는 기록의 [공지 내리기]로 내린다
+//    /업데이트공지 는 새 버전·다운로드 주소·추가·수정·삭제를 받아, 그보다 예전 버전을 쓰는 띵메이트에만 "새 버전 받으세요"로 뜬다
 // 5) POST /admin/commands  디스코드에 /공지 명령을 등록(처음 한 번). x-admin-key 의 해시가 ADMIN_KEY_HASH 와 같아야 한다
 //
 // 문의마다 띵메이트가 만든 비밀 번호표(token)를 함께 받고, 저장은 그 해시로만 한다.
@@ -48,6 +49,9 @@ export const LIMITS = {
   maxNoticeText: 1000,
   noticeDays: 30,
   maxNotices: 5,
+  maxVersion: 20,
+  maxUrl: 300,
+  maxListItems: 20,
 };
 
 const IMAGE_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
@@ -210,7 +214,9 @@ async function interactions(request, env, ctx) {
 
   // 공지: /공지 → 입력창 → 저장하고 채널에 기록([공지 내리기] 단추)
   if (it.type === 2 && it.data && it.data.name === NOTICE_COMMAND.name) return json(noticeModal());
+  if (it.type === 2 && it.data && it.data.name === UPDATE_COMMAND.name) return json(updateModal());
   if (it.type === 5 && customId === 'notice:new') return await saveNotice(it, env, ctx);
+  if (it.type === 5 && customId === 'update:new') return await saveUpdate(it, env, ctx);
   if (it.type === 3 && customId.startsWith('unnotice:')) return await takeDownNotice(customId.slice(9), env);
 
   if (it.type === 3 && customId.startsWith('reply:')) {
@@ -312,6 +318,60 @@ export const NOTICE_COMMAND = {
   default_member_permissions: '0',
 };
 
+export const UPDATE_COMMAND = {
+  name: '업데이트공지',
+  description: '새 버전 출시를 띵메이트 사용자 모두에게 알려요(개발자만)',
+  type: 1,
+  default_member_permissions: '0',
+};
+
+export function updateModal() {
+  const para = (id, label) => ({ type: 1, components: [{ type: 4, custom_id: id, label, style: 2, max_length: LIMITS.maxNoticeText, required: false }] });
+  return {
+    type: 9,
+    data: {
+      custom_id: 'update:new',
+      title: '띵메이트 업데이트 공지',
+      components: [
+        { type: 1, components: [{ type: 4, custom_id: 'version', label: '새 버전 (예: 0.3.3)', style: 1, min_length: 3, max_length: LIMITS.maxVersion, required: true }] },
+        para('added', '추가된 것 (한 줄에 하나)'),
+        para('changed', '수정된 것 (한 줄에 하나)'),
+        para('removed', '삭제된 것 (한 줄에 하나)'),
+        { type: 1, components: [{ type: 4, custom_id: 'url', label: '다운로드 주소 (https://…, 비우면 기본 주소)', style: 1, max_length: LIMITS.maxUrl, required: false }] },
+      ],
+    },
+  };
+}
+
+/** 여러 줄 입력 → 항목 목록(앞의 - · • * 와 빈 줄은 뺀다) */
+export function listItems(text) {
+  return String(text || '').split('\n').map((l) => l.replace(/^\s*[-•*·]\s*/, '').trim()).filter((l) => l)
+    .slice(0, LIMITS.maxListItems).map((l) => cut(l, 200));
+}
+
+export function updateText(u) {
+  const part = (head, list) => (list.length ? `${head}\n${list.map((l) => `- ${l}`).join('\n')}` : '');
+  return [part('추가', u.added), part('수정', u.changed), part('삭제', u.removed)].filter((x) => x).join('\n') || '새 버전이 나왔어요';
+}
+
+async function saveUpdate(it, env, ctx) {
+  const version = modalValue(it.data, 'version').trim();
+  if (!/^\d+(\.\d+){1,3}$/.test(version)) return ephemeral('버전은 0.3.3 처럼 숫자와 점으로 적어 주세요.');
+  let url = modalValue(it.data, 'url').trim() || env.DOWNLOAD_URL || '';
+  if (url && !/^https:\/\/[^\s]+$/.test(url)) return ephemeral('다운로드 주소는 https:// 로 시작해야 해요.');
+  const u = { version, url: cut(url, LIMITS.maxUrl), added: listItems(modalValue(it.data, 'added')),
+    changed: listItems(modalValue(it.data, 'changed')), removed: listItems(modalValue(it.data, 'removed')) };
+  const id = randomId();
+  const title = `띵메이트 ${version} 출시`;
+  const body = updateText(u);
+  const saved = await env.DB.prepare('INSERT INTO notices (id, title, text, at, interaction_id, kind, data) VALUES (?, ?, ?, ?, ?, ?, ?) '
+    + 'ON CONFLICT DO NOTHING RETURNING id').bind(id, title, cut(body, 2000), Date.now(), String(it.id || ''), 'update', JSON.stringify(u)).first('id');
+  if (!saved) return ephemeral('이미 올린 업데이트 공지예요.');
+  ctx.waitUntil(postNoticeNote(env, id, title, body + (u.url ? `\n다운로드: ${u.url}` : '')));
+  return ephemeral(`업데이트 공지를 올렸어요. ${version} 보다 예전 버전을 쓰는 띵메이트에 "새 버전을 받아 주세요"로 떠요(0.3.2 부터).\n`
+    + '채널에 남은 기록의 [공지 내리기]로 내릴 수 있어요.');
+}
+
 export function noticeModal() {
   return {
     type: 9,
@@ -368,10 +428,17 @@ async function takeDownNotice(id, env) {
 /** 띵메이트가 받아 갈 공지: 내리지 않은 최근 30일 것, 새것부터 5개. 닉네임 등은 받지 않는다 */
 async function notices(env) {
   const since = Date.now() - LIMITS.noticeDays * 24 * 3600 * 1000;
-  const { results } = await env.DB.prepare('SELECT id, title, text, at FROM notices WHERE deleted = 0 AND at > ? ORDER BY at DESC LIMIT ?')
+  const { results } = await env.DB.prepare('SELECT id, title, text, at, kind, data FROM notices WHERE deleted = 0 AND at > ? ORDER BY at DESC LIMIT ?')
     .bind(since, LIMITS.maxNotices).all();
   const poll = Math.max(10, Math.min(180, Number(env.NOTICE_POLL_MIN) || 30));
-  return json({ notices: results.map((r) => ({ id: r.id, title: r.title, text: r.text, at: r.at })), pollMin: poll });
+  return json({
+    notices: results.map((r) => {
+      const n = { id: r.id, title: r.title, text: r.text, at: r.at, kind: r.kind || 'notice' };
+      if (n.kind === 'update') Object.assign(n, parseJson(r.data) || {});
+      return n;
+    }),
+    pollMin: poll,
+  });
 }
 
 /** /공지 명령 등록(처음 한 번, 명령 모양을 바꿨을 때). 앱 번호는 봇 토큰으로 알아낸다 */
@@ -380,7 +447,7 @@ async function registerCommands(request, env) {
   if (!env.ADMIN_KEY_HASH || !key || await sha256(key) !== env.ADMIN_KEY_HASH) return json({ error: 'forbidden' }, 403);
   const app = await discord(env, 'GET', '/oauth2/applications/@me');
   if (!app.ok || !app.body || !app.body.id) return json({ error: 'app', status: app.status }, 502);
-  const res = await discord(env, 'PUT', `/applications/${app.body.id}/commands`, [NOTICE_COMMAND]);
+  const res = await discord(env, 'PUT', `/applications/${app.body.id}/commands`, [NOTICE_COMMAND, UPDATE_COMMAND]);
   return json({ ok: res.ok, status: res.status, commands: Array.isArray(res.body) ? res.body.map((c) => c.name) : res.body }, res.ok ? 200 : 502);
 }
 

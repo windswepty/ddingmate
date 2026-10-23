@@ -44,7 +44,7 @@ final class Tutorial {
                     "알고 싶은 단어를 쉼표로 구분해서 적어요(예: 오션오더, 풍선, 경매). 같은 단어는 10초에 한 번만 울려요."),
             new Step(DdingMateScreen.Tab.NOTIFY, false, "내 닉네임 언급", "내 닉네임 언급",
                     "다른 사람이 채팅에서 내 닉네임을 부르면 알려 줘요. 내가 쓴 채팅이나 내 이름이 들어간 시스템 공지에는 울리지 않아요."),
-            new Step(DdingMateScreen.Tab.HUD, true, null, "HUD 탭",
+            new Step(DdingMateScreen.Tab.HUD, true, null, "HUD·꾸미기 탭",
                     "HUD(게임 화면 구석에 늘 떠 있는 작은 정보 판)에 관한 설정을 모두 모았어요. 켜고 끄기 · 꾸미기 · 크기와 자리 · 글꼴을 정해요."),
             new Step(DdingMateScreen.Tab.HUD, false, "일정 HUD", "HUD 켜고 끄기",
                     "일정·할 일·재료 카운터·내구도·스킬 HUD 를 하나씩 켜고 꺼요. 일정 HUD 는 다음 서버 일정과 남은 시간을 늘 보여 줘요(빨강 = 10분 안, 노랑 = 1시간 안)."),

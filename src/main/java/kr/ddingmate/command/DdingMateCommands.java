@@ -23,7 +23,10 @@ public final class DdingMateCommands {
             MinecraftClient client = MinecraftClient.getInstance();
             // 아직 안 본 업데이트 소식이 있으면(접속할 때 채팅 [바뀐 점 보기]) 소식 창을 먼저, 닫으면 띵메이트 창
             java.util.List<kr.ddingmate.news.UpdateNotes.Release> notes = kr.ddingmate.news.UpdateNotes.takeUnread();
-            client.send(() -> client.setScreen(notes.isEmpty() ? new DdingMateScreen(null)
+            // 업데이트 공지(새 버전이 나옴)의 [바뀐 점 보기]를 눌렀으면 새 버전 창을 먼저
+            boolean newer = kr.ddingmate.news.Notices.takeOpenNewVersion();
+            client.send(() -> client.setScreen(newer ? kr.ddingmate.gui.UpdateNotesScreen.newVersion(new DdingMateScreen(null), kr.ddingmate.news.Notices.newer())
+                    : notes.isEmpty() ? new DdingMateScreen(null)
                     : new kr.ddingmate.gui.UpdateNotesScreen(new DdingMateScreen(null), notes)));
             return 1;
         }));

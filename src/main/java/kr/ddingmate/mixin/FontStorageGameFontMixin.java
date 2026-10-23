@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.List;
 
 /**
- * "게임 전체에 적용"(HUD 탭 → 글꼴): 기본 글꼴의 글자 글꼴(TTF·유니폰트) 글자를 고른 글꼴로 그린다. 서버 그림 글자는 그대로.
+ * "게임 전체에 적용"(HUD·꾸미기 탭 → 글꼴): 기본 글꼴의 글자 글꼴(TTF·유니폰트) 글자를 고른 글꼴로 그린다. 서버 그림 글자는 그대로.
  * 판단은 {@link kr.ddingmate.ui.GameFont}. 화면에 그리는 글자 모양만 바뀌고 서버로는 아무것도 보내지 않는다.
  */
 @Mixin(FontStorage.class)

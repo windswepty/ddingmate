@@ -30,6 +30,16 @@ public final class Notices {
     /** 공지 하나 */
     public record Notice(String id, String title, String text, long at) {}
 
+    /** 업데이트 공지(/업데이트공지): 새 버전 · 다운로드 주소(https, 없으면 빈 문자열) · 바뀐 점 */
+    public record Update(String id, String version, String url, UpdateNotes.Release release) {}
+
+    /** 지금 쓰는 버전보다 새 버전이 나왔으면 그 공지(가장 새 버전), 아니면 null */
+    private static volatile Update newer;
+    /** 이번 접속에서 새 버전을 채팅으로 한 번 알렸나(처음 알릴 때는 팝업까지, 그 뒤 접속마다 채팅 한 줄) */
+    private static boolean remindedThisJoin;
+    /** 채팅 [바뀐 점 보기] → /띵메이트 를 열면 새 버전 창을 먼저 */
+    private static boolean openNewVersion;
+
     /** 중계가 주는 간격이 없을 때 */
     static final long DEFAULT_POLL_MS = 30 * 60 * 1000L;
     /** 접속하자마자 묻지 않고 조금 기다린다(리소스팩 받는 중) */
@@ -44,6 +54,21 @@ public final class Notices {
 
     private Notices() {}
 
+    public static Update newer() {
+        return newer;
+    }
+
+    /** /띵메이트 를 열 때 새 버전 창을 먼저 보여 줄지(한 번 쓰면 끔) */
+    public static boolean takeOpenNewVersion() {
+        boolean v = openNewVersion && newer != null;
+        openNewVersion = false;
+        return v;
+    }
+
+    public static void requestOpenNewVersion() {
+        openNewVersion = true;
+    }
+
     /** 마지막으로 받아 온 공지(새것 먼저) */
     public static List<Notice> received() {
         return received;
@@ -51,6 +76,7 @@ public final class Notices {
 
     public static void onJoin() {
         nextAt = System.currentTimeMillis() + FIRST_DELAY_MS;
+        remindedThisJoin = false;
     }
 
     public static void onDisconnect() {
@@ -90,6 +116,7 @@ public final class Notices {
     public static int apply(String json) {
         DdingMateConfig cfg = DdingMate.config();
         List<Notice> list = new ArrayList<>();
+        List<Update> updates = new ArrayList<>();
         try {
             JsonObject top = JsonParser.parseString(json).getAsJsonObject();
             if (top.has("pollMin")) pollMs = Math.max(10, Math.min(180, top.get("pollMin").getAsLong())) * 60_000L;
@@ -99,7 +126,13 @@ public final class Notices {
                 String title = o.get("title").getAsString();
                 String text = o.get("text").getAsString();
                 if (id.isEmpty() || title.isBlank()) continue;
-                list.add(new Notice(id, cut(title, 60), cut(text, 1000), o.has("at") ? o.get("at").getAsLong() : 0));
+                long at = o.has("at") ? o.get("at").getAsLong() : 0;
+                if (o.has("kind") && "update".equals(o.get("kind").getAsString())) {
+                    Update u = update(id, o, at);
+                    if (u != null) updates.add(u);
+                    continue;
+                }
+                list.add(new Notice(id, cut(title, 60), cut(text, 1000), at));
             }
         } catch (RuntimeException e) {
             DdingMate.LOG.warn("공지를 읽지 못했어요: {}", json, e);
@@ -115,11 +148,53 @@ public final class Notices {
             Notifier.notice(n.title(), n.text());
             shown++;
         }
+        // 업데이트 공지: 지금 버전보다 새 버전 가운데 가장 새것만. 이미 그 버전 이상이면 조용히 넘어간다
+        String current = UpdateNotes.currentVersion();
+        Update best = null;
+        for (Update u : updates) {
+            if (UpdateNotes.compare(u.version(), current) <= 0) {
+                if (!cfg.notices.seen.contains(u.id())) cfg.notices.seen.add(u.id());
+                continue;
+            }
+            if (best == null || UpdateNotes.compare(u.version(), best.version()) > 0) best = u;
+        }
+        newer = best;
+        if (best != null) {
+            boolean first = !cfg.notices.seen.contains(best.id());
+            if (first || !remindedThisJoin) {
+                if (first) cfg.notices.seen.add(best.id());
+                remindedThisJoin = true;
+                Notifier.updateAvailable(best, first);
+                shown++;
+            }
+        }
         if (shown > 0) {
             while (cfg.notices.seen.size() > 50) cfg.notices.seen.remove(0);
             cfg.save();
         }
         return shown;
+    }
+
+    /** 업데이트 공지 하나 읽기(버전 형식이 이상하거나 https 가 아닌 주소는 버린다) */
+    static Update update(String id, JsonObject o, long at) {
+        String version = o.has("version") ? o.get("version").getAsString().trim() : "";
+        if (!version.matches("\\d+(\\.\\d+){1,3}")) return null;
+        String url = o.has("url") && !o.get("url").isJsonNull() ? o.get("url").getAsString().trim() : "";
+        if (!url.startsWith("https://") || url.contains(" ")) url = "";
+        String date = at > 0 ? java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate().toString() : "";
+        UpdateNotes.Release r = new UpdateNotes.Release(version, date, items(o, "added"), items(o, "changed"), List.of(), items(o, "removed"));
+        return new Update(id, version, cut(url, 300), r);
+    }
+
+    private static List<String> items(JsonObject o, String key) {
+        List<String> out = new ArrayList<>();
+        if (o.has(key) && o.get(key).isJsonArray()) {
+            for (JsonElement e : o.getAsJsonArray(key)) {
+                String s = e.getAsString().strip();
+                if (!s.isEmpty() && out.size() < 20) out.add(cut(s, 200));
+            }
+        }
+        return out;
     }
 
     private static String cut(String s, int max) {
@@ -134,5 +209,12 @@ public final class Notices {
 
     public static long debugPollMs() {
         return pollMs;
+    }
+
+    /** 시험용: 받은 공지·새 버전 알림을 비운다 */
+    public static void debugReset() {
+        received = List.of();
+        newer = null;
+        openNewVersion = false;
     }
 }

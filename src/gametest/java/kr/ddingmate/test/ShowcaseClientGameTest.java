@@ -130,7 +130,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 ctx.runOnClient(c -> {
                     DdingMateScreen s = new DdingMateScreen(null);
                     c.setScreen(s);
-                    s.openTabNamed("HUD");
+                    s.openTabNamed("HUD·꾸미기");
                     s.jumpTo("HUD 모양");
                 });
                 ctx.waitTicks(8);

@@ -55,8 +55,8 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 s.openTabNamed("알림");
                 check("알림".equals(s.tabTitle()), "알림 탭이 없음: " + s.tabTitle());
                 check(s.sectionLabels().containsAll(List.of("알림 방법", "키워드", "공지·소식")), "알림 탭 목차가 다름: " + s.sectionLabels());
-                s.openTabNamed("HUD");
-                check("HUD".equals(s.tabTitle()), "HUD 탭이 없음");
+                s.openTabNamed("HUD·꾸미기");
+                check("HUD·꾸미기".equals(s.tabTitle()), "HUD·꾸미기 탭이 없음");
                 check(s.sectionLabels().containsAll(List.of("켜고 끄기", "일정 HUD", "꾸미기", "크기·자리", "글꼴")), "HUD 탭 목차가 다름: " + s.sectionLabels());
             });
             ctx.waitTicks(5);
@@ -120,6 +120,38 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(5);
             ctx.takeScreenshot("news-5-notice-screen");
 
+            // 3-2) 업데이트 공지: 지금보다 새 버전이면 "새 버전" 알림·창, 같거나 예전 버전이면 조용히
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                DdingMateConfig cfg = DdingMate.config();
+                AlertLog.clear();
+                Notices.testSource = () -> "{\"notices\":[{\"id\":\"dddd4444\",\"title\":\"띵메이트 0.1.0 출시\",\"text\":\"옛날\",\"at\":1,\"kind\":\"update\",\"version\":\"0.1.0\",\"url\":\"https://example.com/old\",\"added\":[],\"changed\":[],\"removed\":[]}]}";
+                Notices.debugFetch(c);
+                check(Notices.newer() == null && AlertLog.entries().isEmpty(), "예전 버전 업데이트 공지가 뜸");
+                check(cfg.notices.seen.contains("dddd4444"), "예전 버전 업데이트 공지를 본 것으로 적지 않음");
+                Notices.testSource = () -> "{\"notices\":[{\"id\":\"eeee5555\",\"title\":\"띵메이트 9.9.9 출시\",\"text\":\"추가\n- 업데이트 공지\",\"at\":1761400000000,"
+                        + "\"kind\":\"update\",\"version\":\"9.9.9\",\"url\":\"https://example.com/ddingmate\",\"added\":[\"업데이트 공지\",\"새 HUD 꾸미기\"],"
+                        + "\"changed\":[\"글꼴 크기 맞춤\"],\"removed\":[\"예전 키워드 탭\"]},"
+                        + "{\"id\":\"ffff6666\",\"title\":\"띵메이트 9.0.0 출시\",\"text\":\"x\",\"at\":1,\"kind\":\"update\",\"version\":\"9.0.0\",\"url\":\"javascript:alert(1)\"}]}";
+                Notices.debugFetch(c);
+                var u = Notices.newer();
+                check(u != null && u.version().equals("9.9.9"), "가장 새 버전이 아님: " + u);
+                check(u.url().equals("https://example.com/ddingmate"), "다운로드 주소가 다름");
+                check(u.release().added().size() == 2 && u.release().removed().equals(List.of("예전 키워드 탭")), "추가·삭제 목록이 다름");
+                check(AlertLog.entries().size() == 1, "새 버전을 한 번 알리지 않음: " + AlertLog.entries().size());
+                Notices.debugFetch(c);
+                check(AlertLog.entries().size() == 1, "같은 접속에서 새 버전을 또 알림");
+                check(Notices.takeOpenNewVersion(), "[바뀐 점 보기]로 새 버전 창을 열 준비가 안 됨");
+                Notices.testSource = null;
+                c.setScreen(kr.ddingmate.gui.UpdateNotesScreen.newVersion(null, u));
+            });
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("news-5b-new-version");
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                Notices.debugReset(); // 뒤 시험(보여 주기 촬영)의 홈 화면에 '새 버전'이 남지 않게
+            });
+
             // 4) 띵타이쿤 글꼴 = 게임 기본 글꼴(minecraft:default)
             ctx.runOnClient(c -> {
                 c.setScreen(null);
@@ -164,7 +196,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 DdingMateScreen s = new DdingMateScreen(null);
                 c.setScreen(s);
-                s.openTabNamed("HUD");
+                s.openTabNamed("HUD·꾸미기");
             });
             ctx.waitTicks(5);
             ctx.takeScreenshot("news-7-user-font-hud-tab");

@@ -3,7 +3,7 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import worker, { validateInquiry, realAccount, sha256, verifyDiscord, cleanup, LIMITS, NOTICE_COMMAND } from '../src/index.js';
+import worker, { validateInquiry, realAccount, sha256, verifyDiscord, cleanup, LIMITS, NOTICE_COMMAND, UPDATE_COMMAND, listItems } from '../src/index.js';
 
 const DEV = '726781498606354452';
 const CHANNEL = '111111111111111111';
@@ -12,7 +12,7 @@ const CHANNEL = '111111111111111111';
 class FakeD1 {
   constructor() {
     this.db = new DatabaseSync(':memory:');
-    for (const m of ['0001_init.sql', '0002_notices.sql']) this.db.exec(readFileSync(new URL('../migrations/' + m, import.meta.url), 'utf-8'));
+    for (const m of ['0001_init.sql', '0002_notices.sql', '0003_update_notices.sql']) this.db.exec(readFileSync(new URL('../migrations/' + m, import.meta.url), 'utf-8'));
     this.writes = 0;
   }
   prepare(sql) {
@@ -335,7 +335,7 @@ test('공지: /공지 → 입력창 → 저장·채널 기록 → 띵메이트�
   assert.equal(got.status, 200);
   assert.equal(got.body.pollMin, 30);
   assert.equal(got.body.notices.length, 1);
-  assert.deepEqual(Object.keys(got.body.notices[0]).sort(), ['at', 'id', 'text', 'title']);
+  assert.deepEqual(Object.keys(got.body.notices[0]).sort(), ['at', 'id', 'kind', 'text', 'title']);
   assert.equal(got.body.notices[0].title, '점검 안내');
 
   const down = await signed({ type: 3, member: { user: { id: DEV } }, data: { custom_id: `unnotice:${id}` } });
@@ -376,5 +376,34 @@ test('/공지 명령 등록: 열쇠가 맞을 때만, 앱 번호를 알아내 /�
   assert.equal(sent[0].url, 'https://discord.com/api/v10/oauth2/applications/@me');
   assert.equal(sent[1].method, 'PUT');
   assert.equal(sent[1].url, 'https://discord.com/api/v10/applications/1000/commands');
-  assert.deepEqual(sent[1].body, [NOTICE_COMMAND]);
+  assert.deepEqual(sent[1].body, [NOTICE_COMMAND, UPDATE_COMMAND]);
+});
+
+test('업데이트 공지: /업데이트공지 → 버전·추가·수정·삭제·다운로드 주소 → 띵메이트에 kind=update 로', async () => {
+  env.DOWNLOAD_URL = 'https://example.com/ddingmate';
+  const modal = await signed({ type: 2, member: { user: { id: DEV } }, data: { name: '업데이트공지' } });
+  assert.equal(modal.body.data.custom_id, 'update:new');
+  assert.deepEqual(modal.body.data.components.map((r) => r.components[0].custom_id), ['version', 'added', 'changed', 'removed', 'url']);
+  const submit = (fields, id) => signed({
+    id, type: 5, member: { user: { id: DEV } },
+    data: { custom_id: 'update:new', components: Object.entries(fields).map(([k, v]) => ({ type: 1, components: [{ custom_id: k, value: v }] })) },
+  });
+  const bad = await submit({ version: '최신', added: '', changed: '', removed: '', url: '' }, 'u0');
+  assert.match(bad.body.data.content, /숫자와 점/);
+  const badUrl = await submit({ version: '0.3.3', added: '', changed: '', removed: '', url: 'http://x' }, 'u1');
+  assert.match(badUrl.body.data.content, /https/);
+  const ok = await submit({ version: '0.3.3', added: '- 업데이트 공지\n• 새 HUD', changed: '글꼴 크기', removed: '', url: '' }, 'u2');
+  assert.match(ok.body.data.content, /0\.3\.3/);
+  await settle();
+  assert.match(sent[0].body.content, /띵메이트 0\.3\.3 출시/);
+  const got = (await getNotices()).body.notices;
+  assert.equal(got.length, 1);
+  const u = got[0];
+  assert.equal(u.kind, 'update');
+  assert.equal(u.version, '0.3.3');
+  assert.equal(u.url, 'https://example.com/ddingmate');
+  assert.deepEqual(u.added, ['업데이트 공지', '새 HUD']);
+  assert.deepEqual(u.changed, ['글꼴 크기']);
+  assert.deepEqual(u.removed, []);
+  assert.deepEqual(listItems('\n - 하나\n\n* 둘 \n'), ['하나', '둘']);
 });

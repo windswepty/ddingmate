@@ -22,7 +22,7 @@ import java.util.List;
 public final class UpdateNotes {
 
     /** 버전 하나의 소식 */
-    public record Release(String version, String date, List<String> added, List<String> changed, List<String> fixed) {
+    public record Release(String version, String date, List<String> added, List<String> changed, List<String> fixed, List<String> removed) {
         public List<String> added() {
             return added == null ? List.of() : added;
         }
@@ -33,6 +33,10 @@ public final class UpdateNotes {
 
         public List<String> fixed() {
             return fixed == null ? List.of() : fixed;
+        }
+
+        public List<String> removed() {
+            return removed == null ? List.of() : removed;
         }
     }
 
@@ -67,7 +71,7 @@ public final class UpdateNotes {
     }
 
     /** 점으로 나뉜 숫자 버전 비교(숫자가 아닌 칸은 0) */
-    static int compare(String a, String b) {
+    public static int compare(String a, String b) {
         String[] x = base(a).split("\\."), y = base(b).split("\\.");
         for (int i = 0; i < Math.max(x.length, y.length); i++) {
             int p = i < x.length ? num(x[i]) : 0, q = i < y.length ? num(y[i]) : 0;

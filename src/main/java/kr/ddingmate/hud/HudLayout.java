@@ -188,7 +188,7 @@ public final class HudLayout {
     public static final int MIN_SIZE = 50;
     public static final int MAX_SIZE = 150;
 
-    /** 이 HUD 의 실제 배율 = HUD 탭의 전체 크기 × 편집 화면의 HUD 별 크기 */
+    /** 이 HUD 의 실제 배율 = HUD·꾸미기 탭의 전체 크기 × 편집 화면의 HUD 별 크기 */
     public static float scale(String id) {
         return DdingMate.config().hudScale / 100f * size(id) / 100f;
     }

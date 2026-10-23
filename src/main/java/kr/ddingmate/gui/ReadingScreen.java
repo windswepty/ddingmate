@@ -22,6 +22,9 @@ abstract class ReadingScreen extends Screen {
     private static final int LINE_H = 11;
     private final Screen parent;
     private final String subtitle;
+    /** [확인] 옆 두 번째 단추(없으면 null) */
+    private String actionLabel;
+    private Runnable action;
     private double scroll;
     private int px, py, pw, ph, top, bottom;
 
@@ -34,6 +37,12 @@ abstract class ReadingScreen extends Screen {
     /** 보여 줄 글 */
     abstract List<Block> blocks();
 
+    /** [확인] 옆에 단추 하나 더(예: 다운로드 페이지 열기) */
+    void action(String label, Runnable run) {
+        actionLabel = label;
+        action = run;
+    }
+
     @Override
     protected void init() {
         pw = Math.min(380, width - 20);
@@ -42,10 +51,16 @@ abstract class ReadingScreen extends Screen {
         py = 10;
         top = py + 40;
         bottom = py + ph - 30;
-        Widgets.Button ok = new Widgets.Button(110, 20, Text.literal("확인"), true, b -> close());
-        ok.setX(px + (pw - 110) / 2);
+        Widgets.Button ok = new Widgets.Button(110, 20, Text.literal("확인"), action == null, b -> close());
+        ok.setX(action == null ? px + (pw - 110) / 2 : px + pw / 2 + 3);
         ok.setY(py + ph - 25);
         addDrawableChild(ok);
+        if (action != null) {
+            Widgets.Button go = new Widgets.Button(150, 20, Text.literal(actionLabel), true, b -> action.run());
+            go.setX(px + pw / 2 - 153);
+            go.setY(py + ph - 25);
+            addDrawableChild(go);
+        }
     }
 
     private record Line(OrderedText text, int color, int x, int y) {}
