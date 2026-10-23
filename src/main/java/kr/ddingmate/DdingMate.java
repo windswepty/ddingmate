@@ -25,7 +25,6 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import kr.ddingmate.craft.CraftTimers;
 import kr.ddingmate.game.ServerHud;
 import net.minecraft.client.MinecraftClient;
@@ -123,7 +122,10 @@ public final class DdingMate implements ClientModInitializer {
         // 설치만 하고 아직 /띵메이트 를 열어 보지 않았으면 화면에 아무것도 띄우지 않는다
         // 띵타이쿤 대기 서버(접속 직후 스폰으로 옮겨지기 전)에서도 띄우지 않는다
         // Tab 접속자 목록은 늘 HUD 위에 온다(미니맵처럼 HUD 는 목록 뒤에 비쳐 보임)
-        HudRenderCallback.EVENT.register(DdingMate::renderHuds);
+        // 채팅 바로 아래 층에 그린다: 새 채팅이 올라오면 채팅(반투명 배경)이 HUD 위에 겹치고 HUD 는 뒤로 비쳐 보인다.
+        // (예전엔 HUD 를 맨 마지막에 그려서, 채팅 자리에서는 HUD 가 채팅 뒤가 아니라 깊이 검사에 걸려 잘려 보였다, 2026-10-24)
+        net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback.EVENT.register(layers -> layers.attachLayerBefore(
+                net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer.CHAT, net.minecraft.util.Identifier.of(MOD_ID, "huds"), DdingMate::renderHuds));
         // 내가 보낸 단축어(ㄱ1 등)로 몇 번 가방을 여는지 안다. 읽기만 하고 막거나 바꾸지 않는다.
         ClientSendMessageEvents.CHAT.register(BagTracker::onOutgoing);
         ClientSendMessageEvents.CHAT.register(kr.ddingmate.game.Nickname::onSent); // 돌아온 내 채팅에서 한글 닉네임 배우기

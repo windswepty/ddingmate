@@ -22,7 +22,7 @@ import java.util.List;
 
 /**
  * 2026-10-24 요청 묶음:
- * 탭 정리(알림 · HUD 탭), 업데이트 소식 창, 개발자 공지, 내 글꼴 · 띵타이쿤 글꼴, 채팅창 자리를 피하는 HUD.
+ * 탭 정리(알림 · HUD 탭), 업데이트 소식 창, 개발자 공지, 내 글꼴 · 띵타이쿤 글꼴, 채팅 뒤로 비치는 HUD.
  */
 public class NewsFontsClientGameTest implements FabricClientGameTest {
 
@@ -30,13 +30,6 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
         if (!ok) throw new AssertionError(message);
     }
 
-    /** HUD 자리가 채팅창 자리와 겹치지 않는다 */
-    private static void checkClear(net.minecraft.client.MinecraftClient c, HudLayout.Rect r, String name) {
-        HudLayout.Rect chat = HudLayout.chatRect(c.getWindow().getScaledHeight());
-        check(chat != null, "채팅창 자리를 모름");
-        boolean hit = r.x() < chat.x() + chat.w() && chat.x() < r.x() + r.w() && r.y() < chat.y() + chat.h() && chat.y() < r.y() + r.h();
-        check(!hit, name + " 가 채팅창 자리와 겹침: " + r + " / 채팅 " + chat);
-    }
 
     @Override
     public void runTest(ClientGameTestContext ctx) {
@@ -223,7 +216,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 cfg.save();
             });
 
-            // 6) 채팅창 자리: 사용자 설정 그대로(재료 카운터를 왼쪽에 옮기고 높이 210) → 채팅창 위에서 끝나야
+            // 6) 채팅창 자리: 사용자 설정 그대로(재료 카운터를 왼쪽에 옮기고 높이 210) → 옮긴 자리 그대로, 채팅이 그 위에 겹친다
             ctx.runOnClient(c -> {
                 DdingMateConfig cfg = DdingMate.config();
                 cfg.hudPos.clear();
@@ -231,7 +224,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 cfg.hudHeights.clear();
                 cfg.hudWidths.clear();
                 cfg.avoidServerHud = true;
-                cfg.hudEnabled = true;
+                cfg.hudEnabled = false;
                 cfg.counter.enabled = true;
                 cfg.counter.pins.get(0).recipe = "강화 제작 시설/하급 라이프스톤";
                 cfg.counter.pins.get(0).crafts = 60;
@@ -239,36 +232,22 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 cfg.counter.pins.get(2).recipe = "";
                 cfg.counter.expandSubMaterials = true;
                 DdingMateConfig.HudPos p = new DdingMateConfig.HudPos();
-                p.x = 0.0168f;
-                p.y = 0.274f;
+                p.x = 0f;
+                p.y = 1f; // 왼쪽 맨 아래 = 채팅창 자리
                 cfg.hudPos.put(HudLayout.COUNTER, p);
                 cfg.hudSizes.put(HudLayout.COUNTER, 50);
-                cfg.hudHeights.put(HudLayout.COUNTER, 210);
-                cfg.hudEnabled = false; // 시험 화면이 작아(240 높이) 하나씩 본다
-                for (int i = 0; i < 12; i++) c.inGameHud.getChatHud().addMessage(net.minecraft.text.Text.literal("채팅 " + i + " · 올라오는 채팅에 HUD 가 잘리면 안 돼요"));
+                for (int i = 0; i < 12; i++) c.inGameHud.getChatHud().addMessage(net.minecraft.text.Text.literal("채팅 " + i + " · 채팅 뒤로 HUD 가 비쳐 보여야 해요"));
             });
             ctx.waitTicks(10);
-            ctx.takeScreenshot("news-8-chat-avoid");
+            ctx.takeScreenshot("news-8-chat-over-hud");
             ctx.runOnClient(c -> {
                 HudLayout.Rect counter = HudLayout.bounds().get(HudLayout.COUNTER);
                 check(counter != null, "재료 카운터를 그리지 않음: " + HudLayout.bounds());
-                checkClear(c, counter, "재료 카운터");
-                // 일정 HUD 를 왼쪽 맨 아래(채팅창 자리)로 옮겨도 채팅창 위로 비킨다
+                int sh = c.getWindow().getScaledHeight();
+                // 핫바만 피하고(넓으면 그 위로) 채팅창 자리(아래에서 40~130)에 그대로 남는다
+                check(counter.x() == 0 && counter.y() + counter.h() > sh - 130, "채팅창 자리에 옮긴 HUD 가 비킴: " + counter);
                 DdingMateConfig cfg = DdingMate.config();
-                cfg.counter.enabled = false;
                 cfg.hudEnabled = true;
-                DdingMateConfig.HudPos s = new DdingMateConfig.HudPos();
-                s.x = 0f;
-                s.y = 1f;
-                cfg.hudPos.put(HudLayout.SCHEDULE, s);
-            });
-            ctx.waitTicks(10);
-            ctx.takeScreenshot("news-9-chat-avoid-schedule");
-            ctx.runOnClient(c -> {
-                HudLayout.Rect sched = HudLayout.bounds().get(HudLayout.SCHEDULE);
-                check(sched != null, "일정 HUD 를 그리지 않음: " + HudLayout.bounds());
-                checkClear(c, sched, "일정 HUD");
-                DdingMateConfig cfg = DdingMate.config();
                 cfg.hudPos.clear();
                 cfg.hudSizes.clear();
                 cfg.hudHeights.clear();

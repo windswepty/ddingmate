@@ -594,8 +594,8 @@ public class DdingMateScreen extends Screen {
                 nearestOf(cfg.hudScale, 50, 60, 70, 80, 90, 100), v -> v + "%", v -> cfg.hudScale = v);
         size.setTooltip(Tooltip.of(Text.literal("일정·할 일·재료·내구도 HUD 를 한꺼번에 줄여요. HUD 마다 따로 바꾸려면 아래 'HUD 위치·크기 설정'을 쓰세요. GUI 배율이 작으면 글자가 흐려질 수 있어요.")));
         Widgets.Toggle avoid = toggle("서버 HUD 피하기", cfg.avoidServerHud, v -> cfg.avoidServerHud = v);
-        avoid.setTooltip(Tooltip.of(Text.literal("HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.\n"
-                + "채팅창 자리에 옮겨 둔 HUD 도 채팅창 위로 비키고, 재료 카운터는 넘치는 줄을 옆 칸으로 보내 채팅에 잘리지 않게 해요.")));
+        avoid.setTooltip(Tooltip.of(Text.literal("구석 HUD 를 서버의 위쪽 재화 바·날짜/채널 줄 아래, 왼쪽 아래 채팅창 위에 놓아요.\n"
+                + "직접 옮긴 HUD 는 채팅창 자리에도 둘 수 있어요. 새 채팅이 올라오면 채팅이 HUD 위에 겹치고 HUD 는 뒤로 비쳐 보여요.")));
         list.pair(size, avoid);
         Widgets.Button move = new Widgets.Button(rowWidth(), 20, Text.literal("HUD 위치·크기 설정"), true, b -> {
             savedScroll = list.getScrollY();

@@ -72,7 +72,7 @@ public final class CounterHud {
         int customY = HudLayout.customTop(ctx, HudLayout.COUNTER, 60);
         int fixedH = HudLayout.heightLimit(HudLayout.COUNTER);
         if (customY >= 0) {
-            limit = HudLayout.roomBelow(ctx, HudLayout.COUNTER, customY); // 옮긴 자리 아래로 남은 높이(채팅창 위까지)
+            limit = sh - customY - 4; // 옮긴 자리 아래로 남은 높이
         } else {
             int safe = top ? sh - HudLayout.bottomGap(left ? DdingMateConfig.Corner.BOTTOM_LEFT : DdingMateConfig.Corner.BOTTOM_RIGHT)
                     - HudLayout.topGap(cfg.corner) : sh - HudLayout.bottomGap(cfg.corner) - HudLayout.topGap();
@@ -84,11 +84,11 @@ public final class CounterHud {
         if (fixedH > 0) {
             // 정한 높이는 핀 하나의 사각형 높이: 넘치는 재료 줄은 그 사각형 안에서 옆 칸으로.
             // 핀끼리는 아래에 자리가 있으면 아래로 쌓고(limit = 화면에 남은 높이), 없을 때만 옆으로
-            // 정한 높이가 남은 자리(채팅창 위까지)보다 크면 남은 자리만큼만: 넘치는 줄은 옆 칸으로(채팅에 잘리지 않게)
+            // 정한 높이가 화면에 남은 자리보다 크면 남은 자리만큼만: 넘치는 줄은 옆 칸으로(화면 밖으로 나가지 않게)
             drawBlocks(ctx, tr, cfg, views, note, Math.max(HudLayout.MIN_HEIGHT, Math.min(fixedH, limit)), limit, top, alpha, dark);
             return;
         }
-        // 핀 하나가 남은 자리보다 길면(재료가 많은 레시피) 그 핀의 재료 줄을 옆 칸으로 나눠 채팅창·화면 밖으로 넘치지 않게
+        // 핀 하나가 남은 자리보다 길면(재료가 많은 레시피) 그 핀의 재료 줄을 옆 칸으로 나눠 화면 밖으로 넘치지 않게
         int tallestPin = 0;
         for (MaterialCounter.PinView v : views) tallestPin = Math.max(tallestPin, pinHeight(v) + 3 + (note != null ? 12 : 0));
         if (tallestPin > limit) {
