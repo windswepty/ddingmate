@@ -14,6 +14,7 @@ sys.path.insert(0, HERE)
 import mascots  # noqa: E402
 import skins as S  # noqa: E402
 import skins_more  # noqa: E402,F401  지역·계절·사람·전문가·시간대 판(SKINS 에 더한다)
+import hd_sets  # noqa: E402  HD(2배 해상도) 세트: 같은 id 의 판·제목 줄·친구 그림을 이걸로(mcmeta 논리 크기는 그대로)
 
 RES = os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'ddingmate')
 SPR = os.path.join(RES, 'textures', 'gui', 'sprites', 'hud')
@@ -30,7 +31,7 @@ def main():
     roles = {m[0]: m for m in mascots.ALL}
     out = []
     for sk in S.SKINS:
-        panel, head = S.build(sk)
+        panel, head = hd_sets.SETS[sk['id']]() if sk['id'] in hd_sets.SETS else S.build(sk)
         p = os.path.join(SPR, 'panel_%s.png' % sk['id'])
         panel.save(p)
         mcmeta(p, S.PW, S.PW, S.B)
@@ -39,7 +40,8 @@ def main():
         mcmeta(hp, S.PW, S.HH, {'left': 10, 'top': 0, 'right': 10, 'bottom': 0})
         m = roles.get(sk['id'])
         if sk['hasMascot']:
-            m[3]().render().save(os.path.join(SPR, 'mascot_%s.png' % sk['id']))
+            fn = hd_sets.MASCOTS.get(sk['id'], m[3])
+            fn().render().save(os.path.join(SPR, 'mascot_%s.png' % sk['id']))
         out.append({'id': sk['id'], 'name': sk['name'], 'role': m[2] if m else sk['role'], 'place': sk['place'], 'dark': sk['dark'],
                     'title': sk['title'], 'titleShadow': sk['titleShadow'], 'colors': sk['colors'],
                     'group': sk['group'], 'hasMascot': sk['hasMascot']})
