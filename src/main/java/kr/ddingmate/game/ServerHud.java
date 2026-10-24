@@ -54,6 +54,7 @@ public final class ServerHud {
             // 오션오더 HUD: 서버 리소스팩의 오션오더 HUD 글꼴로 그린 보스바(2026-10-21 리소스팩 hud_oceanorder_hud_*)
             // 재화 바·날짜·채널 표시가 한 보스바로 와서, 오션오더 HUD 가 같은 줄에 실려도 나머지(채널 표시)는 계속 읽는다
             // (예전에는 오션오더 줄을 통째로 건너뛰어 채널 표시를 3초 넘게 못 봐 '게임 밖'으로 보고 HUD 를 모두 숨겼다)
+            kr.ddingmate.todo.TodoList.scanStamina(bar.getName()); // 아일랜드 프로필 HUD 의 지금 스태미나 → 오늘 소모량
             String oceanHud = kr.ddingmate.expert.OceanOrder.hudText(bar.getName());
             String rest = bar.getName().getString();
             if (oceanHud != null) {

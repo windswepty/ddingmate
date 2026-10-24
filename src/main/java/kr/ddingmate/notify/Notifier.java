@@ -165,7 +165,8 @@ public final class Notifier {
             if (toastReady(client)) client.getToastManager().add(new DdingMateToast("공지 · " + title, body, icon, Theme.GOLD));
             else HELD.add(new Held("공지 · " + title, body, icon, Theme.GOLD));
         }
-        chat(Text.literal("공지 · " + title).formatted(Formatting.YELLOW, Formatting.BOLD));
+        // 굵게(BOLD)는 1픽셀 옆에 한 번 더 그려서, 굵은 모양이 없는 손글씨 글꼴에서는 글자가 겹쳐 보였다(2026-10-24) — 색으로만 강조
+        chat(Text.literal("공지 · " + title).formatted(Formatting.GOLD));
         for (String line : text.split("\n")) {
             if (line.isBlank()) continue;
             chat(Text.literal(line.strip()).formatted(Formatting.YELLOW));

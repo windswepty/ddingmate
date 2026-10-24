@@ -166,6 +166,57 @@ public final class TodoList {
         }
     }
 
+    /**
+     * 아일랜드 프로필 HUD(보스바, 서버 리소스팩 hud_island_info) 의 지금 스태미나 "2,720"(2026-10-24 원본 기록).
+     * 오늘 일일 의뢰에 '스태미나 소모하기'가 없으면 의뢰 트래커로는 셀 수 없어서(사용자 "스태미나 카운트 안 됨"),
+     * 이 숫자가 줄어든 만큼을 오늘 소모량에 더한다. 늘어나는 것(회복·물약)은 세지 않는다. 읽기만 한다
+     */
+    private static final String STAMINA_FONT = "hud_island_info_hud_text_1_5_1";
+    private static int lastStamina = -1;
+
+    /** 보스바 글 하나에서 스태미나 칸을 찾아 읽는다(없으면 아무것도 안 함) */
+    public static void scanStamina(net.minecraft.text.Text bar) {
+        if (bar == null) return;
+        StringBuilder sb = new StringBuilder();
+        boolean[] found = {false};
+        bar.visit((style, s) -> {
+            net.minecraft.util.Identifier f = style.getFont();
+            if (f != null && f.getPath().equals(STAMINA_FONT)) {
+                found[0] = true;
+                sb.append(s);
+            }
+            return java.util.Optional.empty();
+        }, net.minecraft.text.Style.EMPTY);
+        if (!found[0]) return;
+        String digits = kr.ddingmate.counter.ItemKeys.stripGlyphs(sb.toString()).replaceAll("[^0-9]", "");
+        if (digits.isEmpty() || digits.length() > 7) return;
+        staminaReading(Integer.parseInt(digits));
+    }
+
+    /** 지금 스태미나 값: 직전보다 줄었으면 그만큼 오늘 소모량에 더한다 */
+    static void staminaReading(int value) {
+        int before = lastStamina;
+        lastStamina = value;
+        if (before < 0 || value >= before) return;
+        int used = before - value;
+        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        for (DdingMateConfig.TodoItem item : DdingMate.config().todo.items) {
+            if (!TodoPreset.STAMINA.id.equals(item.preset)) continue;
+            sync(TodoPreset.STAMINA, progress(item, now) + used);
+            return;
+        }
+    }
+
+    /** 접속이 바뀌면 다시 기준을 잡는다(그 사이 회복·소모는 모름) */
+    public static void resetStaminaBaseline() {
+        lastStamina = -1;
+    }
+
+    /** 시험용: 스태미나 HUD 값을 읽은 것처럼 */
+    public static void debugStamina(int value) {
+        staminaReading(value);
+    }
+
     /** 시험용 */
     public static void debugSidebarLine(String line) {
         java.util.regex.Matcher m = STAMINA_SIDEBAR.matcher(line);

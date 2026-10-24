@@ -257,6 +257,28 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 cfg.hudCategory = true;
             });
 
+            // 7-2) 스태미나: 아일랜드 프로필 HUD 의 지금 스태미나가 줄어든 만큼 오늘 소모량에(의뢰 트래커에 스태미나 의뢰가 없어도)
+            ctx.runOnClient(c -> {
+                DdingMateConfig cfg = DdingMate.config();
+                cfg.todo.items.removeIf(t -> kr.ddingmate.todo.TodoPreset.STAMINA.id.equals(t.preset));
+                DdingMateConfig.TodoItem st = kr.ddingmate.todo.TodoPreset.STAMINA.create();
+                cfg.todo.items.add(st);
+                java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+                kr.ddingmate.todo.TodoList.resetStaminaBaseline();
+                net.minecraft.text.MutableText bar = net.minecraft.text.Text.literal("멜트").setStyle(net.minecraft.text.Style.EMPTY
+                        .withFont(net.minecraft.util.Identifier.of("41f8b3b6-0374-40e5-ae0e-c2a99c95b8e4", "hud_island_info_hud_text_1_2_1")));
+                bar.append(net.minecraft.text.Text.literal("3,000").setStyle(net.minecraft.text.Style.EMPTY
+                        .withFont(net.minecraft.util.Identifier.of("41f8b3b6-0374-40e5-ae0e-c2a99c95b8e4", "hud_island_info_hud_text_1_5_1"))));
+                kr.ddingmate.todo.TodoList.scanStamina(bar); // 처음 값은 기준만
+                check(kr.ddingmate.todo.TodoList.progress(st, now) == 0, "첫 값을 소모로 셈");
+                kr.ddingmate.todo.TodoList.debugStamina(2720);
+                check(kr.ddingmate.todo.TodoList.progress(st, now) == 280, "스태미나 280 소모를 못 셈: " + kr.ddingmate.todo.TodoList.progress(st, now));
+                kr.ddingmate.todo.TodoList.debugStamina(2800); // 회복
+                kr.ddingmate.todo.TodoList.debugStamina(2500);
+                check(kr.ddingmate.todo.TodoList.progress(st, now) == 580, "회복 뒤 소모를 못 셈: " + kr.ddingmate.todo.TodoList.progress(st, now));
+                kr.ddingmate.todo.TodoList.resetStaminaBaseline();
+            });
+
             // 8) HUD 위치 설정: 아래 조작 바 진하기(100 → 70 → 40 → 20)
             ctx.runOnClient(c -> {
                 DdingMate.config().editorBarOpacity = 100;

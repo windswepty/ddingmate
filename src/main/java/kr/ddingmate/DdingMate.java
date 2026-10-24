@@ -154,6 +154,7 @@ public final class DdingMate implements ClientModInitializer {
             ServerHud.reset();
             kr.ddingmate.inquiry.Replies.onDisconnect();
             kr.ddingmate.news.Notices.onDisconnect();
+            kr.ddingmate.todo.TodoList.resetStaminaBaseline();
             wasInGame = false;
             BagTracker.save();
             PlaytimeTracker.save();
