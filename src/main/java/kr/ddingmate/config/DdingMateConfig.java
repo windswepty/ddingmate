@@ -304,6 +304,10 @@ public final class DdingMateConfig {
     public boolean galmuriFont = true;
     public Corner hudCorner = Corner.TOP_LEFT;
     public int hudLines = 4;
+    /** HUD 위치 설정 화면 아래 조작 바 진하기 20~100 (%). 바 아래(가운데 아래)에 HUD 를 둘 때 낮춘다 */
+    public int editorBarOpacity = 100;
+    /** 일정 HUD 의 제작·작물·오션오더 줄 앞에 분류([채광] · [강화] · [농사] …) */
+    public boolean hudCategory = true;
     /** 일정 HUD '보일 일정 수'의 '제한 없음'(켜 둔 일정 모두) */
     public static final int HUD_LINES_ALL = 99;
     public boolean soundEnabled = true;
@@ -382,6 +386,7 @@ public final class DdingMateConfig {
         if (hudMascot == null || kr.ddingmate.ui.HudSkins.byId(hudMascot) == null) hudMascot = kr.ddingmate.ui.HudSkins.NONE;
         if (kr.ddingmate.ui.HudAuto.Mode.of(hudAuto) == null) hudAuto = "off";
         if (customFont == null) customFont = "";
+        editorBarOpacity = Math.max(20, Math.min(100, editorBarOpacity <= 0 ? 100 : editorBarOpacity));
         userFontSize = Math.max(70, Math.min(130, userFontSize <= 0 ? 100 : userFontSize));
         if (notesSeenVersion == null) notesSeenVersion = "";
         if (notices == null) notices = new Notices();

@@ -582,7 +582,8 @@ public class DdingMateScreen extends Screen {
                         n -> n == DdingMateConfig.HUD_LINES_ALL ? "제한 없음" : n + "개", v -> cfg.hudLines = v),
                 tip(toggle("오늘 접속 시간", cfg.playtime.showInHud, v -> cfg.playtime.showInHud = v), "일정 HUD 맨 위에 오늘 접속 시간을 보여 줘요"));
         list.pair(tip(toggle("제작 중인 것", cfg.craft.showInHud, v -> cfg.craft.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"),
-                null);
+                tip(toggle("분류 붙이기", cfg.hudCategory, v -> cfg.hudCategory = v),
+                        "제작·작물·오션오더 줄 앞에 분류를 붙여요. 예: [농사] 아일랜드 작물 · [채광] 강화 횃불 · [강화] 하급 라이프스톤 · [해양] 오션오더"));
 
         list.header("HUD 꾸미기", "꾸미기");
         hudLookRows();

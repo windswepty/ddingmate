@@ -1154,6 +1154,38 @@ public final class CraftTimers {
         return false;
     }
 
+    /**
+     * 일정 HUD 줄 앞 분류(2026-10-24 사용자 요청 "[농사] 아일랜드 작물 · [채광] 강화 횃불 · [강화] 라이프스톤 처럼").
+     * 만드는 시설로 정한다. 모르는 것은 빈 문자열
+     */
+    public static String category(String name) {
+        if (name == null || name.isEmpty()) return "";
+        if (name.endsWith(VOYAGE) || name.equals(VOYAGE_RESET_NAME)) return "해양";
+        if (name.equals(MINE)) return "채광";
+        if (name.equals(PERFUME)) return "꽃";
+        return facilityCategory(kr.ddingmate.counter.RecipeBook.facilityOf(name));
+    }
+
+    /** 시설 → 분류 이름 */
+    public static String facilityCategory(String facility) {
+        if (facility == null) return "";
+        return switch (facility) {
+            case "채광물 가공 시설", "형광 모루" -> "채광";
+            case "강화 제작 시설" -> "강화";
+            case "농작물 가공 시설" -> "농사";
+            case "요리 제작 시설", "황금 요리 제작 시설" -> "요리";
+            case "해양 제작 시설" -> "해양";
+            case "연금 제작 시설", "정밀 연금 제작 시설" -> "연금";
+            case "영혼 가공 시설", "가죽 공방" -> "사냥";
+            case "바리스타 · 커피 머신", "바리스타 · 믹서기" -> "카페";
+            case "플로리스트 제조" -> "꽃";
+            case "뱃지 가공 시설" -> "뱃지";
+            case "도구 제작 시설" -> "도구";
+            case "대형 제작대", "제작대" -> "제작";
+            default -> "";
+        };
+    }
+
     /** 화면에 쓸 이름: 기다리는 중이면 " [대기중..]" */
     public static String displayLabel(Group g, long now) {
         return waiting(g, now) ? g.label() + " [대기중..]" : g.label();

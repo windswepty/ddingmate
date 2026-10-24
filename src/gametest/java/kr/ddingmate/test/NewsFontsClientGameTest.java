@@ -216,6 +216,64 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 cfg.save();
             });
 
+            // 7) 오션오더(실제 화면 2026-10-23 문구): HUD 의 "N마리남음"으로 남은 물고기, 채팅 (2/2)는 한 종류 진행, 성공 뒤엔 오늘 카운터 줄
+            ctx.runOnClient(c -> {
+                DdingMateConfig cfg = DdingMate.config();
+                cfg.expert.oceanOrder = true;
+                cfg.hudCategory = true;
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.OceanOrder.debugHudReset();
+                long now = System.currentTimeMillis();
+                String hud = "- 새우낚기(1마리남음) | - 연어낚기(1마리남음) | - 도미낚기(2마리남음) | 골든티켓 10개 | 299초";
+                kr.ddingmate.expert.OceanOrder.onHud(hud, now);
+                check(kr.ddingmate.expert.OceanOrder.active(now) && kr.ddingmate.expert.OceanOrder.todayCount() == 1, "실제 HUD 로 오션오더를 못 켬");
+                check(kr.ddingmate.expert.OceanOrder.progressText().equals("물고기 4마리 남음"), "남은 물고기를 못 셈: " + kr.ddingmate.expert.OceanOrder.progressText());
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더 물고기 연어 를 낚았습니다. (2/2)", now + 1000);
+                check(kr.ddingmate.expert.OceanOrder.progressText().equals("물고기 4마리 남음"), "한 종류 (2/2)로 전체 진행을 덮음");
+                kr.ddingmate.expert.OceanOrder.onHud("- 새우낚기(1마리남음) | - 도미낚기(2마리남음) | 골든티켓 10개 | 212초", now + 2000);
+                check(kr.ddingmate.expert.OceanOrder.progressText().equals("물고기 3마리 남음"), "남은 물고기가 줄지 않음");
+                check(kr.ddingmate.expert.OceanOrder.endsAt() == now + 2000 + 212_000, "HUD 의 212초로 못 맞춤");
+                List<String> labels = kr.ddingmate.hud.ScheduleHud.debugBuild();
+                check(labels.get(0).startsWith("[해양] 오션오더 물고기 3마리 남음 (오늘 1/"), "일정 HUD 맨 위 오션오더 줄이 다름: " + labels);
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더를 성공하여 골든티켓 10장을 획득하였습니다.", now + 3000);
+                check(!kr.ddingmate.expert.OceanOrder.active(now + 3000), "성공했는데 계속 셈");
+                labels = kr.ddingmate.hud.ScheduleHud.debugBuild();
+                check(labels.stream().anyMatch(l -> l.equals("[해양] 오션오더 오늘 1/10")), "끝난 뒤 오늘 카운터 줄이 없음: " + labels);
+                // 다시 접속해 진행 중인 주문(2분 남음)을 처음 보면 타이머만 켜고 오늘 횟수는 또 세지 않는다
+                kr.ddingmate.expert.OceanOrder.hudPresent(false, now + 10_000); // 성공 뒤 서버 HUD 가 사라짐
+                kr.ddingmate.expert.OceanOrder.onHud("- 새우낚기(1마리남음) | 120초", now + 20_000);
+                check(kr.ddingmate.expert.OceanOrder.active(now + 20_000) && kr.ddingmate.expert.OceanOrder.todayCount() == 1, "진행 중인 주문을 또 셈");
+                // 채널 숫자가 바뀌어도 서버 HUD 가 보이면 '실패'로 끝내지 않는다
+                kr.ddingmate.expert.OceanOrder.tick(now + 21_000);
+                check(kr.ddingmate.expert.OceanOrder.active(now + 21_000), "HUD 가 있는데 끔");
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.OceanOrder.debugHudReset();
+                // 분류: 시설로 [채광] 강화 횃불 · [강화] 하급 라이프스톤
+                check(kr.ddingmate.craft.CraftTimers.category("강화 횃불").equals("채광"), "강화 횃불 분류가 채광이 아님");
+                check(kr.ddingmate.craft.CraftTimers.category("하급 라이프스톤").equals("강화"), "라이프스톤 분류가 강화가 아님");
+                check(kr.ddingmate.craft.CraftTimers.category("모르는 아이템").isEmpty(), "모르는 아이템에 분류가 붙음");
+                cfg.hudCategory = false;
+                check(kr.ddingmate.hud.ScheduleHud.debugBuild().stream().noneMatch(l -> l.startsWith("[해양]")), "분류를 껐는데 붙음");
+                cfg.hudCategory = true;
+            });
+
+            // 8) HUD 위치 설정: 아래 조작 바 진하기(100 → 70 → 40 → 20)
+            ctx.runOnClient(c -> {
+                DdingMate.config().editorBarOpacity = 100;
+                kr.ddingmate.gui.HudEditorScreen ed = new kr.ddingmate.gui.HudEditorScreen(null);
+                c.setScreen(ed);
+                ed.debugStepOpacity();
+                ed.debugStepOpacity();
+                check(DdingMate.config().editorBarOpacity == 40, "바 진하기가 40% 가 아님: " + DdingMate.config().editorBarOpacity);
+            });
+            ctx.waitTicks(5);
+            ctx.takeScreenshot("news-7b-editor-bar-40");
+            ctx.runOnClient(c -> {
+                c.currentScreen.close();
+                DdingMate.config().editorBarOpacity = 100;
+            });
+            ctx.waitTicks(3);
+
             // 6) 채팅창 자리: 사용자 설정 그대로(재료 카운터를 왼쪽에 옮기고 높이 210) → 옮긴 자리 그대로, 채팅이 그 위에 겹친다
             ctx.runOnClient(c -> {
                 DdingMateConfig cfg = DdingMate.config();

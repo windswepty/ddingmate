@@ -172,6 +172,22 @@ public final class ScheduleHud {
     /** 일정 HUD 에 보여 줄 제작·항해 줄 수 */
     static final int MAX_CRAFT_ROWS = 6;
 
+    /** 분류를 켰으면 "[채광] 강화 횃불", 분류가 없거나 껐으면 이름 그대로 */
+    static String tag(DdingMateConfig cfg, String category, String label) {
+        return cfg.hudCategory && category != null && !category.isEmpty() ? "[" + category + "] " + label : label;
+    }
+
+    /** 시험용: 지금 일정 HUD 줄 이름들 */
+    public static List<String> debugLabels() {
+        return cached.stream().map(Entry::label).toList();
+    }
+
+    /** 시험용: 지금 설정으로 줄을 다시 만든다 */
+    public static List<String> debugBuild() {
+        cached = build(DdingMate.config());
+        return debugLabels();
+    }
+
     private static List<Entry> build(DdingMateConfig cfg) {
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
         List<Entry> out = new ArrayList<>();
@@ -200,8 +216,13 @@ public final class ScheduleHud {
         // 오션오더: 5분 안에 끝나야 해서 맨 위에
         long nowMs0 = System.currentTimeMillis();
         if (cfg.expert.oceanOrder && kr.ddingmate.expert.OceanOrder.active(nowMs0)) {
-            out.add(0, new Entry(kr.ddingmate.expert.OceanOrder.label(), kr.ddingmate.expert.OceanOrder.remainingText(nowMs0),
+            out.add(0, new Entry(tag(cfg, "해양", kr.ddingmate.expert.OceanOrder.label()), kr.ddingmate.expert.OceanOrder.remainingText(nowMs0),
                     0, Theme.GOLD));
+        }
+        // 오션오더 카운터: 진행 중이 아니어도 오늘 받은 적이 있으면 "오늘 n/10"(2026-10-24 "오션오더 카운터 HUD 가 안 보여")
+        else if (cfg.expert.oceanOrder && kr.ddingmate.expert.OceanOrder.showIdle(nowMs0)) {
+            out.add(new Entry(tag(cfg, "해양", kr.ddingmate.expert.OceanOrder.idleLabel()), kr.ddingmate.expert.OceanOrder.idleStatus(),
+                    Long.MAX_VALUE - 4, Theme.TEXT_SOFT));
         }
         // 바닥 아이템 청소(10분마다, 서버 [청소] 안내로 맞춤)
         long clean = cfg.cleanupTimer ? kr.ddingmate.game.ServerHud.cleanAt() : 0;
@@ -213,27 +234,27 @@ public final class ScheduleHud {
         // 단축키로 켠 아일랜드 작물 15분 타이머
         if (kr.ddingmate.expert.CropTimer.running()) {
             long left = kr.ddingmate.expert.CropTimer.remaining(nowMs0);
-            out.add(new Entry("아일랜드 작물", kr.ddingmate.expert.CropTimer.remainingText(nowMs0), left / 60000,
+            out.add(new Entry(tag(cfg, "농사", "아일랜드 작물"), kr.ddingmate.expert.CropTimer.remainingText(nowMs0), left / 60000,
                     kr.ddingmate.expert.CropTimer.paused() ? Theme.TEXT_SOFT : left <= 60_000 ? Theme.GOLD : Theme.BLUE));
         }
         // 마을 경작지 아일랜드 작물: 종류별로 다 자랄 때까지
         if (cfg.expert.islandCrops) {
             for (kr.ddingmate.expert.IslandCrops.Summary s : kr.ddingmate.expert.IslandCrops.summaries(nowMs0).values()) {
                 boolean done = s.ready() == s.count();
-                out.add(new Entry(kr.ddingmate.expert.IslandCrops.label(s), kr.ddingmate.expert.IslandCrops.status(s, nowMs0),
+                out.add(new Entry(tag(cfg, "농사", kr.ddingmate.expert.IslandCrops.label(s)), kr.ddingmate.expert.IslandCrops.status(s, nowMs0),
                         done ? 0 : Math.max(0, (s.allReadyAt() - nowMs0) / 60000), done ? Theme.GREEN : Theme.BLUE));
             }
         }
         // 광석 골렘: 다시 나올 수 있을 때까지(쿨타임 중에만)
         if (kr.ddingmate.expert.OreGolem.remaining(nowMs0) > 0) {
-            out.add(new Entry("광석 골렘 쿨타임", kr.ddingmate.expert.OreGolem.remainingText(nowMs0),
+            out.add(new Entry(tag(cfg, "채광", "광석 골렘 쿨타임"), kr.ddingmate.expert.OreGolem.remainingText(nowMs0),
                     kr.ddingmate.expert.OreGolem.remaining(nowMs0) / 60000, Theme.BLUE));
         }
         // 반려어: 밥 줄 때까지
         kr.ddingmate.expert.PetFish.Fish fish = cfg.expert.petFish ? kr.ddingmate.expert.PetFish.current() : null;
         if (fish != null) {
             int lv = kr.ddingmate.expert.PetFish.level(fish, nowMs0);
-            out.add(new Entry(kr.ddingmate.expert.PetFish.label(fish), kr.ddingmate.expert.PetFish.status(fish, nowMs0),
+            out.add(new Entry(tag(cfg, "해양", kr.ddingmate.expert.PetFish.label(fish)), kr.ddingmate.expert.PetFish.status(fish, nowMs0),
                     lv >= 2 ? 0 : Long.MAX_VALUE - 3, lv >= 3 ? Theme.RED : lv == 2 ? Theme.GOLD : lv == 1 ? Theme.GREEN : Theme.BLUE));
         }
         // 제작 중인 아이템: 완료가 가까운 순서로
@@ -245,7 +266,8 @@ public final class ScheduleHud {
             int more = Math.max(0, groups.size() - MAX_CRAFT_ROWS);
             for (kr.ddingmate.craft.CraftTimers.Group g : groups.subList(0, groups.size() - more)) {
                 long mins = g.unknown() ? Long.MAX_VALUE - 1 : Math.max(0, (g.endsAt() - nowMs) / 60000);
-                out.add(new Entry(kr.ddingmate.craft.CraftTimers.displayLabel(g, nowMs), kr.ddingmate.craft.CraftTimers.remainingText(g, nowMs),
+                out.add(new Entry(tag(cfg, kr.ddingmate.craft.CraftTimers.category(g.name()), kr.ddingmate.craft.CraftTimers.displayLabel(g, nowMs)),
+                        kr.ddingmate.craft.CraftTimers.remainingText(g, nowMs),
                         mins, g.unknown() || g.estimated() ? Theme.TEXT_SOFT : g.done() ? Theme.GREEN : Theme.BLUE));
             }
             if (more > 0) out.add(new Entry("그 밖의 제작 " + more + "개", "/띵메이트 홈", Long.MAX_VALUE - 2, Theme.TEXT_SOFT));

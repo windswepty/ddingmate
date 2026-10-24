@@ -44,6 +44,12 @@ public final class OceanOrder {
     private static final Pattern CANDIDATE = Pattern.compile("주문.*(?:물고기|낚)|(?:물고기|낚).*주문|골든\\s*티켓");
     /** "(2/3)" 같은 진행 */
     private static final Pattern PROGRESS = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)");
+    /** 서버 오션오더 HUD 의 물고기 줄 "새우낚기(1마리남음)"(2026-10-23 실제 화면) */
+    private static final Pattern LEFT_FISH = Pattern.compile("(\\d+)\\s*마리\\s*남");
+    /** 다 낚은 물고기 줄(남은 수 대신 완료 표시가 올 때) */
+    private static final Pattern FISH_DONE = Pattern.compile("낚기.*(?:완료|성공|0\\s*마리)");
+    /** 채팅 "오션오더 물고기 연어 를 낚았습니다. (2/2)": 물고기 한 종류의 진행이지 주문 전체가 아니다 */
+    private static final Pattern CAUGHT = Pattern.compile("물고기\\s*(\\S+?)\\s*를?\\s*낚았");
     /**
      * 서버가 오션오더 중 띄우는 오늘 횟수 "[오션오더] 8/10"(2026-10-23 사용자 화면). 물고기 진행 "(2/2)"와는 분모로 가른다:
      * 물고기 요구량은 많아야 3마리·5종이고, 하루 한도는 10~20
@@ -60,6 +66,8 @@ public final class OceanOrder {
     private static long endsAt;
     private static long startedAt;
     private static String progress = "";
+    /** 서버 HUD 에서 읽은 남은 물고기 수(모르면 -1). 0 이면 다 낚음 */
+    private static int fishLeft = -1;
     private static boolean warned;
     private static String lastLogged = "";
     private static int lastChannel = -1;
@@ -112,11 +120,18 @@ public final class OceanOrder {
             return;
         }
         long left = remainingIn(t);
+        Matcher caught = CAUGHT.matcher(t);
         if (active(now)) {
             // 진행 중에 온 문구: 남은 시간·진행만 맞춘다(물고기를 낚을 때마다 오는 알림 등)
             if (left > 0) endsAt = now + left;
+            // "(2/2)"는 그 물고기 한 종류의 진행: 남은 물고기는 서버 HUD 로 세고, HUD 를 못 볼 때만 "연어 2/2"
             Matcher p = PROGRESS.matcher(t);
-            if (p.find()) progress = p.group(1) + "/" + p.group(2);
+            if (!hudShown && p.find()) progress = (caught.find() ? caught.group(1) + " " : "") + p.group(1) + "/" + p.group(2);
+            return;
+        }
+        // 물고기를 낚았다는 알림이 왔는데 타이머가 없다(도착 알림·HUD 를 놓침): 진행 중으로 보되 오늘 횟수는 서버 값에 맡긴다
+        if (caught.find()) {
+            track(now, left > 0 && left <= LIMIT_MS ? left : LIMIT_MS);
             return;
         }
         if (START.matcher(t).find()) start(now, left > 0 && left <= LIMIT_MS ? left : LIMIT_MS);
@@ -135,11 +150,11 @@ public final class OceanOrder {
     }
 
     private static void start(long now, long limitMs) {
-        startedAt = now;
-        endsAt = now + limitMs;
-        progress = "";
-        warned = false;
-        lastChannel = kr.ddingmate.game.ServerHud.channel(); // 이 채널에서 받았다(다른 채널로 옮기면 실패)
+        // 5분 가까이 남았으면 막 도착한 주문: 오늘 횟수를 하나 올리고 알린다.
+        // 많이 지난 주문(다시 접속·창을 열어 처음 봄)은 이미 센 주문일 수 있어 타이머만 켠다(횟수는 서버 "[오션오더] n/m"로 맞춤)
+        boolean fresh = limitMs >= LIMIT_MS - 20_000;
+        track(now, limitMs);
+        if (!fresh) return;
         Day d = today();
         d.count = Math.min(limit(), d.count + 1);
         save();
@@ -147,10 +162,21 @@ public final class OceanOrder {
                 + d.count + "/" + limit());
     }
 
+    /** 타이머만 켠다(횟수·알림 없이) */
+    private static void track(long now, long limitMs) {
+        startedAt = now;
+        endsAt = now + limitMs;
+        progress = "";
+        fishLeft = -1;
+        warned = false;
+        lastChannel = kr.ddingmate.game.ServerHud.channel(); // 이 채널에서 받았다(다른 채널로 옮기면 실패)
+    }
+
     private static void clear() {
         endsAt = 0;
         startedAt = 0;
         progress = "";
+        fishLeft = -1;
         lastChannel = -1;
     }
 
@@ -247,7 +273,29 @@ public final class OceanOrder {
         }
         if (!active(now)) start(now, left > 0 && left <= LIMIT_MS ? left : LIMIT_MS);
         else if (left > 0 && left <= LIMIT_MS) endsAt = now + left;
-        // 물고기 줄마다 "(n/m)": 하나면 그대로, 여럿이면 다 잡은 줄 수/줄 수
+        readFish(text);
+    }
+
+    /**
+     * HUD 의 물고기 줄로 진행을 맞춘다. 실제(2026-10-23): "- 새우낚기(1마리남음)" 줄마다 남은 마리 수 → 모두 더해 "물고기 4마리 남음".
+     * 예전 모양 "(n/m)"이면 다 잡은 줄 수/줄 수
+     */
+    static void readFish(String text) {
+        int left = 0, kinds = 0;
+        for (String line : text.split("\\s*\\|\\s*")) {
+            Matcher f = LEFT_FISH.matcher(line);
+            if (f.find()) {
+                kinds++;
+                left += Integer.parseInt(f.group(1));
+            } else if (FISH_DONE.matcher(line).find()) {
+                kinds++;
+            }
+        }
+        if (kinds > 0) {
+            fishLeft = left;
+            progress = left > 0 ? "물고기 " + left + "마리 남음" : "물고기 다 낚음";
+            return;
+        }
         Matcher p = PROGRESS.matcher(text);
         int lines = 0, done = 0;
         String one = "";
@@ -362,7 +410,9 @@ public final class OceanOrder {
     public static void tick(long now) {
         if (endsAt == 0) return;
         int ch = kr.ddingmate.game.ServerHud.channel();
-        if (lastChannel > 0 && ch > 0 && ch != lastChannel) {
+        if (lastChannel > 0 && ch > 0 && ch != lastChannel && !hudShown) {
+            // 서버 오션오더 HUD 를 못 본 주문만 채널 숫자로 판단한다. HUD 를 보고 있으면 HUD 가 사라질 때 끝난 것으로 본다
+            // (지역을 옮기거나 채널 표시를 잘못 읽어 숫자만 바뀐 것을 '실패'로 알렸다)
             Notifier.oceanOrder("오션오더 실패", "다른 채널로 옮기면 오션오더는 실패로 처리돼요");
             clear();
         }
@@ -373,7 +423,7 @@ public final class OceanOrder {
             clear();
             return;
         }
-        if (!warned && left <= 60_000) {
+        if (!warned && left <= 60_000 && fishLeft != 0) { // 다 낚았으면 알리지 않는다
             warned = true;
             Notifier.oceanOrder("오션오더 1분 남았어요", progress.isEmpty() ? "주문한 물고기를 서둘러 낚아 주세요" : "지금 " + progress);
         }
@@ -383,9 +433,28 @@ public final class OceanOrder {
         return endsAt > now;
     }
 
-    /** HUD 줄: "오션오더 (오늘 3/10)" · "4분 32초" */
+    /** HUD 줄: "오션오더 물고기 4마리 남음 (오늘 3/10)" · "4분 32초" */
     public static String label() {
         return "오션오더" + (progress.isEmpty() ? "" : " " + progress) + " (오늘 " + today().count + "/" + limit() + ")";
+    }
+
+    /** 진행 중이 아닐 때 일정 HUD 의 오션오더 카운터 줄(오늘 한 번이라도 받았으면): "오션오더 오늘 3/10" */
+    public static String idleLabel() {
+        return "오션오더 오늘 " + today().count + "/" + limit();
+    }
+
+    public static String idleStatus() {
+        return today().count >= limit() ? "오늘 다 받음" : "다음 주문 기다리는 중";
+    }
+
+    /** 일정 HUD 에 카운터 줄을 보일지: 진행 중이 아니고 오늘 받은 적이 있음 */
+    public static boolean showIdle(long now) {
+        return !active(now) && today().count > 0;
+    }
+
+    /** 시험용 */
+    public static String progressText() {
+        return progress;
     }
 
     public static String remainingText(long now) {
@@ -468,6 +537,7 @@ public final class OceanOrder {
     }
 
     public static void debugHudReset() {
+        fishLeft = -1;
         hudShown = false;
         hudSeenAt = 0;
         lastHud = "";

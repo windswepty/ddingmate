@@ -105,6 +105,44 @@ public class HudEditorScreen extends Screen {
         reset.setX(cx + 3);
         reset.setY(y);
         addDrawableChild(reset);
+        // 바 진하기: 바 아래(가운데 아래)에 둔 HUD 가 비쳐 보이게. 바 위에 마우스를 올리면 잠깐 진해진다
+        opacity = new Widgets.Button(OPACITY_W, 20, opacityLabel(), false, b -> stepOpacity(1));
+        opacity.setTooltip(Tooltip.of(Text.literal("이 조작 바를 흐리게 해서, 바 아래(화면 가운데 아래)에 둔 HUD 를 보면서 옮겨요.\n"
+                + "누를 때마다 100 → 70 → 40 → 20%. 바 위에 마우스를 올리면 잠깐 진해져요. 바 아래 HUD 도 그대로 끌 수 있어요.")));
+        opacity.setX(cx + BUTTON_W + 9);
+        opacity.setY(y);
+        addDrawableChild(opacity);
+    }
+
+    private static final int OPACITY_W = 74;
+    private static final int[] OPACITIES = {100, 70, 40, 20};
+    private Widgets.Button opacity;
+
+    private Text opacityLabel() {
+        return Text.literal("바 " + DdingMate.config().editorBarOpacity + "%");
+    }
+
+    private void stepOpacity(int dir) {
+        DdingMateConfig cfg = DdingMate.config();
+        int i = 0;
+        for (int k = 0; k < OPACITIES.length; k++) if (OPACITIES[k] == cfg.editorBarOpacity) i = k;
+        cfg.editorBarOpacity = OPACITIES[Math.floorMod(i + dir, OPACITIES.length)];
+        cfg.save(); // 화면을 취소(Esc)해도 바 진하기는 남긴다
+        if (opacity != null) opacity.setMessage(opacityLabel());
+    }
+
+    /** 시험용 */
+    public void debugStepOpacity() {
+        stepOpacity(1);
+    }
+
+    /** 아래 조작 바 자리(그린 뒤 정해짐) */
+    private int barX, barY, barW, barH;
+
+    /** 지금 바 진하기(0~1): 바 위에 마우스가 있으면 진하게 */
+    private float barAlpha(int mouseX, int mouseY) {
+        boolean over = mouseX >= barX && mouseX < barX + barW && mouseY >= barY && mouseY < barY + barH;
+        return over ? 1f : DdingMate.config().editorBarOpacity / 100f;
     }
 
     private void resize(int delta) {
@@ -174,6 +212,21 @@ public class HudEditorScreen extends Screen {
         int hw = Math.min(width - 4, Math.max(lineW + 16, BUTTON_W * 2 + 22));
         int hx = width / 2 - hw / 2;
         int hy = height - 76 - extra;
+        // [바 n%] 단추까지 들어가게 판을 넓힌다
+        int need = (BUTTON_W + 9 + OPACITY_W + 8) * 2;
+        if (hw < need && need <= width - 4) {
+            hw = need;
+            hx = width / 2 - hw / 2;
+        }
+        barX = hx;
+        barY = hy;
+        barW = hw;
+        barH = 72 + extra;
+        float alpha = barAlpha(mouseX, mouseY);
+        // 바와 그 위 글자·단추를 이 진하기로(그리기를 한 번 비워야 색 곱하기가 바에만 걸린다)
+        ctx.draw();
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
         Theme.window(ctx, hx, hy, hw, 72 + extra);
         for (int i = 0; i < helpLines.size(); i++) {
             String l = helpLines.get(i);
@@ -186,6 +239,8 @@ public class HudEditorScreen extends Screen {
             Theme.boldText(ctx, textRenderer, pct, width / 2 + 73 - Theme.boldWidth(textRenderer, pct) / 2, height - 48, Theme.BLUE_MID, false);
         }
         super.render(ctx, mouseX, mouseY, delta);
+        ctx.draw();
+        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 
     private String hit(double mx, double my) {
