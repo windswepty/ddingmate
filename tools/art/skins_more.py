@@ -129,9 +129,9 @@ def region_serenity(p, h):
 TOYS = ['ffb8d2', 'a8ecd0', 'fff0a0', 'cab8f8']
 
 
-@skin('region_tinyland', '타이니랜드', '타이니랜드', False, lt(text='4a3a5a', soft='8a7a98'), 'ffffff', group=GROUP_REGION, mascot=False)
+@skin('region_tinyland', '파라다이스', '파라다이스', False, lt(text='4a3a5a', soft='8a7a98'), 'ffffff', group=GROUP_REGION, mascot=False)
 def region_tinyland(p, h):
-    """타이니랜드: 파스텔 장난감 블록 테두리, 라일락 제목 줄에 별사탕"""
+    """파라다이스(위키 지역 이름 타이니랜드): 파스텔 장난감 블록 테두리, 라일락 제목 줄에 별사탕"""
     frame(p, '5a4a6e', 'f8d8ea', 'd8b0cc', 'fffafd', thick=2, hi='ffffff', lo='f6eef6')
     frame_blocks(p, TOYS, 6)
     p.corners(["..a..", ".aba.", "abbba", ".aba.", "..a.."], {'a': 'ffd84a', 'b': 'fff6c0'}, inset=0)  # 별사탕

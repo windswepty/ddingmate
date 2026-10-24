@@ -775,7 +775,7 @@ public class DdingMateScreen extends Screen {
                     kr.ddingmate.ui.HudAuto.update(client, java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")), System.currentTimeMillis());
                 });
         auto.setTooltip(Tooltip.of(Text.literal("판 · 제목 줄을 저절로 바꿔요(HUD 친구는 그대로).\n"
-                + "지역: 스폰 · 야생 · 마을 · 세레니티 · 타이니랜드 · 노크틸라\n"
+                + "지역: 스폰 · 야생 · 마을 · 세레니티 · 파라다이스 · 노크틸라\n"
                 + "계절·행사: 1주년 · 추석 기간엔 행사 판, 그 밖엔 겨울 · 봄 · 여름 · 가을(달토끼)\n"
                 + "전문가: 켜진 스킬의 채광 · 해양 · 재배 · 사냥 판\n"
                 + "게임 시간: 새벽 · 낮 · 노을 · 밤\n"

@@ -88,7 +88,8 @@ public final class HudAuto {
             case WILD -> "region_wild";
             case VILLAGE -> "region_village";
             case HUNT -> "region_noctila";
-            case ISLAND -> ServerHud.place().contains("타이니") ? "region_tinyland" : "region_serenity";
+            // 아일랜드 섬 이름은 세레니티·파라다이스(위키 지역 이름은 타이니랜드). 판 id 는 예전 설정을 지키려고 그대로 둔다
+            case ISLAND -> ServerHud.place().contains("파라다이스") || ServerHud.place().contains("타이니") ? "region_tinyland" : "region_serenity";
         };
     }
 

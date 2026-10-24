@@ -197,6 +197,11 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
                 if (kr.ddingmate.ui.HudSkins.panel() == null || !"region_serenity".equals(kr.ddingmate.ui.HudSkins.panel().id()))
                     throw new AssertionError("세레니티에서 세레니티 판이 아님: " + kr.ddingmate.ui.HudSkins.panel());
+                // 실제 채널 표시 "파라다이스 (아일랜드12)" → 파라다이스 판
+                kr.ddingmate.game.ServerHud.debugPlace(kr.ddingmate.game.ServerHud.Area.ISLAND, "파라다이스");
+                kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
+                if (kr.ddingmate.ui.HudSkins.panel() == null || !"region_tinyland".equals(kr.ddingmate.ui.HudSkins.panel().id()))
+                    throw new AssertionError("파라다이스에서 파라다이스 판이 아님: " + kr.ddingmate.ui.HudSkins.panel());
                 kr.ddingmate.game.ServerHud.debugPlace(kr.ddingmate.game.ServerHud.Area.HUNT, "");
                 kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
                 if (!"region_noctila".equals(kr.ddingmate.ui.HudSkins.panel().id()) || cfg.hudStyle != DdingMateConfig.HudStyle.DARK)

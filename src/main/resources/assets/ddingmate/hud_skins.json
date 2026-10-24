@@ -405,9 +405,9 @@
     },
     {
       "id": "region_tinyland",
-      "name": "타이니랜드",
+      "name": "파라다이스",
       "role": "지역",
-      "place": "타이니랜드",
+      "place": "파라다이스",
       "dark": false,
       "title": "ffffff",
       "titleShadow": true,
