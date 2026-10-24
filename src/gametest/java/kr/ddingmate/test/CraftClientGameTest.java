@@ -696,6 +696,13 @@ public class CraftClientGameTest implements FabricClientGameTest {
                                 && kr.ddingmate.craft.FacilityPanel.debugTabOf("연금 제작 시설/" + firstOf("연금 제작 시설", "핵")) == 46
                                 && kr.ddingmate.craft.FacilityPanel.debugTabOf("해양 제작 시설/" + firstOf("해양 제작 시설", "열쇠")) == 45,
                         "탭 순서 규칙이 다름");
+                // 형광 광산에서 받는 광물은 "형광 오르딘"(채팅 "형광 오르딘 1개를 수령했습니다.")인데 레시피 재료는 "오르딘"
+                java.util.Map<String, Integer> ores = java.util.Map.of(kr.ddingmate.counter.ItemKeys.nameKey("형광 오르딘"), 3,
+                        kr.ddingmate.counter.ItemKeys.nameKey("형광 세르칸"), 2);
+                check(kr.ddingmate.counter.MaterialCounter.have(ores, "오르딘") == 3
+                                && kr.ddingmate.counter.MaterialCounter.craftable(ores, kr.ddingmate.counter.RecipeBook.get("채광물 가공 시설/오르딘 큐브")) == 3
+                                && kr.ddingmate.counter.MaterialCounter.craftable(ores, kr.ddingmate.counter.RecipeBook.get("채광물 가공 시설/세르칸 큐브")) == 2,
+                        "형광 오르딘·형광 세르칸을 큐브 재료로 못 셈");
                 check("레시피 목록 → 6번째 탭(형광 큐브) → 세르칸 큐브".equals(kr.ddingmate.craft.FacilityPanel.debugFullPath("채광물 가공 시설/세르칸 큐브")),
                         "전체 길이 다름: " + kr.ddingmate.craft.FacilityPanel.debugFullPath("채광물 가공 시설/세르칸 큐브"));
                 // 창 모양을 아직 확인 못 한 시설은 길을 지어내지 않는다(목록 창을 한 번 보면 확인)
