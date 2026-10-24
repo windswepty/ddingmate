@@ -80,6 +80,10 @@ public class ReplayClientGameTest implements FabricClientGameTest {
             }
             ctx.runOnClient(c -> {
                 c.setScreen(null);
+                // 재생한 서버 HUD(보스바)·제목·채팅을 비운다: 남겨 두면 다음 시험 월드에서도 띵타이쿤 HUD 가 떠 있었다
+                ((kr.ddingmate.mixin.BossBarHudAccessor) c.inGameHud.getBossBarHud()).ddingmate$bossBars().clear();
+                c.inGameHud.clearTitle();
+                c.inGameHud.getChatHud().clear(false);
                 restoreConfig(backup);
                 try {
                     Files.writeString(data.resolve("replay-report.txt"), report, StandardCharsets.UTF_8);
@@ -272,13 +276,22 @@ public class ReplayClientGameTest implements FabricClientGameTest {
 
     // ---------------------------------------------------------------- 원본 기록(DevRecord)
 
+    /** 원본 기록에서 같은 모양(숫자만 다름) 줄을 몇 개까지 다시 보낼지 */
+    private static final int SAME_SHAPE_MAX = 30;
+
     private static List<JsonObject> readRecords(Path dir) {
         List<JsonObject> out = new ArrayList<>();
+        Map<String, Integer> seen = new java.util.HashMap<>();
         if (!Files.isDirectory(dir)) return out;
         try (Stream<Path> s = Files.list(dir)) {
             for (Path f : s.filter(p -> p.toString().endsWith(".jsonl")).sorted().toList()) {
                 for (String line : Files.readAllLines(f, StandardCharsets.UTF_8)) {
-                    if (!line.isBlank()) out.add(JsonParser.parseString(line).getAsJsonObject());
+                    if (line.isBlank()) continue;
+                    // 같은 모양(숫자만 다름) 줄은 몇 개만: 잠수 채널 "299초 뒤 잠수 포인트…" 액션바가 하루 수만 줄이라
+                    // 줄마다 게임에 다시 보내면 20분 넘게 걸렸다(2026-10-24). 창(screen)은 모두 다시 연다
+                    String shape = line.replaceAll("\\d", "#").replaceAll("\"at\":#+", "");
+                    if (!line.contains("\"t\":\"screen\"") && seen.merge(shape, 1, Integer::sum) > SAME_SHAPE_MAX) continue;
+                    out.add(JsonParser.parseString(line).getAsJsonObject());
                 }
             }
         } catch (Exception e) {
