@@ -528,6 +528,8 @@ public final class CraftTimers {
         Set<String> recipeConflict = new HashSet<>();
         record QueueSlot(String name, String key, int count, Reading r) {}
         List<QueueSlot> queue = new ArrayList<>();
+        List<Long> mineSecs = new ArrayList<>();
+        String[] mineInfo = {null, ""}; // [0] 형광 광산 창이면 "y", [1] 골렘 등급
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory) continue;
             ItemStack s = slot.getStack();
@@ -549,7 +551,7 @@ public final class CraftTimers {
                 continue;
             }
             if (isMine(lore.lines())) {
-                if (mine(jobs, s, lore.lines(), now)) changed = true;
+                mineSlot(s, lore.lines(), slot.id, mineSecs, mineInfo);
                 continue;
             }
             Reading r = read(lore.lines());
@@ -589,6 +591,7 @@ public final class CraftTimers {
                     && !q.r().own && !q.r().done && Math.abs(q.r().remainingSec - r.remainingSec) <= 2);
             if (!dup) queue.add(new QueueSlot(name, key, count, r));
         }
+        if (mineInfo[0] != null && syncMine(jobs, mineSecs, mineInfo[1], now)) changed = true;
         for (Map.Entry<String, Long> e : recipeSeen.entrySet()) {
             if (recipeConflict.contains(e.getKey()) || Objects.equals(store.secondsPerJob.get(e.getKey()), e.getValue())) continue;
             store.secondsPerJob.put(e.getKey(), e.getValue());
@@ -802,6 +805,74 @@ public final class CraftTimers {
         }
         jobs.add(job);
         changed();
+    }
+
+    /** 형광 광산 창의 상태 칸(채광 중·수령하기·투입하기) — 일꾼 골렘 아이템만 든 다른 창과 가른다 */
+    private static final Pattern MINE_WINDOW = Pattern.compile("형광\\s*광물|일꾼\\s*골렘\\s*투입");
+    /** 지난번 형광 광산 창에서 읽은 남은 초들. 창 글은 열어 둔 동안 줄지 않아, 같으면 다시 맞추지 않는다 */
+    private static List<Long> lastMineSecs = List.of();
+    /** 마지막으로 형광 광산 창을 읽은 시각. 창을 닫았다 다시 열면(2초 넘게 안 보임) 같은 글이어도 다시 맞춘다 */
+    private static long lastMineAt;
+
+    /**
+     * 형광 광산 칸 하나: 남은 시간을 모으고(창의 골렘 칸은 골렘마다 하나, 남은 시간은 앞 골렘까지 더한 누적 —
+     * 2026-10-25 실제 "32초" 남았을 때 하나 더 넣자 "10분 29초"), 창 칸 번호와 함께 로그에 남긴다
+     */
+    private static void mineSlot(ItemStack stack, List<Text> lines, int slotId, List<Long> secs, String[] info) {
+        long remaining = -1;
+        StringBuilder all = new StringBuilder();
+        String rawName = ItemKeys.stripGlyphs(stack.getName().getString()).trim();
+        if (MINE_WINDOW.matcher(rawName).find()) info[0] = "y";
+        for (Text l : lines) {
+            String t = ItemKeys.stripGlyphs(l.getString());
+            all.append(" | ").append(t);
+            if (MINE_WINDOW.matcher(t).find()) info[0] = "y";
+            Matcher g = MINE_GOLEM.matcher(t);
+            if (g.find()) info[1] = g.group(1);
+            if (REMAIN_HINT.matcher(t).find()) {
+                long sec = seconds(t);
+                if (sec >= 0) remaining = sec;
+            }
+        }
+        if (remaining >= 0) secs.add(remaining);
+        String sig = "mine:" + slotId + rawName + all.toString().replaceAll("\\d", "#");
+        if (LOGGED.size() < 200 && LOGGED.add(sig)) DdingMate.LOG.info("형광 광산 칸 읽음[{}]: {}{} (남은 {}초)", slotId, rawName, all, remaining);
+    }
+
+    /**
+     * 형광 광산 창에 보이는 그대로 대기열을 다시 만든다: 남은 시간 하나 = 골렘 하나(같은 시각은 한 번만, 누적이라 그대로 끝나는 시각).
+     * 남은 시간이 하나도 없으면(다 받았거나 수령만 남음) 줄을 모두 뺀다. 예전에는 칸마다 첫 줄에 맞추고 뒤 줄을 밀어
+     * 골렘 4마리가 12:23 까지로 불어났고, 받아도 안 빠졌다(2026-10-25 사용자 화면). 바꾼 게 있으면 true
+     */
+    static boolean syncMine(List<Job> jobs, List<Long> secs, String grade, long now) {
+        List<Long> uniq = new ArrayList<>();
+        for (long s : secs.stream().sorted().toList()) if (uniq.isEmpty() || s - uniq.get(uniq.size() - 1) > 2) uniq.add(s);
+        boolean same = uniq.equals(lastMineSecs) && now - lastMineAt < 2000;
+        lastMineAt = now;
+        if (same) return false;
+        lastMineSecs = List.copyOf(uniq);
+        jobs.removeIf(j -> j.separate && j.name.equals(MINE));
+        for (long s : uniq) {
+            Job job = new Job();
+            job.name = MINE;
+            job.separate = true;
+            job.queue = grade.isEmpty() ? null : grade;
+            job.startedAt = now;
+            job.endsAt = now + s * 1000;
+            job.synced = true;
+            job.notified = s == 0;
+            jobs.add(job);
+        }
+        return true;
+    }
+
+    /** 시험용 */
+    public static int debugSyncMine(List<Long> secs, long now) {
+        List<Job> jobs = jobsForWrite();
+        if (jobs == null) return -1;
+        lastMineAt = 0;
+        syncMine(jobs, secs, "노말", now);
+        return (int) jobs.stream().filter(j -> j.separate && j.name.equals(MINE)).count();
     }
 
     static boolean isMine(List<Text> lines) {

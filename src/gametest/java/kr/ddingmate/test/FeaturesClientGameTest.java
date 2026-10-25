@@ -1015,6 +1015,11 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 long mineEnds2 = kr.ddingmate.craft.CraftTimers.groups().stream()
                         .filter(g -> g.name().equals(kr.ddingmate.craft.CraftTimers.MINE)).findFirst().orElseThrow().endsAt();
                 check(mineEnds2 == mineEnds, "같은 글인데 끝나는 시각이 바뀜: " + (mineEnds2 - mineEnds) + "ms");
+                // 창 전체로 맞추기(2026-10-25 실제): 골렘 칸마다 누적 남은 시간 "9초"·"10분 9초"·"20분 9초"(상태 칸이 같은 값을 한 번 더)
+                // → 골렘 3마리. 남은 시간이 하나도 없으면(다 받음) 줄이 모두 빠진다
+                check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of(9L, 609L, 1209L, 1209L), now) == 3, "형광 광산 창 골렘 수가 3이 아님");
+                check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of(), now) == 0, "다 받은 형광 광산 줄이 안 빠짐");
+                check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of((mineEnds - now) / 1000), now) == 1, "형광 광산 줄을 다시 못 만듦");
                 // 골렘을 넣는 채팅(실제 로그)만으로도 센다: 위키 등급별 시간(레어 5분), 앞 골렘 뒤에 줄 선다. 사람 채팅은 무시
                 kr.ddingmate.craft.CraftTimers.onChat("[칭호] 누군가 : 레어 일꾼 골렘을 채광 대기열에 투입했습니다.");
                 kr.ddingmate.craft.CraftTimers.onChat("레어 일꾼 골렘을 채광 대기열에 투입했습니다.");
