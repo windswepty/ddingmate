@@ -1632,6 +1632,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         "──────────────────", ". [강화 시 스킬 정보]", ". 채광물 가공과 강화 제작 시설의", ". 제작 시간이 30% 감소합니다.",
                         "──────────────────", ". - 보유 스킬 포인트 : 118포인트");
                 check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 초고속 용광로 (+1)", furnace) == 1, "1레벨(10%)을 못 읽음(미리보기 30%를 읽었나?)");
+                check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 고속 영혼 가공기 (잠김)", furnace) == 0, "잠긴(안 배운) 스킬을 10%로 읽음");
                 check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 초고속 용광로 (MAX)",
                         java.util.List.of("전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의", ". 제작 시간이 80% 감소합니다.", ". 최대 스킬 레벨에 도달하였습니다.")) == 5, "MAX(80%)를 못 읽음");
                 check(kr.ddingmate.craft.ExpertSkills.debugLevel("[세레니티] 물 흐르듯 술술 (+3)",

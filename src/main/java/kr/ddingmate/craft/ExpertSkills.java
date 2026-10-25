@@ -41,7 +41,8 @@ public final class ExpertSkills {
     private static final Pattern REDUCE = Pattern.compile("제작\\s*시간이\\s*(\\d+)\\s*%\\s*감소");
     /** 구분선 또는 "[강화 시 스킬 정보]" 부터는 다음 레벨 미리보기 */
     private static final Pattern PREVIEW = Pattern.compile("─{3,}|강화\\s*시|습득\\s*시|배울\\s*시");
-    private static final Pattern NOT_LEARNED = Pattern.compile("\\(\\s*\\+?\\s*0\\s*\\)|미습득|배우지\\s*않|습득하지\\s*않");
+    /** 안 배운 스킬: 실제 창은 이름 끝 "(잠김)", 설명엔 1레벨 효과(10%)가 그대로 적혀 있다(문의 f31eda7b) */
+    private static final Pattern NOT_LEARNED = Pattern.compile("\\(\\s*\\+?\\s*0\\s*\\)|잠김|미습득|배우지\\s*않|습득하지\\s*않");
 
     /** 10틱마다: 열린 창에 위 스킬 칸이 있으면 레벨을 맞춘다 */
     public static void scan(MinecraftClient client) {
