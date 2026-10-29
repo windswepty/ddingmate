@@ -185,6 +185,15 @@ public final class DevRecord {
         return ItemStack.CODEC.encodeStart(r.getOps(JsonOps.INSTANCE), stack).result().orElse(new JsonObject());
     }
 
+    /** 기록 폴더 바로 아래 파일들의 크기 합(old/ 는 빼고) */
+    private static long folderBytes(Path d) throws IOException {
+        long sum = 0;
+        try (var s = Files.list(d)) {
+            for (Path p : (Iterable<Path>) s::iterator) if (Files.isRegularFile(p)) sum += Files.size(p);
+        }
+        return sum;
+    }
+
     private static JsonObject head(String kind) {
         JsonObject o = new JsonObject();
         o.addProperty("t", kind);
@@ -196,13 +205,24 @@ public final class DevRecord {
         try {
             Path d = dir();
             Files.createDirectories(d);
-            if (written < 0) {
-                written = 0;
+            if (written < 0) written = folderBytes(d);
+            if (written > MAX_BYTES) {
+                // 예전엔 여기서 말없이 멈춰서 10-25 뒤로 기록이 하나도 없었다. 오래된 날짜 파일을 old/ 로 옮기고 계속 쓴다(지우지 않음)
+                Path old = d.resolve("old");
+                Files.createDirectories(old);
+                java.util.List<Path> files;
                 try (var s = Files.list(d)) {
-                    for (Path p : (Iterable<Path>) s::iterator) written += Files.size(p);
+                    files = s.filter(Files::isRegularFile).sorted().toList();
                 }
+                String today = java.time.LocalDate.now() + ".jsonl";
+                for (Path p : files) {
+                    if (written <= MAX_BYTES * 7 / 10 || p.getFileName().toString().equals(today)) break;
+                    Files.move(p, old.resolve(p.getFileName()), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    DdingMate.LOG.warn("개발용 기록이 {}MB 를 넘어 {} 을(를) old 폴더로 옮겼어요", MAX_BYTES >> 20, p.getFileName());
+                    written = folderBytes(d);
+                }
+                if (written > MAX_BYTES) return; // 오늘 파일 하나가 상한을 넘으면 오늘은 그만
             }
-            if (written > MAX_BYTES) return;
             byte[] line = (o + "\n").getBytes(StandardCharsets.UTF_8);
             Path f = d.resolve(java.time.LocalDate.now() + ".jsonl");
             Files.write(f, line, StandardOpenOption.CREATE, StandardOpenOption.APPEND);

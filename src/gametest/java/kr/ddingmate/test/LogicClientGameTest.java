@@ -140,6 +140,18 @@ public class LogicClientGameTest implements FabricClientGameTest {
         check(DurabilityTracker.keyOf(hidden).equals(ItemKeys.nameKey(bootsName)), "가린 신발 키 오류: " + DurabilityTracker.keyOf(hidden));
         check(DurabilityTracker.nameOf(hidden).equals(bootsName), "가린 신발 이름 오류: " + DurabilityTracker.nameOf(hidden));
         check(DurabilityTracker.iconOf(hidden).isOf(Items.NETHERITE_BOOTS), "가린 신발 그림 오류");
+        // 가린 신발도 숫자로: 100% 이고 닳은 양이 없으면 481/481, 실제 기록처럼 damage 2 가 같이 오면 479/481
+        d = DurabilityTracker.read(hidden);
+        check(d != null && !d.percent() && d.left() == 481 && d.max() == 481, "가린 신발 100% 가 숫자가 아님: " + d);
+        hidden.set(DataComponentTypes.DAMAGE, 2);
+        d = DurabilityTracker.read(hidden);
+        check(d != null && !d.percent() && d.left() == 479 && d.max() == 481, "가린 신발 damage 로 정확한 값이 아님: " + d);
+        // 드릴(2026-10-24 원본 기록): 바닐라 곡괭이 damage 60 이지만 툴팁 "◇ 현재 내구도 : 97 / 100" 이 진짜
+        ItemStack drill = new ItemStack(Items.NETHERITE_PICKAXE);
+        drill.setDamage(60);
+        drill.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("▽ 드릴 내구도"), Text.literal("◇ 현재 내구도 : 97 / 100"))));
+        d = DurabilityTracker.read(drill);
+        check(d != null && d.left() == 97 && d.max() == 100, "드릴 내구도를 툴팁 값으로 안 읽음: " + d);
         // 머리 치장(2026-10-29 실제 기록): HMCCosmetics 아이템은 custom_data 로 알아본다. 갑옷 칸 번호(신발 36 ~ 투구 39)
         ItemStack hat = new ItemStack(Items.LEATHER_HORSE_ARMOR);
         net.minecraft.nbt.NbtCompound pbv = new net.minecraft.nbt.NbtCompound();
@@ -154,6 +166,19 @@ public class LogicClientGameTest implements FabricClientGameTest {
         ItemStack namedButton = new ItemStack(Items.STONE_BUTTON);
         namedButton.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Stone"));
         check(DurabilityTracker.keyOf(namedButton).equals(ItemKeys.keyOf(namedButton)), "내구도 없는 아이템 이름을 장비로 바꿈");
+        // 요리 시세 변동 날짜: 실제 서버 "[TIP] N일 오전 3시 요리 상점 가격이 변동됩니다." (05-31→1일, 06-03→6일, 08-02→3일, 08-23→24일, 10-18→21일)
+        java.time.ZoneId kst = kr.ddingmate.schedule.ScheduleEngine.KST;
+        int[][] tips = {{5, 31, 1}, {6, 3, 6}, {8, 2, 3}, {8, 23, 24}, {10, 18, 21}};
+        for (int[] tip : tips) {
+            java.time.ZonedDateTime at = java.time.ZonedDateTime.of(2026, tip[0], tip[1], 12, 0, 0, 0, kst);
+            java.time.ZonedDateTime next = kr.ddingmate.expert.Cooking.nextChange(at);
+            check(next.getDayOfMonth() == tip[2] && next.getHour() == 3, "요리 시세 다음 변동 오류 " + at + " → " + next);
+        }
+        // 30일 03:00 다음은 다음 달 1일(31일 있는 달), 03:00 바로 전·후 경계
+        java.time.ZonedDateTime oct30 = java.time.ZonedDateTime.of(2026, 10, 30, 3, 0, 0, 0, kst);
+        check(kr.ddingmate.expert.Cooking.nextChange(oct30).equals(java.time.ZonedDateTime.of(2026, 11, 1, 3, 0, 0, 0, kst)), "10-30 다음 변동이 11-01 이 아님");
+        check(kr.ddingmate.expert.Cooking.lastChange(oct30).equals(oct30), "10-30 03:00 정각이 지난 변동이 아님");
+        check(kr.ddingmate.expert.Cooking.lastChange(oct30.minusSeconds(1)).getDayOfMonth() == 27, "10-30 02:59:59 의 지난 변동이 27일이 아님");
         ItemStack pick = new ItemStack(Items.DIAMOND_PICKAXE);
         pick.setDamage(100);
         d = DurabilityTracker.read(pick);

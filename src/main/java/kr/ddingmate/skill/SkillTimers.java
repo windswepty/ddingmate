@@ -487,7 +487,7 @@ public final class SkillTimers {
                 m.values().removeIf(k -> k == null || k.name == null || k.name.isBlank());
                 for (Skill k : m.values()) {
                     if (k.tool == null) k.tool = "";
-                    if (k.effect == null) k.effect = "";
+                    if (k.effect == null || SkillSignals.LOADING_EFFECTS.contains(k.effect)) k.effect = ""; // 예전 판이 접속 실명과 짝지은 것
                     if (k.cooldownGroup == null) k.cooldownGroup = "";
                     // 예전 판이 늦은 종료 메시지로 잘못 잰 값(39초·49초 등)은 버린다
                     if (!plausible(k, k.measuredSec)) {

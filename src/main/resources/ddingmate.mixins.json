@@ -8,6 +8,7 @@
     "HandledScreenAccessor",
     "InGameHudOverlayMixin",
     "ItemCooldownMixin",
+    "InventoryPacketMixin",
     "TextFieldWidgetAccessor",
     "TextFieldWidgetMixin",
     "FontStorageGameFontMixin",

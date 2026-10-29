@@ -74,29 +74,40 @@ public final class DurabilityTracker {
     /** 내구도가 있는 아이템이면 남은/최대 내구도, 아니면 null */
     public static Durability read(ItemStack s) {
         if (s == null || s.isEmpty()) return null;
-        if (s.isDamageable() && s.getMaxDamage() > 0) {
-            return new Durability(s.getMaxDamage() - s.getDamage(), s.getMaxDamage());
-        }
         LoreComponent lore = s.get(DataComponentTypes.LORE);
+        // 1) 서버가 설명에 직접 적은 숫자가 먼저: 드릴은 바닐라 곡괭이(2031)지만 툴팁은 "◇ 현재 내구도 : 97 / 100"(2026-10-24 원본 기록)
         if (lore != null) {
             for (Text line : lore.lines()) {
                 String t = Formatting.strip(line.getString());
-                if (t == null) continue;
-                Matcher m = LORE.matcher(t);
-                if (m.find()) {
-                    try {
-                        int left = Integer.parseInt(m.group(1).replace(",", ""));
-                        int max = Integer.parseInt(m.group(2).replace(",", ""));
-                        if (max > 0) return new Durability(left, max);
-                    } catch (NumberFormatException ignored) {
-                        // 숫자가 너무 크면 무시
-                    }
+                Matcher m = t == null ? null : LORE.matcher(t);
+                if (m == null || !m.find()) continue;
+                try {
+                    int left = Integer.parseInt(m.group(1).replace(",", ""));
+                    int max = Integer.parseInt(m.group(2).replace(",", ""));
+                    if (max > 0) return new Durability(left, max);
+                } catch (NumberFormatException ignored) {
+                    // 숫자가 너무 크면 무시
                 }
-                Matcher p = LORE_PCT.matcher(t);
-                if (p.find()) {
-                    double pct = Math.min(100, Double.parseDouble(p.group(1)));
-                    return new Durability((int) Math.round(pct * 10), 1000, true);
-                }
+            }
+        }
+        if (s.isDamageable() && s.getMaxDamage() > 0) {
+            return new Durability(s.getMaxDamage() - s.getDamage(), s.getMaxDamage());
+        }
+        // 2) 갑옷 가리기 버튼은 진짜 장비의 닳은 양(minecraft:damage 2)을 그대로 갖고 온다(2026-10-29 기록) → 479/481 처럼 정확히
+        Item real = disguisedAs(s);
+        int realMax = real == null ? 0 : new ItemStack(real).getMaxDamage();
+        if (realMax > 0 && s.contains(DataComponentTypes.DAMAGE)) {
+            return new Durability(Math.max(0, realMax - s.getOrDefault(DataComponentTypes.DAMAGE, 0)), realMax);
+        }
+        // 3) 퍼센트만 있으면 퍼센트(진짜 장비를 알고 100% 면 닳지 않은 것)
+        if (lore != null) {
+            for (Text line : lore.lines()) {
+                String t = Formatting.strip(line.getString());
+                Matcher p = t == null ? null : LORE_PCT.matcher(t);
+                if (p == null || !p.find()) continue;
+                double pct = Math.min(100, Double.parseDouble(p.group(1)));
+                if (realMax > 0 && pct >= 100) return new Durability(realMax, realMax);
+                return new Durability((int) Math.round(pct * 10), 1000, true);
             }
         }
         return null;
@@ -184,8 +195,9 @@ public final class DurabilityTracker {
                 // (2026-10-29 사용자 화면: 투구를 썼는데 머리 칸이 "렛서판다 모자"). 입은 칸에서 같은 종류 → 같은 칸 순서로 찾는다
                 found = worn(t, inv);
                 d = found == null ? null : read(found);
-                if (found == null && t.lastMax > 0 && underCosmetic(t, inv)) {
-                    d = new Durability(t.lastLeft, t.lastMax, t.lastPercent);
+                if (found == null && underCosmetic(t, inv)) {
+                    // 치장 아래 투구: 서버가 진짜 투구를 보낸 마지막 순간(접속·이동 때 잠깐)의 값. 아직 못 봤으면 값 없이 "치장에 가려짐"
+                    d = t.lastMax > 0 ? new Durability(t.lastLeft, t.lastMax, t.lastPercent) : null;
                     hidden = true;
                 }
             }
@@ -247,11 +259,18 @@ public final class DurabilityTracker {
             ItemStack s = inv.getStack(i);
             if (!s.isEmpty() && !id.isEmpty() && id.equals(net.minecraft.registry.Registries.ITEM.getId(s.getItem()).toString()) && read(s) != null) return s;
         }
-        if (t.wornSlot >= 36 && t.wornSlot <= 39) {
+        if (t.wornSlot >= 36 && t.wornSlot <= 39 && !id.isEmpty()) {
+            // 예전에 입던 칸: 그 칸의 진짜 장비 종류가 같을 때만(다른 장비의 내구도를 보여 주지 않게)
             ItemStack s = inv.getStack(t.wornSlot);
-            if (!s.isEmpty() && read(s) != null) return s;
+            Item real = s.isEmpty() ? null : disguisedAs(s);
+            if (real != null && id.equals(Registries.ITEM.getId(real).toString()) && read(s) != null) return s;
         }
         return null;
+    }
+
+    /** 서버가 인벤토리 칸을 보낸 순간(치장으로 바뀌기 전 진짜 장비가 잠깐 온다) */
+    public static void onInventoryPacket(MinecraftClient client) {
+        if (client.player != null && !DdingMate.config().durability.tracked.isEmpty()) tick(client);
     }
 
     /** 경고선 아래로 처음 내려갈 때 한 번 알리고, 수리해서 5%p 이상 회복하면 다시 알릴 수 있게 한다. */

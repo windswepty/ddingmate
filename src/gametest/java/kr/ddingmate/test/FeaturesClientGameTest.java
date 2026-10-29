@@ -110,6 +110,11 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
                 check(helm.hidden() && helm.durability() != null && helm.durability().left() == 405 && helm.durability().max() == 407,
                         "치장 아래 투구가 마지막 값으로 안 보임: " + helm);
+                // 업데이트 전 설정처럼 마지막 값이 없으면 "인벤토리에 없음" 대신 가려짐
+                helm.item().lastMax = 0;
+                DurabilityTracker.tick(c);
+                DurabilityTracker.Row unknown = DurabilityTracker.rows().get(2);
+                check(unknown.hidden() && unknown.durability() == null, "값 모르는 치장 투구가 가려짐으로 안 보임: " + unknown);
                 DurabilityTracker.setTracked("v:minecraft:netherite_helmet", "네더라이트 투구", false);
             });
             sp.getServer().runCommand("item replace entity @a armor.head with minecraft:air");
@@ -643,6 +648,15 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 KeywordWatcher.onMessage(Text.literal("[알림] 풍선이 근처에 도착했어요!"), null);
                 check(AlertLog.entries().size() == 2 && AlertLog.entries().get(0).title.equals("채팅에 '풍선'"),
                         "키워드 알림 제목이 다름: " + AlertLog.entries().get(0).title);
+                // 한글 닉네임(2026-10 실제 로그: 계정 windswepty, 채팅엔 "멜트"만 나옴)
+                kr.ddingmate.game.Nickname.debugSet("멜트");
+                check("@닉네임".equals(KeywordWatcher.debugCheck("[꼬마송편] 단무지 : 멜트야 (7명)")), "한글 닉네임 언급 알림이 없음");
+                check(KeywordWatcher.debugCheck("[(~▾)~] 멜트 : 오션오더 왔다") == null, "내 한글 닉네임 채팅에 키워드 알림이 울림");
+                check(KeywordWatcher.debugCheck("(멜트 → 단무지<보냄>) 풍선 어디") == null, "내가 보낸 귓속말에 키워드 알림이 울림");
+                check("@닉네임".equals(KeywordWatcher.debugCheck("(단무지 → 멜트<받음>) 멜트 풍선 봤어?")), "받은 귓속말의 언급이 없음");
+                check("풍선".equals(KeywordWatcher.debugCheck("(단무지 → 멜트<받음>) 풍선 봤어?")), "받은 귓속말 키워드가 없음");
+                check(KeywordWatcher.debugCheck("멜트님이 업적을 달성했습니다") == null, "시스템 공지의 한글 닉네임에 언급 알림이 울림");
+                kr.ddingmate.game.Nickname.debugReset();
                 kw.cooldownSeconds = 10;
             });
             ctx.waitTicks(20);
@@ -1056,6 +1070,18 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                                 && quests.get(1).equals(java.util.List.of("청어 낚기 (0/30)"))
                                 && kr.ddingmate.todo.TodoList.questDone("금붕어 낚기 (10/10)") && !kr.ddingmate.todo.TodoList.questDone("청어 낚기 (0/30)"),
                         "의뢰 트래커 읽기 오류: " + quests);
+                // 실제 사이드바 원문(2026-10-22 원본 기록): 줄 끝에 점수 주인 이름 색 코드, 위에서 아래 순
+                quests = kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of(
+                        "§d", " 일일 의뢰§c", "  판매로 골드 획득하기 (27,550/10,000)§b", "  미역 채집하기 (0/30)§7", "§6",
+                        " 주간 의뢰§5", "  레드스톤 채광하기 (11/96)§4", " 메뉴를 통해 직접 확인할 수 있습니다. §0"));
+                check(quests.get(0).equals(java.util.List.of("판매로 골드 획득하기 (27,550/10,000)", "미역 채집하기 (0/30)"))
+                                && quests.get(1).equals(java.util.List.of("레드스톤 채광하기 (11/96)")),
+                        "실제 사이드바 의뢰 읽기 오류: " + quests);
+                // 활성화 전("일일 의뢰 활성화 필요")·트래커 끔(다른 사이드바)이면 지난 의뢰를 지운다
+                quests = kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of(" 일일 의뢰§0", " 일일 의뢰 활성화 필요§1"));
+                check(quests.get(0).isEmpty() && quests.get(1).isEmpty(), "활성화 전 의뢰가 남음: " + quests);
+                quests = kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of("  판매로 골드 획득하기 (1/10)§b"));
+                check(quests.get(0).isEmpty(), "트래커가 아닌 사이드바에서 의뢰를 읽음: " + quests);
                 // 해양 탐사(2026-10-29 실제 툴팁): 납품 칸 "요구 수량 : 1 / 3" → 2개 남음, 출항 중 "남은 시간 : 30시간 48분 27초"(버튼·모래시계 칸 같은 글)
                 String[] shipSlot = kr.ddingmate.expert.Exploration.parse("[ C급 탐사선 출항 준비하기 ]");
                 check(shipSlot != null && shipSlot[0].equals("C") && shipSlot[1].equals("출항 준비하기"), "탐사선 칸 이름을 못 읽음");
@@ -1159,6 +1185,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.OceanOrder.tick(now);
                 kr.ddingmate.expert.OceanOrder.tick(now + 1000);
                 check(AlertLog.entries().size() == ob + 1 && AlertLog.entries().get(0).title.contains("1분"), "오션오더 1분 알림이 다름");
+                // 시간이 다 돼 끝난 뒤 서버 HUD 가 "0초"로 남아 있어도 새 주문(횟수 +1, 도착 알림)으로 세지 않는다
+                int countBefore = kr.ddingmate.expert.OceanOrder.todayCount();
+                kr.ddingmate.expert.OceanOrder.tick(now + 60_000);
+                kr.ddingmate.expert.OceanOrder.onHud("- 새우낚기(1마리남음) | 0초", now + 60_500);
+                check(!kr.ddingmate.expert.OceanOrder.active(now + 60_500) && kr.ddingmate.expert.OceanOrder.todayCount() == countBefore,
+                        "시간이 다 된 뒤 남은 HUD 를 새 오션오더로 셈: 오늘 " + kr.ddingmate.expert.OceanOrder.todayCount());
                 // 서버 오션오더 HUD(보스바, 리소스팩 글꼴 hud_oceanorder_hud_*): 보이면 진행 중, 3초 넘게 사라지면 끝
                 kr.ddingmate.expert.OceanOrder.debugReset();
                 kr.ddingmate.expert.OceanOrder.debugHudReset();
@@ -1218,6 +1250,11 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.OceanOrder.debugHandle("[오션오더] 8/10", now + 2500);
                 check(kr.ddingmate.expert.OceanOrder.todayCount() == 8 && kr.ddingmate.expert.OceanOrder.label().contains("8/10")
                         && kr.ddingmate.expert.OceanOrder.label().contains("0/2"), "서버 오늘 횟수로 못 맞춤: " + kr.ddingmate.expert.OceanOrder.label());
+                // 도착 몇 초 만에 성공: 남은 HUD 가 같은 물고기에 "4:57"(거의 5분)여도 새 주문으로 세지 않는다
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더를 성공하여 골든티켓 10장을 획득하였습니다.", now + 3000);
+                kr.ddingmate.expert.OceanOrder.onHud("새우 (2/2) | 4:57", now + 3500);
+                check(!kr.ddingmate.expert.OceanOrder.active(now + 3500) && kr.ddingmate.expert.OceanOrder.todayCount() == 8,
+                        "빨리 성공한 오션오더의 남은 HUD 를 새 주문으로 셈: " + kr.ddingmate.expert.OceanOrder.todayCount());
                 // 해양 스킬 "오션오더 더 더!": 지금 레벨 설명만 읽고 다음 레벨 미리보기는 건너뜀
                 kr.ddingmate.expert.OceanOrder.debugSkill("오션오더 더 더! (+2)", java.util.List.of("[마을/야생]",
                         "수령할 수 있는 오션오더의 일일제한이 14회로 증가합니다.", "─────────", "강화 시", "수령할 수 있는 오션오더의 일일제한이 16회로 증가합니다."));

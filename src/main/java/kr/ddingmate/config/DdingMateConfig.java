@@ -372,6 +372,12 @@ public final class DdingMateConfig {
                 cfg = GSON.fromJson(r, DdingMateConfig.class);
             } catch (IOException | RuntimeException e) {
                 DdingMate.LOG.warn("설정 파일을 읽지 못해 기본값을 씁니다: {}", p, e);
+                // 기본값으로 덮어쓰기 전에 원본을 남겨 둔다(설정이 통째로 사라지지 않게)
+                try {
+                    Files.copy(p, p.resolveSibling("ddingmate.json.broken-" + System.currentTimeMillis()));
+                } catch (IOException copy) {
+                    DdingMate.LOG.warn("읽지 못한 설정 파일을 남기지 못했어요", copy);
+                }
             }
         }
         if (cfg == null) cfg = new DdingMateConfig();
@@ -383,8 +389,15 @@ public final class DdingMateConfig {
     public void save() {
         try {
             Files.createDirectories(path().getParent());
-            try (Writer w = Files.newBufferedWriter(path(), StandardCharsets.UTF_8)) {
+            // 임시 파일에 다 쓴 뒤 바꿔 넣는다: 쓰는 도중 게임이 꺼져도 반쯤 쓴 파일이 남지 않게
+            Path tmp = path().resolveSibling("ddingmate.json.tmp");
+            try (Writer w = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
                 GSON.toJson(this, w);
+            }
+            try {
+                Files.move(tmp, path(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                Files.move(tmp, path(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
             DdingMate.LOG.error("설정 파일 저장 실패", e);

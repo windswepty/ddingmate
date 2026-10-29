@@ -1831,6 +1831,20 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 c.player.getItemCooldownManager().remove(net.minecraft.util.Identifier.ofVanilla("netherite_pickaxe"));
                 kr.ddingmate.skill.SkillTimers.debugClear();
                 kr.ddingmate.skill.SkillSignals.debugReset();
+                // 21-36) 스킬 창을 아직 안 봤을 때(2026-10 실제 로그): 쓸어담는 광질과 함께 오는 1초 곡괭이 쿨타임·채널 이동 실명은 짝짓지 않는다
+                kr.ddingmate.skill.SkillTimers.debugChat(G + "쓸어담는 광질 스킬을 활성화했습니다.", now());
+                c.player.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.BLINDNESS, 40, 0));
+                c.player.getItemCooldownManager().set(net.minecraft.util.Identifier.ofVanilla("golden_pickaxe"), 20);
+            });
+            ctx.waitTicks(4);
+            ctx.runOnClient(c -> {
+                kr.ddingmate.skill.SkillTimers.Skill sweep = kr.ddingmate.skill.SkillTimers.debugSkill("쓸어담는 광질");
+                check(sweep == null || (sweep.cooldownGroup.isEmpty() && sweep.effect.isEmpty()),
+                        "창을 안 본 스킬이 1초 쿨타임·실명과 짝지음: " + (sweep == null ? "" : sweep.cooldownGroup + " / " + sweep.effect));
+                c.player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.BLINDNESS);
+                c.player.getItemCooldownManager().remove(net.minecraft.util.Identifier.ofVanilla("golden_pickaxe"));
+                kr.ddingmate.skill.SkillTimers.debugClear();
+                kr.ddingmate.skill.SkillSignals.debugReset();
             });
 
             // 21-4) 지금 쓰고 있는 스킬은 HUD 에 그려진다(그리는 중 오류 없음, 자리 기록)

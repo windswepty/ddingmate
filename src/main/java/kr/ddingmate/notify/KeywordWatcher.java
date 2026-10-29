@@ -2,7 +2,8 @@ package kr.ddingmate.notify;
 
 import kr.ddingmate.DdingMate;
 import kr.ddingmate.config.DdingMateConfig;
-import net.minecraft.client.MinecraftClient;
+import kr.ddingmate.counter.ItemKeys;
+import kr.ddingmate.game.Nickname;
 import net.minecraft.text.Text;
 
 import java.util.HashMap;
@@ -27,12 +28,14 @@ public final class KeywordWatcher {
         if (text.isBlank()) return;
         String lower = text.toLowerCase(Locale.ROOT);
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        String me = client.getSession() == null ? null : client.getSession().getUsername();
-        boolean fromMe = me != null && (me.equalsIgnoreCase(senderName) || looksLikeMyOwnChatLine(lower, me));
-        if (fromMe) return; // 내가 쓴 채팅에는 반응하지 않는다
+        // 서버 채팅에는 계정 이름(windswepty)이 아니라 한글 닉네임(멜트)이 나온다(2026-10 실제 로그 81줄). 둘 다 내 이름으로 본다
+        Nickname.Line line = senderName != null ? null
+                : Nickname.parse(ItemKeys.stripGlyphs(java.util.Objects.requireNonNullElse(net.minecraft.util.Formatting.strip(text), "")));
+        String sender = senderName != null ? senderName : line != null ? line.sender() : null;
+        boolean fromMe = Nickname.isMe(sender) || (line != null && line.sent());
+        if (fromMe) return; // 내가 쓴 채팅·내가 보낸 귓속말에는 반응하지 않는다
 
-        if (kw.includeOwnName && me != null && mentionsMe(lower, me.toLowerCase(Locale.ROOT), senderName)) {
+        if (kw.includeOwnName && mentionsMe(senderName != null ? lower : line != null ? line.body().toLowerCase(Locale.ROOT) : null)) {
             fire(MENTION, text, kw.cooldownSeconds);
             return;
         }
@@ -67,24 +70,34 @@ public final class KeywordWatcher {
      * 다른 사람이 채팅에서 내 닉네임을 불렀는가. "닉네임님이 업적을 달성했습니다" 같은 시스템 메시지에
      * 이름만 들어간 경우는 빼고, "[칭호] 보낸사람 : ...내 닉네임..." 처럼 채팅 내용 부분에 있을 때만 센다.
      */
-    private static boolean mentionsMe(String lower, String me, String senderName) {
-        if (senderName != null) return lower.contains(me); // 바닐라 채팅: 보낸 사람이 따로 오면 본문만 들어옴
-        int sep = lower.indexOf(" : ");
-        if (sep < 0) sep = lower.indexOf(": ");
-        if (sep < 0) return false; // 채팅 줄 모양이 아니면 시스템 메시지로 본다
-        return lower.indexOf(me, sep) >= 0;
+    private static boolean mentionsMe(String body) {
+        if (body == null) return false; // 채팅 줄 모양이 아니면 시스템 메시지로 본다
+        for (String name : Nickname.myNames()) {
+            if (body.contains(name.toLowerCase(Locale.ROOT))) return true;
+        }
+        return false;
     }
 
-    /** 서버 채팅 플러그인은 내 채팅도 시스템 메시지로 돌려보낸다. "닉네임:" 이나 "<닉네임>" 으로 시작하면 내 채팅으로 본다. */
-    private static boolean looksLikeMyOwnChatLine(String lower, String me) {
-        String m = me.toLowerCase(Locale.ROOT);
-        int idx = lower.indexOf(m);
-        if (idx < 0) return false;
-        String after = lower.substring(idx + m.length()).stripLeading();
-        return after.startsWith(":") || after.startsWith(">") || after.startsWith("»") || after.startsWith("|");
+    /** 시험용: 이 줄이 알림을 울리면 그 키(키워드 또는 "@닉네임"), 아니면 null. 쿨타임은 보지 않는다 */
+    public static String debugCheck(String text) {
+        LAST_FIRED.clear();
+        String[] fired = {null};
+        DEBUG_FIRE = w -> fired[0] = w;
+        try {
+            onMessage(Text.literal(text), null);
+        } finally {
+            DEBUG_FIRE = null;
+        }
+        return fired[0];
     }
+
+    private static java.util.function.Consumer<String> DEBUG_FIRE;
 
     private static void fire(String word, String text, int cooldownSeconds) {
+        if (DEBUG_FIRE != null) {
+            DEBUG_FIRE.accept(word);
+            return;
+        }
         long now = System.currentTimeMillis();
         Long last = LAST_FIRED.get(word);
         if (last != null && now - last < cooldownSeconds * 1000L) return;

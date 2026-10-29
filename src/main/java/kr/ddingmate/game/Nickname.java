@@ -63,6 +63,46 @@ public final class Nickname {
         }
     }
 
+    /** 채팅 한 줄을 나눈 것. whisper 면 to 가 받는 사람, sent 는 "<보냄>"(내가 보낸 귓속말) */
+    public record Line(String sender, String to, String body, boolean whisper, boolean sent) {}
+
+    /** 그림 글자를 지운 채팅 줄을 보낸 사람·내용으로 나눈다. 사람 채팅·귓속말 모양이 아니면 null */
+    public static Line parse(String stripped) {
+        if (stripped == null) return null;
+        String t = stripped.replaceAll("\\s+", " ").trim();
+        Matcher w = WHISPER.matcher(t);
+        if (w.find()) {
+            return new Line(w.group(1).trim(), w.group(2).trim(), t.substring(w.end()).trim(), true, w.group(3).equals("보냄"));
+        }
+        Matcher c = CHAT.matcher(t);
+        return c.find() ? new Line(c.group(1), null, c.group(2).trim(), false, false) : null;
+    }
+
+    /** 계정 이름이나 배운 한글 닉네임과 같은가 */
+    public static boolean isMe(String name) {
+        if (name == null || name.isBlank()) return false;
+        MinecraftClient client = MinecraftClient.getInstance();
+        String account = client.getSession() == null ? null : client.getSession().getUsername();
+        String nick = get();
+        return name.equalsIgnoreCase(account) || name.equals(nick);
+    }
+
+    /** 내 이름들(계정 이름, 배운 한글 닉네임). 언급 알림에 쓴다 */
+    public static java.util.List<String> myNames() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (client.getSession() != null && client.getSession().getUsername() != null) out.add(client.getSession().getUsername());
+        String nick = get();
+        if (nick != null && !nick.isBlank()) out.add(nick);
+        return out;
+    }
+
+    /** 시험용: 이 계정의 한글 닉네임을 정한다 */
+    public static void debugSet(String nick) {
+        String uuid = uuid();
+        if (uuid != null) store().put(uuid, nick);
+    }
+
     /** 배운 한글 닉네임. 모르거나 계정 이름과 같으면 null */
     public static String get() {
         String uuid = uuid();

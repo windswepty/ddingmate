@@ -57,6 +57,8 @@ public final class DdingMate implements ClientModInitializer {
     private static boolean joinTipShown;
     /** 지난 틱에 실제 게임(스폰 이후)에 있었는지. 대기 서버에서 게임으로 넘어오는 순간을 안다 */
     private static boolean wasInGame;
+    /** 서버에 붙어 있는가(채널 이동으로 JOIN 이 다시 와도 첫 접속만 가리려고) */
+    private static boolean connected;
     /** 업데이트 소식을 이번 실행에서 이미 확인했는지(타이틀 화면이나 접속 때 한 번) */
     private static boolean notesChecked;
 
@@ -131,6 +133,10 @@ public final class DdingMate implements ClientModInitializer {
         ClientSendMessageEvents.CHAT.register(kr.ddingmate.game.Nickname::onSent); // 돌아온 내 채팅에서 한글 닉네임 배우기
         ClientSendMessageEvents.COMMAND.register(BagTracker::onOutgoing);
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            // 채널 이동은 연결을 끊지 않고 JOIN 만 다시 온다: 팝업 대기·답변·공지 확인은 진짜 첫 접속 때만
+            boolean first = !connected;
+            connected = true;
+            if (!first) return;
             Notifier.onJoin();
             kr.ddingmate.inquiry.Replies.onJoin(); // 보낸 문의에 답변이 왔는지(접속 직후·10분마다)
             kr.ddingmate.news.Notices.onJoin(); // 개발자 공지(접속 직후·30분마다)
@@ -151,17 +157,11 @@ public final class DdingMate implements ClientModInitializer {
             }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            ServerHud.reset();
-            kr.ddingmate.inquiry.Replies.onDisconnect();
-            kr.ddingmate.news.Notices.onDisconnect();
-            kr.ddingmate.todo.TodoList.resetStaminaBaseline();
-            wasInGame = false;
-            BagTracker.save();
-            PlaytimeTracker.save();
-            kr.ddingmate.counter.IconCache.save();
-            CraftTimers.onDisconnect();
-            kr.ddingmate.skill.SkillTimers.save();
+            // 네트워크 스레드에서 불릴 수 있다: 저장·상태 정리는 게임 스레드에서(이미 게임 스레드면 바로)
+            if (client.isOnThread()) onDisconnect();
+            else client.execute(DdingMate::onDisconnect);
         });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> connected = false);
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             kr.ddingmate.debug.DevRecord.message(overlay ? "overlay" : "chat", message); // 개발용 원본 기록(꺼져 있으면 아무것도 안 함)
             BagTracker.onOverlay(message.getString()); // "[아이템 저장소] 조약돌 1개 수납! (2/5,000)" → 저장소 재고
@@ -215,6 +215,20 @@ public final class DdingMate implements ClientModInitializer {
         if (c.player == null || c.options == null || !c.options.playerListKey.isPressed()) return false;
         return !c.isInSingleplayer() || c.player.networkHandler.getListedPlayerListEntries().size() > 1
                 || c.world.getScoreboard().getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.LIST) != null;
+    }
+
+    /** 접속이 끊겼을 때: 서버별 상태를 비우고 기록을 저장한다(게임 스레드) */
+    private static void onDisconnect() {
+        ServerHud.reset();
+        kr.ddingmate.inquiry.Replies.onDisconnect();
+        kr.ddingmate.news.Notices.onDisconnect();
+        kr.ddingmate.todo.TodoList.resetStaminaBaseline();
+        wasInGame = false;
+        BagTracker.save();
+        PlaytimeTracker.save();
+        kr.ddingmate.counter.IconCache.save();
+        CraftTimers.onDisconnect();
+        kr.ddingmate.skill.SkillTimers.save();
     }
 
     private static void onEnteredGame() {

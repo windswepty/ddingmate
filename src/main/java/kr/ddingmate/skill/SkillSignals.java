@@ -41,6 +41,8 @@ public final class SkillSignals {
     static final long EFFECT_MATCH_MS = 5_000;
     /** 쿨타임 길이가 스킬 창 재사용 시간과 이만큼 안이면 같은 것으로 본다 */
     static final long COOLDOWN_MATCH_MS = 3_000;
+    /** 서버가 접속·채널 이동 연출로 거는 효과: 스킬 지속 신호로 짝짓지 않는다 */
+    static final Set<String> LOADING_EFFECTS = Set.of("minecraft:blindness", "minecraft:darkness");
 
     /** 지금 지켜보는 스킬(방금 켠 것)과 켠 시각 */
     private static SkillTimers.Skill watching;
@@ -80,12 +82,21 @@ public final class SkillSignals {
         SkillTimers.Skill s = watching;
         if (s == null || now - watchFrom > WATCH_MS || ticks <= 0) return;
         long ms = ticks * 50L;
+        // 재사용 시간을 모르면 짝짓지 않는다: 쓸어담는 광질을 켤 때마다 서버가 1초짜리 곡괭이 쿨타임도 보낸다(2026-10 로그 31번)
+        boolean fits = s.cooldownSec > 0 && Math.abs(ms - s.cooldownSec * 1000L) <= COOLDOWN_MATCH_MS;
         if (s.cooldownGroup.isEmpty()) {
-            if (s.cooldownSec > 0 && Math.abs(ms - s.cooldownSec * 1000L) > COOLDOWN_MATCH_MS) return;
+            if (!fits) return;
             s.cooldownGroup = g;
             DdingMate.LOG.info("스킬 신호 짝: {} 재사용 대기 = 아이템 쿨타임 {} ({}초)", s.name, g, ticks / 20.0);
         }
         if (!s.cooldownGroup.equals(g)) return;
+        if (!fits) {
+            // 짝지은 쿨타임 길이가 창 값과 크게 어긋나면(예전 판이 잘못 짝지음) 짝을 풀고 이번 값은 쓰지 않는다
+            DdingMate.LOG.info("스킬 신호 짝 풀기: {} 쿨타임 {}초가 재사용 {}초와 다름", s.name, ticks / 20.0, s.cooldownSec);
+            s.cooldownGroup = "";
+            SkillTimers.touched();
+            return;
+        }
         // 서버가 정한 끝 시각 그대로
         s.readyAt = now + ms;
         s.readySynced = true;
@@ -119,8 +130,10 @@ public final class SkillSignals {
                 BASELINE.put(e.getKey(), in.getDuration());
                 long ms = in.getDuration() * 50L;
                 if (s.effect.isEmpty()) {
+                    // 지속 시간을 모르면 짝짓지 않고, 채널 이동 때 걸리는 실명(2026-10-10 로그: 2초)은 빼고, 오차는 길이에 비례
                     long lore = SkillTimers.durationMs(s);
-                    if (lore > 0 && Math.abs(ms - lore) > EFFECT_MATCH_MS) continue;
+                    if (lore <= 0 || LOADING_EFFECTS.contains(e.getKey())) continue;
+                    if (Math.abs(ms - lore) > Math.min(EFFECT_MATCH_MS, Math.max(1_000, lore / 5))) continue;
                     s.effect = e.getKey();
                     DdingMate.LOG.info("스킬 신호 짝: {} 지속 = 효과 {} ({}초)", s.name, e.getKey(), in.getDuration() / 20.0);
                     SkillTimers.touched();

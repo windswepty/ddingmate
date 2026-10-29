@@ -112,11 +112,11 @@ public final class OceanOrder {
         // 끝 → 성공 → 도착 순서로 본다("오션오더 성공! 보상을 수령했습니다"를 도착으로 착각하지 않게)
         if (FAIL.matcher(t).find()) {
             if (active(now)) DdingMate.LOG.info("오션오더 끝(실패): {}", t);
-            finish();
+            finish(now);
             return;
         }
         if (SUCCESS.matcher(t).find()) {
-            finish();
+            finish(now);
             return;
         }
         long left = remainingIn(t);
@@ -181,10 +181,19 @@ public final class OceanOrder {
     }
 
     /** 성공·실패로 끝남: 남아 있는 서버 HUD 로 다시 켜지지 않게 표시해 둔다 */
-    private static void finish() {
+    private static void finish(long now) {
         clear();
         finished = true;
         finishedHud = lastHud;
+        finishedAt = now;
+    }
+
+    /** 끝난 시각: 끝난 직후 남아 있는 HUD(남은 시간이 아직 큼)를 새 주문으로 세지 않으려고 */
+    private static long finishedAt;
+
+    /** HUD 글에서 숫자·시간을 뺀 물고기 이름 부분("- 새우낚기(1마리남음) | 289초" → "- 새우낚기(마리남음) | 초") */
+    private static String fishNames(String hud) {
+        return hud == null ? "" : hud.replaceAll("[\\d:,]+", "");
     }
 
     /** 서버가 알려 준 오늘 횟수·한도로 맞춘다 */
@@ -267,8 +276,10 @@ public final class OceanOrder {
         hudSeenAt = now;
         long left = hudRemaining(text);
         if (finished) {
-            // 끝난 뒤 남아 있는 HUD: 새 주문(글이 바뀌고 남은 시간이 거의 5분)일 때만 다시 센다
+            // 끝난 뒤 남아 있는 HUD: 새 주문(글이 바뀌고 남은 시간이 거의 5분)일 때만 다시 센다.
+            // 도착 10초 만에 성공하면 남은 HUD 도 "289초"라서, 끝나고 20초 안에는 물고기 이름까지 달라야 새 주문으로 본다
             if (text.equals(finishedHud) || left < LIMIT_MS - 15_000) return;
+            if (now - finishedAt < 20_000 && fishNames(text).equals(fishNames(finishedHud))) return;
             finished = false;
         }
         if (!active(now)) start(now, left > 0 && left <= LIMIT_MS ? left : LIMIT_MS);
@@ -420,7 +431,8 @@ public final class OceanOrder {
         if (endsAt == 0) return;
         long left = endsAt - now;
         if (left <= 0) {
-            clear();
+            // 시간이 다 됨 = 실패. 서버 HUD 가 "0초"로 조금 더 남아 있어도 새 주문으로 세지 않게 끝난 것으로 표시
+            finish(now);
             return;
         }
         if (!warned && left <= 60_000 && fishLeft != 0) { // 다 낚았으면 알리지 않는다

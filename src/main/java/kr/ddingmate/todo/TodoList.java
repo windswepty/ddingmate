@@ -155,14 +155,18 @@ public final class TodoList {
         if (client.world == null) return;
         net.minecraft.scoreboard.Scoreboard sb = client.world.getScoreboard();
         net.minecraft.scoreboard.ScoreboardObjective obj = sb.getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.SIDEBAR);
-        if (obj == null) return;
+        if (obj == null) {
+            dailyQuests = List.of();
+            weeklyQuests = List.of();
+            return;
+        }
         // 사이드바는 점수 높은 줄이 위
         List<net.minecraft.scoreboard.ScoreboardEntry> entries = new ArrayList<>(sb.getScoreboardEntries(obj));
         entries.sort((p, q) -> Integer.compare(q.value(), p.value()));
         List<String> lines = new ArrayList<>();
         for (net.minecraft.scoreboard.ScoreboardEntry e : entries) {
             net.minecraft.scoreboard.Team team = sb.getScoreHolderTeam(e.owner());
-            lines.add(kr.ddingmate.counter.ItemKeys.stripGlyphs(net.minecraft.scoreboard.Team.decorateName(team, e.name()).getString()).trim());
+            lines.add(sidebarLine(net.minecraft.scoreboard.Team.decorateName(team, e.name()).getString()));
         }
         readTracker(lines);
         for (String line : lines) {
@@ -183,16 +187,21 @@ public final class TodoList {
     static void readTracker(List<String> lines) {
         List<String> daily = new ArrayList<>(), weekly = new ArrayList<>();
         List<String> into = null;
+        boolean tracker = false;
         for (String l : lines) {
-            if (l.matches("^(일일|일간)\\s*의뢰.*")) into = daily;
-            else if (l.matches("^주간\\s*의뢰.*")) into = weekly;
+            if (l.matches("^(일일|일간)\\s*의뢰.*")) {
+                into = daily;
+                tracker = true;
+            } else if (l.matches("^주간\\s*의뢰.*")) {
+                into = weekly;
+                tracker = true;
+            }
             else if (into != null && TRACKER_QUEST.matcher(l).matches()) into.add(l);
             else if (!l.isBlank() && into != null && !TRACKER_QUEST.matcher(l).matches()) into = null;
         }
-        if (!daily.isEmpty() || !weekly.isEmpty()) {
-            dailyQuests = List.copyOf(daily);
-            weeklyQuests = List.copyOf(weekly);
-        }
+        // 트래커가 보이면 그대로("의뢰 활성화 필요"면 빈 목록), 다른 사이드바거나 트래커를 끄면 지난 의뢰를 지운다
+        dailyQuests = tracker ? List.copyOf(daily) : List.of();
+        weeklyQuests = tracker ? List.copyOf(weekly) : List.of();
     }
 
     /** 할 일 HUD 에 펼칠 의뢰 내용(일일·주간 의뢰 줄만, 설정이 켜져 있을 때) */
@@ -207,6 +216,17 @@ public final class TodoList {
     public static boolean questDone(String line) {
         java.util.regex.Matcher m = TRACKER_QUEST.matcher(line);
         return m.matches() && parse(m.group(2)) >= parse(m.group(3)) && parse(m.group(3)) > 0;
+    }
+
+    /** 사이드바 한 줄: 줄 끝에 점수 주인 이름인 색 코드("§b")가 붙어 온다(2026-10-22 원본 기록 "  레드스톤 채광하기 (11/96)§3") */
+    static String sidebarLine(String decorated) {
+        String raw = net.minecraft.util.Formatting.strip(decorated);
+        return kr.ddingmate.counter.ItemKeys.stripGlyphs(raw == null ? "" : raw).trim();
+    }
+
+    /** 시험용: 사이드바 원문 줄(색 코드 포함, 위에서 아래 순)로 [일일, 주간] */
+    public static List<List<String>> debugTrackerRaw(List<String> decorated) {
+        return debugTracker(decorated.stream().map(TodoList::sidebarLine).toList());
     }
 
     /** 시험용: [일일, 주간] */
