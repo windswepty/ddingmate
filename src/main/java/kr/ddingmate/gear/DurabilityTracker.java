@@ -8,14 +8,19 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -94,6 +99,39 @@ public final class DurabilityTracker {
         return null;
     }
 
+    /**
+     * 프레스티지 '갑옷 가리기'(2026-10-29 F3+H 화면): 입은 신발이 polished_blackstone_button 으로 오고 이름은 영어
+     * "Netherite Boots", 툴팁에 "Durability: 100%". 영어 이름을 아이템 id(netherite_boots)로 바꿔 진짜 장비를 찾는다
+     */
+    static Item disguisedAs(ItemStack s) {
+        if (s.isEmpty() || s.isDamageable()) return null;
+        String name = Formatting.strip(ItemKeys.stripGlyphs(s.getName().getString()));
+        if (name == null) return null;
+        String path = name.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+        if (!path.matches("[a-z0-9_]+")) return null;
+        Item real = Registries.ITEM.get(Identifier.ofVanilla(path));
+        if (real == Items.AIR || real == s.getItem() || !new ItemStack(real).isDamageable()) return null;
+        return real;
+    }
+
+    /** 장비 키. 가린 갑옷은 진짜 장비 이름("네더라이트 부츠")으로 만들어 가리기 전과 같은 장비로 본다 */
+    public static String keyOf(ItemStack s) {
+        Item real = disguisedAs(s);
+        return real == null ? ItemKeys.keyOf(s) : ItemKeys.nameKey(new ItemStack(real).getName().getString());
+    }
+
+    /** 목록에 보일 이름("Netherite Boots" → "네더라이트 부츠") */
+    public static String nameOf(ItemStack s) {
+        Item real = disguisedAs(s);
+        return ItemKeys.stripGlyphs((real == null ? s : new ItemStack(real)).getName().getString()).trim();
+    }
+
+    /** 목록·HUD 그림. 가린 갑옷은 버튼 대신 진짜 장비 그림 */
+    public static ItemStack iconOf(ItemStack s) {
+        Item real = disguisedAs(s);
+        return real == null ? s.copyWithCount(1) : new ItemStack(real);
+    }
+
     /** 찾는 순서대로 인벤토리 칸 번호: 손 → 왼손 → 갑옷 → 단축바 → 나머지 */
     static List<ItemStack> searchOrder(PlayerInventory inv) {
         List<ItemStack> out = new ArrayList<>();
@@ -110,7 +148,7 @@ public final class DurabilityTracker {
         if (client.player == null) return out;
         for (ItemStack s : searchOrder(client.player.getInventory())) {
             if (read(s) == null) continue;
-            out.putIfAbsent(ItemKeys.keyOf(s), s);
+            out.putIfAbsent(keyOf(s), s);
         }
         return out;
     }
@@ -128,7 +166,7 @@ public final class DurabilityTracker {
             ItemStack found = null;
             Durability d = null;
             for (ItemStack s : order) {
-                if (s.isEmpty() || !t.key.equals(ItemKeys.keyOf(s))) continue;
+                if (s.isEmpty() || !t.key.equals(keyOf(s))) continue;
                 d = read(s);
                 if (d != null) {
                     found = s;
@@ -151,7 +189,8 @@ public final class DurabilityTracker {
 
     /** 찾은 장비의 종류와 입은 칸을 기억한다(바뀐 때만 저장) */
     private static void remember(DdingMateConfig.TrackedItem t, PlayerInventory inv, ItemStack s) {
-        String id = net.minecraft.registry.Registries.ITEM.getId(s.getItem()).toString();
+        Item real = disguisedAs(s);
+        String id = Registries.ITEM.getId(real != null ? real : s.getItem()).toString();
         int slot = -1;
         for (int i = 36; i <= 39; i++) if (inv.getStack(i) == s) slot = i;
         if (id.equals(t.itemId) && slot == t.wornSlot) return;
@@ -179,7 +218,7 @@ public final class DurabilityTracker {
         if (cfg.warnPercent <= 0) return;
         double pct = d.ratio() * 100;
         if (pct <= cfg.warnPercent) {
-            if (WARNED.add(t.key)) Notifier.durabilityLow(t.name, d.text(), s.copyWithCount(1));
+            if (WARNED.add(t.key)) Notifier.durabilityLow(t.name, d.text(), iconOf(s));
         } else if (pct > cfg.warnPercent + 5) {
             WARNED.remove(t.key);
         }

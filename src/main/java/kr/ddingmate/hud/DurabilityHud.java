@@ -68,7 +68,7 @@ public final class DurabilityHud {
         for (DurabilityTracker.Row r : rows) {
             int rx = x + 6;
             // 지금 안 들고 있으면 전에 본 모양으로(본 적 없으면 물음표)
-            ItemStack icon = r.stack() != null ? r.stack() : kr.ddingmate.counter.IconCache.forKey(r.item().key);
+            ItemStack icon = r.stack() != null ? DurabilityTracker.iconOf(r.stack()) : kr.ddingmate.counter.IconCache.forKey(r.item().key);
             if (icon != null) Theme.item(ctx, icon, rx, cy, ICON);
             else Theme.unknownIcon(ctx, tr, rx, cy, ICON);
             int color = r.durability() == null ? soft : colorOf(r.durability().ratio(), dark);

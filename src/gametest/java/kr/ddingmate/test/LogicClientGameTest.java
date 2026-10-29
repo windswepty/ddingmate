@@ -132,6 +132,17 @@ public class LogicClientGameTest implements FabricClientGameTest {
         d = DurabilityTracker.read(button);
         check(d != null && d.percent() && "98%".equals(d.text()) && Math.abs(d.ratio() - 0.98) < 1e-9, "퍼센트 내구도 읽기 오류: " + d);
         check("1461/1561".equals(new DurabilityTracker.Durability(1461, 1561).text()), "숫자 내구도 글이 바뀜");
+        // 갑옷 가리기(2026-10-29 F3+H 화면): 신발이 polished_blackstone_button "Netherite Boots" 로 온다 → 진짜 신발 이름·키로
+        ItemStack hidden = new ItemStack(Items.POLISHED_BLACKSTONE_BUTTON);
+        hidden.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Netherite Boots"));
+        hidden.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("Durability: 100%"))));
+        String bootsName = new ItemStack(Items.NETHERITE_BOOTS).getName().getString();
+        check(DurabilityTracker.keyOf(hidden).equals(ItemKeys.nameKey(bootsName)), "가린 신발 키 오류: " + DurabilityTracker.keyOf(hidden));
+        check(DurabilityTracker.nameOf(hidden).equals(bootsName), "가린 신발 이름 오류: " + DurabilityTracker.nameOf(hidden));
+        check(DurabilityTracker.iconOf(hidden).isOf(Items.NETHERITE_BOOTS), "가린 신발 그림 오류");
+        ItemStack namedButton = new ItemStack(Items.STONE_BUTTON);
+        namedButton.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Stone"));
+        check(DurabilityTracker.keyOf(namedButton).equals(ItemKeys.keyOf(namedButton)), "내구도 없는 아이템 이름을 장비로 바꿈");
         ItemStack pick = new ItemStack(Items.DIAMOND_PICKAXE);
         pick.setDamage(100);
         d = DurabilityTracker.read(pick);
