@@ -896,7 +896,7 @@ public class DdingMateScreen extends Screen {
             DurabilityTracker.Durability d = r.durability();
             ItemStack seen = r.stack() != null ? r.stack() : kr.ddingmate.counter.IconCache.forKey(r.item().key);
             list.single(new InfoRow(seen == null ? new ItemStack(Items.ANVIL) : seen, r.item().name,
-                    d == null ? "인벤토리에 없음" : d.left() + "/" + d.max(),
+                    d == null ? "인벤토리에 없음" : d.text(),
                     d == null ? Theme.TEXT_SOFT : d.ratio() > 0.5 ? Theme.GREEN : d.ratio() > 0.2 ? Theme.GOLD : Theme.RED, Tab.GEAR));
         }
 
@@ -1137,7 +1137,7 @@ public class DdingMateScreen extends Screen {
             DurabilityTracker.Durability d = DurabilityTracker.read(s);
             list.single(new Widgets.Toggle(rowWidth(), name, DurabilityTracker.isTracked(e.getKey()),
                     v -> DurabilityTracker.setTracked(e.getKey(), name, v))
-                    .icon(s.copyWithCount(1)).detail(d.left() + "/" + d.max()));
+                    .icon(s.copyWithCount(1)).detail(d.text()));
         }
         List<DdingMateConfig.TrackedItem> missing = dc.tracked.stream().filter(t -> !found.containsKey(t.key)).toList();
         if (!missing.isEmpty()) {

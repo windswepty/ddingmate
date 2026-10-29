@@ -48,8 +48,8 @@ public final class Notifier {
                 Theme.GREEN, false);
     }
 
-    public static void durabilityLow(String name, int left, int max, ItemStack icon) {
-        notify("내구도", "내구도 부족: " + name, "남은 내구도 " + left + "/" + max + " · 수리할 때가 됐어요",
+    public static void durabilityLow(String name, String left, ItemStack icon) {
+        notify("내구도", "내구도 부족: " + name, "남은 내구도 " + left + " · 수리할 때가 됐어요",
                 SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), icon == null ? new ItemStack(Items.ANVIL) : icon,
                 Theme.RED, false);
     }

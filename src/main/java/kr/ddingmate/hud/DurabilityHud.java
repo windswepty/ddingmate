@@ -87,7 +87,7 @@ public final class DurabilityHud {
 
     private static String value(DurabilityTracker.Row r) {
         if (r.durability() == null) return "인벤토리에 없음";
-        return r.durability().left() + "/" + r.durability().max();
+        return r.durability().text();
     }
 
     static int colorOf(double ratio, boolean dark) {

@@ -83,6 +83,10 @@ public final class DdingMateConfig {
     public static final class TrackedItem {
         public String key = "";
         public String name = "";
+        /** 마지막으로 찾았을 때의 아이템 종류(minecraft:diamond_helmet)와 입은 칸(36~39, 안 입었으면 -1).
+         * 프레스티지 치장·크기 조절을 켜면 서버가 입은 갑옷의 이름·그림을 바꿔 보내서 이름으로는 못 찾는다 */
+        public String itemId = "";
+        public int wornSlot = -1;
 
         public TrackedItem() {}
 

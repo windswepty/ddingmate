@@ -30,9 +30,24 @@ public final class DurabilityTracker {
     /** 서버가 내구도를 설명 문구로 적는 경우를 대비: "내구도 236/1938", "내구도: 236 / 1,938" */
     private static final Pattern LORE = Pattern.compile("내구도\\s*[:：]?\\s*([\\d,]+)\\s*/\\s*([\\d,]+)");
 
-    public record Durability(int left, int max) {
+    /** 프레스티지 버튼 모양 장비(2026-10-29 사용자 화면): 마우스를 올리면 "Durability: 98%" 처럼 퍼센트만 보인다 */
+    private static final Pattern LORE_PCT = Pattern.compile("(?:Durability|내구도)\\s*:?\\s*(\\d{1,3}(?:\\.\\d+)?)\\s*%");
+
+    /** percent: 서버가 퍼센트로만 알려 준 내구도(left/max 는 천분율). 이때는 숫자 대신 "98%"로 보인다 */
+    public record Durability(int left, int max, boolean percent) {
+        public Durability(int left, int max) {
+            this(left, max, false);
+        }
+
         public double ratio() {
             return max <= 0 ? 0 : (double) left / max;
+        }
+
+        /** "1461/1561" 또는 "98%" */
+        public String text() {
+            if (!percent) return left + "/" + max;
+            double p = ratio() * 100;
+            return (p == Math.rint(p) ? String.valueOf((long) p) : String.format(java.util.Locale.ROOT, "%.1f", p)) + "%";
         }
     }
 
@@ -69,6 +84,11 @@ public final class DurabilityTracker {
                         // 숫자가 너무 크면 무시
                     }
                 }
+                Matcher p = LORE_PCT.matcher(t);
+                if (p.find()) {
+                    double pct = Math.min(100, Double.parseDouble(p.group(1)));
+                    return new Durability((int) Math.round(pct * 10), 1000, true);
+                }
             }
         }
         return null;
@@ -101,7 +121,8 @@ public final class DurabilityTracker {
             rows = List.of();
             return;
         }
-        List<ItemStack> order = searchOrder(client.player.getInventory());
+        PlayerInventory inv = client.player.getInventory();
+        List<ItemStack> order = searchOrder(inv);
         List<Row> out = new ArrayList<>();
         for (DdingMateConfig.TrackedItem t : cfg.tracked) {
             ItemStack found = null;
@@ -114,10 +135,43 @@ public final class DurabilityTracker {
                     break;
                 }
             }
+            if (found != null) {
+                remember(t, inv, found);
+            } else {
+                // 이름으로 못 찾음: 프레스티지 머리 치장·갑옷 크기 조절은 입은 갑옷의 이름·그림만 바꾼다
+                // (2026-10-29 사용자 화면: 투구를 썼는데 머리 칸이 "렛서판다 모자"). 입은 칸에서 같은 종류 → 같은 칸 순서로 찾는다
+                found = worn(t, inv);
+                d = found == null ? null : read(found);
+            }
             out.add(new Row(t, found, d));
             if (d != null) checkWarn(cfg, t, found, d);
         }
         rows = out;
+    }
+
+    /** 찾은 장비의 종류와 입은 칸을 기억한다(바뀐 때만 저장) */
+    private static void remember(DdingMateConfig.TrackedItem t, PlayerInventory inv, ItemStack s) {
+        String id = net.minecraft.registry.Registries.ITEM.getId(s.getItem()).toString();
+        int slot = -1;
+        for (int i = 36; i <= 39; i++) if (inv.getStack(i) == s) slot = i;
+        if (id.equals(t.itemId) && slot == t.wornSlot) return;
+        t.itemId = id;
+        t.wornSlot = slot;
+        DdingMate.config().save();
+    }
+
+    /** 이름이 바뀐 채 입고 있는 장비: 같은 종류를 입은 칸, 없으면 예전에 입던 칸(내구도가 있을 때만) */
+    static ItemStack worn(DdingMateConfig.TrackedItem t, PlayerInventory inv) {
+        String id = !t.itemId.isEmpty() ? t.itemId : t.key.startsWith("v:") ? t.key.substring(2) : "";
+        for (int i = 36; i <= 39; i++) {
+            ItemStack s = inv.getStack(i);
+            if (!s.isEmpty() && !id.isEmpty() && id.equals(net.minecraft.registry.Registries.ITEM.getId(s.getItem()).toString()) && read(s) != null) return s;
+        }
+        if (t.wornSlot >= 36 && t.wornSlot <= 39) {
+            ItemStack s = inv.getStack(t.wornSlot);
+            if (!s.isEmpty() && read(s) != null) return s;
+        }
+        return null;
     }
 
     /** 경고선 아래로 처음 내려갈 때 한 번 알리고, 수리해서 5%p 이상 회복하면 다시 알릴 수 있게 한다. */
@@ -125,7 +179,7 @@ public final class DurabilityTracker {
         if (cfg.warnPercent <= 0) return;
         double pct = d.ratio() * 100;
         if (pct <= cfg.warnPercent) {
-            if (WARNED.add(t.key)) Notifier.durabilityLow(t.name, d.left(), d.max(), s.copyWithCount(1));
+            if (WARNED.add(t.key)) Notifier.durabilityLow(t.name, d.text(), s.copyWithCount(1));
         } else if (pct > cfg.warnPercent + 5) {
             WARNED.remove(t.key);
         }

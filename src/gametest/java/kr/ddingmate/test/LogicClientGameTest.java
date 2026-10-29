@@ -126,6 +126,12 @@ public class LogicClientGameTest implements FabricClientGameTest {
         lore.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("내구도 : 236 / 1,938"))));
         DurabilityTracker.Durability d = DurabilityTracker.read(lore);
         check(d != null && d.left() == 236 && d.max() == 1938, "설명 문구 내구도 읽기 오류: " + d);
+        // 프레스티지 버튼 모양 장비(2026-10-29 실제 툴팁): 퍼센트만 보인다
+        ItemStack button = new ItemStack(Items.PAPER);
+        button.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("내구성 III"), Text.literal("Durability: 98%"))));
+        d = DurabilityTracker.read(button);
+        check(d != null && d.percent() && "98%".equals(d.text()) && Math.abs(d.ratio() - 0.98) < 1e-9, "퍼센트 내구도 읽기 오류: " + d);
+        check("1461/1561".equals(new DurabilityTracker.Durability(1461, 1561).text()), "숫자 내구도 글이 바뀜");
         ItemStack pick = new ItemStack(Items.DIAMOND_PICKAXE);
         pick.setDamage(100);
         d = DurabilityTracker.read(pick);
