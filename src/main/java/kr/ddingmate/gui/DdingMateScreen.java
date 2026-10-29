@@ -584,6 +584,8 @@ public class DdingMateScreen extends Screen {
         list.pair(tip(toggle("제작 중인 것", cfg.craft.showInHud, v -> cfg.craft.showInHud = v), "일정 HUD 에 제작 중인 아이템과 남은 시간을 보여 줘요"),
                 tip(toggle("분류 붙이기", cfg.hudCategory, v -> cfg.hudCategory = v),
                         "제작·작물·오션오더 줄 앞에 분류를 붙여요. 예: [농사] 아일랜드 작물 · [채광] 강화 횃불 · [강화] 하급 라이프스톤 · [해양] 오션오더"));
+        list.pair(tip(toggle("분류별로 묶기", cfg.hudGroupCategory, v -> cfg.hudGroupCategory = v),
+                "같은 분류 줄끼리 모아서 보여 줘요. 묶음은 가장 빨리 끝나는 줄이 있는 묶음부터예요. '분류 붙이기'가 켜져 있어야 해요"), null);
 
         list.header("HUD 꾸미기", "꾸미기");
         hudLookRows();

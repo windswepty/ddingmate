@@ -295,7 +295,40 @@ public final class ScheduleHud {
             Duration left = Duration.between(now, o.time());
             out.add(new Entry(o.rule().label(), ScheduleEngine.formatRemaining(left), left.toMinutes(), 0));
         }
+        return cfg.hudGroupCategory ? grouped(out) : out;
+    }
+
+    private static final java.util.regex.Pattern CATEGORY = java.util.regex.Pattern.compile("^\\[([^\\]]+)]\\s");
+
+    /**
+     * 분류별로 묶기(2026-10-29 사용자 요청): "[채광] … [강화] … [채광] … [해양]" → 같은 분류끼리 모은다.
+     * 묶음 순서는 묶음 안에서 가장 빨리 끝나는 줄 순서, 묶음 안은 남은 시간 순. 분류 없는 줄은 제자리
+     */
+    static List<Entry> grouped(List<Entry> in) {
+        List<Integer> slots = new ArrayList<>();
+        java.util.Map<String, List<Entry>> groups = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < in.size(); i++) {
+            java.util.regex.Matcher m = CATEGORY.matcher(in.get(i).label());
+            if (!m.find()) continue;
+            slots.add(i);
+            groups.computeIfAbsent(m.group(1), k -> new ArrayList<>()).add(in.get(i));
+        }
+        if (groups.size() < 2) return in;
+        List<List<Entry>> order = new ArrayList<>(groups.values());
+        for (List<Entry> g : order) g.sort(java.util.Comparator.comparingLong(Entry::minutes));
+        order.sort(java.util.Comparator.comparingLong(g -> g.get(0).minutes()));
+        List<Entry> flat = new ArrayList<>();
+        for (List<Entry> g : order) flat.addAll(g);
+        List<Entry> out = new ArrayList<>(in);
+        for (int i = 0; i < slots.size(); i++) out.set(slots.get(i), flat.get(i));
         return out;
+    }
+
+    /** 시험용: (이름, 남은 분) 줄들을 분류별로 묶은 이름 순서 */
+    public static List<String> debugGrouped(List<String> labels, List<Long> minutes) {
+        List<Entry> in = new ArrayList<>();
+        for (int i = 0; i < labels.size(); i++) in.add(new Entry(labels.get(i), "", minutes.get(i), 0));
+        return grouped(in).stream().map(Entry::label).toList();
     }
 
     /** 시간표의 마을 재시작이 서버가 예고한 지금 채널 재부팅과 같은 것인지(3분 안) */

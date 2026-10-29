@@ -1049,6 +1049,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         "같은 탐사선을 두 줄로 셈");
                 check(kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(), now) == 0, "탐사 창에 출항 중인 배가 없는데 줄이 남음");
                 kr.ddingmate.expert.Exploration.debugReset();
+                // 분류별로 묶기(2026-10-29 사용자 화면 순서): 분류 없는 줄은 제자리, [채광] 둘이 모이고 묶음은 빨리 끝나는 순
+                java.util.List<String> grouped = kr.ddingmate.hud.ScheduleHud.debugGrouped(
+                        java.util.List.of("바닥 아이템 청소", "[채광] 광석 골렘 쿨타임", "[강화] 심층암 조약돌 뭉치 [2]", "[채광] 형광 광산 채광 [9]", "[해양] 카이엔 항해", "일일 초기화"),
+                        java.util.List.of(5L, 0L, 0L, 104L, 389L, 146L));
+                check(grouped.equals(java.util.List.of("바닥 아이템 청소", "[채광] 광석 골렘 쿨타임", "[채광] 형광 광산 채광 [9]", "[강화] 심층암 조약돌 뭉치 [2]", "[해양] 카이엔 항해", "일일 초기화")),
+                        "분류별로 묶기 순서 오류: " + grouped);
                 check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of((mineEnds - now) / 1000), now) == 1, "형광 광산 줄을 다시 못 만듦");
                 // 골렘을 넣는 채팅(실제 로그)만으로도 센다: 위키 등급별 시간(레어 5분), 앞 골렘 뒤에 줄 선다. 사람 채팅은 무시
                 kr.ddingmate.craft.CraftTimers.onChat("[칭호] 누군가 : 레어 일꾼 골렘을 채광 대기열에 투입했습니다.");

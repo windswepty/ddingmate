@@ -322,6 +322,8 @@ public final class DdingMateConfig {
     public boolean galmuriFont = true;
     public Corner hudCorner = Corner.TOP_LEFT;
     public int hudLines = 4;
+    /** 일정 HUD 에서 같은 분류([채광]·[해양]…) 줄끼리 모으기. 분류 붙이기가 켜져 있을 때 */
+    public boolean hudGroupCategory = false;
     /** HUD 위치 설정 화면 아래 조작 바 진하기 20~100 (%). 바 아래(가운데 아래)에 HUD 를 둘 때 낮춘다 */
     public int editorBarOpacity = 100;
     /** 일정 HUD 의 제작·작물·오션오더 줄 앞에 분류([채광] · [강화] · [농사] …) */
