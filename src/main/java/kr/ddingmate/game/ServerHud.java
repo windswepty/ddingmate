@@ -179,6 +179,7 @@ public final class ServerHud {
 
     public static void onChat(String message) {
         if (message != null && message.contains("[청소]")) onCleanChat(ItemKeys.stripGlyphs(message).trim(), System.currentTimeMillis());
+        if (message != null && message.contains("[초기화]")) onPetResetChat(ItemKeys.stripGlyphs(message).trim(), System.currentTimeMillis());
         if (message == null || !message.contains("리붓")) return;
         Matcher m = REBOOT.matcher(ItemKeys.stripGlyphs(message));
         if (!m.find()) return;
@@ -242,6 +243,36 @@ public final class ServerHud {
 
     public static void debugClean(String t, long now) {
         onCleanChat(t, now);
+    }
+
+    // ---------------------------------------------------------------- 펫 전부 소환 해제
+
+    /**
+     * 실제 로그(2026-10-28 22:25~22:30, 23:25~23:30): "[초기화] 5분 후 펫이 전부 소환 해제됩니다." → 1분마다 4·3·2·1분 →
+     * "[초기화] 펫 이 소환 해제되었습니다." 언제 오는지 정해진 주기를 아직 몰라서 안내가 온 때만 센다
+     */
+    private static final Pattern PET_RESET_SOON = Pattern.compile("^\\[초기화\\]\\s*(\\d+)\\s*(분|초)\\s*후\\s*펫이\\s*전부\\s*소환\\s*해제");
+    private static final Pattern PET_RESET_DONE = Pattern.compile("^\\[초기화\\]\\s*펫\\s*이?\\s*소환\\s*해제되었습니다");
+    private static long petResetAt;
+
+    static void onPetResetChat(String t, long now) {
+        Matcher m = PET_RESET_SOON.matcher(t);
+        if (m.find()) {
+            long n = Long.parseLong(m.group(1));
+            petResetAt = now + (m.group(2).equals("분") ? n * 60_000 : n * 1000);
+        } else if (PET_RESET_DONE.matcher(t).find()) {
+            petResetAt = 0;
+        }
+    }
+
+    /** 펫 전부 소환 해제 시각(안내가 없었거나 지났으면 0) */
+    public static long petResetAt() {
+        return petResetAt > System.currentTimeMillis() ? petResetAt : 0;
+    }
+
+    /** 시험용 */
+    public static void debugPetReset(String t, long now) {
+        onPetResetChat(t, now);
     }
 
     public static long rebootAt() {

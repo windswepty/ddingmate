@@ -358,7 +358,8 @@ public final class PetFish {
             Notifier.petFish("반려어 " + f.name + " 폐사 위험!", "다음 감소에 스탯이 0% 가 될 수 있어요 · 어항에서 빵·덩굴·뼈 블록으로 채워 주세요");
             return;
         }
-        if (!f.warnedFeed && fc.slowAt() != 0 && now >= fc.slowAt()) {
+        long feedAt = feedAt(f, fc);
+        if (!f.warnedFeed && feedAt != 0 && now >= feedAt) {
             f.warnedFeed = true;
             save();
             Notifier.petFish("반려어 " + f.name + " 밥 줄 때예요", "스탯 평균이 80% 아래라 성장이 느려져요 · 허기 빵, 기분 덩굴, 활력 뼈 블록");
@@ -384,8 +385,9 @@ public final class PetFish {
         if (!fc.alive()) return "어항 확인!";
         if (fc.grownSafe()) return "다 컸어요";
         if (fc.dangerAt() != 0 && now >= fc.dangerAt()) return "폐사 위험!";
-        if (fc.slowAt() != 0 && now >= fc.slowAt()) return "밥 줄 때!";
-        if (fc.slowAt() != 0) return hm(fc.slowAt() - now) + " 뒤 밥 주기";
+        long feedAt = feedAt(f, fc);
+        if (feedAt != 0 && now >= feedAt) return "밥 줄 때!";
+        if (feedAt != 0) return hm(feedAt - now) + " 뒤 밥 주기";
         return "괜찮아요";
     }
 
@@ -395,8 +397,15 @@ public final class PetFish {
         Forecast fc = forecast(f, now);
         if (fc.grownSafe()) return 1;
         if (!fc.alive() || (fc.dangerAt() != 0 && now >= fc.dangerAt())) return 3;
-        if (fc.slowAt() != 0 && now >= fc.slowAt()) return 2;
+        long feedAt = feedAt(f, fc);
+        if (feedAt != 0 && now >= feedAt) return 2;
         return 0;
+    }
+
+    /** 밥 줄 때: 설정한 주기가 있으면 어항을 마지막으로 연 때 + 주기, 없으면(자동) 스탯 평균이 80% 아래로 내려갈 때 */
+    static long feedAt(Fish f, Forecast fc) {
+        int min = DdingMate.config().expert.petFishFeedMin;
+        return min > 0 ? f.statsAt + min * 60_000L : fc.slowAt();
     }
 
     /** 탭에 보일 자세한 한 줄 */

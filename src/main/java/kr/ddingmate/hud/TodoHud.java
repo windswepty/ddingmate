@@ -55,8 +55,13 @@ public final class TodoHud {
         String title = "오늘 할 일 " + done + "/" + total;
         List<DdingMateConfig.TodoItem> shown = items.subList(0, Math.min(MAX_ROWS, total));
         int nameW = Theme.width(tr, "외 00개");
-        for (DdingMateConfig.TodoItem t : shown) nameW = Math.max(nameW, Theme.width(tr, TodoList.label(t, now)));
-        int rows = shown.size() + (total > MAX_ROWS ? 1 : 0);
+        int subRows = 0;
+        for (DdingMateConfig.TodoItem t : shown) {
+            nameW = Math.max(nameW, Theme.width(tr, TodoList.label(t, now)));
+            for (String q : TodoList.questLines(t)) nameW = Math.max(nameW, 6 + Theme.width(tr, q));
+            subRows += TodoList.questLines(t).size();
+        }
+        int rows = shown.size() + subRows + (total > MAX_ROWS ? 1 : 0);
         int boxW = Math.max(14 + nameW, 18 + Theme.boldWidth(tr, title)) + 12;
         int boxH = ScheduleHud.HEAD_H + 2 + rows * ROW_H + 3;
         boxW = HudLayout.widen(HudLayout.TODO, boxW); // 편집 화면에서 가로로 늘린 너비
@@ -82,6 +87,11 @@ public final class TodoHud {
             }
             Theme.textShadow(ctx, tr, TodoList.label(t, now), x + 17, cy, ok ? soft : text, dark);
             cy += ROW_H;
+            // 의뢰 내용(오른쪽 의뢰 트래커에서 읽음): 다 채운 의뢰는 초록
+            for (String q : TodoList.questLines(t)) {
+                Theme.textShadow(ctx, tr, q, x + 23, cy, TodoList.questDone(q) ? green : soft, dark);
+                cy += ROW_H;
+            }
         }
         if (total > MAX_ROWS) Theme.textShadow(ctx, tr, "외 " + (total - MAX_ROWS) + "개", x + 17, cy, text, dark);
     }

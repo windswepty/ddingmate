@@ -137,6 +137,22 @@ public final class Cooking {
         return at > 0 && at >= lastChange(ZonedDateTime.now(ScheduleEngine.KST)).toInstant().toEpochMilli();
     }
 
+    /**
+     * 1초마다(게임 안): 요리 시세가 바뀌었으면 채팅으로 한 번 알린다(2026-10 사용자 요청 "[띵메이트] 요리 시세가 변동되었습니다!").
+     * 처음 깐 때는 알리지 않고 기준만 잡는다
+     */
+    public static void tickChange(long nowMs) {
+        kr.ddingmate.config.DdingMateConfig.Expert ex = kr.ddingmate.DdingMate.config().expert;
+        if (!kr.ddingmate.game.ServerHud.inGame()) return;
+        long last = lastChange(ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(nowMs), ScheduleEngine.KST)).toInstant().toEpochMilli();
+        if (ex.cookingNotifiedAt >= last) return;
+        boolean first = ex.cookingNotifiedAt == 0;
+        ex.cookingNotifiedAt = last;
+        kr.ddingmate.DdingMate.config().save();
+        if (first || !ex.cookingChangeChat) return;
+        kr.ddingmate.notify.Notifier.chat("요리 시세가 변동되었어요! 밀키 상점을 열면 새 가격으로 효율 순위를 다시 매겨요.");
+    }
+
     /** 가장 최근 가격 변동 시각 */
     public static ZonedDateTime lastChange(ZonedDateTime now) {
         ZonedDateTime best = null;

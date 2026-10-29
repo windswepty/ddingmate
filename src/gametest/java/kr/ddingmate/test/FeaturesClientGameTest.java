@@ -1019,6 +1019,24 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 // → 골렘 3마리. 남은 시간이 하나도 없으면(다 받음) 줄이 모두 빠진다
                 check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of(9L, 609L, 1209L, 1209L), now) == 3, "형광 광산 창 골렘 수가 3이 아님");
                 check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of(), now) == 0, "다 받은 형광 광산 줄이 안 빠짐");
+                // 키워드 제외어(문의 6d1b50b0): 키워드 "찬", 제외 "이찬"
+                check(!kr.ddingmate.notify.KeywordWatcher.debugWithoutExcludes("이찬 : 안녕", java.util.List.of("이찬")).contains("찬")
+                                && kr.ddingmate.notify.KeywordWatcher.debugWithoutExcludes("이찬 : 찬 어디", java.util.List.of("이찬")).contains("찬"),
+                        "제외할 말이 안 빠지거나 다른 데 든 키워드까지 빠짐");
+                // 펫 전부 소환 해제(2026-10-28 실제 채팅)
+                long petNow = System.currentTimeMillis();
+                kr.ddingmate.game.ServerHud.debugPetReset("[초기화] 5분 후 펫이 전부 소환 해제됩니다.", petNow);
+                check(Math.abs(kr.ddingmate.game.ServerHud.petResetAt() - (petNow + 300_000)) < 2000, "펫 소환 해제 5분을 못 읽음");
+                kr.ddingmate.game.ServerHud.debugPetReset("[초기화] 펫 이 소환 해제되었습니다.", petNow);
+                check(kr.ddingmate.game.ServerHud.petResetAt() == 0, "펫 소환 해제 뒤에도 남음");
+                // 의뢰 트래커(2026-10 실제 사이드바) → 일일·주간 의뢰 내용
+                java.util.List<java.util.List<String>> quests = kr.ddingmate.todo.TodoList.debugTracker(java.util.List.of(
+                        "의뢰 트래커", "", "일일 의뢰", "레드스톤 채광하기 (0/8)", "금붕어 낚기 (10/10)", "", "주간 의뢰", "청어 낚기 (0/30)",
+                        "현재 진행 중인 의뢰의 자세한 상황은"));
+                check(quests.get(0).equals(java.util.List.of("레드스톤 채광하기 (0/8)", "금붕어 낚기 (10/10)"))
+                                && quests.get(1).equals(java.util.List.of("청어 낚기 (0/30)"))
+                                && kr.ddingmate.todo.TodoList.questDone("금붕어 낚기 (10/10)") && !kr.ddingmate.todo.TodoList.questDone("청어 낚기 (0/30)"),
+                        "의뢰 트래커 읽기 오류: " + quests);
                 check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of((mineEnds - now) / 1000), now) == 1, "형광 광산 줄을 다시 못 만듦");
                 // 골렘을 넣는 채팅(실제 로그)만으로도 센다: 위키 등급별 시간(레어 5분), 앞 골렘 뒤에 줄 선다. 사람 채팅은 무시
                 kr.ddingmate.craft.CraftTimers.onChat("[칭호] 누군가 : 레어 일꾼 골렘을 채광 대기열에 투입했습니다.");

@@ -231,11 +231,19 @@ public final class ScheduleHud {
             out.add(new Entry("바닥 아이템 청소", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초",
                     sec / 60, sec <= 60 ? Theme.GOLD : Theme.BLUE));
         }
+        // 펫 전부 소환 해제(서버 [초기화] 안내가 온 때만)
+        long petReset = cfg.petResetTimer ? kr.ddingmate.game.ServerHud.petResetAt() : 0;
+        if (petReset > 0) {
+            long sec = Math.max(0, (petReset - nowMs0 + 999) / 1000);
+            out.add(new Entry("펫 전부 소환 해제", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초", sec / 60, sec <= 60 ? Theme.GOLD : Theme.BLUE));
+        }
         // 단축키로 켠 아일랜드 작물 15분 타이머
         if (kr.ddingmate.expert.CropTimer.running()) {
             long left = kr.ddingmate.expert.CropTimer.remaining(nowMs0);
             out.add(new Entry(tag(cfg, "농사", "아일랜드 작물"), kr.ddingmate.expert.CropTimer.remainingText(nowMs0), left / 60000,
                     kr.ddingmate.expert.CropTimer.paused() ? Theme.TEXT_SOFT : left <= 60_000 ? Theme.GOLD : Theme.BLUE));
+        } else if (kr.ddingmate.expert.CropTimer.ripe()) {
+            out.add(new Entry(tag(cfg, "농사", "아일랜드 작물"), "다 자람!", 0, Theme.GREEN));
         }
         // 마을 경작지 아일랜드 작물: 종류별로 다 자랄 때까지
         if (cfg.expert.islandCrops) {
@@ -263,7 +271,8 @@ public final class ScheduleHud {
             // 같은 아이템·개수를 여러 번 넣었으면 한 줄로: "조약돌 뭉치 ×7 [3]" · 마지막 것이 끝날 때까지
             // 너무 많으면 HUD 가 화면을 덮으므로 위에서 몇 줄만, 나머지는 개수로 알려 준다(전체는 /띵메이트 홈)
             List<kr.ddingmate.craft.CraftTimers.Group> groups = kr.ddingmate.craft.CraftTimers.groups();
-            int more = Math.max(0, groups.size() - MAX_CRAFT_ROWS);
+            // 보일 일정 수가 '제한 없음'이면 제작도 모두 보인다(문의 96ad0fb8: 제한 없음인데 "그 밖의 제작"이 뜸)
+            int more = cfg.hudLines >= DdingMateConfig.HUD_LINES_ALL ? 0 : Math.max(0, groups.size() - MAX_CRAFT_ROWS);
             for (kr.ddingmate.craft.CraftTimers.Group g : groups.subList(0, groups.size() - more)) {
                 long mins = g.unknown() ? Long.MAX_VALUE - 1 : Math.max(0, (g.endsAt() - nowMs) / 60000);
                 out.add(new Entry(tag(cfg, kr.ddingmate.craft.CraftTimers.category(g.name()), kr.ddingmate.craft.CraftTimers.displayLabel(g, nowMs)),

@@ -36,13 +36,28 @@ public final class KeywordWatcher {
             fire(MENTION, text, kw.cooldownSeconds);
             return;
         }
+        String body = withoutExcludes(lower, kw.excludes);
         for (String word : kw.words) {
             if (word == null || word.isBlank()) continue;
-            if (lower.contains(word.toLowerCase(Locale.ROOT))) {
+            if (body.contains(word.toLowerCase(Locale.ROOT))) {
                 fire(word, text, kw.cooldownSeconds);
                 return;
             }
         }
+    }
+
+    /** 제외할 말을 지운 글. "이찬"을 지우면 "이찬 왔어"의 "찬"은 안 울리고 "찬 왔어"는 울린다 */
+    static String withoutExcludes(String lower, java.util.List<String> excludes) {
+        if (excludes == null) return lower;
+        for (String ex : excludes) {
+            if (ex != null && !ex.isBlank()) lower = lower.replace(ex.toLowerCase(Locale.ROOT), " ");
+        }
+        return lower;
+    }
+
+    /** 시험용 */
+    public static String debugWithoutExcludes(String text, java.util.List<String> excludes) {
+        return withoutExcludes(text.toLowerCase(Locale.ROOT), excludes);
     }
 
     /** 닉네임 언급 알림의 기록 키 */

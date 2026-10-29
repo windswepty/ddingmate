@@ -39,6 +39,8 @@ public final class DdingMateConfig {
         /** 내 닉네임이 다른 사람 메시지에 나오면 알림 */
         public boolean includeOwnName = true;
         public List<String> words = new ArrayList<>(List.of("오션오더", "풍선"));
+        /** 제외할 말: 이 말 안에 든 키워드는 알리지 않는다(예: 키워드 "찬", 제외 "이찬" — 문의 6d1b50b0) */
+        public List<String> excludes = new ArrayList<>();
         public int cooldownSeconds = 10;
     }
 
@@ -141,6 +143,8 @@ public final class DdingMateConfig {
         public Corner corner = Corner.TOP_RIGHT;
         /** 일일 초기화 몇 분 전에 남은 할 일을 알려 줄지 (0 = 알리지 않음) */
         public int remindMinutes = 60;
+        /** 일일·주간 의뢰 줄 밑에 의뢰 내용(오른쪽 의뢰 트래커의 "레드스톤 채광하기 (0/8)")을 펼쳐 보기(문의 43c24382) */
+        public boolean questDetails = true;
         public List<TodoItem> items = new ArrayList<>(defaults());
         /** 3 = 할 일은 모드가 알아서 셀 수 있는 것(TodoPreset)만. 예전 설정 파일에는 없어서 0 으로 읽히고, 한 번 정리한다 */
         public int version = 0;
@@ -182,10 +186,16 @@ public final class DdingMateConfig {
         public boolean cookingByTime = false;
         /** 밀키 요리 상점 창 옆에 효율·비싼 요리·가진 요리 판매 합계 판 */
         public boolean cookingPanel = true;
+        /** 요리 시세가 바뀌면(1·3·6…일 03시) 채팅으로 알리기. 접속해 있지 않았으면 다음 접속 때 한 번 */
+        public boolean cookingChangeChat = true;
+        /** 마지막으로 알린 요리 시세 변동 시각(ms) */
+        public long cookingNotifiedAt = 0;
         /** 판매품 상점(로니·샤키·포스·픽스·카이) 창 옆에 보유 판매품과 팔면 받는 금액 판 */
         public boolean shopPanel = true;
         /** 반려어(수족관) 밥 타이머: 어항 창의 허기·기분·활력을 읽어 밥 줄 때·폐사 위험·다 컸을 때 알림 */
         public boolean petFish = true;
+        /** 반려어 밥 주기(분). 0 = 자동(위키 규칙으로 스탯 평균이 80% 아래로 내려갈 때). 그 밖엔 어항을 마지막으로 연 때부터 이만큼 뒤 */
+        public int petFishFeedMin = 0;
         /** 오션오더 타이머: 도착하면 5분 남은 시간과 오늘 받은 횟수(하루 한도: oceanLimit) */
         public boolean oceanOrder = true;
         /** 광석 골렘 출현 쿨타임(5분, 프레스티지 1분)을 일정 HUD 에 */
@@ -290,6 +300,8 @@ public final class DdingMateConfig {
     public String notesSeenVersion = "";
     /** 바닥 아이템 청소까지 남은 시간을 일정 HUD 에(서버 [청소] 안내로 맞춤) */
     public boolean cleanupTimer = true;
+    /** 펫 전부 소환 해제까지 남은 시간을 일정 HUD 에(서버 "[초기화] N분 후 펫이 전부 소환 해제됩니다." 안내로 맞춤) */
+    public boolean petResetTimer = true;
     /** 서버 창 옆 판(보유 재료로 만들기·카페·부엌·상점·보석) 크기 50~150 (%). 판 위에서 Ctrl+휠로도 바꾼다 */
     public int sidePanelScale = 100;
     /** 서버 창 옆 판도 HUD 꾸미기(판·제목 줄·글자색)를 따라갈지. 끄면 창에 맞춘 색(카페 갈색·부엌 토마토색 등) */
@@ -414,6 +426,7 @@ public final class DdingMateConfig {
         if (events == null) events = new LinkedHashMap<>();
         if (keywords == null) keywords = new Keywords();
         if (keywords.words == null) keywords.words = new ArrayList<>();
+        if (keywords.excludes == null) keywords.excludes = new ArrayList<>();
         keywords.cooldownSeconds = Math.max(0, keywords.cooldownSeconds);
         if (counter == null) counter = new Counter();
         if (counter.corner == null) counter.corner = Corner.TOP_LEFT;

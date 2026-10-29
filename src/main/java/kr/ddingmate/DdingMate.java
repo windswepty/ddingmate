@@ -315,6 +315,7 @@ public final class DdingMate implements ClientModInitializer {
         TodoList.tick(now);
         long ms = System.currentTimeMillis();
         kr.ddingmate.expert.PetFish.tick(ms);
+        kr.ddingmate.expert.Cooking.tickChange(ms); // 요리 시세 변동 채팅(1·3·6…일 03시)
         kr.ddingmate.expert.IslandCrops.tick(client); // 마을 경작지 아일랜드 작물 단계(주변 블록만 읽음)
         kr.ddingmate.expert.OceanOrder.tick(ms);
     }

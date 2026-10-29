@@ -809,7 +809,11 @@ public class DdingMateScreen extends Screen {
         cleanup.setTooltip(Tooltip.of(Text.literal("서버는 10분마다 떨어진 아이템을 청소해요. \"[청소] 5분 후 …\" 안내를 보면 다음 청소까지 남은 시간을 "
                 + "일정 HUD 에 보여 줘요. 채널마다 시각이 달라서 채널을 옮기면 다음 안내부터 다시 맞춰요(/개인설정 청소알림이 켜져 있어야 해요).")));
         cleanup.detail(clean > 0 ? ScheduleEngine.formatRemaining(Duration.ofMillis(clean - System.currentTimeMillis())) + " 후" : "안내 기다리는 중");
-        list.pair(cleanup, null);
+        Widgets.Toggle petReset = toggle("펫 전부 소환 해제", cfg.petResetTimer, v -> cfg.petResetTimer = v);
+        petReset.setTooltip(Tooltip.of(Text.literal("서버가 \"[초기화] 5분 후 펫이 전부 소환 해제됩니다.\" 를 알리면 소환 해제까지 남은 시간을 일정 HUD 에 보여 줘요.")));
+        long pr = kr.ddingmate.game.ServerHud.petResetAt();
+        petReset.detail(pr > 0 ? ScheduleEngine.formatRemaining(Duration.ofMillis(pr - System.currentTimeMillis())) + " 후" : "안내 기다리는 중");
+        list.pair(cleanup, petReset);
     }
 
     /** 일정의 다음 시각까지 남은 시간. 채널 번호를 정하지 않은 재시작 일정은 "채널 끔" */
@@ -954,6 +958,12 @@ public class DdingMateScreen extends Screen {
         words.setTooltip(Tooltip.of(Text.literal("쉼표로 구분해서 적어요. 예: 오션오더, 풍선, 경매")));
         words.setChangedListener(text -> cfg.keywords.words = splitList(text));
         list.labeled("키워드", words);
+        Widgets.Field excludes = new Widgets.Field(rowWidth(), Text.literal("제외할 말"));
+        excludes.setMaxLength(500);
+        excludes.setText(String.join(", ", cfg.keywords.excludes));
+        excludes.setTooltip(Tooltip.of(Text.literal("이 말 안에 든 키워드는 알리지 않아요. 예: 키워드 \"찬\"에 제외 \"이찬\"이면 \"이찬\"은 안 울리고 \"찬\"만 울려요")));
+        excludes.setChangedListener(text -> cfg.keywords.excludes = splitList(text));
+        list.labeled("제외할 말", excludes);
         list.note("채팅에 키워드가 들어간 메시지가 뜨면 소리와 함께 팝업 \"채팅에 '오션오더'\" 가 뜨고, 아래에 그 메시지가 그대로 보여요.");
         list.note("다른 사람이 채팅으로 내 닉네임을 부르면 \"누가 내 닉네임을 불렀어요\" 가 떠요. 내 이름이 들어간 시스템 공지에는 울리지 않아요.");
         list.note("내가 쓴 채팅에는 반응하지 않고, 같은 단어는 " + cfg.keywords.cooldownSeconds + "초 안에 다시 울리지 않아요. 영어는 대소문자를 가리지 않아요.");
@@ -1191,7 +1201,9 @@ public class DdingMateScreen extends Screen {
         list.header("알림", "알림");
         list.pair(new Widgets.Cycle<>(half(), "남은 할 일 알림", List.of(0, 30, 60, 120),
                 nearestOf(tc.remindMinutes, 0, 30, 60, 120),
-                v -> v == 0 ? "끔" : "03시 " + v + "분 전", v -> tc.remindMinutes = v), null);
+                v -> v == 0 ? "끔" : "03시 " + v + "분 전", v -> tc.remindMinutes = v),
+                tip(toggle("의뢰 내용 보기", tc.questDetails, v -> tc.questDetails = v),
+                        "일일·주간 의뢰 줄 밑에 의뢰 내용과 진행도를 펼쳐 보여 줘요. 오른쪽 의뢰 트래커에 보이는 것을 읽어요"));
 
         DdingMateConfig.Playtime pc = cfg.playtime;
         list.header("접속 시간 보상 · 위키 기준 1·2·3·4·5·8시간", "접속 보상");
@@ -1269,6 +1281,10 @@ public class DdingMateScreen extends Screen {
                         "어항 창을 열면 반려어의 허기·기분·활력·성장도를 읽고, 밥 줄 때·폐사 위험·다 컸을 때 알려 줘요"),
                 tip(toggle("오션오더 타이머", ex.oceanOrder, v -> ex.oceanOrder = v),
                         "오션오더가 오면 남은 시간(5분)과 오늘 받은 횟수(10번까지)를 일정 HUD 맨 위에 보여 줘요"));
+        Widgets.Cycle<Integer> feed = new Widgets.Cycle<>(half(), "밥 주기", List.of(0, 10, 20, 30, 40, 60, 90, 120), ex.petFishFeedMin,
+                n -> n == 0 ? "자동" : n >= 60 ? (n / 60) + "시간" + (n % 60 > 0 ? " " + (n % 60) + "분" : "") : n + "분", v -> ex.petFishFeedMin = v);
+        feed.setTooltip(Tooltip.of(Text.literal("자동: 위키 규칙으로 허기·기분·활력 평균이 80% 아래로 내려갈 때 알려 줘요.\n시간을 고르면 어항 창을 마지막으로 연 때부터 그만큼 뒤에 알려 줘요. 폐사 위험 알림은 그대로예요")));
+        list.pair(feed, null);
         long now = System.currentTimeMillis();
         kr.ddingmate.expert.PetFish.Fish f = kr.ddingmate.expert.PetFish.current();
         if (f != null) {
@@ -1537,6 +1553,8 @@ public class DdingMateScreen extends Screen {
                     rebuild();
                 }), tip(toggle("밀키 상점 옆에 보기", ex.cookingPanel, v -> ex.cookingPanel = v),
                 "밀키 요리 상점 창을 열면 옆에 효율 좋은 요리·비싼 요리·보유 요리를 팔면 받는 금액을 보여 줘요"));
+        list.pair(tip(toggle("시세 변동 채팅", ex.cookingChangeChat, v -> ex.cookingChangeChat = v),
+                "요리 시세가 바뀌면 채팅으로 \"요리 시세가 변동되었어요!\" 를 알려 줘요. 그때 접속해 있지 않았으면 다음 접속 때 한 번"), null);
         java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
         java.time.ZonedDateTime next = kr.ddingmate.expert.Cooking.nextChange(now);
         List<kr.ddingmate.expert.Cooking.Rank> ranks = kr.ddingmate.expert.Cooking.ranking(ex.cookingByTime);

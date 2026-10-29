@@ -9,6 +9,7 @@ import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -155,15 +156,63 @@ public final class TodoList {
         net.minecraft.scoreboard.Scoreboard sb = client.world.getScoreboard();
         net.minecraft.scoreboard.ScoreboardObjective obj = sb.getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.SIDEBAR);
         if (obj == null) return;
-        for (net.minecraft.scoreboard.ScoreboardEntry e : sb.getScoreboardEntries(obj)) {
+        // 사이드바는 점수 높은 줄이 위
+        List<net.minecraft.scoreboard.ScoreboardEntry> entries = new ArrayList<>(sb.getScoreboardEntries(obj));
+        entries.sort((p, q) -> Integer.compare(q.value(), p.value()));
+        List<String> lines = new ArrayList<>();
+        for (net.minecraft.scoreboard.ScoreboardEntry e : entries) {
             net.minecraft.scoreboard.Team team = sb.getScoreHolderTeam(e.owner());
-            String line = kr.ddingmate.counter.ItemKeys.stripGlyphs(net.minecraft.scoreboard.Team.decorateName(team, e.name()).getString());
+            lines.add(kr.ddingmate.counter.ItemKeys.stripGlyphs(net.minecraft.scoreboard.Team.decorateName(team, e.name()).getString()).trim());
+        }
+        readTracker(lines);
+        for (String line : lines) {
             java.util.regex.Matcher m = STAMINA_SIDEBAR.matcher(line);
             if (m.find()) {
                 sync(TodoPreset.STAMINA, parse(m.group(1)));
                 return;
             }
         }
+    }
+
+    /** 의뢰 트래커 한 줄: "레드스톤 채광하기 (0/8)" (2026-10 실제 화면) */
+    private static final java.util.regex.Pattern TRACKER_QUEST = java.util.regex.Pattern.compile("^(.+?)\\s*\\(\\s*([\\d,]+)\\s*/\\s*([\\d,]+)\\s*\\)$");
+    /** 마지막으로 읽은 의뢰 트래커의 일일·주간 의뢰 줄 */
+    private static List<String> dailyQuests = List.of(), weeklyQuests = List.of();
+
+    /** 의뢰 트래커 줄들: "일일 의뢰" 머리 밑은 일일, "주간 의뢰" 머리 밑은 주간 */
+    static void readTracker(List<String> lines) {
+        List<String> daily = new ArrayList<>(), weekly = new ArrayList<>();
+        List<String> into = null;
+        for (String l : lines) {
+            if (l.matches("^(일일|일간)\\s*의뢰.*")) into = daily;
+            else if (l.matches("^주간\\s*의뢰.*")) into = weekly;
+            else if (into != null && TRACKER_QUEST.matcher(l).matches()) into.add(l);
+            else if (!l.isBlank() && into != null && !TRACKER_QUEST.matcher(l).matches()) into = null;
+        }
+        if (!daily.isEmpty() || !weekly.isEmpty()) {
+            dailyQuests = List.copyOf(daily);
+            weeklyQuests = List.copyOf(weekly);
+        }
+    }
+
+    /** 할 일 HUD 에 펼칠 의뢰 내용(일일·주간 의뢰 줄만, 설정이 켜져 있을 때) */
+    public static List<String> questLines(DdingMateConfig.TodoItem item) {
+        if (!DdingMate.config().todo.questDetails || item == null) return List.of();
+        if (TodoPreset.DAILY_QUEST.id.equals(item.preset)) return dailyQuests;
+        if (TodoPreset.WEEKLY_QUEST.id.equals(item.preset)) return weeklyQuests;
+        return List.of();
+    }
+
+    /** 의뢰 줄을 다 채웠는지("(8/8)") */
+    public static boolean questDone(String line) {
+        java.util.regex.Matcher m = TRACKER_QUEST.matcher(line);
+        return m.matches() && parse(m.group(2)) >= parse(m.group(3)) && parse(m.group(3)) > 0;
+    }
+
+    /** 시험용: [일일, 주간] */
+    public static List<List<String>> debugTracker(List<String> lines) {
+        readTracker(lines);
+        return List.of(dailyQuests, weeklyQuests);
     }
 
     /**
