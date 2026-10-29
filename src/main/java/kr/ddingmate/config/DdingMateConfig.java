@@ -87,6 +87,10 @@ public final class DdingMateConfig {
          * 프레스티지 치장·크기 조절을 켜면 서버가 입은 갑옷의 이름·그림을 바꿔 보내서 이름으로는 못 찾는다 */
         public String itemId = "";
         public int wornSlot = -1;
+        /** 갑옷의 마지막 내구도(머리 치장을 쓰면 서버가 투구 내구도를 안 보내서, 그동안 이 값을 흐리게 보인다) */
+        public int lastLeft = -1;
+        public int lastMax = 0;
+        public boolean lastPercent = false;
 
         public TrackedItem() {}
 

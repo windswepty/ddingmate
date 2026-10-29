@@ -140,6 +140,17 @@ public class LogicClientGameTest implements FabricClientGameTest {
         check(DurabilityTracker.keyOf(hidden).equals(ItemKeys.nameKey(bootsName)), "가린 신발 키 오류: " + DurabilityTracker.keyOf(hidden));
         check(DurabilityTracker.nameOf(hidden).equals(bootsName), "가린 신발 이름 오류: " + DurabilityTracker.nameOf(hidden));
         check(DurabilityTracker.iconOf(hidden).isOf(Items.NETHERITE_BOOTS), "가린 신발 그림 오류");
+        // 머리 치장(2026-10-29 실제 기록): HMCCosmetics 아이템은 custom_data 로 알아본다. 갑옷 칸 번호(신발 36 ~ 투구 39)
+        ItemStack hat = new ItemStack(Items.LEATHER_HORSE_ARMOR);
+        net.minecraft.nbt.NbtCompound pbv = new net.minecraft.nbt.NbtCompound();
+        pbv.putString("hmccosmetics:cosmetic", "red_panda_hat");
+        net.minecraft.nbt.NbtCompound root = new net.minecraft.nbt.NbtCompound();
+        root.put("PublicBukkitValues", pbv);
+        hat.set(DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.of(root));
+        check(DurabilityTracker.cosmetic(hat), "치장 아이템을 못 알아봄");
+        check(!DurabilityTracker.cosmetic(new ItemStack(Items.NETHERITE_HELMET)), "투구를 치장으로 봄");
+        check(DurabilityTracker.armorSlot(Items.NETHERITE_HELMET) == 39 && DurabilityTracker.armorSlot(Items.NETHERITE_BOOTS) == 36
+                && DurabilityTracker.armorSlot(Items.DIAMOND_PICKAXE) == -1, "갑옷 칸 번호 오류");
         ItemStack namedButton = new ItemStack(Items.STONE_BUTTON);
         namedButton.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Stone"));
         check(DurabilityTracker.keyOf(namedButton).equals(ItemKeys.keyOf(namedButton)), "내구도 없는 아이템 이름을 장비로 바꿈");

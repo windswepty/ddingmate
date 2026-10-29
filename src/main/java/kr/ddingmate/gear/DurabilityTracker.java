@@ -56,8 +56,11 @@ public final class DurabilityTracker {
         }
     }
 
-    /** HUD 한 줄. stack 이 null 이면 지금 인벤토리에 없음 */
-    public record Row(DdingMateConfig.TrackedItem item, ItemStack stack, Durability durability) {}
+    /**
+     * HUD 한 줄. stack 이 null 이면 지금 인벤토리에 없음.
+     * hidden: 치장 아래에 있어 지금 값을 모르고, durability 는 마지막으로 본 값
+     */
+    public record Row(DdingMateConfig.TrackedItem item, ItemStack stack, Durability durability, boolean hidden) {}
 
     private static List<Row> rows = List.of();
     private static final Set<String> WARNED = new HashSet<>();
@@ -173,30 +176,68 @@ public final class DurabilityTracker {
                     break;
                 }
             }
+            boolean hidden = false;
             if (found != null) {
-                remember(t, inv, found);
+                remember(t, inv, found, d);
             } else {
                 // 이름으로 못 찾음: 프레스티지 머리 치장·갑옷 크기 조절은 입은 갑옷의 이름·그림만 바꾼다
                 // (2026-10-29 사용자 화면: 투구를 썼는데 머리 칸이 "렛서판다 모자"). 입은 칸에서 같은 종류 → 같은 칸 순서로 찾는다
                 found = worn(t, inv);
                 d = found == null ? null : read(found);
+                if (found == null && t.lastMax > 0 && underCosmetic(t, inv)) {
+                    d = new Durability(t.lastLeft, t.lastMax, t.lastPercent);
+                    hidden = true;
+                }
             }
-            out.add(new Row(t, found, d));
-            if (d != null) checkWarn(cfg, t, found, d);
+            out.add(new Row(t, found, d, hidden));
+            if (d != null && !hidden) checkWarn(cfg, t, found, d);
         }
         rows = out;
     }
 
-    /** 찾은 장비의 종류와 입은 칸을 기억한다(바뀐 때만 저장) */
-    private static void remember(DdingMateConfig.TrackedItem t, PlayerInventory inv, ItemStack s) {
+    /** 찾은 장비의 종류·입은 칸, 갑옷이면 내구도도 기억한다(바뀐 때만 저장. 도구는 블록마다 바뀌어서 내구도는 안 남김) */
+    private static void remember(DdingMateConfig.TrackedItem t, PlayerInventory inv, ItemStack s, Durability d) {
         Item real = disguisedAs(s);
-        String id = Registries.ITEM.getId(real != null ? real : s.getItem()).toString();
+        Item item = real != null ? real : s.getItem();
+        String id = Registries.ITEM.getId(item).toString();
         int slot = -1;
         for (int i = 36; i <= 39; i++) if (inv.getStack(i) == s) slot = i;
-        if (id.equals(t.itemId) && slot == t.wornSlot) return;
+        boolean armor = armorSlot(item) >= 0;
+        boolean same = id.equals(t.itemId) && slot == t.wornSlot;
+        if (armor) same &= d.left() == t.lastLeft && d.max() == t.lastMax && d.percent() == t.lastPercent;
+        if (same) return;
         t.itemId = id;
         t.wornSlot = slot;
+        if (armor) {
+            t.lastLeft = d.left();
+            t.lastMax = d.max();
+            t.lastPercent = d.percent();
+        }
         DdingMate.config().save();
+    }
+
+    /** 갑옷이 들어가는 인벤토리 칸(신발 36 ~ 투구 39), 갑옷이 아니면 -1 */
+    public static int armorSlot(Item item) {
+        var eq = new ItemStack(item).get(DataComponentTypes.EQUIPPABLE);
+        if (eq == null || eq.slot().getType() != net.minecraft.entity.EquipmentSlot.Type.HUMANOID_ARMOR) return -1;
+        return 36 + eq.slot().getEntitySlotId();
+    }
+
+    /**
+     * 머리 치장(2026-10-29 실제 기록): 투구 칸이 HMCCosmetics 아이템(leather_horse_armor "렛서판다 모자",
+     * custom_data PublicBukkitValues "hmccosmetics:cosmetic") 으로 바뀌고 진짜 투구의 내구도는 오지 않는다
+     */
+    public static boolean cosmetic(ItemStack s) {
+        net.minecraft.component.type.NbtComponent c = s.get(DataComponentTypes.CUSTOM_DATA);
+        return c != null && c.copyNbt().getCompound("PublicBukkitValues").contains("hmccosmetics:cosmetic");
+    }
+
+    /** 이 장비가 들어갈 갑옷 칸이 치장으로 가려져 있나 */
+    static boolean underCosmetic(DdingMateConfig.TrackedItem t, PlayerInventory inv) {
+        Identifier id = Identifier.tryParse(t.itemId);
+        if (id == null || !Registries.ITEM.containsId(id)) return false;
+        int slot = armorSlot(Registries.ITEM.get(id));
+        return slot >= 0 && cosmetic(inv.getStack(slot));
     }
 
     /** 이름이 바뀐 채 입고 있는 장비: 같은 종류를 입은 칸, 없으면 예전에 입던 칸(내구도가 있을 때만) */

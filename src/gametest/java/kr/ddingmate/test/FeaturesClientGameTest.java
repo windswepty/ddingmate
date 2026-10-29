@@ -94,6 +94,25 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(hasLog("내구도", "다이아몬드 곡괭이"), "내구도 부족 알림이 기록되지 않음");
                 check(!hasLog("내구도", "철 검"), "멀쩡한 철 검에 내구도 알림이 울림");
             });
+            // 머리 치장(2026-10-29 실제 기록): 투구를 쓰고 있다가 머리 칸이 치장 아이템으로 바뀌면 마지막 내구도를 흐리게
+            sp.getServer().runCommand("item replace entity @a armor.head with minecraft:netherite_helmet[minecraft:damage=2]");
+            ctx.waitTicks(5);
+            ctx.runOnClient(c -> DurabilityTracker.setTracked("v:minecraft:netherite_helmet", "네더라이트 투구", true));
+            ctx.waitTicks(20);
+            ctx.runOnClient(c -> {
+                DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
+                check(!helm.hidden() && helm.durability().left() == 405, "쓴 투구 내구도 오류: " + helm);
+            });
+            sp.getServer().runCommand("item replace entity @a armor.head with minecraft:leather_horse_armor"
+                    + "[minecraft:custom_data={PublicBukkitValues:{\"hmccosmetics:cosmetic\":\"red_panda_hat\"}}]");
+            ctx.waitTicks(20);
+            ctx.runOnClient(c -> {
+                DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
+                check(helm.hidden() && helm.durability() != null && helm.durability().left() == 405 && helm.durability().max() == 407,
+                        "치장 아래 투구가 마지막 값으로 안 보임: " + helm);
+                DurabilityTracker.setTracked("v:minecraft:netherite_helmet", "네더라이트 투구", false);
+            });
+            sp.getServer().runCommand("item replace entity @a armor.head with minecraft:air");
 
             // 3) 오늘 할 일: 알아서 세는 것만. 서버 메시지로 세고, 다 채우면 더 세지 않고, 지난 초기화 이전 기록은 0
             ctx.runOnClient(c -> {

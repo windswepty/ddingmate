@@ -71,8 +71,8 @@ public final class DurabilityHud {
             ItemStack icon = r.stack() != null ? DurabilityTracker.iconOf(r.stack()) : kr.ddingmate.counter.IconCache.forKey(r.item().key);
             if (icon != null) Theme.item(ctx, icon, rx, cy, ICON);
             else Theme.unknownIcon(ctx, tr, rx, cy, ICON);
-            int color = r.durability() == null ? soft : colorOf(r.durability().ratio(), dark);
-            Theme.textShadow(ctx, tr, r.item().name, rx + ICON + 4, cy + 1, r.durability() == null ? soft : text, dark);
+            int color = r.durability() == null || r.hidden() ? soft : colorOf(r.durability().ratio(), dark);
+            Theme.textShadow(ctx, tr, r.item().name, rx + ICON + 4, cy + 1, r.durability() == null || r.hidden() ? soft : text, dark);
             String v = value(r);
             Theme.boldText(ctx, tr, v, x + boxW - 6 - Theme.boldWidth(tr, v), cy + 1, color, false);
             if (r.durability() != null) {
@@ -87,7 +87,7 @@ public final class DurabilityHud {
 
     private static String value(DurabilityTracker.Row r) {
         if (r.durability() == null) return "인벤토리에 없음";
-        return r.durability().text();
+        return r.hidden() ? "치장 · " + r.durability().text() : r.durability().text();
     }
 
     static int colorOf(double ratio, boolean dark) {

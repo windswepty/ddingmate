@@ -898,8 +898,8 @@ public class DdingMateScreen extends Screen {
             DurabilityTracker.Durability d = r.durability();
             ItemStack seen = r.stack() != null ? DurabilityTracker.iconOf(r.stack()) : kr.ddingmate.counter.IconCache.forKey(r.item().key);
             list.single(new InfoRow(seen == null ? new ItemStack(Items.ANVIL) : seen, r.item().name,
-                    d == null ? "인벤토리에 없음" : d.text(),
-                    d == null ? Theme.TEXT_SOFT : d.ratio() > 0.5 ? Theme.GREEN : d.ratio() > 0.2 ? Theme.GOLD : Theme.RED, Tab.GEAR));
+                    d == null ? "인벤토리에 없음" : r.hidden() ? "치장 · " + d.text() : d.text(),
+                    d == null || r.hidden() ? Theme.TEXT_SOFT : d.ratio() > 0.5 ? Theme.GREEN : d.ratio() > 0.2 ? Theme.GOLD : Theme.RED, Tab.GEAR));
         }
 
         List<kr.ddingmate.craft.CraftTimers.Group> crafting = cfg.craft.enabled ? kr.ddingmate.craft.CraftTimers.groups() : List.of();
@@ -1154,6 +1154,8 @@ public class DdingMateScreen extends Screen {
                 nearestOf(dc.warnPercent, 0, 5, 10, 15, 20, 30),
                 v -> v == 0 ? "끔" : v + "% 이하", v -> dc.warnPercent = v), null);
         list.note("같은 장비가 여러 개면 손에 든 것 → 왼손 → 입은 것 → 단축바 → 나머지 칸 순서로 먼저 찾은 것을 보여 줘요.");
+        list.note("머리 치장을 쓰면 서버가 투구 내구도를 보내지 않아요. 그동안은 마지막으로 본 값을 \"치장 · 405/407\"처럼 흐리게 보여 줘요. "
+                + "치장을 벗거나 투구를 잠깐 빼면 다시 맞춰져요.");
 
         list.note("쉬프트 우클릭 전문가 스킬 타이머는 [전문가] 탭으로 옮겼어요.");
     }
