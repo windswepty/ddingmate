@@ -1037,6 +1037,18 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                                 && quests.get(1).equals(java.util.List.of("청어 낚기 (0/30)"))
                                 && kr.ddingmate.todo.TodoList.questDone("금붕어 낚기 (10/10)") && !kr.ddingmate.todo.TodoList.questDone("청어 낚기 (0/30)"),
                         "의뢰 트래커 읽기 오류: " + quests);
+                // 해양 탐사(2026-10-29 실제 툴팁): 납품 칸 "요구 수량 : 1 / 3" → 2개 남음, 출항 중 "남은 시간 : 30시간 48분 27초"(버튼·모래시계 칸 같은 글)
+                String[] shipSlot = kr.ddingmate.expert.Exploration.parse("[ C급 탐사선 출항 준비하기 ]");
+                check(shipSlot != null && shipSlot[0].equals("C") && shipSlot[1].equals("출항 준비하기"), "탐사선 칸 이름을 못 읽음");
+                kr.ddingmate.expert.Exploration.debugReset();
+                kr.ddingmate.expert.Exploration.readNeed("C", 40, java.util.List.of("- 요구 아이템 : 합성수지 재활용품", "- 요구 수량 : 1 / 3"));
+                kr.ddingmate.expert.Exploration.commit(now);
+                check(kr.ddingmate.expert.Exploration.preps().size() == 1 && kr.ddingmate.expert.Exploration.preps().get(0).needs().get(0).left() == 2,
+                        "탐사선 남은 재료 오류: " + kr.ddingmate.expert.Exploration.preps());
+                check(kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(new String[]{"C", "110907"}, new String[]{"C", "110907"}), now) == 1,
+                        "같은 탐사선을 두 줄로 셈");
+                check(kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(), now) == 0, "탐사 창에 출항 중인 배가 없는데 줄이 남음");
+                kr.ddingmate.expert.Exploration.debugReset();
                 check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of((mineEnds - now) / 1000), now) == 1, "형광 광산 줄을 다시 못 만듦");
                 // 골렘을 넣는 채팅(실제 로그)만으로도 센다: 위키 등급별 시간(레어 5분), 앞 골렘 뒤에 줄 선다. 사람 채팅은 무시
                 kr.ddingmate.craft.CraftTimers.onChat("[칭호] 누군가 : 레어 일꾼 골렘을 채광 대기열에 투입했습니다.");

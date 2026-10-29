@@ -530,6 +530,8 @@ public final class CraftTimers {
         List<QueueSlot> queue = new ArrayList<>();
         List<Long> mineSecs = new ArrayList<>();
         String[] mineInfo = {null, ""}; // [0] 형광 광산 창이면 "y", [1] 골렘 등급
+        List<String[]> exploreRuns = new ArrayList<>(); // 출항 중인 탐사선: {등급, 남은 초}
+        boolean exploreSeen = false;
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory) continue;
             ItemStack s = slot.getStack();
@@ -552,6 +554,21 @@ public final class CraftTimers {
             }
             if (isMine(lore.lines())) {
                 mineSlot(s, lore.lines(), slot.id, mineSecs, mineInfo);
+                continue;
+            }
+            String[] ship = kr.ddingmate.expert.Exploration.parse(ItemKeys.stripGlyphs(s.getName().getString()));
+            if (ship != null) {
+                // 해양 탐사 창: 출항 중이면 남은 시간, 출항 준비 칸이면 남은 납품 재료
+                exploreSeen = true;
+                List<String> ls = new ArrayList<>();
+                for (Text l : lore.lines()) ls.add(ItemKeys.stripGlyphs(l.getString()).trim());
+                if (ship[1].matches("출항\\s*중.*")) {
+                    long sec = -1;
+                    for (String l : ls) if (REMAIN_HINT.matcher(l).find() && seconds(l) >= 0) sec = seconds(l);
+                    if (sec >= 0) exploreRuns.add(new String[]{ship[0], String.valueOf(sec)});
+                } else if (ship[1].contains("준비")) {
+                    kr.ddingmate.expert.Exploration.readNeed(ship[0], slot.y, ls);
+                }
                 continue;
             }
             Reading r = read(lore.lines());
@@ -592,6 +609,12 @@ public final class CraftTimers {
             if (!dup) queue.add(new QueueSlot(name, key, count, r));
         }
         if (mineInfo[0] != null && syncMine(jobs, mineSecs, mineInfo[1], now)) changed = true;
+        if (exploreSeen) {
+            kr.ddingmate.expert.Exploration.commit(now);
+            if (syncExplore(jobs, exploreRuns, now)) changed = true;
+        } else {
+            kr.ddingmate.expert.Exploration.discard();
+        }
         for (Map.Entry<String, Long> e : recipeSeen.entrySet()) {
             if (recipeConflict.contains(e.getKey()) || Objects.equals(store.secondsPerJob.get(e.getKey()), e.getValue())) continue;
             store.secondsPerJob.put(e.getKey(), e.getValue());
@@ -873,6 +896,57 @@ public final class CraftTimers {
         lastMineAt = 0;
         syncMine(jobs, secs, "노말", now);
         return (int) jobs.stream().filter(j -> j.separate && j.name.equals(MINE)).count();
+    }
+
+    // ---------------------------------------------------------------- 해양 탐사
+
+    /** 해양 탐사 타이머 이름 끝: "C급 탐사선" */
+    public static final String EXPLORE = "급 탐사선";
+    private static List<String> lastExplore = List.of();
+    private static long lastExploreAt;
+
+    /**
+     * 해양 탐사 창에 보이는 그대로 출항 중인 탐사선 줄을 다시 만든다(같은 등급·같은 시각은 한 번만 — 탐사 버튼과 모래시계 칸이 같은 글).
+     * 복귀 시간이 24~60시간 무작위라(위키) 창의 "남은 시간"만 믿는다. 창 글은 열어 둔 동안 그대로라, 같은 글이면 다시 맞추지 않는다
+     */
+    static boolean syncExplore(List<Job> jobs, List<String[]> runs, long now) {
+        List<String[]> sorted = new ArrayList<>(runs);
+        sorted.sort((a, b) -> a[0].equals(b[0]) ? Long.compare(Long.parseLong(a[1]), Long.parseLong(b[1])) : a[0].compareTo(b[0]));
+        List<String[]> keep = new ArrayList<>();
+        List<String> sig = new ArrayList<>();
+        String[] prev = null;
+        for (String[] r : sorted) {
+            if (prev != null && prev[0].equals(r[0]) && Math.abs(Long.parseLong(prev[1]) - Long.parseLong(r[1])) <= 2) continue;
+            keep.add(r);
+            sig.add(r[0] + ":" + r[1]);
+            prev = r;
+        }
+        boolean same = sig.equals(lastExplore) && now - lastExploreAt < 2000;
+        lastExploreAt = now;
+        if (same) return false;
+        lastExplore = List.copyOf(sig);
+        jobs.removeIf(j -> j.separate && j.name.endsWith(EXPLORE));
+        for (String[] r : keep) {
+            long s = Long.parseLong(r[1]);
+            Job job = new Job();
+            job.name = r[0] + EXPLORE;
+            job.separate = true;
+            job.startedAt = now;
+            job.endsAt = now + s * 1000;
+            job.synced = true;
+            job.notified = s == 0;
+            jobs.add(job);
+        }
+        return true;
+    }
+
+    /** 시험용: 탐사선 줄 수 */
+    public static int debugSyncExplore(List<String[]> runs, long now) {
+        List<Job> jobs = jobsForWrite();
+        if (jobs == null) return -1;
+        lastExploreAt = 0;
+        syncExplore(jobs, runs, now);
+        return (int) jobs.stream().filter(j -> j.separate && j.name.endsWith(EXPLORE)).count();
     }
 
     static boolean isMine(List<Text> lines) {
@@ -1233,6 +1307,7 @@ public final class CraftTimers {
         if (name == null || name.isEmpty()) return "";
         if (name.endsWith(VOYAGE) || name.equals(VOYAGE_RESET_NAME)) return "해양";
         if (name.equals(MINE)) return "채광";
+        if (name.endsWith(EXPLORE)) return "해양";
         if (name.equals(PERFUME)) return "꽃";
         return facilityCategory(kr.ddingmate.counter.RecipeBook.facilityOf(name));
     }

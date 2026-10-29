@@ -258,6 +258,14 @@ public final class ScheduleHud {
             out.add(new Entry(tag(cfg, "채광", "광석 골렘 쿨타임"), kr.ddingmate.expert.OreGolem.remainingText(nowMs0),
                     kr.ddingmate.expert.OreGolem.remaining(nowMs0) / 60000, Theme.BLUE));
         }
+        // 해양 탐사: 출항 준비 중인 탐사선(남은 납품 칸). 출항 중인 탐사선은 아래 제작 줄에 남은 시간으로 보인다
+        if (cfg.expert.exploration) {
+            for (kr.ddingmate.expert.Exploration.Prep p : kr.ddingmate.expert.Exploration.preps()) {
+                int left = p.slotsLeft();
+                out.add(new Entry(tag(cfg, "해양", p.grade() + "급 탐사선 준비"), left > 0 ? "재료 " + left + "칸 남음" : "출항할 수 있어요",
+                        Long.MAX_VALUE - 3, left > 0 ? Theme.TEXT_SOFT : Theme.GREEN));
+            }
+        }
         // 반려어: 밥 줄 때까지
         kr.ddingmate.expert.PetFish.Fish fish = cfg.expert.petFish ? kr.ddingmate.expert.PetFish.current() : null;
         if (fish != null) {

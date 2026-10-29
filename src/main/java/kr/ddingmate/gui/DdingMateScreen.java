@@ -1284,7 +1284,22 @@ public class DdingMateScreen extends Screen {
         Widgets.Cycle<Integer> feed = new Widgets.Cycle<>(half(), "밥 주기", List.of(0, 10, 20, 30, 40, 60, 90, 120), ex.petFishFeedMin,
                 n -> n == 0 ? "자동" : n >= 60 ? (n / 60) + "시간" + (n % 60 > 0 ? " " + (n % 60) + "분" : "") : n + "분", v -> ex.petFishFeedMin = v);
         feed.setTooltip(Tooltip.of(Text.literal("자동: 위키 규칙으로 허기·기분·활력 평균이 80% 아래로 내려갈 때 알려 줘요.\n시간을 고르면 어항 창을 마지막으로 연 때부터 그만큼 뒤에 알려 줘요. 폐사 위험 알림은 그대로예요")));
-        list.pair(feed, null);
+        list.pair(feed, tip(toggle("해양 탐사 준비", ex.exploration, v -> ex.exploration = v),
+                "포스의 해양 탐사 창을 열면 출항 준비 중인 탐사선의 남은 재료 칸 수를 일정 HUD 에 보여 줘요. 출항한 탐사선의 남은 시간은 늘 보여요"));
+        if (!kr.ddingmate.expert.Exploration.preps().isEmpty()) {
+            java.util.Map<String, Integer> have = kr.ddingmate.counter.MaterialCounter.availableCounts(net.minecraft.client.MinecraftClient.getInstance());
+            for (kr.ddingmate.expert.Exploration.Prep p : kr.ddingmate.expert.Exploration.preps()) {
+                StringBuilder sb = new StringBuilder(p.grade() + "급 탐사선 남은 재료: ");
+                boolean any = false;
+                for (kr.ddingmate.expert.Exploration.Need n : p.needs()) {
+                    if (n.left() <= 0) continue;
+                    if (any) sb.append(" · ");
+                    sb.append(n.item()).append(' ').append(n.left()).append("개(보유 ").append(kr.ddingmate.counter.MaterialCounter.have(have, n.item())).append(')');
+                    any = true;
+                }
+                list.note(any ? sb.toString() : p.grade() + "급 탐사선: 재료를 다 채웠어요. 출항할 수 있어요");
+            }
+        }
         long now = System.currentTimeMillis();
         kr.ddingmate.expert.PetFish.Fish f = kr.ddingmate.expert.PetFish.current();
         if (f != null) {

@@ -200,6 +200,8 @@ public final class DdingMateConfig {
         public boolean petFish = true;
         /** 반려어 밥 주기(분). 0 = 자동(위키 규칙으로 스탯 평균이 80% 아래로 내려갈 때). 그 밖엔 어항을 마지막으로 연 때부터 이만큼 뒤 */
         public int petFishFeedMin = 0;
+        /** 해양 탐사: 출항 준비 중인 탐사선의 남은 재료를 일정 HUD 에(출항 중인 탐사선 남은 시간은 제작 줄로 늘 보임) */
+        public boolean exploration = true;
         /** 오션오더 타이머: 도착하면 5분 남은 시간과 오늘 받은 횟수(하루 한도: oceanLimit) */
         public boolean oceanOrder = true;
         /** 광석 골렘 출현 쿨타임(5분, 프레스티지 1분)을 일정 HUD 에 */
