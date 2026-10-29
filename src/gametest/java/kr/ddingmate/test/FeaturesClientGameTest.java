@@ -1469,10 +1469,20 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
     private static GenericContainerScreen storageScreen(MinecraftClient c) {
         SimpleInventory inv = new SimpleInventory(54);
         ItemStack copper = new ItemStack(Items.COPPER_BLOCK);
-        copper.set(DataComponentTypes.LORE, new LoreComponent(List.of(
-                Text.literal("우클릭: 꺼내기"), Text.literal("보관 중: 1,234개"))));
+        // 실제 창(2026-10 원본 기록): "- 재고: 1,081 / 5,000개", "- 세트: 9세트 61개", 이름 빈 종이 칸 39개, 잠긴 칸 단추 13개
+        copper.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("  아이템을 저장하는 저장소입니다."),
+                Text.literal("   - 재고: 1,234 / 5,000개"), Text.literal("   - 세트: 19세트 18개"), Text.literal("우클릭 시 1개를 꺼냅니다."))));
         inv.setStack(0, copper);
-        inv.setStack(1, new ItemStack(Items.GRAY_STAINED_GLASS_PANE));
+        for (int i = 1; i <= 39; i++) {
+            ItemStack blank = new ItemStack(Items.PAPER);
+            blank.set(DataComponentTypes.CUSTOM_NAME, Text.literal(""));
+            inv.setStack(i, blank);
+        }
+        for (int i = 0; i < 13; i++) {
+            ItemStack lock = new ItemStack(Items.PAPER);
+            lock.set(DataComponentTypes.CUSTOM_NAME, Text.literal("[ 저장소 슬롯 " + (i + 3) + "번 열기 ]"));
+            inv.setStack(40 + i, lock);
+        }
         GenericContainerScreenHandler h = GenericContainerScreenHandler.createGeneric9x6(78, c.player.getInventory(), inv);
         return new GenericContainerScreen(h, c.player.getInventory(), Text.literal("아이템 저장소"));
     }
@@ -1488,7 +1498,8 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
 
     private static ItemStack reward(int hour, boolean claimed) {
         ItemStack s = new ItemStack(Items.PAPER);
-        s.set(DataComponentTypes.CUSTOM_NAME, Text.literal("[ " + hour + "시간 접속 보상 ]"));
+        // 실제 창: 받은 칸은 "[ 1시간 접속 보상 ]", 안 받은 칸은 "[ 2시간 접속 보상 받기 ]"
+        s.set(DataComponentTypes.CUSTOM_NAME, Text.literal("[ " + hour + "시간 접속 보상 " + (claimed ? "" : "받기 ") + "]"));
         List<Text> lore = new java.util.ArrayList<>(List.of(
                 Text.literal(""),
                 Text.literal("  현재 접속 시간을 확인할 수 있습니다."),

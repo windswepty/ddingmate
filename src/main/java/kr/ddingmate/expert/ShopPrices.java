@@ -396,7 +396,8 @@ public final class ShopPrices {
             long low = known + (fromShop || w.fixed() ? (long) p[1] * rest : Math.round(w.min() * groupRatio(w)) * rest);
             long high = known + (long) p[1] * rest;
             int each = e != null && rest == 0 ? (int) (e[1] / Math.max(1, e[0])) : p[1];
-            out.add(new Owned(w, n, p[0], each, fromShop, low, high, e != null));
+            // exact: 모두 아이템에 적힌(또는 보석함에서 본) 가격. 일부라도 표값×배율로 셈한 귀중품은 어림값(실제보다 22~37% 낮았음)
+            out.add(new Owned(w, n, p[0], each, fromShop, low, high, e != null && rest == 0));
         }
         out.sort((a, b) -> Long.compare(b.high(), a.high()));
         return out;

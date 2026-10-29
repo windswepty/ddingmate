@@ -238,6 +238,13 @@ public final class BagTracker {
         // 1) 서버 창 제목의 가방 글리프로 판단 (가장 확실)
         TitleSignal sig = readTitle(screen.getTitle());
         List<String> slots = slotsOf(screen);
+        // 아이템 저장소는 이름 빈 칸 39개와 "[ 저장소 슬롯 N번 열기 ]" 단추 13개가 있어 장식 창 판정보다 먼저 본다
+        // (2026-10-22~25 원본 기록 80건 모두 장식 창으로 걸려 저장소 수량을 한 번도 못 읽었다)
+        if (screen.getTitle().getString().contains("저장소")) {
+            openIsStorage = true;
+            pendingBag = 0;
+            return;
+        }
         if (decorated(slots)) {
             // 이름 없는 장식 칸이 많은 창(메뉴·구매 안내 등)은 가방이 아니다(2026-10-10 실제로 이런 창이 3번 가방으로 잡혔음)
             pendingBag = 0;
@@ -258,11 +265,6 @@ public final class BagTracker {
         }
         // 2) 글리프가 없으면(리소스팩을 끈 경우 등) 단축어·기억한 제목·칸 비교로 판단
         String title = screen.getTitle().getString();
-        if (title.contains("저장소")) {
-            openIsStorage = true;
-            pendingBag = 0;
-            return;
-        }
         if (pending) {
             // 이미 가방 제목을 알고 있는데 다른 제목의 창이 열렸다면 가방이 아닌 창(구매 안내 등)으로 본다.
             if (acc.titles.isEmpty() || acc.titles.contains(title)) {
@@ -320,13 +322,8 @@ public final class BagTracker {
             bag.counts.merge(key, stored >= 0 ? stored : s.getCount(), Integer::sum);
             IconCache.remember(s);
         }
-        // 저장소가 여러 쪽(분류)이면 연 쪽마다 기록을 더한다(같은 아이템은 새 값으로). 한 쪽만 열어도 다른 쪽 기록은 남는다
-        if (acc.storage != null && acc.storage.counts != null) {
-            Map<String, Integer> merged = new HashMap<>(acc.storage.counts);
-            merged.remove("n:");
-            merged.putAll(bag.counts);
-            bag.counts = merged;
-        }
+        // 실제 저장소 창은 한 쪽에 모든 칸이 보인다(2026-10 원본 기록 80건): 연 창 내용으로 통째로 바꾼다.
+        // 예전처럼 더하면 등록을 해제한 아이템이 저장소 수량에 계속 남았다
         acc.storage = bag;
         dirty = true;
     }

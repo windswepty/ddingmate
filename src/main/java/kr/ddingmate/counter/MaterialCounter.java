@@ -59,6 +59,9 @@ public final class MaterialCounter {
     /** 핀별 "다 모였음" 상태. null 이면 아직 한 번도 계산 안 함(접속 직후 알림이 울리지 않게) */
     private static final Boolean[] wasDone = new Boolean[DdingMateConfig.PIN_COUNT];
     private static final String[] lastKey = new String[DdingMateConfig.PIN_COUNT];
+    /** 채널 이동·재접속으로 플레이어가 바뀐 직후에는 인벤토리가 잠깐 비어 있다: 이때까지는 기준만 다시 잡고 알리지 않는다 */
+    private static Object lastPlayer;
+    private static long quietUntil;
 
     private MaterialCounter() {}
 
@@ -72,6 +75,14 @@ public final class MaterialCounter {
             views = List.of();
             return;
         }
+        long now = System.currentTimeMillis();
+        if (client.player != lastPlayer) {
+            // 2026-10-18 로그: 채널 인식과 같은 초에 '재료 준비 완료'가 다시 울렸다(빈 인벤토리 → 동기화로 다 모임)
+            lastPlayer = client.player;
+            java.util.Arrays.fill(wasDone, null);
+            quietUntil = now + 5_000;
+        }
+        boolean quiet = now < quietUntil;
         Map<String, Integer> inv = inventoryCounts(client);
         Map<String, Integer> bags = cfg.includeBags ? BagTracker.totals() : Map.of();
         Map<String, Integer> storage = cfg.includeStorage ? BagTracker.storageTotals() : Map.of();
@@ -92,7 +103,7 @@ public final class MaterialCounter {
                 ItemStack icon = IconCache.forRecipe(r); // 만드는 아이템 모양
                 Notifier.materialsReady(title(pin, r), icon);
             }
-            wasDone[i] = done;
+            wasDone[i] = quiet ? null : done;
         }
         views = out;
     }

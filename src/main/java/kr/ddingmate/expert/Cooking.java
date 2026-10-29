@@ -92,6 +92,7 @@ public final class Cooking {
         Map<String, String> names = new LinkedHashMap<>();
         for (RecipeBook.Recipe r : dishes()) names.put(ItemKeys.normalize(r.name), r.name);
         boolean changed = false;
+        Map<String, Integer> read = new LinkedHashMap<>();
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
             ItemStack s = slot.getStack();
@@ -100,6 +101,13 @@ public final class Cooking {
             int price = priceOf(s);
             if (price <= 0) continue;
             found++;
+            read.put(dish, price);
+        }
+        // 밀키 상점은 한 쪽에 요리 15개: 요리가 한두 개뿐인 창(무역·유저상점·상자)의 값은 상점 가격으로 쓰지 않는다
+        if (found < 3) read.clear();
+        for (Map.Entry<String, Integer> e : read.entrySet()) {
+            String dish = e.getKey();
+            int price = e.getValue();
             if (LOGGED.size() < 40 && LOGGED.add(dish + price)) DdingMate.LOG.info("요리 가격 읽음: {} {}G", dish, price);
             Seen old = store().prices.get(dish);
             if (old == null || old.price != price || !fresh(old.at)) {
@@ -121,6 +129,9 @@ public final class Cooking {
         int any = -1, hinted = -1;
         for (Text t : lore.lines()) {
             String l = ItemKeys.stripGlyphs(t.getString());
+            // 무역 칸("- 판매 수량 : 24개", "판매 가격 : 89,082골드 (101%가격)")·유저상점 칸("- 가격 : 270,000골드")은 상점 한 개 값이 아니다
+            if (l.contains("판매 수량") || l.contains("무역 물품") || l.matches(".*\\d+%\\s*가격.*")
+                    || l.contains("판매자") || l.contains("평균가") || l.contains("유저상점")) return -1;
             Matcher m = PRICE.matcher(l);
             if (!m.find()) continue;
             int v = Integer.parseInt(m.group(1).replace(",", ""));

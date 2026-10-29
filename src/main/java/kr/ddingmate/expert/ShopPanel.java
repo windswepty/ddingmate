@@ -67,7 +67,7 @@ public final class ShopPanel {
             Theme.Drawn d = Theme.itemName(ctx, tr, "", o.ware().name() + " ×" + o.count(), x + 19, cy + 1, w - 6 - 13 - rw - 12 - bw, p.ink());
             if (d.cut() && mouseX >= x + 3 && mouseX < x + w - 3 && mouseY >= cy - 1 && mouseY < cy - 1 + ROW) tip = o.ware().name() + " ×" + o.count();
             if (!bonus.isEmpty()) Theme.text(ctx, tr, bonus, d.end(), cy + 1, p.good());
-            Theme.boldText(ctx, tr, right, x + w - 7 - rw, cy + 1, o.fromShop() || o.ware().fixed() ? p.accent() : p.soft(), false);
+            Theme.boldText(ctx, tr, right, x + w - 7 - rw, cy + 1, o.fromShop() || o.exact() || (o.ware().fixed() && !"귀중품".equals(ShopPrices.group(o.ware()))) ? p.accent() : p.soft(), false);
             cy += ROW;
         }
         if (owned.size() > rows) {

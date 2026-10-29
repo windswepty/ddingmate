@@ -31,7 +31,8 @@ public final class ServerHud {
         }
     }
 
-    private static final Pattern CHANNEL = Pattern.compile("\\((마을|노크틸라|야생|아일랜드|스폰)\\s*(\\d{1,3})\\)");
+    /** 사냥 지역은 서버 리붓 공지에 "사냥 2, 6, 10 … 채널"로 나온다(같은 공지의 마을·야생·스폰은 채널 표시와 같은 낱말). 둘 다 받는다 */
+    private static final Pattern CHANNEL = Pattern.compile("\\((마을|노크틸라|사냥|야생|아일랜드|스폰)\\s*(\\d{1,3})\\)");
 
     private static Area area;
     private static int channel;
@@ -121,6 +122,7 @@ public final class ServerHud {
     }
 
     private static Area areaOf(String label) {
+        if ("사냥".equals(label)) return Area.HUNT;
         for (Area a : Area.values()) if (a.label.equals(label)) return a;
         return null;
     }

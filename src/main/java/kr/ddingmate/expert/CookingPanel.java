@@ -110,7 +110,9 @@ public final class CookingPanel {
         for (int i = 0; i < Math.min(TOP, ranks.size()); i++) {
             Cooking.Rank r = ranks.get(i);
             String v = byTime ? String.format("%,.0fG", r.perMinute()) : String.format("%.1fG", r.perItem());
-            out.add(new Item(icon(r), String.valueOf(i + 1), r.recipe().name, v, p.ink(), i == 0 ? p.good() : p.accent(), false, false));
+            // 다른 쪽 탭(일반·황금)이나 시세 변동 전에 읽은 가격은 흐리게: 지금 가격이 아닐 수 있다
+            out.add(new Item(icon(r), String.valueOf(i + 1), r.recipe().name, v, p.ink(),
+                    !r.fresh() ? p.soft() : i == 0 ? p.good() : p.accent(), false, false));
         }
         out.add(Item.line());
         out.add(Item.label("비싼 요리", p.ink()));
@@ -118,7 +120,10 @@ public final class CookingPanel {
         for (int i = 0; i < Math.min(TOP, price.size()); i++) {
             Cooking.Rank r = price.get(i);
             out.add(new Item(icon(r), String.valueOf(i + 1), r.recipe().name, String.format("%,dG", r.price()), p.ink(),
-                    i == 0 ? p.good() : p.accent(), false, false));
+                    !r.fresh() ? p.soft() : i == 0 ? p.good() : p.accent(), false, false));
+        }
+        if (price.stream().limit(TOP).anyMatch(r -> !r.fresh()) || ranks.stream().limit(TOP).anyMatch(r -> !r.fresh())) {
+            out.add(new Item(null, null, "흐린 값은 시세 변동 전에 본 가격이에요", "", p.soft(), 0, false, false));
         }
         // 가진 요리를 지금 팔면
         Map<String, Integer> mine = Cooking.inventoryDishes(client);

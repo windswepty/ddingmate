@@ -69,8 +69,8 @@ public final class PlaytimeTracker {
         List<Integer> claimed = new ArrayList<>();
     }
 
-    /** /접속시간 창의 보상 아이템 이름: "[ 1시간 접속 보상 ]" */
-    private static final Pattern REWARD_NAME = Pattern.compile("\\[\\s*(\\d+)\\s*시간\\s*접속\\s*보상\\s*]");
+    /** /접속시간 창의 보상 아이템 이름: 받은 칸 "[ 1시간 접속 보상 ]", 안 받은 칸 "[ 1시간 접속 보상 받기 ]"(2026-10-23~25 원본 기록) */
+    private static final Pattern REWARD_NAME = Pattern.compile("\\[\\s*(\\d+)\\s*시간\\s*접속\\s*보상(?:\\s*받기)?\\s*]");
     /** 보상 아이템 설명: "- 오늘 접속 시간 : 11시간 49분 33초" (시간·분은 없을 수 있음) */
     private static final Pattern TODAY = Pattern.compile(
             "오늘\\s*접속\\s*시간\\s*[:：]?\\s*(?:(\\d+)\\s*시간)?\\s*(?:(\\d+)\\s*분)?\\s*(?:(\\d+)\\s*초)?");
@@ -95,8 +95,10 @@ public final class PlaytimeTracker {
     /** 매 틱. 월드에 들어가 있는 동안만 시간을 더한다. */
     public static void tick(MinecraftClient client) {
         long now = System.currentTimeMillis();
-        // 띵타이쿤 대기 서버에 있는 동안은 서버도 접속 시간을 세지 않는다
-        if (client.world == null || client.player == null || !kr.ddingmate.game.ServerHud.inGame()) {
+        // 띵타이쿤 대기 서버에 있는 동안은 서버도 접속 시간을 세지 않는다. 잠수 채널은 센다(서버 [답변] 2026-10-16·10-24,
+        // 10-23 실제: 잠수 8시간 20분이 서버 접속 시간에 들어감). 잠수 채널엔 채널 표시가 없어서 inGame() 이 거짓이다
+        boolean counting = kr.ddingmate.game.ServerHud.inGame() || kr.ddingmate.game.ServerHud.afk();
+        if (client.world == null || client.player == null || !counting) {
             if (lastMs != 0) save();
             lastMs = 0;
             return;
