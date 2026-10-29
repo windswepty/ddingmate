@@ -42,6 +42,7 @@ public final class DevRecord {
     private static final Map<UUID, String> BARS = new HashMap<>();
     private static String lastSidebar = "";
     private static String lastScreenSig = "";
+    private static String lastWorn = "";
     private static Object lastScreen;
 
     public static boolean enabled() {
@@ -123,6 +124,7 @@ public final class DevRecord {
                 write(o);
             }
         }
+        worn(client, r);
         // 상자형 창: 처음 열 때와 칸이 바뀔 때
         if (client.currentScreen instanceof HandledScreen<?> screen) {
             JsonArray slots = new JsonArray();
@@ -149,6 +151,25 @@ public final class DevRecord {
         } else {
             lastScreen = null;
             lastScreenSig = "";
+        }
+    }
+
+    /**
+     * 입은 장비·왼손을 원본 그대로 latest.log 에 남긴다(바꿔 입었을 때만, 내구도만 바뀐 건 빼고). 기록 폴더는 200MB 가 차서
+     * 따로 적는다. 프레스티지 머리 치장을 쓰면 투구가 가죽 말 갑옷("렛서판다 모자")으로 와서, 진짜 내구도가 어디 있는지 보려고
+     */
+    private static void worn(MinecraftClient client, RegistryWrapper.WrapperLookup r) {
+        PlayerInventory inv = client.player.getInventory();
+        StringBuilder sig = new StringBuilder();
+        for (int i = 36; i <= PlayerInventory.OFF_HAND_SLOT; i++) {
+            ItemStack s = inv.getStack(i);
+            sig.append(i).append(':').append(s.getItem()).append(':').append(s.getName().getString()).append(';');
+        }
+        if (sig.toString().equals(lastWorn)) return;
+        lastWorn = sig.toString();
+        for (int i = 36; i <= PlayerInventory.OFF_HAND_SLOT; i++) {
+            ItemStack s = inv.getStack(i);
+            if (!s.isEmpty()) DdingMate.LOG.info("[원본 기록] 입은 칸 {}: {}", i, item(s, r));
         }
     }
 
