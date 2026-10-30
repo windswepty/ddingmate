@@ -156,12 +156,17 @@ public class DdingMateScreen extends Screen {
         }
         if (tab == Tab.LOG) AlertLog.markRead();
 
-        // 문의 탭: 위에 안내·분류·진단·디스코드 네 줄을 목록으로, 그 아래는 여러 줄 입력 칸과 [문의 보내기].
-        // 창이 낮으면 입력 칸(3줄 이상)을 남기고 목록을 줄인다(그때는 목록을 굴려서 봄)
-        int listH = tab == Tab.INQUIRY ? Math.max(2 * ITEM_H + 8, Math.min(4 * ITEM_H + 8, ch - 4 - (4 + 48 + 4 + 20 + 4))) : ch - 4;
+        // 문의 탭: 위에 안내·분류·[진단 정보 복사|디스코드 DM] 줄을 목록으로(굴리지 않게 줄 수만큼 높이), 그 아래는 여러 줄 입력 칸과 [문의 보내기].
+        // 창이 낮으면 입력 칸(3줄 이상)을 남기고 목록을 줄인다(그때만 목록을 굴려서 봄)
+        int listH = ch - 4;
         list = addDrawableChild(new ConfigList(client, cw - 4 - side, listH, cy + 2, ITEM_H));
         list.setX(cx + 2);
         buildRows();
+        if (tab == Tab.INQUIRY) {
+            int need = list.contentHeight();
+            listH = Math.max(2 * ITEM_H + 8, Math.min(need, ch - 4 - (4 + 48 + 4 + 20 + 4)));
+            list.setHeight(listH);
+        }
         list.setScrollY(savedScroll);
         if (tab == Tab.INQUIRY) addInquiryWidgets(cy + 2 + listH + 2);
         // 오른쪽 목차: 누르면 그 분류로 바로 스크롤
@@ -408,8 +413,6 @@ public class DdingMateScreen extends Screen {
     /** 아래 가운데 안내 자리에 보여 줄 보내기 결과(비어 있으면 평소 안내) */
     private static String inquiryStatus = "";
     private static boolean inquiryOk;
-    /** 문의에 진단 요약(설정·제작 줄·최근 경고)을 붙여 보낼지 */
-    private static boolean inquiryDiag = true;
     /** 한 줄 입력칸 바탕의 여러 줄 칸: 여러 줄 칸(EditBoxWidget)은 caramelChat 에서 한글이 안 써진다(2026-10-17) */
     private kr.ddingmate.ui.TextArea inquiryBox;
     private Widgets.Button inquirySend;
@@ -429,23 +432,20 @@ public class DdingMateScreen extends Screen {
             });
         }
         list.row(buttons);
-        Widgets.Toggle diag = toggle("진단 정보 같이 보내기", inquiryDiag, v -> inquiryDiag = v);
-        diag.setTooltip(Tooltip.of(Text.literal("문의 내용 아래에 띵메이트 진단 요약을 붙여요: 스킬 레벨·HUD 줄 수·제작 줄·추적 장비 수·지역·최근 띵메이트 경고·"
-                + "다른 모드 수. 파일 경로의 사용자 폴더 이름과 다른 사람 채팅은 넣지 않아요. 문의 내용이 길면 남는 자리만큼만 붙어요")));
         Widgets.Button copy = new Widgets.Button(half(), 20, Text.literal("진단 정보 복사"), false, b -> {
             if (client == null) return;
             client.keyboard.setClipboard(kr.ddingmate.inquiry.Diagnostics.full(client));
             inquiryStatus = "진단 정보를 복사했어요. 디스코드 등에 붙여 넣을 수 있어요";
             inquiryOk = true;
         });
-        copy.setTooltip(Tooltip.of(Text.literal("전체 진단 정보(다른 모드 목록·제작 줄·최근 경고 10개)를 클립보드에 복사해요")));
-        list.pair(diag, copy);
+        copy.setTooltip(Tooltip.of(Text.literal("문의에는 진단 요약(스킬 레벨·HUD 줄 수·제작 줄·추적 장비 수·지역·최근 띵메이트 경고·다른 모드 수)이 "
+                + "자동으로 붙어요. 이 단추는 전체 진단 정보(다른 모드 목록·제작 줄·최근 경고 10개)를 클립보드에 복사해요")));
         // 영상이나 대화가 필요한 문의: 개발자 디스코드 프로필을 열어 DM 으로(열기 전에 마인크래프트 링크 확인 창)
-        Widgets.Button dm = new Widgets.Button(rowWidth(), 20, Text.literal("개발자에게 디스코드 DM 보내기"), false,
+        Widgets.Button dm = new Widgets.Button(half(), 20, Text.literal("개발자에게 디스코드 DM 보내기"), false,
                 b -> net.minecraft.client.gui.screen.ConfirmLinkScreen.open(this, kr.ddingmate.inquiry.Inquiry.DEV_DISCORD));
         dm.setTooltip(Tooltip.of(Text.literal("디스코드에서 개발자 프로필을 열어요. 거기서 메시지를 보내면 돼요(영상 같은 큰 파일은 DM 으로).\n"
                 + "같은 디스코드 서버에 있거나 친구여야 DM 이 열려요")));
-        list.row(dm);
+        list.pair(copy, dm);
     }
 
     /** 첨부할 이미지(창을 닫았다 열어도 남게) */
@@ -533,7 +533,7 @@ public class DdingMateScreen extends Screen {
         if (client == null || client.player == null) return;
         String text = inquiryBox == null ? inquiryDraft : inquiryBox.getText();
         // 진단 요약은 내용이 보낼 만할 때만 붙인다(빈 문의를 진단 글로 채워 보내지 않게)
-        if (inquiryDiag && kr.ddingmate.inquiry.Inquiry.validate(text) == null) text = kr.ddingmate.inquiry.Diagnostics.attach(text, client);
+        if (kr.ddingmate.inquiry.Inquiry.validate(text) == null) text = kr.ddingmate.inquiry.Diagnostics.attach(text, client);
         inquiryStatus = "보내는 중…";
         inquiryOk = true;
         if (inquirySend != null) inquirySend.active = false;
@@ -2174,6 +2174,11 @@ public class DdingMateScreen extends Screen {
     private class ConfigList extends ThemedList<Row> {
         ConfigList(MinecraftClient client, int width, int height, int y, int itemHeight) {
             super(client, width, height, y, itemHeight);
+        }
+
+        /** 굴리지 않고 모든 줄을 보이는 데 필요한 높이 */
+        int contentHeight() {
+            return getContentsHeightWithPadding();
         }
 
         @Override
