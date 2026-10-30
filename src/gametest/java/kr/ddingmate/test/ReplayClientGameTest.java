@@ -46,6 +46,7 @@ public class ReplayClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext ctx) {
+        if (!Shots.full()) return; // 전체 시험(-Pfull)에서만: 오래 걸리거나 화면 비교용
         Path data = dataDir();
         if (data == null) return;
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
@@ -65,22 +66,39 @@ public class ReplayClientGameTest implements FabricClientGameTest {
             // 2) 예전 창 기록(글만)
             List<Window> windows = readScreens(data.resolve("ddingmate-screens.txt"));
             report.append("\n== 창 기록 ").append(windows.size()).append("개 다시 열기\n");
-            for (Window w : windows) {
-                ctx.runOnClient(c -> open(c, Text.literal(w.title), w.stacks));
-                ctx.waitTicks(12);
-                ctx.runOnClient(c -> report.append(describe(c, w.title)).append('\n'));
-            }
-            // 3) 원본 기록(DevRecord)
-            List<JsonObject> records = readRecords(data.resolve("record"));
-            report.append("\n== 원본 기록 ").append(records.size()).append("줄\n");
-            for (JsonObject r : records) {
-                String kind = r.get("t").getAsString();
-                ctx.runOnClient(c -> replayRecord(c, r, kind, report));
-                if (kind.equals("screen")) {
-                    ctx.waitTicks(12);
-                    ctx.runOnClient(c -> report.append(describe(c, r.get("plainTitle").getAsString())).append('\n'));
+            // 창마다 게임 틱 12번을 기다리지 않고 띵메이트 틱 처리를 그 자리에서 12번 돌린다(창 하나에 0.6초 → 몇 밀리초)
+            ctx.runOnClient(c -> {
+                for (Window w : windows) {
+                    open(c, Text.literal(w.title), w.stacks);
+                    settle(c);
+                    report.append(describe(c, w.title)).append('\n');
+                }
+            });
+            // 3) 원본 기록(DevRecord): 파일을 줄 단위로 읽어 500줄씩 한 번에(전부 메모리에 올리지 않음)
+            long r0 = System.currentTimeMillis();
+            int[] total = {0, 0};
+            Map<String, Integer> seenShape = new java.util.HashMap<>();
+            for (Path f : recordFiles(data.resolve("record"))) {
+                try (BufferedReader in = Files.newBufferedReader(f, StandardCharsets.UTF_8)) {
+                    List<JsonObject> batch = new ArrayList<>();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        if (line.isBlank() || skipSameShape(line, seenShape)) continue;
+                        batch.add(JsonParser.parseString(line).getAsJsonObject());
+                        if (batch.size() >= 500) {
+                            List<JsonObject> run = batch;
+                            ctx.runOnClient(c -> replayBatch(c, run, report, total));
+                            batch = new ArrayList<>();
+                        }
+                    }
+                    List<JsonObject> run = batch;
+                    ctx.runOnClient(c -> replayBatch(c, run, report, total));
+                } catch (java.io.IOException e) {
+                    throw new AssertionError("원본 기록을 못 읽음: " + f, e);
                 }
             }
+            report.append("== 원본 기록 ").append(total[0]).append("줄(창 ").append(total[1]).append("개) 재생 (")
+                    .append(System.currentTimeMillis() - r0).append("ms)\n");
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 // 재생한 서버 HUD(보스바)·제목·채팅을 비운다: 남겨 두면 다음 시험 월드에서도 띵타이쿤 HUD 가 떠 있었다
@@ -101,11 +119,50 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                     throw new AssertionError(e);
                 }
                 DdingMate.LOG.info("실제 기록 재생 보고: {}", data.resolve("replay-report.txt"));
+                compareGolden(data, report.toString());
             });
             if (!FAILURES.isEmpty()) {
                 throw new AssertionError("실제 기록 재생 대조 실패 " + FAILURES.size() + "건(처음 10건):\n  "
                         + String.join("\n  ", FAILURES.subList(0, Math.min(10, FAILURES.size()))));
             }
+        }
+    }
+
+    /**
+     * 승인한 재생 결과(replay-golden.txt)와 이번 결과를 줄 단위로 비교해 달라진 줄만 replay-diff.txt 에 적는다.
+     * 알림·HUD·창 해석이 뜻하지 않게 바뀐 것을 바로 본다. 승인본이 없거나 -Dddingmate.approveReplay=true 면 이번 결과를 승인본으로
+     */
+    private static void compareGolden(Path data, String report) {
+        List<String> now = new ArrayList<>();
+        for (String l : report.split("\n")) {
+            if (l.startsWith("띵메이트 실제 기록 재생 보고")) continue; // 머리 줄의 시각
+            now.add(l.replaceAll("\\(\\d+ms\\)", "(…ms)"));
+        }
+        Path golden = data.resolve("replay-golden.txt");
+        try {
+            if (Boolean.getBoolean("ddingmate.approveReplay") || !Files.exists(golden)) {
+                Files.write(golden, now, StandardCharsets.UTF_8);
+                DdingMate.LOG.info("재생 결과 승인본을 저장했어요: {}", golden);
+                return;
+            }
+            Map<String, Integer> count = new java.util.HashMap<>();
+            for (String l : Files.readAllLines(golden, StandardCharsets.UTF_8)) count.merge(l, 1, Integer::sum);
+            List<String> added = new ArrayList<>();
+            for (String l : now) {
+                Integer n = count.get(l);
+                if (n == null || n == 0) added.add("+ " + l);
+                else count.put(l, n - 1);
+            }
+            List<String> removed = new ArrayList<>();
+            count.forEach((l, n) -> {
+                for (int i = 0; i < n; i++) removed.add("- " + l);
+            });
+            List<String> diff = new ArrayList<>(added);
+            diff.addAll(removed);
+            Files.write(data.resolve("replay-diff.txt"), diff, StandardCharsets.UTF_8);
+            DdingMate.LOG.info("재생 결과가 승인본과 다른 줄: 새로 생김 {} · 없어짐 {} ({})", added.size(), removed.size(), data.resolve("replay-diff.txt"));
+        } catch (java.io.IOException e) {
+            throw new AssertionError(e);
         }
     }
 
@@ -478,26 +535,42 @@ public class ReplayClientGameTest implements FabricClientGameTest {
     /** 원본 기록에서 같은 모양(숫자만 다름) 줄을 몇 개까지 다시 보낼지 */
     private static final int SAME_SHAPE_MAX = 30;
 
-    private static List<JsonObject> readRecords(Path dir) {
-        List<JsonObject> out = new ArrayList<>();
-        Map<String, Integer> seen = new java.util.HashMap<>();
-        if (!Files.isDirectory(dir)) return out;
+    private static List<Path> recordFiles(Path dir) {
+        if (!Files.isDirectory(dir)) return List.of();
         try (Stream<Path> s = Files.list(dir)) {
-            for (Path f : s.filter(p -> p.toString().endsWith(".jsonl")).sorted().toList()) {
-                for (String line : Files.readAllLines(f, StandardCharsets.UTF_8)) {
-                    if (line.isBlank()) continue;
-                    // 같은 모양(숫자만 다름) 줄은 몇 개만: 잠수 채널 "299초 뒤 잠수 포인트…" 액션바가 하루 수만 줄이라
-                    // 줄마다 게임에 다시 보내면 20분 넘게 걸렸다(2026-10-24). 창(screen)은 모두 다시 연다
-                    String shape = line.replaceAll("\\d", "#").replaceAll("\"at\":#+", "");
-                    if (!line.contains("\"t\":\"screen\"") && !line.contains("\"t\":\"sidebar\"")
-                            && seen.merge(shape, 1, Integer::sum) > SAME_SHAPE_MAX) continue;
-                    out.add(JsonParser.parseString(line).getAsJsonObject());
-                }
-            }
+            return s.filter(p -> p.toString().endsWith(".jsonl")).sorted().toList();
         } catch (Exception e) {
-            throw new AssertionError("원본 기록을 못 읽음", e);
+            throw new AssertionError("원본 기록 폴더를 못 읽음", e);
         }
-        return out;
+    }
+
+    /**
+     * 같은 모양(숫자만 다름) 줄은 몇 개만: 잠수 채널 "299초 뒤 잠수 포인트…" 액션바가 하루 수만 줄이다.
+     * 창(screen)·사이드바는 모두 다시 연다
+     */
+    private static boolean skipSameShape(String line, Map<String, Integer> seen) {
+        if (line.contains("\"t\":\"screen\"") || line.contains("\"t\":\"sidebar\"") || line.contains("\"t\":\"inv\"")) return false;
+        String shape = line.replaceAll("\\d", "#").replaceAll("\"at\":#+", "");
+        return seen.merge(shape, 1, Integer::sum) > SAME_SHAPE_MAX;
+    }
+
+    /** 기록 여러 줄을 게임 스레드에서 한 번에: 창이면 띵메이트 틱 12번으로 읽게 하고 알아본 것을 보고서에 */
+    private static void replayBatch(MinecraftClient c, List<JsonObject> batch, StringBuilder report, int[] total) {
+        for (JsonObject r : batch) {
+            String kind = r.get("t").getAsString();
+            replayRecord(c, r, kind, report);
+            total[0]++;
+            if (kind.equals("screen")) {
+                total[1]++;
+                settle(c);
+                report.append(describe(c, r.get("plainTitle").getAsString())).append('\n');
+            }
+        }
+    }
+
+    /** 창을 연 뒤 게임 틱 12번 동안 일어날 띵메이트 처리(창 읽기 0.1초·0.5초 주기, 가방 판단 6틱)를 바로 돌린다 */
+    private static void settle(MinecraftClient c) {
+        for (int i = 0; i < 12; i++) DdingMate.debugTick(c);
     }
 
     private static void replayRecord(MinecraftClient c, JsonObject r, String kind, StringBuilder report) {
@@ -530,6 +603,17 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                     open(c, Text.Serialization.fromJsonTree(r.get("title"), regs), stacks);
                 }
                 case "sidebar" -> replaySidebar(c, r, regs);
+                case "inv" -> {
+                    // 내 인벤토리 바뀐 칸(2026-10-30 부터 기록): 실제 보유량으로 재료 HUD·시설 판이 계산되게
+                    for (var e : r.getAsJsonArray("slots")) {
+                        JsonObject s = e.getAsJsonObject();
+                        int slot = s.get("slot").getAsInt();
+                        JsonObject item = s.getAsJsonObject("item");
+                        ItemStack st = item.size() == 0 ? ItemStack.EMPTY : ItemStack.CODEC.parse(
+                                regs.getOps(com.mojang.serialization.JsonOps.INSTANCE), item).result().orElse(ItemStack.EMPTY);
+                        if (slot >= 0 && slot < c.player.getInventory().size()) c.player.getInventory().setStack(slot, st);
+                    }
+                }
                 default -> { /* 그 밖: 보고만 */ }
             }
         } catch (Throwable e) {

@@ -16,6 +16,7 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext ctx) {
+        if (!Shots.full()) return; // 전체 시험(-Pfull)에서만: 오래 걸리거나 화면 비교용
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
             sp.getClientWorld().waitForChunksRender();
             DdingMateConfig.FontStyle[] keep = new DdingMateConfig.FontStyle[1];
@@ -76,14 +77,14 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                     c.setScreen(null);
                 });
                 ctx.waitTicks(10);
-                ctx.takeScreenshot("font-hud-" + f.name().toLowerCase());
+                Shots.take(ctx, "font-hud-" + f.name().toLowerCase());
                 ctx.runOnClient(c -> {
                     DdingMateScreen s = new DdingMateScreen(null);
                     c.setScreen(s);
                     s.openTabNamed("재료");
                 });
                 ctx.waitTicks(10);
-                ctx.takeScreenshot("font-screen-" + f.name().toLowerCase());
+                Shots.take(ctx, "font-screen-" + f.name().toLowerCase());
             }
             // 게임 전체에 적용: 채팅·인벤토리(아이템 이름)까지 고른 글꼴로
             for (DdingMateConfig.FontStyle f : new DdingMateConfig.FontStyle[]{DdingMateConfig.FontStyle.REDIO, DdingMateConfig.FontStyle.BERRY}) {
@@ -96,7 +97,7 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
                     c.setScreen(new net.minecraft.client.gui.screen.ingame.InventoryScreen(c.player));
                 });
                 ctx.waitTicks(10);
-                ctx.takeScreenshot("font-everywhere-" + f.name().toLowerCase());
+                Shots.take(ctx, "font-everywhere-" + f.name().toLowerCase());
             }
             restore(ctx, keep[0], keepOpened);
         }
@@ -133,7 +134,7 @@ public class FontCompareClientGameTest implements FabricClientGameTest {
             });
         });
         ctx.waitTicks(10);
-        ctx.takeScreenshot("fontcal");
+        Shots.take(ctx, "fontcal");
         ctx.runOnClient(c -> {
             DdingMateConfig cfg = DdingMate.config();
             DdingMateConfig.FontStyle keepF = cfg.font;

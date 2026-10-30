@@ -91,13 +91,13 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 DdingMate.config().avoidServerHud = true;
             });
             ctx.waitTicks(2);
-            ctx.takeScreenshot("smoke-1-light-style");
+            Shots.take(ctx, "smoke-1-light-style");
             // 기본 테마 6가지: HUD 배치는 그대로
             for (kr.ddingmate.ui.HudTheme theme : kr.ddingmate.ui.HudTheme.values()) {
                 ctx.runOnClient(c -> kr.ddingmate.ui.HudSkins.applyTheme(DdingMate.config(), theme));
                 ctx.waitTicks(2);
                 ctx.runOnClient(c -> checkLayout(c, theme.name(), true, true));
-                ctx.takeScreenshot("smoke-theme-" + theme.name().toLowerCase());
+                Shots.take(ctx, "smoke-theme-" + theme.name().toLowerCase());
             }
             // NPC 세트 17벌: 그림 세 장(판·제목 줄·친구)이 GUI 아틀라스에 올라왔고, 판 · 친구가 있어도 HUD 배치는 그대로
             ctx.runOnClient(c -> {
@@ -129,7 +129,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                             && kr.ddingmate.hud.HudMascot.debugLastDrawn() == null)
                         throw new AssertionError("HUD 친구가 앉을 판을 못 찾음: " + skin.id());
                 });
-                ctx.takeScreenshot("smoke-set-" + skin.id());
+                Shots.take(ctx, "smoke-set-" + skin.id());
             }
             // 따로 고르기: 판 · 제목 줄 · 친구를 섞으면 직접 조합
             ctx.runOnClient(c -> {
@@ -141,7 +141,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 if (cfg.hudStyle != DdingMateConfig.HudStyle.LIGHT) throw new AssertionError("로니 판은 밝은 판");
             });
             ctx.waitTicks(2);
-            ctx.takeScreenshot("smoke-set-mixed");
+            Shots.take(ctx, "smoke-set-mixed");
             // 꾸미기 한눈에 보기 창: 탭마다 카드 수, 누르면 바로 바뀜(세트 → 세트가 맞음, 판 → 판만 바뀌어 직접 조합)
             ctx.runOnClient(c -> {
                 var look = new kr.ddingmate.gui.HudLookScreen(null);
@@ -159,7 +159,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             for (String tab : new String[]{"세트", "판 디자인", "제목 줄", "HUD 친구"}) {
                 ctx.runOnClient(c -> ((kr.ddingmate.gui.HudLookScreen) c.currentScreen).debugCards(tab));
                 ctx.waitTicks(2);
-                ctx.takeScreenshot("smoke-look-" + tab.replace(' ', '-'));
+                Shots.take(ctx, "smoke-look-" + tab.replace(' ', '-'));
             }
             // 글꼴 한눈에 보기 창: 글꼴마다 카드 하나, 누르면 바로 그 글꼴
             ctx.runOnClient(c -> {
@@ -173,7 +173,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 DdingMate.config().font = keepFont;
             });
             ctx.waitTicks(2);
-            ctx.takeScreenshot("smoke-font-look");
+            Shots.take(ctx, "smoke-font-look");
             ctx.runOnClient(c -> c.setScreen(null));
             // 판 자동 바꾸기(2026-10-23): 계절·행사 날짜, 게임 시각, 지역·장소, 켜진 스킬 → 그 판. 맞는 판이 없으면 고른 판, 글자 밝기도 따라감
             ctx.runOnClient(c -> {
@@ -218,7 +218,7 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.ui.HudAuto.update(c, java.time.LocalDate.now(), System.currentTimeMillis());
             });
             ctx.waitTicks(2);
-            ctx.takeScreenshot("smoke-auto-noctila");
+            Shots.take(ctx, "smoke-auto-noctila");
             ctx.runOnClient(c -> {
                 DdingMateConfig cfg = DdingMate.config();
                 cfg.hudAuto = "off";
@@ -312,12 +312,12 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
             });
             ctx.waitFor(c -> c.getOverlay() == null, 1200);
             ctx.waitTicks(10);
-            ctx.takeScreenshot("smoke-2-korean-hud");
+            Shots.take(ctx, "smoke-2-korean-hud");
             ctx.runOnClient(c -> c.setScreen(new DdingMateScreen(null)));
             ctx.waitTicks(5);
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTabNamed("장비"));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("smoke-3-korean-gear-tab");
+            Shots.take(ctx, "smoke-3-korean-gear-tab");
             ctx.runOnClient(c -> {
                 c.currentScreen.close();
                 c.options.language = "en_us";

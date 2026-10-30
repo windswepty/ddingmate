@@ -407,6 +407,8 @@ public class DdingMateScreen extends Screen {
     /** 아래 가운데 안내 자리에 보여 줄 보내기 결과(비어 있으면 평소 안내) */
     private static String inquiryStatus = "";
     private static boolean inquiryOk;
+    /** 문의에 진단 요약(설정·제작 줄·최근 경고)을 붙여 보낼지 */
+    private static boolean inquiryDiag = true;
     /** 한 줄 입력칸 바탕의 여러 줄 칸: 여러 줄 칸(EditBoxWidget)은 caramelChat 에서 한글이 안 써진다(2026-10-17) */
     private kr.ddingmate.ui.TextArea inquiryBox;
     private Widgets.Button inquirySend;
@@ -426,6 +428,17 @@ public class DdingMateScreen extends Screen {
             });
         }
         list.row(buttons);
+        Widgets.Toggle diag = toggle("진단 정보 같이 보내기", inquiryDiag, v -> inquiryDiag = v);
+        diag.setTooltip(Tooltip.of(Text.literal("문의 내용 아래에 띵메이트 진단 요약을 붙여요: 스킬 레벨·HUD 줄 수·제작 줄·추적 장비 수·지역·최근 띵메이트 경고·"
+                + "다른 모드 수. 파일 경로의 사용자 폴더 이름과 다른 사람 채팅은 넣지 않아요. 문의 내용이 길면 남는 자리만큼만 붙어요")));
+        Widgets.Button copy = new Widgets.Button(half(), 20, Text.literal("진단 정보 복사"), false, b -> {
+            if (client == null) return;
+            client.keyboard.setClipboard(kr.ddingmate.inquiry.Diagnostics.full(client));
+            inquiryStatus = "진단 정보를 복사했어요. 디스코드 등에 붙여 넣을 수 있어요";
+            inquiryOk = true;
+        });
+        copy.setTooltip(Tooltip.of(Text.literal("전체 진단 정보(다른 모드 목록·제작 줄·최근 경고 10개)를 클립보드에 복사해요")));
+        list.pair(diag, copy);
     }
 
     /** 첨부할 이미지(창을 닫았다 열어도 남게) */
@@ -512,6 +525,8 @@ public class DdingMateScreen extends Screen {
     private void sendInquiry() {
         if (client == null || client.player == null) return;
         String text = inquiryBox == null ? inquiryDraft : inquiryBox.getText();
+        // 진단 요약은 내용이 보낼 만할 때만 붙인다(빈 문의를 진단 글로 채워 보내지 않게)
+        if (inquiryDiag && kr.ddingmate.inquiry.Inquiry.validate(text) == null) text = kr.ddingmate.inquiry.Diagnostics.attach(text, client);
         inquiryStatus = "보내는 중…";
         inquiryOk = true;
         if (inquirySend != null) inquirySend.active = false;
@@ -899,7 +914,7 @@ public class DdingMateScreen extends Screen {
             DurabilityTracker.Durability d = r.durability();
             ItemStack seen = r.stack() != null ? DurabilityTracker.iconOf(r.stack()) : kr.ddingmate.counter.IconCache.forKey(r.item().key);
             list.single(new InfoRow(seen == null ? new ItemStack(Items.ANVIL) : seen, r.item().name,
-                    d == null ? (r.hidden() ? "치장에 가려짐" : "인벤토리에 없음") : r.hidden() ? "치장 · " + d.text() : d.text(),
+                    DurabilityTracker.valueText(r),
                     d == null ? Theme.TEXT_SOFT : d.ratio() > 0.5 ? Theme.GREEN : d.ratio() > 0.2 ? Theme.GOLD : Theme.RED, Tab.GEAR));
         }
 

@@ -53,10 +53,10 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 check(s.sectionLabels().containsAll(List.of("켜고 끄기", "일정 HUD", "꾸미기", "크기·자리", "글꼴")), "HUD 탭 목차가 다름: " + s.sectionLabels());
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-1-hud-tab");
+            Shots.take(ctx, "news-1-hud-tab");
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTabNamed("알림"));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-2-notify-tab");
+            Shots.take(ctx, "news-2-notify-tab");
 
             // 2) 업데이트 소식: 버전 비교와 창
             ctx.runOnClient(c -> {
@@ -79,7 +79,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 cfg.notesSeenVersion = keep;
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-3-update-notes");
+            Shots.take(ctx, "news-3-update-notes");
             ctx.runOnClient(c -> DdingMate.config().font = DdingMateConfig.FontStyle.GALMURI);
 
             // 3) 개발자 공지: 처음 보는 공지만 알리고, 기록 탭에 남고, 다시 받아도 또 울리지 않는다
@@ -110,10 +110,10 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 Notices.testSource = null;
             });
             ctx.waitTicks(10);
-            ctx.takeScreenshot("news-4-notice-chat");
+            Shots.take(ctx, "news-4-notice-chat");
             ctx.runOnClient(c -> c.setScreen(new kr.ddingmate.gui.NoticeScreen(null)));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-5-notice-screen");
+            Shots.take(ctx, "news-5-notice-screen");
 
             // 3-2) 업데이트 공지: 지금보다 새 버전이면 "새 버전" 알림·창, 같거나 예전 버전이면 조용히
             ctx.runOnClient(c -> {
@@ -141,7 +141,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 c.setScreen(kr.ddingmate.gui.UpdateNotesScreen.newVersion(null, u));
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-5b-new-version");
+            Shots.take(ctx, "news-5b-new-version");
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 Notices.debugReset(); // 뒤 시험(보여 주기 촬영)의 홈 화면에 '새 버전'이 남지 않게
@@ -187,14 +187,14 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 c.setScreen(new kr.ddingmate.gui.FontLookScreen(null));
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-6-user-font-look");
+            Shots.take(ctx, "news-6-user-font-look");
             ctx.runOnClient(c -> {
                 DdingMateScreen s = new DdingMateScreen(null);
                 c.setScreen(s);
                 s.openTabNamed("HUD·꾸미기");
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-7-user-font-hud-tab");
+            Shots.take(ctx, "news-7-user-font-hud-tab");
             // 지우고 다시 읽으면 목록에서 빠지고, 골라 둔 글꼴은 띵메이트 글꼴로 그려진다
             ctx.runOnClient(c -> {
                 c.setScreen(null);
@@ -289,7 +289,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 check(DdingMate.config().editorBarOpacity == 40, "바 진하기가 40% 가 아님: " + DdingMate.config().editorBarOpacity);
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("news-7b-editor-bar-40");
+            Shots.take(ctx, "news-7b-editor-bar-40");
             ctx.runOnClient(c -> {
                 c.currentScreen.close();
                 DdingMate.config().editorBarOpacity = 100;
@@ -319,7 +319,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 for (int i = 0; i < 12; i++) c.inGameHud.getChatHud().addMessage(net.minecraft.text.Text.literal("채팅 " + i + " · 채팅 뒤로 HUD 가 비쳐 보여야 해요"));
             });
             ctx.waitTicks(10);
-            ctx.takeScreenshot("news-8-chat-over-hud");
+            Shots.take(ctx, "news-8-chat-over-hud");
             ctx.runOnClient(c -> {
                 HudLayout.Rect counter = HudLayout.bounds().get(HudLayout.COUNTER);
                 check(counter != null, "재료 카운터를 그리지 않음: " + HudLayout.bounds());

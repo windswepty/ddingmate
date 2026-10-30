@@ -270,6 +270,11 @@ public final class DdingMate implements ClientModInitializer {
         }
     }
 
+    /** 시험용: 게임 틱 하나를 기다리지 않고 바로 돌린다(실제 기록 재생이 창마다 12틱을 몇 밀리초에) */
+    public static void debugTick(MinecraftClient client) {
+        onTick(client);
+    }
+
     private static void onTick(MinecraftClient client) {
         kr.ddingmate.ui.HudAuto.tick(client);
         Notifier.tick(client);

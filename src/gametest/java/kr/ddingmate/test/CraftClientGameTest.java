@@ -97,8 +97,10 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 String t0 = CraftTimers.remainingText(g.get(0), now());
                 // 서버에서 확인하기 전(시설 창을 아직 안 봄)에는 어림 숫자("약 9분") 대신 확인 방법을 보여 준다
                 check(t0.equals("시설 창 열면 표시"), "확인 전인데 어림 시간을 보여 줌: " + t0);
-                // 시간을 정말 모르는 아이템은 "시설 창 열면 표시"
+                // 시간을 정말 모르는 아이템은 "시설 창 열면 표시". 처음 한 번은 시설 창을 열라고 채팅으로 안내
+                DdingMate.config().craft.unknownTimeTipShown = false;
                 CraftTimers.onChat(G + "시험용 미지 아이템 아이템 1개 제작을 시작했습니다.");
+                check(DdingMate.config().craft.unknownTimeTipShown, "제작 시간을 모르는 첫 제작에 안내가 없음");
                 CraftTimers.Group unknown = CraftTimers.groups().stream().filter(x -> x.name().equals("시험용 미지 아이템")).findFirst().orElseThrow();
                 check(CraftTimers.remainingText(unknown, now()).equals("시설 창 열면 표시"), "시간을 모르는데 시간을 표시함");
                 CraftTimers.remove(unknown);
@@ -192,7 +194,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 c.setScreen(null);
             });
             ctx.waitTicks(25); // 일정 HUD 는 1초마다 새로 그린다
-            ctx.takeScreenshot("craft-1-hud-grouped");
+            Shots.take(ctx, "craft-1-hud-grouped");
 
             // 6) 일부만 끝나면 알리지 않고 "[2] 완료!" 와 "[3] 남은 시간" 두 줄. 같은 것이 모두 끝나야 한 번 알림
             ctx.runOnClient(c -> {
@@ -222,7 +224,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(title.equals("제작 완료: 조약돌 뭉치 ×7 [5]"), "알림 제목이 다름: " + title);
             });
             ctx.waitTicks(25);
-            ctx.takeScreenshot("craft-2-done");
+            Shots.take(ctx, "craft-2-done");
 
             // 7) 꺼내면(회수 메시지) 끝난 것부터 하나씩 빠진다
             ctx.runOnClient(c -> {
@@ -320,7 +322,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                     .filter(e -> e instanceof net.minecraft.client.gui.widget.ElementListWidget<?>)
                     .forEach(e -> ((net.minecraft.client.gui.widget.ElementListWidget<?>) e).setScrollY(10000)));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("craft-island-icons");
+            Shots.take(ctx, "craft-island-icons");
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 CraftTimers.debugClear();
@@ -442,12 +444,12 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 s.openTabNamed("전문가");
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("expert-1-top");
+            Shots.take(ctx, "expert-1-top");
             ctx.runOnClient(c -> c.currentScreen.children().stream()
                     .filter(e -> e instanceof net.minecraft.client.gui.widget.ElementListWidget<?>)
                     .forEach(e -> ((net.minecraft.client.gui.widget.ElementListWidget<?>) e).setScrollY(10000)));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("expert-2-cooking");
+            Shots.take(ctx, "expert-2-cooking");
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 kr.ddingmate.expert.Cooking.debugClear();
@@ -494,7 +496,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(12);
             ctx.runOnClient(c -> check(kr.ddingmate.expert.Barista.kind() == kr.ddingmate.expert.Barista.Kind.CUSTOMER
                     && "빈센트".equals(kr.ddingmate.expert.Barista.currentCustomer()), "손님 창으로 알아보지 못함: " + kr.ddingmate.expert.Barista.kind()));
-            ctx.takeScreenshot("barista-1-customer-panel");
+            Shots.take(ctx, "barista-1-customer-panel");
             // 인스턴트 커피 손님 창: 가진 잔 수 × 20,000G
             ctx.runOnClient(c -> {
                 c.player.getInventory().setStack(1, item("인스턴트 커피", 3, "커피"));
@@ -505,7 +507,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
             });
             ctx.waitTicks(12);
             ctx.runOnClient(c -> check(kr.ddingmate.expert.Barista.kind() == kr.ddingmate.expert.Barista.Kind.INSTANT, "인스턴트 커피 창으로 알아보지 못함"));
-            ctx.takeScreenshot("barista-2-instant-panel");
+            Shots.take(ctx, "barista-2-instant-panel");
             // 밀키 상점: 같은 황금 요리를 만드는 법이 둘이어도 순위에는 한 번만
             ctx.runOnClient(c -> {
                 c.setScreen(null);
@@ -534,7 +536,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.expert.Cooking.shopOpen(), "요리 상점 창으로 알아보지 못함");
                 check(kr.ddingmate.expert.Cooking.inventoryDishes(c).getOrDefault("딥 크림 빠네", 0) == 5, "인벤토리 요리를 세지 못함");
             });
-            ctx.takeScreenshot("cooking-3-shop-panel");
+            Shots.take(ctx, "cooking-3-shop-panel");
             // 제작 시설 창: 가진 재료로 만들 수 있는 레시피 판, 누르면 빈 핀에 넣는다
             String[] keepPins = new String[3];
             boolean[] keepSum = new boolean[2];
@@ -559,7 +561,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         item("어빌리티 스톤", 1, "신비로운 힘이 깃들어 있는 스톤입니다.", "", "  제작 시간 : 2분 0초", "", " (좌) 해당 레시피 선택", " (쉬프트+우) 레시피 제거")));
             });
             ctx.waitTicks(12);
-            ctx.takeScreenshot("facility-1-craftable-panel");
+            Shots.take(ctx, "facility-1-craftable-panel");
             // 판 크기 150% + HUD 꾸미기 따라가기(하니 세트): 커진 판의 실제 자리를 누르면 그 줄이 눌린다(2026-10-23)
             Object[] keepLook = new Object[5];
             ctx.runOnClient(c -> {
@@ -570,7 +572,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.ui.HudSkins.applySet(DdingMate.config(), kr.ddingmate.ui.HudSkins.byId("hani"));
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("facility-1b-panel-150-hani");
+            Shots.take(ctx, "facility-1b-panel-150-hani");
             ctx.runOnClient(c -> {
                 var es = kr.ddingmate.craft.FacilityPanel.entries();
                 double[] real = kr.ddingmate.craft.FacilityPanel.debugRowReal(0);
@@ -630,7 +632,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         "창에 보이는 레시피 칸을 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugRecipeSlots());
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("facility-1b-highlight");
+            Shots.take(ctx, "facility-1b-highlight");
             ctx.runOnClient(c -> {
                 var es = kr.ddingmate.craft.FacilityPanel.entries();
                 if (es.size() > 1) {
@@ -685,7 +687,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                         item("레시피 목록", 1, "클릭하면 레시피 목록을 엽니다.")));
             });
             ctx.waitTicks(12);
-            ctx.takeScreenshot("facility-1c-learned-path");
+            Shots.take(ctx, "facility-1c-learned-path");
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.craft.FacilityPanel.debugTargetSlot() == 11 && kr.ddingmate.craft.FacilityPanel.debugHint().contains("반짝이는"),
                         "기억한 길(레시피 목록)을 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot() + " / " + kr.ddingmate.craft.FacilityPanel.debugHint());
@@ -732,7 +734,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.craft.FacilityPanel.debugDetail(kr.ddingmate.counter.RecipeBook.get("강화 제작 시설/" + nthOf("강화 제작 시설", "영혼 계약서", 3)));
             });
             ctx.waitTicks(12);
-            ctx.takeScreenshot("facility-1d-rule-arrow");
+            Shots.take(ctx, "facility-1d-rule-arrow");
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.craft.FacilityPanel.debugTargetSlot() == 53 && kr.ddingmate.craft.FacilityPanel.debugHint().contains("다른 쪽"),
                         "같은 탭 다음 쪽인데 ↓를 강조하지 않음: " + kr.ddingmate.craft.FacilityPanel.debugTargetSlot() + " " + kr.ddingmate.craft.FacilityPanel.debugHint());
@@ -768,7 +770,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 }
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("facility-2-full-list");
+            Shots.take(ctx, "facility-2-full-list");
             // 쉬프트+클릭: 판 아래에 그 레시피의 재료(보유/필요) 판, 쉬프트+우클릭: 닫기
             int[] panelBefore = new int[4];
             ctx.runOnClient(c -> {
@@ -779,7 +781,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.craft.FacilityPanel.debugDetail(es.get(0).recipe());
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("facility-3-recipe-detail");
+            Shots.take(ctx, "facility-3-recipe-detail");
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.craft.FacilityPanel.detail() != null && !kr.ddingmate.craft.FacilityPanel.expanded(), "레시피 판이 안 열리거나 전체 목록이 안 닫힘");
                 // 레시피 판은 보유 재료 판을 덮지 않고 화면 안에(예전: 아래에 자리가 없으면 위로 올라가 판을 덮었다)
@@ -851,6 +853,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(sea.size() == 1 && sea.get(0).low() == 175_000 && sea.get(0).high() == 350_000, "공예품 범위가 다름: " + sea);
                 // 전문가 스킬 창: 판매가 스킬의 지금 비율을 읽는다 → 상점에서 못 본 정동석에 쓴다
                 DdingMate.config().expert.priceSkills.clear();
+                DdingMate.config().expert.priceSkillsByAccount.clear();
                 SimpleInventory sk = new SimpleInventory(54);
                 sk.setStack(10, item("[세레니티] 반짝반짝 눈이 부셔 (+4)", 1, "정동석의 판매가가 20% 증가합니다.", "상점과 무역에서 계산되어 보입니다.", "────────", "다음 레벨: 30%"));
                 sk.setStack(11, item("[세레니티] 값어치 증명 (+0)", 1, "영혼의 판매가가 5% 증가합니다."));
@@ -878,6 +881,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(jw.size() == 1 && jw.get(0).inBox() && jw.get(0).price() == 16_227 && jw.get(0).name().equals("(Rare) 실바니움 만년필"),
                         "보석함 귀중품 가격을 못 모음: " + jw);
                 DdingMate.config().expert.priceSkills.clear();
+                DdingMate.config().expert.priceSkillsByAccount.clear();
                 // 보석함에서 본 귀중품 가격은 기억해 두고, 가격 줄이 없는 창(로니)에서도 같은 귀중품(이름·가치)에 쓴다
                 c.player.getInventory().setStack(6, item("(Rare) 실바니움 만년필", 1, "값진 보석으로 만든 귀중품입니다.", "귀중품 가치 : 4,414"));
             });
@@ -935,7 +939,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 var orgel = mine.stream().filter(o -> o.ware().name().equals("(Common) 키론 오르골")).findFirst().orElseThrow();
                 check(orgel.exact() && orgel.high() == 10_971, "귀중품에 적힌 가격(10,971골드)을 쓰지 않음: " + orgel);
             });
-            ctx.takeScreenshot("shop-1-roni-panel");
+            Shots.take(ctx, "shop-1-roni-panel");
             // 예전 판(c0bbd0a 전)이 포스 칸의 나의 판매가를 기본가로도 저장한 기록(실제: 흑진주 시계 865,895/865,895)은 읽을 때 버린다
             ctx.runOnClient(c -> {
                 try {
@@ -1006,7 +1010,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 s.jumpTo("바리스타");
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("expert-3-jump-barista");
+            Shots.take(ctx, "expert-3-jump-barista");
             ctx.runOnClient(c -> {
                 kr.ddingmate.gui.DdingMateScreen s = (kr.ddingmate.gui.DdingMateScreen) c.currentScreen;
                 double before = s.listScroll();
@@ -1019,7 +1023,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check("요리".equals(s.currentSectionLabel()), "다시 눌러도 '요리'가 강조되지 않음");
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("expert-4-jump-cooking");
+            Shots.take(ctx, "expert-4-jump-cooking");
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 kr.ddingmate.expert.Barista.debugClear();
@@ -1334,7 +1338,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(DdingMate.playerListShown(), "Tab 목록이 떠 있는 걸 알아보지 못함");
                 check(kr.ddingmate.hud.HudLayout.bounds().isEmpty(), "Tab 중에 HUD 를 그림: " + kr.ddingmate.hud.HudLayout.bounds().keySet());
             });
-            ctx.takeScreenshot("craft-5-tab-hidden");
+            Shots.take(ctx, "craft-5-tab-hidden");
             ctx.getInput().releaseKey(o -> o.playerListKey);
             ctx.waitTicks(10);
             ctx.runOnClient(c -> {
@@ -1373,12 +1377,12 @@ public class CraftClientGameTest implements FabricClientGameTest {
             ctx.waitTicks(3);
             ctx.runOnClient(CraftClientGameTest::scrollToBottom);
             ctx.waitTicks(3);
-            ctx.takeScreenshot("craft-3-counter-tab");
+            Shots.take(ctx, "craft-3-counter-tab");
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTab(0));
             ctx.waitTicks(3);
             ctx.runOnClient(CraftClientGameTest::scrollToBottom);
             ctx.waitTicks(3);
-            ctx.takeScreenshot("craft-4-home");
+            Shots.take(ctx, "craft-4-home");
             ctx.runOnClient(c -> c.setScreen(null));
 
             // 11) 저장·불러오기, 예전 형식(시간 계산 방식이 다르던 때) 기록은 비우고 배운 시간은 남긴다
@@ -1652,6 +1656,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 // 21-25) 스킬 창에서 읽은 스킬은 창을 닫을 때 채팅 한 번으로(제작 시간·판매가를 종류별로 묶어서)
                 kr.ddingmate.skill.SkillReport.flush();
                 DdingMate.config().expert.priceSkills.clear();
+                DdingMate.config().expert.priceSkillsByAccount.clear();
                 SimpleInventory skw = new SimpleInventory(54);
                 skw.setStack(10, item("[세레니티] 초고속 용광로 (+2)", 1, "전문가 스킬 정보", ". 채광물 가공과 강화 제작 시설의",
                         ". 제작 시간이 30% 감소합니다.", "──────────────────", ". [강화 시 스킬 정보]", ". 제작 시간이 40% 감소합니다."));
@@ -1695,6 +1700,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.skill.SkillReport.pending() == 0, "창을 모두 닫았는데 스킬 확인 채팅을 안 보냄");
                 DdingMate.config().craft.mining = 0;
                 DdingMate.config().expert.priceSkills.clear();
+                DdingMate.config().expert.priceSkillsByAccount.clear();
                 // 21-3) 쉬프트 우클릭 스킬(실제 2026-10-09 창 칸, 2026-10 실제 채팅 순서)
                 kr.ddingmate.skill.SkillTimers.debugClear();
                 check(kr.ddingmate.skill.SkillTimers.read(item("[야생] 곡괭이 나가신다! (+5)", 1, "전문가 스킬 정보",
@@ -1882,7 +1888,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 c.inGameHud.getChatHud().clear(false);
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("skill-1-hud");
+            Shots.take(ctx, "skill-1-hud");
             ctx.runOnClient(c -> {
                 check(kr.ddingmate.hud.HudLayout.bounds().containsKey(kr.ddingmate.hud.HudLayout.SKILL), "쓰고 있는 스킬이 HUD 에 안 그려짐");
                 DdingMate.LOG.info("스킬 HUD 자리 {} / 전체 {}", kr.ddingmate.hud.HudLayout.bounds().get(kr.ddingmate.hud.HudLayout.SKILL),
@@ -1896,7 +1902,7 @@ public class CraftClientGameTest implements FabricClientGameTest {
                     .filter(e -> e instanceof net.minecraft.client.gui.widget.ElementListWidget<?>)
                     .forEach(e -> ((net.minecraft.client.gui.widget.ElementListWidget<?>) e).setScrollY(10000)));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("skill-2-settings");
+            Shots.take(ctx, "skill-2-settings");
             ctx.runOnClient(c -> {
                 c.setScreen(null);
                 kr.ddingmate.skill.SkillTimers.debugClear();

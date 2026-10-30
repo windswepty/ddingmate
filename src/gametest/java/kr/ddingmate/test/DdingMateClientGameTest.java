@@ -37,22 +37,22 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 if (!kr.ddingmate.hud.HudLayout.bounds().isEmpty()) throw new AssertionError("창을 열기 전인데 HUD 가 그려짐");
             });
-            ctx.takeScreenshot("ddingmate-0-before-open");
+            Shots.take(ctx, "ddingmate-0-before-open");
             ctx.runOnClient(c -> DdingMate.config().opened = true);
             ctx.waitTicks(5);
             ctx.runOnClient(c -> {
                 if (kr.ddingmate.hud.HudLayout.bounds().isEmpty()) throw new AssertionError("창을 연 뒤에도 HUD 가 없음");
             });
-            ctx.takeScreenshot("ddingmate-1-hud");
+            Shots.take(ctx, "ddingmate-1-hud");
 
             ctx.runOnClient(c -> Notifier.test());
             ctx.waitTicks(30);
-            ctx.takeScreenshot("ddingmate-2-test-alert");
+            Shots.take(ctx, "ddingmate-2-test-alert");
 
             // 서버 시스템 메시지에 키워드가 들어온 상황을 흉내 낸다.
             ctx.runOnClient(c -> KeywordWatcher.onMessage(Text.literal("[알림] 오션오더가 도착했습니다!"), null));
             ctx.waitTicks(30);
-            ctx.takeScreenshot("ddingmate-3-keyword-alert");
+            Shots.take(ctx, "ddingmate-3-keyword-alert");
 
             // 처음 /띵메이트 → 튜토리얼이 자동으로 시작: 다음 단계로 가면 해당 탭이 열리고, 마지막에 끝나면 다시 나오지 않는다
             ctx.runOnClient(c -> {
@@ -65,7 +65,7 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
                 if (!(c.currentScreen instanceof DdingMateScreen s)) throw new AssertionError("/띵메이트 로 창이 열리지 않음");
                 if (!s.tutorialActive() || s.tutorialStep() != 0) throw new AssertionError("처음 열었는데 튜토리얼이 시작되지 않음");
             });
-            ctx.takeScreenshot("tutorial-1-welcome");
+            Shots.take(ctx, "tutorial-1-welcome");
             // 모든 단계에서 설명할 자리(탭 단추나 설정 줄)를 찾아 강조하고, 설명 상자가 그 자리를 가리지 않는지
             for (int i = 1; i < DdingMateScreen.tutorialSteps(); i++) {
                 int step = i + 1;
@@ -95,10 +95,10 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
                 }
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("tutorial-2-counter-step");
+            Shots.take(ctx, "tutorial-2-counter-step");
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER, 0, 0));
             ctx.waitTicks(3);
-            ctx.takeScreenshot("tutorial-3-count-step");
+            Shots.take(ctx, "tutorial-3-count-step");
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, 0, 0));
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
@@ -142,7 +142,7 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
                 s.openTab(0);
             });
             ctx.waitTicks(25);
-            ctx.takeScreenshot("ddingmate-4-home");
+            Shots.take(ctx, "ddingmate-4-home");
             ctx.runOnClient(c -> c.currentScreen.close());
             ctx.waitTicks(5);
 
@@ -164,7 +164,7 @@ public class DdingMateClientGameTest implements FabricClientGameTest {
                 int index = i + 1;
                 ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTab(index));
                 ctx.waitTicks(5);
-                ctx.takeScreenshot("ddingmate-5-settings-" + tabs[i]);
+                Shots.take(ctx, "ddingmate-5-settings-" + tabs[i]);
             }
             ctx.runOnClient(c -> c.currentScreen.close());
             ctx.waitTicks(5);

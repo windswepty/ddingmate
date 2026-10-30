@@ -294,6 +294,18 @@ public final class ShopPrices {
         return w.shop().equals("샤키") ? "연금품" : "공예품";
     }
 
+    /** 판매가 스킬이 바뀐 묶음: 상점에서 본 값을 지운다(다음에 상점을 열 때까지 표 × 새 스킬 비율) */
+    public static void forgetGroup(String group) {
+        Map<String, int[]> mine = seen(false);
+        if (mine == null || group == null) return;
+        boolean changed = false;
+        for (Ware w : WARES) if (group.equals(group(w)) && mine.remove(w.name()) != null) changed = true;
+        if (changed) {
+            DdingMate.LOG.info("판매가 스킬이 바뀌어 {} 상점 가격 기억을 지웠어요", group);
+            save();
+        }
+    }
+
     /** 이 판매품의 {기본가, 나의 판매가}: 상점에서 본 값 → 같은 묶음에서 본 배율 × 표 → 표. 공예품처럼 범위면 최고가 기준 */
     public static int[] priceFor(Ware w) {
         Map<String, int[]> mine = seen(false);

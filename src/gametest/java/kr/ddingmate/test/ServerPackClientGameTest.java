@@ -73,7 +73,7 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
                     c.setScreen(new net.minecraft.client.gui.screen.ChatScreen(""));
                 });
                 ctx.waitTicks(10);
-                ctx.takeScreenshot("serverpack-chat-" + f[2]);
+                Shots.take(ctx, "serverpack-chat-" + f[2]);
             }
             // 전문가 탭: 스킬 판매가(보석 아이콘), 판매 시세(세이지 도구)
             ctx.runOnClient(c -> {
@@ -85,10 +85,10 @@ public class ServerPackClientGameTest implements FabricClientGameTest {
                 s.jumpTo("스킬 판매가");
             });
             ctx.waitTicks(10);
-            ctx.takeScreenshot("serverpack-expert-skill-icons");
+            Shots.take(ctx, "serverpack-expert-skill-icons");
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).jumpTo("판매 시세"));
             ctx.waitTicks(10);
-            ctx.takeScreenshot("serverpack-expert-sage-tools");
+            Shots.take(ctx, "serverpack-expert-sage-tools");
 
             // 원래대로: 설정·창 크기 되돌리기(리소스팩은 켜 둔 채 다음 시험으로)
             ctx.runOnClient(c -> {

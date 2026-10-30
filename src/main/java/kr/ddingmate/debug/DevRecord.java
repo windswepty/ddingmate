@@ -125,6 +125,7 @@ public final class DevRecord {
             }
         }
         worn(client, r);
+        inventory(client, r);
         // 상자형 창: 처음 열 때와 칸이 바뀔 때
         if (client.currentScreen instanceof HandledScreen<?> screen) {
             JsonArray slots = new JsonArray();
@@ -171,6 +172,40 @@ public final class DevRecord {
             ItemStack s = inv.getStack(i);
             if (!s.isEmpty()) DdingMate.LOG.info("[원본 기록] 입은 칸 {}: {}", i, item(s, r));
         }
+    }
+
+    private static final Map<Integer, String> lastInv = new HashMap<>();
+    private static long lastInvAt;
+    private static Object lastInvWorld;
+
+    /**
+     * 내 인벤토리(칸 0~40): 2초마다 바뀐 칸만 남긴다(채광 중엔 개수가 계속 바뀌어 통째로 남기면 너무 크다).
+     * 재생 시험이 실제 보유량으로 재료 HUD·시설 판 "가진 재료로 만들기"를 다시 계산하려고
+     */
+    private static void inventory(MinecraftClient client, RegistryWrapper.WrapperLookup r) {
+        long now = System.currentTimeMillis();
+        if (now - lastInvAt < 2000) return;
+        if (client.world != lastInvWorld) {
+            lastInvWorld = client.world;
+            lastInv.clear(); // 새 월드(채널)는 처음부터 전부
+        }
+        PlayerInventory inv = client.player.getInventory();
+        JsonArray changed = new JsonArray();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            String sig = s.isEmpty() ? "" : s.getItem() + "|" + s.getCount() + "|" + s.getName().getString() + "|" + s.getDamage();
+            if (sig.equals(lastInv.getOrDefault(i, ""))) continue;
+            lastInv.put(i, sig);
+            JsonObject o = new JsonObject();
+            o.addProperty("slot", i);
+            o.add("item", s.isEmpty() ? new JsonObject() : item(s, r));
+            changed.add(o);
+        }
+        if (changed.isEmpty()) return;
+        lastInvAt = now;
+        JsonObject o = head("inv");
+        o.add("slots", changed);
+        write(o);
     }
 
     private static net.minecraft.screen.ScreenHandlerType<?> screenType(HandledScreen<?> screen) {

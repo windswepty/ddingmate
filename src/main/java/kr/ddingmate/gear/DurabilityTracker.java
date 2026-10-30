@@ -215,6 +215,7 @@ public final class DurabilityTracker {
         int slot = -1;
         for (int i = 36; i <= 39; i++) if (inv.getStack(i) == s) slot = i;
         boolean armor = armorSlot(item) >= 0;
+        if (armor) t.lastAt = kr.ddingmate.util.Clock.now(); // 저장은 값이 바뀔 때만(시각만 바뀐 것은 다음 저장 때 함께)
         boolean same = id.equals(t.itemId) && slot == t.wornSlot;
         if (armor) same &= d.left() == t.lastLeft && d.max() == t.lastMax && d.percent() == t.lastPercent;
         if (same) return;
@@ -226,6 +227,24 @@ public final class DurabilityTracker {
             t.lastPercent = d.percent();
         }
         DdingMate.config().save();
+    }
+
+    /** "방금", "12분 전", "3시간 전", "2일 전" */
+    public static String ago(long at, long now) {
+        if (at <= 0) return "";
+        long min = Math.max(0, now - at) / 60_000;
+        if (min < 1) return "방금";
+        if (min < 60) return min + "분 전";
+        if (min < 24 * 60) return (min / 60) + "시간 전";
+        return (min / (24 * 60)) + "일 전";
+    }
+
+    /** HUD·장비 탭 값: 치장 아래면 "치장 · 405/407 · 3시간 전" */
+    public static String valueText(Row r) {
+        if (r.durability() == null) return r.hidden() ? "치장에 가려짐" : "인벤토리에 없음";
+        if (!r.hidden()) return r.durability().text();
+        String when = ago(r.item().lastAt, kr.ddingmate.util.Clock.now());
+        return "치장 · " + r.durability().text() + (when.isEmpty() ? "" : " · " + when);
     }
 
     /** 갑옷이 들어가는 인벤토리 칸(신발 36 ~ 투구 39), 갑옷이 아니면 -1 */

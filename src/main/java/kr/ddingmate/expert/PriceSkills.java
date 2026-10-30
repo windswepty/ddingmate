@@ -60,7 +60,8 @@ public final class PriceSkills {
     /** 10틱마다: /전문가 스킬 창이면 판매가 스킬의 지금 비율을 읽는다 */
     public static void scan(MinecraftClient client) {
         if (!(client.currentScreen instanceof GenericContainerScreen screen)) return;
-        Map<String, Double> saved = DdingMate.config().expert.priceSkills;
+        Map<String, Double> saved = mine(true);
+        if (saved == null) return;
         boolean changed = false;
         for (Slot slot : screen.getScreenHandler().slots) {
             if (slot.inventory instanceof PlayerInventory || !slot.hasStack()) continue;
@@ -86,8 +87,11 @@ public final class PriceSkills {
                 boolean differs = old == null || Math.abs(old - pct) > 1e-6;
                 if (differs) {
                     saved.put(k.name(), pct);
+                    DdingMate.config().expert.priceSkills.put(k.name(), pct);
                     changed = true;
                     DdingMate.LOG.info("판매가 스킬 읽음: {} {}%", k.name(), pct);
+                    // 스킬을 올리거나 내렸다: 예전 비율로 상점에서 본 '나의 판매가'는 버리고 새 비율로 다시 센다(상점을 다시 열면 실제 값)
+                    if (old != null) ShopPrices.forgetGroup(k.group());
                 }
                 // 이번 접속에서 처음 읽었거나 값이 바뀌었으면 스킬 확인 채팅(한 번에 모아서)에 넣는다
                 if (CONFIRMED.add(k.name()) || differs) {
@@ -105,8 +109,17 @@ public final class PriceSkills {
 
     /** 이 스킬의 지금 비율(%). 스킬 창을 아직 안 열었으면 -1 */
     public static double pct(String skill) {
-        Double v = DdingMate.config().expert.priceSkills.get(skill);
+        Map<String, Double> mine = mine(false);
+        Double v = mine != null && mine.containsKey(skill) ? mine.get(skill) : DdingMate.config().expert.priceSkills.get(skill);
         return v == null ? -1 : v;
+    }
+
+    /** 지금 계정의 판매가 스킬 비율(계정을 모르면 null) */
+    private static Map<String, Double> mine(boolean create) {
+        String key = kr.ddingmate.skill.SkillTimers.accountKey();
+        if (key == null) return null;
+        Map<String, Map<String, Double>> all = DdingMate.config().expert.priceSkillsByAccount;
+        return create ? all.computeIfAbsent(key, k -> new java.util.LinkedHashMap<>()) : all.get(key);
     }
 
     /** 판매품 묶음에 걸리는 스킬(없으면 null) */

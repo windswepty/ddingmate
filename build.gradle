@@ -61,6 +61,48 @@ fabricApi {
 	}
 }
 
+// 빠른 시험(기본): 실제 기록 재생·전시용 화면·스크린샷을 건너뛴다(평소 고칠 때).
+// 전체 시험: ./gradlew runClientGameTest -Pfull (출시·커밋 전)
+tasks.named('runClientGameTest') {
+	if (project.hasProperty('full')) jvmArgs('-Dddingmate.full=true')
+}
+
+// 마인크래프트를 띄우지 않는 단위 시험(정규식·시간 계산): ./gradlew test — 몇 초
+dependencies {
+	testImplementation platform("org.junit:junit-bom:5.10.2")
+	testImplementation "org.junit.jupiter:junit-jupiter"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+	useJUnitPlatform()
+	// 마인크래프트 클래스(Text·Formatting 등)를 그대로 쓴다(게임을 띄우지는 않음)
+	classpath += sourceSets.main.runtimeClasspath
+	// 한글 경로("바탕 화면/띵타이쿤"): 시험 실행 JVM 이 경로 목록 파일을 MS949 로 읽어 프로젝트 폴더를 못 찾는다(ClassNotFoundException).
+	// 실행 직전에 프로젝트 안 폴더(클래스·리소스)와 jar(마인크래프트)를 영어 경로(임시 폴더)로 복사해 쓴다
+	doFirst {
+		def root = new File(System.getProperty('java.io.tmpdir'), 'ddingmate-unit-test')
+		def moved = [:]
+		classpath.files.findAll { it.exists() && it.path.startsWith(projectDir.path) }.eachWithIndex { src, i ->
+			if (src.isDirectory()) {
+				def to = new File(root, "cp${i}")
+				project.delete(to)
+				project.copy { from src; into to }
+				moved[src] = to
+			} else {
+				// 마인크래프트 jar 도 프로젝트 안(.gradle/loom-cache)에 있다: 바뀌었을 때만 다시 복사
+				def to = new File(root, "jar/${src.name}")
+				if (!to.exists() || to.length() != src.length() || to.lastModified() < src.lastModified()) {
+					project.copy { from src; into to.parentFile }
+				}
+				moved[src] = to
+			}
+		}
+		classpath = files(classpath.files.collect { moved.containsKey(it) ? moved[it] : it })
+		testClassesDirs = files(testClassesDirs.files.collect { moved.containsKey(it) ? moved[it] : it })
+	}
+}
+
 // 배포용 jar 그대로 실제(production) 환경에서 띄워 보기: ./gradlew prodClient
 configurations {
 	prodMods {

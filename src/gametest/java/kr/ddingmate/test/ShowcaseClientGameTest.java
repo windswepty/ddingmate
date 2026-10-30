@@ -21,6 +21,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext ctx) {
+        if (!Shots.full()) return; // 전체 시험(-Pfull)에서만: 오래 걸리거나 화면 비교용
         if (System.getenv("DDINGMATE_SHOWCASE") == null) return;
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
             sp.getClientWorld().waitForChunksRender();
@@ -90,13 +91,13 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                     DdingMate.config().hudMascot = HudSkins.NONE;
                 });
                 ctx.waitTicks(6);
-                ctx.takeScreenshot("show-theme-" + t.name().toLowerCase());
+                Shots.take(ctx, "show-theme-" + t.name().toLowerCase());
             }
             // 2) NPC 세트 17벌 + 섞은 것 하나
             for (HudSkins.Skin skin : HudSkins.all()) {
                 ctx.runOnClient(c -> HudSkins.applySet(DdingMate.config(), skin));
                 ctx.waitTicks(6);
-                ctx.takeScreenshot("show-set-" + skin.id());
+                Shots.take(ctx, "show-set-" + skin.id());
             }
             ctx.runOnClient(c -> {
                 HudSkins.applyPanel(DdingMate.config(), HudSkins.byId("lua"));
@@ -104,7 +105,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 DdingMate.config().hudMascot = "sharky";
             });
             ctx.waitTicks(6);
-            ctx.takeScreenshot("show-set-mixed");
+            Shots.take(ctx, "show-set-mixed");
             // 꾸미기 한눈에 보기 창(탭 네 개)
             ctx.runOnClient(c -> {
                 HudSkins.applySet(DdingMate.config(), HudSkins.byId("hani"));
@@ -113,7 +114,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
             for (String tab : new String[]{"세트", "판 디자인", "제목 줄", "HUD 친구"}) {
                 ctx.runOnClient(c -> ((kr.ddingmate.gui.HudLookScreen) c.currentScreen).debugCards(tab));
                 ctx.waitTicks(6);
-                ctx.takeScreenshot("show-look-" + tab.replace(' ', '-'));
+                Shots.take(ctx, "show-look-" + tab.replace(' ', '-'));
             }
             ctx.runOnClient(c -> c.setScreen(null));
             // 3) 글꼴 7종: HUD + 띵메이트 창(HUD 탭)
@@ -126,7 +127,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                     c.setScreen(null);
                 });
                 ctx.waitTicks(6);
-                ctx.takeScreenshot("show-font-hud-" + f.name().toLowerCase());
+                Shots.take(ctx, "show-font-hud-" + f.name().toLowerCase());
                 ctx.runOnClient(c -> {
                     DdingMateScreen s = new DdingMateScreen(null);
                     c.setScreen(s);
@@ -134,16 +135,16 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                     s.jumpTo("HUD 모양");
                 });
                 ctx.waitTicks(8);
-                ctx.takeScreenshot("show-font-window-" + f.name().toLowerCase());
+                Shots.take(ctx, "show-font-window-" + f.name().toLowerCase());
                 // 글꼴마다 칸 밖으로 나가는 글자가 없는지 보려고 탭 여러 개와 꾸미기 창도(2026-10-23 글꼴 점검)
                 for (String tab : new String[]{"홈", "일정", "재료", "할 일", "전문가"}) {
                     ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).openTabNamed(tab));
                     ctx.waitTicks(4);
-                    ctx.takeScreenshot("show-font-tab-" + f.name().toLowerCase() + "-" + tab.replace(' ', '_'));
+                    Shots.take(ctx, "show-font-tab-" + f.name().toLowerCase() + "-" + tab.replace(' ', '_'));
                 }
                 ctx.runOnClient(c -> c.setScreen(new kr.ddingmate.gui.HudLookScreen(null)));
                 ctx.waitTicks(4);
-                ctx.takeScreenshot("show-font-look-" + f.name().toLowerCase());
+                Shots.take(ctx, "show-font-look-" + f.name().toLowerCase());
             }
             // 글꼴 한눈에 보기 창
             ctx.runOnClient(c -> {
@@ -152,7 +153,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 c.setScreen(new kr.ddingmate.gui.FontLookScreen(null));
             });
             ctx.waitTicks(8);
-            ctx.takeScreenshot("show-font-look");
+            Shots.take(ctx, "show-font-look");
             ctx.runOnClient(c -> c.setScreen(null));
             // 4) 전문가 탭: 스킬 줄·스킬 판매가(스킬마다 자기 그림), 판매 시세(세이지 도구)
             ctx.runOnClient(c -> {
@@ -163,13 +164,13 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 s.jumpTo("스킬");
             });
             ctx.waitTicks(8);
-            ctx.takeScreenshot("show-expert-skills");
+            Shots.take(ctx, "show-expert-skills");
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).jumpTo("스킬 판매가"));
             ctx.waitTicks(8);
-            ctx.takeScreenshot("show-expert-price-skills");
+            Shots.take(ctx, "show-expert-price-skills");
             ctx.runOnClient(c -> ((DdingMateScreen) c.currentScreen).jumpTo("판매 시세"));
             ctx.waitTicks(8);
-            ctx.takeScreenshot("show-expert-sales");
+            Shots.take(ctx, "show-expert-sales");
 
             // 5) 게임 전체에 적용(레디오 볼펜체) — 채팅·인벤토리까지
             ctx.runOnClient(c -> {
@@ -179,7 +180,7 @@ public class ShowcaseClientGameTest implements FabricClientGameTest {
                 c.setScreen(new net.minecraft.client.gui.screen.ingame.InventoryScreen(c.player));
             });
             ctx.waitTicks(8);
-            ctx.takeScreenshot("show-everywhere-redio");
+            Shots.take(ctx, "show-everywhere-redio");
 
             // 되돌리기
             ctx.runOnClient(c -> {

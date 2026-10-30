@@ -190,6 +190,7 @@ public final class CraftTimers {
         Matcher m = START.matcher(t);
         if (m.find()) {
             start(m.group(1).trim(), parseInt(m.group(2)), now);
+            tipUnknownTime(m.group(1).trim(), parseInt(m.group(2)));
             return;
         }
         m = COLLECT.matcher(t);
@@ -490,6 +491,18 @@ public final class CraftTimers {
      * 이 아이템·개수의 제작 시간을 확실히 아는가: 서버가 보여 준 실제 시간을 배웠거나(같은 개수),
      * 한 번에 만들어지는 개수를 배워 개수에 따른 시간을 확실히 계산할 수 있을 때
      */
+    /**
+     * 처음 쓰는 사람 안내(한 번만): 제작 시간을 아직 몰라 완료 알림을 줄 수 없는 제작을 시작하면, 시설 창을 한 번 열면 된다고 알려 준다.
+     * (실제 기록 재생: 처음 설치한 상태에서는 시작 메시지만으로 완료 시각을 몰라 제작 완료 알림이 하나도 울리지 않았다)
+     */
+    private static void tipUnknownTime(String name, int count) {
+        kr.ddingmate.config.DdingMateConfig cfg = DdingMate.config();
+        if (cfg.craft.unknownTimeTipShown || !cfg.craft.enabled || durationMs(name, count) > 0) return;
+        cfg.craft.unknownTimeTipShown = true;
+        cfg.save();
+        Notifier.chat(name + " 제작 시간을 아직 몰라서 완료 알림을 못 드려요. 그 시설 창을 한 번 열어 주시면 시간을 배워 다음부터 알려 드려요");
+    }
+
     /** 시험용: 다른 기록 파일에서 배운 제작 시간표(레시피 시간·실제 시간·한 번에 만드는 개수)만 가져온다(제작 목록은 그대로) */
     public static void debugLearnFrom(Path p) {
         try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {

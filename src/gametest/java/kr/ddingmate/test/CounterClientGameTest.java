@@ -59,7 +59,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
                 expect("코룸 주괴", 3, 0, 12);
                 expect("조약돌 뭉치", 0, 0, 24);
             });
-            ctx.takeScreenshot("counter-1-inventory-only");
+            Shots.take(ctx, "counter-1-inventory-only");
 
             // ㄱ3 을 보낸 직후 가방 창이 열린 상황
             ctx.runOnClient(c -> {
@@ -71,7 +71,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
                 check(BagTracker.openState() == BagTracker.OpenState.BAG && BagTracker.openBagNumber() == 3,
                         "ㄱ3 뒤에 열린 창이 3번 가방으로 인식되지 않음: " + BagTracker.openState());
             });
-            ctx.takeScreenshot("counter-2-bag-open");
+            Shots.take(ctx, "counter-2-bag-open");
             ctx.runOnClient(c -> c.setScreen(null));
             ctx.waitTicks(15);
             ctx.runOnClient(c -> {
@@ -171,7 +171,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
             sp.getServer().runCommand("give @a minecraft:paper[minecraft:custom_name='\"조약돌 뭉치\"'] 2");
             ctx.waitTicks(25);
             ctx.runOnClient(c -> check(MaterialCounter.views().get(0).done(), "재료를 다 모았는데 완료로 안 나옴"));
-            ctx.takeScreenshot("counter-3-ready-toast");
+            Shots.take(ctx, "counter-3-ready-toast");
 
             // 설정 화면의 재료 카운터 영역과 레시피 고르기 화면
             ctx.runOnClient(c -> {
@@ -180,7 +180,7 @@ public class CounterClientGameTest implements FabricClientGameTest {
                 s.openTabNamed("재료");
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("counter-4-settings");
+            Shots.take(ctx, "counter-4-settings");
             // 핀 칸 우클릭: 레시피 고르기 창에 안 들어가고 바로 핀을 뺀다(다시 넣어 두고 이어서 시험)
             ctx.runOnClient(c -> {
                 var pin = DdingMate.config().counter.pins.get(0);
@@ -199,14 +199,14 @@ public class CounterClientGameTest implements FabricClientGameTest {
                     .filter(e -> e instanceof ElementListWidget<?>)
                     .forEach(e -> ((ElementListWidget<?>) e).setScrollY(10000)));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("counter-4b-settings-bottom");
+            Shots.take(ctx, "counter-4b-settings-bottom");
             ctx.runOnClient(c -> c.setScreen(new RecipePickerScreen(c.currentScreen, 2)));
             ctx.waitTicks(5);
             ctx.runOnClient(c -> c.currentScreen.children().stream()
                     .filter(e -> e instanceof TextFieldWidget f && f.getWidth() > 100) // 검색 칸만
                     .forEach(e -> ((TextFieldWidget) e).setText("라이프")));
             ctx.waitTicks(5);
-            ctx.takeScreenshot("counter-5-recipe-picker");
+            Shots.take(ctx, "counter-5-recipe-picker");
             ctx.runOnClient(c -> c.currentScreen.close());
             ctx.waitTicks(5);
             ctx.runOnClient(c -> {

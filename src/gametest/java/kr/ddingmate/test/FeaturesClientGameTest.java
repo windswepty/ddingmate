@@ -208,7 +208,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 ((DdingMateScreen) c.currentScreen).openTabNamed("할 일");
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-0b-todo-tab");
+            Shots.take(ctx, "features-0b-todo-tab");
             ctx.runOnClient(c -> {
                 ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
                 DdingMateConfig.TodoItem recommend = item("recommend");
@@ -274,7 +274,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(raw.name().equals("조약돌") && raw.need() == 256 && raw.inventory() == 100,
                         "원재료 조약돌 계산 오류: " + raw);
             });
-            ctx.takeScreenshot("features-1-hud-all");
+            Shots.take(ctx, "features-1-hud-all");
 
             // 11) 아이템 저장소: 설명 문구의 보관 개수(1,234)를 읽어 합산
             ctx.runOnClient(c -> c.setScreen(storageScreen(c)));
@@ -295,7 +295,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(PlaytimeTracker.seconds() >= 3600, "접속 시간이 늘지 않음: " + PlaytimeTracker.seconds());
                 check(hasLog("접속", "접속 1시간"), "접속 1시간 보상 알림이 기록되지 않음");
             });
-            ctx.takeScreenshot("features-2-playtime-alert");
+            Shots.take(ctx, "features-2-playtime-alert");
 
             // 12-1) /접속시간 창을 열면 서버 기록(11시간 49분 33초)과 받은 보상(1시간)에 맞추고, 지난 구간 알림은 한꺼번에 울리지 않는다
             int[] before = new int[1];
@@ -315,7 +315,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 long after = AlertLog.entries().stream().filter(e -> e.kind.equals("접속")).count();
                 check(after == before[0], "맞춘 뒤 지난 구간 알림이 한꺼번에 울림");
             });
-            ctx.takeScreenshot("features-2b-playtime-synced");
+            Shots.take(ctx, "features-2b-playtime-synced");
 
             // 12-2) 게임 서버에 들어가면 서버가 채팅으로 보내는 일일 접속 시간에 맞춘다. 남이 채팅으로 흉내 낸 줄은 무시
             ctx.runOnClient(c -> {
@@ -384,7 +384,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 ((DdingMateScreen) c.currentScreen).openTabNamed("일정");
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-2c-channels-auto");
+            Shots.take(ctx, "features-2c-channels-auto");
             ctx.runOnClient(c -> c.setScreen(null));
 
             // 12-5) 다 한 할 일은 HUD 체크 상자에 체크 표시
@@ -397,7 +397,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(TodoList.isDone(item("recommend"), ZonedDateTime.now(ScheduleEngine.KST)), "추천 메시지로 체크되지 않음");
             });
             ctx.waitTicks(25);
-            ctx.takeScreenshot("features-2d-todo-checked");
+            Shots.take(ctx, "features-2d-todo-checked");
 
             // 모든 레시피를 하나씩 핀해 재료 줄이 레시피대로 나오는지, 검색으로 찾을 수 있는지 확인
             ctx.runOnClient(c -> {
@@ -501,7 +501,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 HudLayout.setHeight(HudLayout.COUNTER, 70);
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-2f-counter-short-wide");
+            Shots.take(ctx, "features-2f-counter-short-wide");
             ctx.runOnClient(c -> {
                 var r = HudLayout.bounds().get(HudLayout.COUNTER);
                 float sc = HudLayout.scale(HudLayout.COUNTER);
@@ -529,7 +529,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 if (r != null) HudLayout.setPos(HudLayout.COUNTER, 4, 4, r.w(), r.h(), c.getWindow().getScaledWidth(), c.getWindow().getScaledHeight());
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-2g-counter-short-wide-moved");
+            Shots.take(ctx, "features-2g-counter-short-wide-moved");
             ctx.runOnClient(c -> {
                 HudLayout.setHeight(HudLayout.COUNTER, 0);
                 DdingMate.config().counter.pins.get(1).recipe = "";
@@ -594,7 +594,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 c.setScreen(new RecipePickerScreen(null, 1));
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-2e-anvil-suggest");
+            Shots.take(ctx, "features-2e-anvil-suggest");
             ctx.runOnClient(c -> {
                 ElementListWidget<?> list = (ElementListWidget<?>) c.currentScreen.children().stream()
                         .filter(e -> e instanceof ElementListWidget<?>).findFirst().orElseThrow();
@@ -663,7 +663,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kw.cooldownSeconds = 10;
             });
             ctx.waitTicks(20);
-            ctx.takeScreenshot("features-4a-keyword-toast");
+            Shots.take(ctx, "features-4a-keyword-toast");
 
             // HUD 크기·서버 HUD 피하기: 50% 면 일정 HUD 가 절반 크기, 위쪽은 서버 재화 바 아래(16px)부터
             int[] full = new int[2];
@@ -687,7 +687,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         "HUD 크기 50% 가 적용되지 않음: " + r + " / " + full[0] + "x" + full[1]);
                 check(r.y() >= 16, "줄였을 때 서버 재화 바 자리를 가림: y=" + r.y());
             });
-            ctx.takeScreenshot("features-4b-hud-50");
+            Shots.take(ctx, "features-4b-hud-50");
             ctx.runOnClient(c -> DdingMate.config().hudScale = 100);
 
             // HUD 위치 편집: 일정 HUD 를 화면 가운데로 끌어 [저장] → 그 자리에 그려짐. Esc 는 취소, [초기화]는 구석으로
@@ -706,7 +706,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 s.mouseReleased(s.width / 2.0, s.height / 2.0, 0);
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-4-hud-editor");
+            Shots.take(ctx, "features-4-hud-editor");
             ctx.runOnClient(c -> press(c, "저장"));
             ctx.waitTicks(3);
             ctx.runOnClient(c -> {
@@ -760,7 +760,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(HudLayout.size(HudLayout.TODO) == 120, "[−] 로 고른 HUD 가 작아지지 않음");
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-4c-hud-sizes");
+            Shots.take(ctx, "features-4c-hud-sizes");
             ctx.runOnClient(c -> {
                 press(c, "저장");
                 check(DdingMate.config().hudSizes.get(HudLayout.COUNTER) == 120
@@ -799,7 +799,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                     s.openTabNamed(tab);
                 });
                 ctx.waitTicks(5);
-                ctx.takeScreenshot("features-3-settings-" + names[i]);
+                Shots.take(ctx, "features-3-settings-" + names[i]);
             }
             ctx.runOnClient(c -> {
                 check(AlertLog.unread() == 0, "기록 탭을 열었는데 새 알림 표시가 남음");
@@ -823,7 +823,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 s.openTabNamed("문의");
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("features-5-inquiry-tab");
+            Shots.take(ctx, "features-5-inquiry-tab");
             // 문의 칸은 한 줄 입력칸 바탕이라 caramelChat 같은 한글 입력 모드가 붙는다. 한글을 친 그대로 받고, 긴 글은 여러 줄로 보인다
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
@@ -868,7 +868,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 }
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-5d-inquiry-korean");
+            Shots.take(ctx, "features-5d-inquiry-korean");
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
                 s.inquiryBox().setText("");
@@ -885,6 +885,11 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 com.google.gson.JsonObject info = j.getAsJsonObject("info");
                 check(j.get("category").getAsString().equals("BUG") && j.get("text").getAsString().contains("구리 블록"),
                         "문의 분류·내용이 다름: " + sent[0]);
+                // 진단 요약(기본 켬): 1500자 안, 사용자 폴더 경로는 빠짐
+                String sentText = j.get("text").getAsString();
+                check(sentText.contains("— 띵메이트 진단 —") && sentText.contains("스킬 채광") && sentText.length() <= kr.ddingmate.inquiry.Inquiry.MAX_LENGTH
+                        && !sentText.contains(System.getProperty("user.home")), "진단 요약이 없거나 길이·경로가 이상함: " + sentText);
+                check(kr.ddingmate.inquiry.Diagnostics.full(c).contains("다른 모드:"), "전체 진단 정보가 다름");
                 check(info.get("uuid").getAsString().equals(c.player.getUuidAsString()) && info.get("name").getAsString().equals(c.player.getGameProfile().getName())
                                 && info.get("modVersion").getAsString().length() > 0 && info.get("gameVersion").getAsString().equals("1.21.4"),
                         "플레이어 정보가 빠짐: " + sent[0]);
@@ -924,7 +929,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 }
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-5c-inquiry-attached");
+            Shots.take(ctx, "features-5c-inquiry-attached");
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
                 kr.ddingmate.inquiry.Inquiry.debugSender((path, body) -> {
@@ -942,7 +947,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(sent[0] == null && DdingMateScreen.inquiryStatus().contains("초 뒤에"), "1분 안에 다시 보냄");
             });
             ctx.waitTicks(3);
-            ctx.takeScreenshot("features-5b-inquiry-sent");
+            Shots.take(ctx, "features-5b-inquiry-sent");
             // 중계가 안 될 때 알려 주는 말(쓴 내용은 남는다)
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
@@ -991,7 +996,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.inquiry.Replies.onDisconnect();
             });
             ctx.waitTicks(25);
-            ctx.takeScreenshot("features-5e-dev-reply");
+            Shots.take(ctx, "features-5e-dev-reply");
             ctx.runOnClient(c -> {
                 kr.ddingmate.inquiry.Inquiry.debugSender(null);
                 kr.ddingmate.inquiry.Replies.debugReset();
@@ -1430,7 +1435,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.inquiry.Replies.debugFastPoll(120_000);
             });
             ctx.waitTicks(25);
-            ctx.takeScreenshot("features-6-ocean-petfish-waiting");
+            Shots.take(ctx, "features-6-ocean-petfish-waiting");
             ctx.runOnClient(c -> {
                 DdingMateScreen s = new DdingMateScreen(null);
                 c.setScreen(s);
@@ -1438,7 +1443,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 s.jumpTo("반려어");
             });
             ctx.waitTicks(5);
-            ctx.takeScreenshot("features-6b-expert-marine");
+            Shots.take(ctx, "features-6b-expert-marine");
             ctx.runOnClient(c -> {
                 c.currentScreen.close();
                 kr.ddingmate.expert.OceanOrder.debugReset();
@@ -1482,7 +1487,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                             got[0] = !ts.get(ts.size() - 1).replies.isEmpty();
                         });
                     }
-                    ctx.takeScreenshot("features-real-reply");
+                    Shots.take(ctx, "features-real-reply");
                     ctx.runOnClient(c -> {
                         java.util.List<kr.ddingmate.inquiry.Replies.Ticket> ts = kr.ddingmate.inquiry.Replies.debugTickets();
                         check(got[0], "5분 안에 실제 답변을 못 받음");

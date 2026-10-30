@@ -91,6 +91,8 @@ public final class DdingMateConfig {
         public int lastLeft = -1;
         public int lastMax = 0;
         public boolean lastPercent = false;
+        /** 마지막 내구도를 본 시각(ms). 치장 아래 값 옆에 "3시간 전"으로 */
+        public long lastAt;
 
         public TrackedItem() {}
 
@@ -178,6 +180,8 @@ public final class DdingMateConfig {
          */
         public boolean mergeDone = true;
         /** 제작 시간을 줄여 주는 전문가 스킬 레벨(0 = 안 배움, 1~5). 위키 기준 */
+        /** "제작 시간을 몰라 알림을 못 드려요" 안내를 한 번 보였나 */
+        public boolean unknownTimeTipShown;
         public int mining;   // 채광 · 초고속 용광로: 채광물 가공·강화 제작 시설
         public int farming;  // 재배 · 불 더 올려!: 농작물 가공·요리 제작 시설
         public int marine;   // 해양 · 물 흐르듯 술술: 해양 제작·연금 제작 시설
@@ -221,6 +225,8 @@ public final class DdingMateConfig {
         public boolean cropPauseAway = true;
         /** 판매가 전문가 스킬(이름 → 지금 증가율 %). /전문가 스킬 창에서 자동으로 읽음 */
         public Map<String, Double> priceSkills = new LinkedHashMap<>();
+        /** 계정별 판매가 스킬 비율(부계정 스킬 창을 열어도 본계정 값이 안 바뀌게). 없으면 priceSkills(예전·마지막으로 읽은 값) */
+        public Map<String, Map<String, Double>> priceSkillsByAccount = new LinkedHashMap<>();
         /** 오션오더 하루 한도(기본 10, 해양 스킬 "오션오더 더 더!" Lv1~5 → 12·14·16·18·20). /전문가 스킬 창이나 서버 "[오션오더] n/m" 에서 읽음 */
         public int oceanLimit = 10;
     }
@@ -438,6 +444,7 @@ public final class DdingMateConfig {
         hudWidths.values().removeIf(v -> v == null || v <= 0);
         if (hudHeights == null) hudHeights = new LinkedHashMap<>();
         if (expert != null && expert.priceSkills == null) expert.priceSkills = new LinkedHashMap<>();
+        if (expert != null && expert.priceSkillsByAccount == null) expert.priceSkillsByAccount = new LinkedHashMap<>();
         if (expert != null && (expert.oceanLimit < 10 || expert.oceanLimit > 30)) expert.oceanLimit = 10;
         hudHeights.values().removeIf(v -> v == null || v <= 0);
         hudSizes.values().removeIf(java.util.Objects::isNull);
