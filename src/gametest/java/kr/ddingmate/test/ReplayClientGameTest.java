@@ -84,6 +84,10 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                 ((kr.ddingmate.mixin.BossBarHudAccessor) c.inGameHud.getBossBarHud()).ddingmate$bossBars().clear();
                 c.inGameHud.clearTitle();
                 c.inGameHud.getChatHud().clear(false);
+                var replayObj = c.world.getScoreboard().getNullableObjective("ddm_replay");
+                if (replayObj != null) c.world.getScoreboard().removeObjective(replayObj);
+                report.append("\n== 서버 문구 대조 실패 ").append(FAILURES.size()).append("건\n");
+                for (String f : FAILURES.subList(0, Math.min(40, FAILURES.size()))) report.append("  ").append(f).append('\n');
                 restoreConfig(backup);
                 try {
                     Files.writeString(data.resolve("replay-report.txt"), report, StandardCharsets.UTF_8);
@@ -92,7 +96,101 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                 }
                 DdingMate.LOG.info("실제 기록 재생 보고: {}", data.resolve("replay-report.txt"));
             });
+            if (!FAILURES.isEmpty()) {
+                throw new AssertionError("실제 기록 재생 대조 실패 " + FAILURES.size() + "건(처음 10건):\n  "
+                        + String.join("\n  ", FAILURES.subList(0, Math.min(10, FAILURES.size()))));
+            }
         }
+    }
+
+    // ---------------------------------------------------------------- 서버 문구를 정답으로 쓰는 대조
+
+    /** 재생한 줄의 서버 문구와 띵메이트가 계산한 값이 어긋난 곳 */
+    private static final List<String> FAILURES = new ArrayList<>();
+
+    private static final java.util.regex.Pattern TIP = java.util.regex.Pattern.compile("^\\[TIP] (\\d+)일 오전 3시 요리 상점 가격이 변동됩니다");
+    private static final java.util.regex.Pattern REBOOT = java.util.regex.Pattern.compile("^\\[서버 리붓] (\\d+)분 뒤 현재 채널이 재부팅됩니다");
+    private static final java.util.regex.Pattern CLEAN = java.util.regex.Pattern.compile("^\\[청소] (\\d+)(분|초) 후");
+    private static final java.util.regex.Pattern GOLEM = java.util.regex.Pattern.compile("^다음 등장 대기 : (?:(\\d+)분)? ?(?:(\\d+)초)?");
+
+    /**
+     * 서버가 정답을 함께 알려 주는 줄: 요리 시세 TIP 날짜, 리붓·청소 예고 시간, /광석골렘 남은 시간.
+     * 줄을 흘려 보낸 직후 띵메이트 값이 서버 문구와 같은지 본다
+     */
+    private static void verify(String raw, String time, String file) {
+        String t = kr.ddingmate.counter.ItemKeys.stripGlyphs(raw).replaceAll("\\s+", " ").trim();
+        long now = System.currentTimeMillis();
+        String where = file + " " + time + " | " + t;
+        java.util.regex.Matcher m = TIP.matcher(t);
+        if (m.find() && file.length() >= 10) {
+            try {
+                java.time.ZonedDateTime at = java.time.LocalDate.parse(file.substring(0, 10)).atTime(java.time.LocalTime.parse(time))
+                        .atZone(kr.ddingmate.schedule.ScheduleEngine.KST);
+                int day = kr.ddingmate.expert.Cooking.nextChange(at).getDayOfMonth();
+                if (day != Integer.parseInt(m.group(1))) FAILURES.add("요리 시세 다음 변동 " + day + "일 ≠ 서버 · " + where);
+            } catch (RuntimeException ignored) {
+                // 날짜를 못 읽는 줄은 건너뜀
+            }
+            return;
+        }
+        m = REBOOT.matcher(t);
+        if (m.find()) {
+            long want = Long.parseLong(m.group(1)) * 60_000;
+            long got = kr.ddingmate.game.ServerHud.rebootAt() - now;
+            if (Math.abs(got - want) > 3_000) FAILURES.add("재부팅 예고 " + got / 1000 + "초 ≠ 서버 · " + where);
+            return;
+        }
+        m = CLEAN.matcher(t);
+        if (m.find()) {
+            long want = Long.parseLong(m.group(1)) * (m.group(2).equals("분") ? 60_000 : 1_000);
+            long got = kr.ddingmate.game.ServerHud.cleanAt() - now;
+            if (Math.abs(got - want) > 3_000) FAILURES.add("바닥 청소 " + got / 1000 + "초 ≠ 서버 · " + where);
+            return;
+        }
+        m = GOLEM.matcher(t);
+        if (m.find() && (m.group(1) != null || m.group(2) != null)) {
+            long want = ((m.group(1) == null ? 0 : Long.parseLong(m.group(1))) * 60 + (m.group(2) == null ? 0 : Long.parseLong(m.group(2)))) * 1000;
+            long got = kr.ddingmate.expert.OreGolem.remaining(now);
+            if (Math.abs(got - want) > 3_000) FAILURES.add("광석 골렘 쿨타임 " + got / 1000 + "초 ≠ 서버 · " + where);
+        }
+    }
+
+    /**
+     * 사이드바 기록(의뢰 트래커)을 실제 점수판으로 다시 만들어 띵메이트가 읽게 한다. 트래커에 의뢰 줄이 보이면
+     * 할 일 HUD 의 의뢰 내용도 그 줄과 같아야 한다(2026-10 실제: 줄 끝 색 코드 때문에 0줄이던 결함)
+     */
+    private static void replaySidebar(MinecraftClient c, JsonObject r, net.minecraft.registry.RegistryWrapper.WrapperLookup regs) {
+        net.minecraft.scoreboard.Scoreboard sb = c.world.getScoreboard();
+        net.minecraft.scoreboard.ScoreboardObjective old = sb.getNullableObjective("ddm_replay");
+        if (old != null) sb.removeObjective(old);
+        net.minecraft.scoreboard.ScoreboardObjective obj = sb.addObjective("ddm_replay", net.minecraft.scoreboard.ScoreboardCriterion.DUMMY,
+                Text.Serialization.fromJsonTree(r.get("title"), regs), net.minecraft.scoreboard.ScoreboardCriterion.RenderType.INTEGER, false, null);
+        sb.setObjectiveSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.SIDEBAR, obj);
+        List<Map.Entry<Integer, String>> lines = new ArrayList<>();
+        for (var e : r.getAsJsonArray("lines")) {
+            JsonObject l = e.getAsJsonObject();
+            String name = Text.Serialization.fromJsonTree(l.get("text"), regs).getString();
+            int score = l.get("score").getAsInt();
+            sb.getOrCreateScore(net.minecraft.scoreboard.ScoreHolder.fromName(name), obj).setScore(score);
+            lines.add(Map.entry(score, name));
+        }
+        kr.ddingmate.todo.TodoList.scanSidebar(c);
+        // 기대값: 점수 높은 순, 색 코드·그림 글자를 지운 줄에서 "일일 의뢰" 바로 아래의 "(n/m)" 줄
+        lines.sort((a, b) -> Integer.compare(b.getKey(), a.getKey()));
+        List<String> clean = lines.stream().map(e -> {
+            String s = net.minecraft.util.Formatting.strip(e.getValue());
+            return kr.ddingmate.counter.ItemKeys.stripGlyphs(s == null ? "" : s).trim();
+        }).toList();
+        List<String> want = new ArrayList<>();
+        boolean in = false;
+        for (String l : clean) {
+            if (l.matches("^(일일|일간)\\s*의뢰.*")) in = true;
+            else if (l.matches("^주간\\s*의뢰.*")) in = false;
+            else if (in && l.matches(".*\\(\\s*[\\d,]+\\s*/\\s*[\\d,]+\\s*\\)$")) want.add(l);
+            else if (in && !l.isBlank()) in = false;
+        }
+        List<String> got = kr.ddingmate.todo.TodoList.debugQuests().get(0);
+        if (!got.equals(want)) FAILURES.add("의뢰 트래커 일일 의뢰 " + got + " ≠ 사이드바 " + want);
     }
 
     // ---------------------------------------------------------------- 채팅
@@ -122,6 +220,7 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                     lines++;
                     try {
                         ClientReceiveMessageEvents.GAME.invoker().onReceiveGameMessage(Text.literal(msg), false);
+                        verify(msg, parts[0], parts[1]);
                     } catch (Throwable e) {
                         throw new AssertionError("채팅 재생 중 오류: " + parts[1] + " " + parts[0] + " " + msg, e);
                     }
@@ -290,7 +389,8 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                     // 같은 모양(숫자만 다름) 줄은 몇 개만: 잠수 채널 "299초 뒤 잠수 포인트…" 액션바가 하루 수만 줄이라
                     // 줄마다 게임에 다시 보내면 20분 넘게 걸렸다(2026-10-24). 창(screen)은 모두 다시 연다
                     String shape = line.replaceAll("\\d", "#").replaceAll("\"at\":#+", "");
-                    if (!line.contains("\"t\":\"screen\"") && seen.merge(shape, 1, Integer::sum) > SAME_SHAPE_MAX) continue;
+                    if (!line.contains("\"t\":\"screen\"") && !line.contains("\"t\":\"sidebar\"")
+                            && seen.merge(shape, 1, Integer::sum) > SAME_SHAPE_MAX) continue;
                     out.add(JsonParser.parseString(line).getAsJsonObject());
                 }
             }
@@ -329,7 +429,8 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                     }
                     open(c, Text.Serialization.fromJsonTree(r.get("title"), regs), stacks);
                 }
-                default -> { /* sidebar 등: 지금은 보고만 */ }
+                case "sidebar" -> replaySidebar(c, r, regs);
+                default -> { /* 그 밖: 보고만 */ }
             }
         } catch (Throwable e) {
             throw new AssertionError("원본 기록 재생 중 오류: " + r, e);

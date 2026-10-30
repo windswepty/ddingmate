@@ -224,6 +224,11 @@ public final class TodoList {
         return kr.ddingmate.counter.ItemKeys.stripGlyphs(raw == null ? "" : raw).trim();
     }
 
+    /** 시험용: 지금 기억한 [일일, 주간] 의뢰 줄 */
+    public static List<List<String>> debugQuests() {
+        return List.of(dailyQuests, weeklyQuests);
+    }
+
     /** 시험용: 사이드바 원문 줄(색 코드 포함, 위에서 아래 순)로 [일일, 주간] */
     public static List<List<String>> debugTrackerRaw(List<String> decorated) {
         return debugTracker(decorated.stream().map(TodoList::sidebarLine).toList());
