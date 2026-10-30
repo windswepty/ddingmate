@@ -243,6 +243,11 @@ public final class ServerHud {
         return at;
     }
 
+    /** 지금 있는 곳에서 바닥 청소가 일어나나: 아일랜드·스폰에는 청소가 없다(10-09~29 로그: 마을 375번·야생 23번, 아일랜드 70칸·스폰 149칸 모두 0번) */
+    public static boolean cleansHere() {
+        return area != Area.ISLAND && area != Area.SPAWN;
+    }
+
     public static void debugClean(String t, long now) {
         onCleanChat(t, now);
     }

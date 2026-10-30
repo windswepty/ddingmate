@@ -806,10 +806,11 @@ public class DdingMateScreen extends Screen {
             list.withUnit(t, leadsField(s), "분 전");
         }
         list.header("서버 안내로 맞추는 일정", "서버 안내");
-        long clean = kr.ddingmate.game.ServerHud.cleanAt();
+        long clean = kr.ddingmate.game.ServerHud.cleansHere() ? kr.ddingmate.game.ServerHud.cleanAt() : 0;
         Widgets.Toggle cleanup = toggle("바닥 아이템 청소", cfg.cleanupTimer, v -> cfg.cleanupTimer = v);
         cleanup.setTooltip(Tooltip.of(Text.literal("서버는 10분마다 떨어진 아이템을 청소해요. \"[청소] 5분 후 …\" 안내를 보면 다음 청소까지 남은 시간을 "
-                + "일정 HUD 에 보여 줘요. 채널마다 시각이 달라서 채널을 옮기면 다음 안내부터 다시 맞춰요(/개인설정 청소알림이 켜져 있어야 해요).")));
+                + "일정 HUD 에 보여 줘요. 모든 채널이 같은 시각에 청소하고, 아일랜드·스폰에는 청소가 없어서 그곳에서는 안 보여요"
+                + "(/개인설정 청소알림이 켜져 있어야 해요).")));
         cleanup.detail(clean > 0 ? ScheduleEngine.formatRemaining(Duration.ofMillis(clean - System.currentTimeMillis())) + " 후" : "안내 기다리는 중");
         Widgets.Toggle petReset = toggle("펫 전부 소환 해제", cfg.petResetTimer, v -> cfg.petResetTimer = v);
         petReset.setTooltip(Tooltip.of(Text.literal("서버가 \"[초기화] 5분 후 펫이 전부 소환 해제됩니다.\" 를 알리면 소환 해제까지 남은 시간을 일정 HUD 에 보여 줘요.")));

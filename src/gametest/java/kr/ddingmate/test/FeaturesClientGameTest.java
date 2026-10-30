@@ -656,6 +656,9 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check("@닉네임".equals(KeywordWatcher.debugCheck("(단무지 → 멜트<받음>) 멜트 풍선 봤어?")), "받은 귓속말의 언급이 없음");
                 check("풍선".equals(KeywordWatcher.debugCheck("(단무지 → 멜트<받음>) 풍선 봤어?")), "받은 귓속말 키워드가 없음");
                 check(KeywordWatcher.debugCheck("멜트님이 업적을 달성했습니다") == null, "시스템 공지의 한글 닉네임에 언급 알림이 울림");
+                // 마을 채팅(2026-10-23 실제 "[퍼피마트마을](102호) 멜트 : ㅇ"): 호수가 붙어도 채팅 줄로 본다
+                check(KeywordWatcher.debugCheck("[퍼피마트마을](102호) 멜트 : 풍선 왔다") == null, "내 마을 채팅에 키워드 알림이 울림");
+                check("@닉네임".equals(KeywordWatcher.debugCheck("[퍼피마트마을](105호) 단무지 : 멜트 어디야?")), "마을 채팅의 닉네임 언급 알림이 없음");
                 kr.ddingmate.game.Nickname.debugReset();
                 kw.cooldownSeconds = 10;
             });
@@ -1324,6 +1327,14 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(Math.abs(kr.ddingmate.game.ServerHud.cleanAt() - (now + 10_000)) < 1500, "청소 10초 전 안내를 못 읽음");
                 kr.ddingmate.game.ServerHud.debugClean("[청소] 떨어진 아이템 170개가 청소되었습니다.", now);
                 check(Math.abs(kr.ddingmate.game.ServerHud.cleanAt() - (now + 10 * 60_000)) < 1500, "청소 뒤 다음 청소(10분)를 못 잡음");
+                // 아일랜드·스폰엔 청소가 없다(로그 전수: 0번): 그곳에서는 청소 줄을 안 보인다
+                kr.ddingmate.game.ServerHud.Area keepArea = kr.ddingmate.game.ServerHud.area();
+                int keepCh = kr.ddingmate.game.ServerHud.channel();
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.ISLAND, 6);
+                check(!kr.ddingmate.game.ServerHud.cleansHere(), "아일랜드에서도 청소 타이머를 보임");
+                kr.ddingmate.game.ServerHud.debugSet(kr.ddingmate.game.ServerHud.Area.VILLAGE, 3);
+                check(kr.ddingmate.game.ServerHud.cleansHere(), "마을에서 청소 타이머를 숨김");
+                if (keepArea != null) kr.ddingmate.game.ServerHud.debugSet(keepArea, keepCh);
 
                 // 광석 골렘: "광석 골렘이 등장했습니다!"(실제 채팅) → 5분 쿨타임. 5분 안 돼 또 나오면 프레스티지(하루 20마리까지 1분)
                 kr.ddingmate.expert.OreGolem.debugReset();
@@ -1339,6 +1350,17 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         "2분 만에 또 나왔는데 프레스티지(1분)로 안 봄: " + kr.ddingmate.expert.OreGolem.remaining(now));
                 kr.ddingmate.expert.OreGolem.debugHandle("광석 골렘이 등장했습니다!", now - 10_000);
                 check(kr.ddingmate.expert.OreGolem.remaining(now) == 50_000, "프레스티지 쿨타임 1분이 아님: " + kr.ddingmate.expert.OreGolem.remaining(now));
+                // /광석골렘 답(2026-10-20~29 실제): " : " 가 있어도 서버 답이면 받는다. 정확한 남은 시간으로 맞추고, 등장 가능이면 지운다
+                kr.ddingmate.expert.OreGolem.onChat("다음 등장 대기 : 4분 42초");
+                long golemLeft = kr.ddingmate.expert.OreGolem.remaining(System.currentTimeMillis());
+                check(golemLeft > 280_000 && golemLeft <= 282_000, "/광석골렘 답 '다음 등장 대기 : 4분 42초'로 못 맞춤: " + golemLeft);
+                check(!kr.ddingmate.expert.OreGolem.debugPrestige(), "5분 쿨타임 답을 받았는데 프레스티지로 남음");
+                kr.ddingmate.expert.OreGolem.onChat("일일 최초 쿨타임 감소 : 3 / 20");
+                check(kr.ddingmate.expert.OreGolem.debugPrestige(), "'일일 최초 쿨타임 감소' 로 프레스티지를 못 알아봄");
+                kr.ddingmate.expert.OreGolem.onChat("광석 골렘이 등장할 수 있습니다.");
+                check(kr.ddingmate.expert.OreGolem.remaining(System.currentTimeMillis()) == 0, "'등장할 수 있습니다' 인데 쿨타임이 남음");
+                kr.ddingmate.expert.OreGolem.onChat("[칭호] 누군가 : 다음 등장 대기 : 3분");
+                check(kr.ddingmate.expert.OreGolem.remaining(System.currentTimeMillis()) == 0, "사람 채팅의 '다음 등장 대기'로 쿨타임을 켬");
 
                 // 광물 블록 하위 재료: 블록 1개 = 9개(시설 레시피 목록에는 안 넣는다)
                 kr.ddingmate.counter.RecipeBook.Recipe dia = kr.ddingmate.counter.RecipeBook.subRecipeFor("다이아몬드 블록");

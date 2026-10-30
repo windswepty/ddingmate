@@ -55,13 +55,43 @@ public final class OreGolem {
     public static void onChat(String raw) {
         if (raw == null || !DdingMate.config().expert.oreGolem) return;
         String t = ItemKeys.stripGlyphs(raw).replaceAll("\\s+", " ").trim();
-        if (ServerText.fromPlayer(t)) return;
+        // /광석골렘 답은 " : " 가 들어 있어 사람 채팅 거르기에 걸린다: 줄 머리가 정확히 맞으면 먼저 받는다(사람 채팅은 "[칭호] 닉 : " 로 시작)
+        boolean reply = NEXT.matcher(t).find() || DAILY.matcher(t).find();
+        if (!reply && ServerText.fromPlayer(t)) return;
         handle(t, System.currentTimeMillis());
     }
+
+    /** /광석골렘 답(2026-10-20~29 실제): "다음 등장 대기 : 4분 42초", "다음 등장 대기 : 5초" */
+    private static final Pattern NEXT = Pattern.compile("^다음\\s*등장\\s*대기\\s*[:：]");
+    /** 프레스티지 하루 처음 20마리 1분 쿨타임: "일일 최초 쿨타임 감소 : 1 / 20" */
+    private static final Pattern DAILY = Pattern.compile("^일일\\s*최초\\s*쿨타임\\s*감소\\s*[:：]\\s*(\\d+)\\s*/\\s*(\\d+)");
+    /** 쿨타임이 끝났을 때의 답: "광석 골렘이 등장할 수 있습니다." */
+    private static final Pattern READY = Pattern.compile("^광석\\s*골렘이\\s*등장할\\s*수\\s*있습니다");
 
     static void handle(String t, long now) {
         State s = state();
         if (s == null) return;
+        if (NEXT.matcher(t).find()) {
+            long left = duration(t);
+            s.endsAt = left > 0 ? now + left : 0;
+            // 1분 넘게 남았으면 5분 쿨타임: 프레스티지가 아니거나 오늘 20마리를 넘겼다(멤버십이 끝나면 다시 5분)
+            if (left > PRESTIGE_MS + 5_000 && s.today < PRESTIGE_DAILY) s.prestige = false;
+            save();
+            return;
+        }
+        Matcher daily = DAILY.matcher(t);
+        if (daily.find()) {
+            rollDay(s, now);
+            s.today = Integer.parseInt(daily.group(1));
+            s.prestige = true;
+            save();
+            return;
+        }
+        if (READY.matcher(t).find()) {
+            s.endsAt = 0;
+            save();
+            return;
+        }
         if (SPAWN.matcher(t).find()) {
             rollDay(s, now);
             long gap = s.lastSpawn > 0 ? now - s.lastSpawn : Long.MAX_VALUE;

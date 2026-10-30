@@ -32,7 +32,8 @@ public final class Nickname {
 
     private static final Pattern WHISPER = Pattern.compile("^\\(\\s*([^()→]+?)\\s*→\\s*([^()<]+?)\\s*<\\s*(받음|보냄)\\s*>\\s*\\)");
     /** "[칭호] 멜트 : 내용" → 멜트. 앞의 [..] 꼬리표는 떼고 마지막 낱말 */
-    private static final Pattern CHAT = Pattern.compile("^(?:\\s*\\[[^\\]]*\\])*\\s*([^\\s:\\[\\]]{1,16})\\s+:\\s+(.+)$");
+    /** 마을 채팅은 꼬리표 뒤에 호수가 붙는다(2026-10-23 실제: "[퍼피마트마을](102호) 멜트 : ㅇ") */
+    private static final Pattern CHAT = Pattern.compile("^(?:\\s*\\[[^\\]]*\\])*\\s*(?:\\(\\s*\\d+\\s*호\\s*\\)\\s*)?([^\\s:\\[\\]()]{1,16})\\s+:\\s+(.+)$");
     private static final Pattern NICK = Pattern.compile("^[\\p{IsHangul}A-Za-z0-9_]{1,16}$");
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();

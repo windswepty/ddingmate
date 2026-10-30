@@ -225,7 +225,7 @@ public final class ScheduleHud {
                     Long.MAX_VALUE - 4, Theme.TEXT_SOFT));
         }
         // 바닥 아이템 청소(10분마다, 서버 [청소] 안내로 맞춤)
-        long clean = cfg.cleanupTimer ? kr.ddingmate.game.ServerHud.cleanAt() : 0;
+        long clean = cfg.cleanupTimer && kr.ddingmate.game.ServerHud.cleansHere() ? kr.ddingmate.game.ServerHud.cleanAt() : 0;
         if (clean > 0) {
             long sec = Math.max(0, (clean - nowMs0 + 999) / 1000);
             out.add(new Entry("바닥 아이템 청소", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초",
