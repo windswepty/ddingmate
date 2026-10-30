@@ -58,6 +58,21 @@ public final class OceanOrder {
     /** 해양 스킬 "오션오더 더 더!": 설명 "수령할 수 있는 오션오더의 일일제한이 12회로 증가합니다." */
     private static final Pattern SKILL_LIMIT = Pattern.compile("일일\\s*제한이\\s*(\\d+)\\s*회");
     private static final Pattern SKILL_PREVIEW = Pattern.compile("─{3,}|강화\\s*시|습득\\s*시|배울\\s*시|다음\\s*레벨");
+    /**
+     * 주문이 끝나면 서버가 보내는 안내(2026-10-31 문의 7c4d7a69 화면): "오션오더 정보" 다음 줄에
+     * "├ 일일 시도 횟수 : 5회" · "└ 일일 제한 횟수 : 10회" · "다음 진행 대기 : 4분 55초".
+     * " : "가 들어 있어 사람 채팅 거르기에 걸리고 "오션오더"도 없어서, "오션오더 정보" 뒤 몇 초 안의 줄만 따로 읽는다
+     */
+    private static final Pattern INFO_TRIES = Pattern.compile("일일\\s*시도\\s*횟수\\s*:\\s*(\\d+)\\s*회");
+    private static final Pattern INFO_CAP = Pattern.compile("일일\\s*제한\\s*횟수\\s*:\\s*(\\d+)\\s*회");
+    private static final Pattern INFO_WAIT = Pattern.compile("다음\\s*진행\\s*대기\\s*:\\s*(.*)$");
+    private static final Pattern HOURS = Pattern.compile("(\\d+)\\s*시간");
+    private static final Pattern MINUTES = Pattern.compile("(\\d+)\\s*분");
+    private static final long INFO_WINDOW_MS = 5_000;
+    /** "오션오더 정보"를 본 시각 */
+    private static long infoAt;
+    /** 다음 오션오더를 받을 수 있는 시각(서버 "다음 진행 대기"). 모르면 0 */
+    private static long nextAt;
 
     /** 성공·실패 문구를 본 뒤: 서버 오션오더 HUD 가 아직 남아 있어도 새로 도착한 것으로 보지 않는다(2026-10-23 끝난 것을 또 셈) */
     private static boolean finished;
@@ -86,6 +101,7 @@ public final class OceanOrder {
     public static void onMessage(String raw) {
         if (raw == null || !DdingMate.config().expert.oceanOrder) return;
         String t = ItemKeys.stripGlyphs(raw).replaceAll("\\s+", " ").trim();
+        if (readInfo(t, kr.ddingmate.util.Clock.now())) return;
         if (ServerText.fromPlayer(t)) return;
         if (!t.replace(" ", "").contains("오션오더")) {
             // 실제 도착 문구를 아직 못 봤다: "오션오더"가 없는 주문·물고기 안내도 로그에 남겨 맞춰 간다
@@ -137,6 +153,47 @@ public final class OceanOrder {
         if (START.matcher(t).find()) start(now, left > 0 && left <= LIMIT_MS ? left : LIMIT_MS);
     }
 
+    /** 주문이 끝난 뒤의 "오션오더 정보" 안내면 읽고 true */
+    static boolean readInfo(String t, long now) {
+        String flat = t.replace(" ", "");
+        if (flat.contains("오션오더정보")) {
+            infoAt = now;
+            return true;
+        }
+        if (infoAt == 0 || now - infoAt > INFO_WINDOW_MS) return false;
+        Matcher m = INFO_TRIES.matcher(t);
+        if (m.find()) {
+            int n = Integer.parseInt(m.group(1));
+            syncDaily(n, Math.max(limit(), n));
+            return true;
+        }
+        m = INFO_CAP.matcher(t);
+        if (m.find()) {
+            syncDaily(today().count, Integer.parseInt(m.group(1)));
+            return true;
+        }
+        m = INFO_WAIT.matcher(t);
+        if (m.find()) {
+            long wait = waitMs(m.group(1));
+            nextAt = wait > 0 ? now + wait : 0;
+            DdingMate.LOG.info("오션오더 다음 진행 대기: {}", m.group(1).trim());
+            return true;
+        }
+        return false;
+    }
+
+    /** "4분 55초" · "55초" · "1시간 2분" → ms. 못 읽으면 0 */
+    static long waitMs(String s) {
+        long sec = 0;
+        Matcher h = HOURS.matcher(s);
+        if (h.find()) sec += Long.parseLong(h.group(1)) * 3600;
+        Matcher m = MINUTES.matcher(s);
+        if (m.find()) sec += Long.parseLong(m.group(1)) * 60;
+        Matcher c = SEC.matcher(s);
+        if (c.find()) sec += Long.parseLong(c.group(1));
+        return sec * 1000;
+    }
+
     /** 문구에 적힌 남은 시간(ms). 없으면 0 */
     public static long remainingIn(String t) {
         Matcher m = MIN_SEC.matcher(t);
@@ -164,6 +221,7 @@ public final class OceanOrder {
 
     /** 타이머만 켠다(횟수·알림 없이) */
     private static void track(long now, long limitMs) {
+        nextAt = 0; // 새 주문이 왔으니 대기는 끝났다
         startedAt = now;
         endsAt = now + limitMs;
         progress = "";
@@ -455,13 +513,23 @@ public final class OceanOrder {
         return "오션오더 오늘 " + today().count + "/" + limit();
     }
 
-    public static String idleStatus() {
-        return today().count >= limit() ? "오늘 다 받음" : "다음 주문 기다리는 중";
+    public static String idleStatus(long now) {
+        if (today().count >= limit()) return "오늘 다 받음";
+        if (nextAt > now) {
+            long sec = (nextAt - now + 999) / 1000;
+            return "진행 대기 " + (sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초");
+        }
+        return "다음 주문 기다리는 중";
     }
 
-    /** 일정 HUD 에 카운터 줄을 보일지: 진행 중이 아니고 오늘 받은 적이 있음 */
+    /** 일정 HUD 에 카운터 줄을 보일지: 진행 중이 아니고 오늘 받은 적이 있거나 서버가 알려 준 대기 중 */
     public static boolean showIdle(long now) {
-        return !active(now) && today().count > 0;
+        return !active(now) && (today().count > 0 || nextAt > now);
+    }
+
+    /** 다음 오션오더를 받을 수 있는 시각(모르면 0) */
+    public static long nextAt() {
+        return nextAt;
     }
 
     /** 시험용 */
@@ -528,6 +596,8 @@ public final class OceanOrder {
 
     public static void debugReset() {
         clear();
+        infoAt = 0;
+        nextAt = 0;
         finished = false;
         finishedHud = "";
         skillConfirmed = false;
@@ -540,6 +610,13 @@ public final class OceanOrder {
 
     public static void debugHandle(String text, long now) {
         handle(text, now);
+    }
+
+    /** 시험용: 채팅 한 줄이 온 것처럼(사람 채팅 거르기·"오션오더 정보" 읽기 포함) */
+    public static void debugMessage(String text, long now) {
+        String t = ItemKeys.stripGlyphs(text).replaceAll("\\s+", " ").trim();
+        if (readInfo(t, now) || ServerText.fromPlayer(t)) return;
+        if (t.replace(" ", "").contains("오션오더")) handle(t, now);
     }
 
     /** 시험용: 스킬 창 칸 하나를 읽은 것처럼 */

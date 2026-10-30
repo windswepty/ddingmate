@@ -927,6 +927,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             });
             ctx.runOnClient(c -> {
                 DdingMateScreen s = (DdingMateScreen) c.currentScreen;
+                check(UiSmokeClientGameTest.widgets(s).stream().anyMatch(w -> w.getMessage().getString().contains("디스코드 DM")), "문의 탭에 디스코드 DM 단추가 없음");
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "짧음");
                 check(sent[0] == null && !DdingMateScreen.inquiryStatus().isEmpty(), "너무 짧은 문의를 보냄");
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "재료 HUD 구리 블록 그림이 청록색이에요 @everyone");
@@ -959,12 +960,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                     throw new RuntimeException(ex);
                 }
                 check(DdingMateScreen.inquiryStatus().contains("보냈어요"), "보낸 뒤 안내가 다름: " + DdingMateScreen.inquiryStatus());
-                // 이미지 첨부: 이미지가 아닌 파일은 빼고, 3장까지. 보내면 첫 장이 메시지 안에 크게, 원래 파일 이름은 안 보낸다
+                // 이미지 첨부: 이미지가 아닌 파일은 빼고, 5장까지. 보내면 첫 장이 메시지 안에 크게, 원래 파일 이름은 안 보낸다
                 try {
                     java.nio.file.Path dir = c.runDirectory.toPath().resolve("ddingmate-test-images");
                     java.nio.file.Files.createDirectories(dir);
                     java.util.List<java.nio.file.Path> pngs = new java.util.ArrayList<>();
-                    for (int k = 1; k <= 4; k++) {
+                    for (int k = 1; k <= 6; k++) {
                         java.nio.file.Path f = dir.resolve("내 스크린샷 " + k + ".png");
                         java.nio.file.Files.write(f, new byte[]{(byte) 0x89, 'P', 'N', 'G'});
                         pngs.add(f);
@@ -974,7 +975,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                     s.debugAttach(List.of(txt));
                     check(DdingMateScreen.inquiryImageCount() == 0 && DdingMateScreen.inquiryStatus().contains("이미지"), "이미지가 아닌 파일을 첨부함");
                     s.debugAttach(pngs);
-                    check(DdingMateScreen.inquiryImageCount() == 3 && DdingMateScreen.inquiryStatus().contains("3장까지"), "이미지를 3장 넘게 첨부함");
+                    check(DdingMateScreen.inquiryImageCount() == 5 && DdingMateScreen.inquiryStatus().contains("5장까지"), "이미지를 5장 넘게 첨부함");
                 } catch (java.io.IOException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -988,7 +989,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                     return new kr.ddingmate.inquiry.Inquiry.Http(200, "{\"id\":\"0000beef\"}");
                 });
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.TEXT, "첨부한 스크린샷의 글자가 잘려요");
-                check(kr.ddingmate.inquiry.Inquiry.debugLastFiles.equals(List.of("image1.png", "image2.png", "image3.png"))
+                check(kr.ddingmate.inquiry.Inquiry.debugLastFiles.equals(List.of("image1.png", "image2.png", "image3.png", "image4.png", "image5.png"))
                         && !sent[0].contains("내 스크린샷"),
                         "첨부 이미지 이름이 다름: " + kr.ddingmate.inquiry.Inquiry.debugLastFiles + " / " + sent[0]);
                 check(DdingMateScreen.inquiryImageCount() == 0, "보낸 뒤에도 첨부가 남음");
@@ -1337,6 +1338,23 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.expert.OceanOrder.limit() == 16 && kr.ddingmate.expert.OceanOrder.todayCount() == 9, "서버 한도로 못 맞춤");
                 kr.ddingmate.expert.OceanOrder.debugSkill("오션오더 더 더! (+0)", java.util.List.of("수령할 수 있는 오션오더의 일일제한이 12회로 증가합니다."));
                 check(kr.ddingmate.expert.OceanOrder.limit() == 10, "안 배운 스킬인데 한도가 늘어남");
+                // 주문이 끝난 뒤 서버 "오션오더 정보" 안내(2026-10-31 문의 7c4d7a69): 오늘 횟수·한도·다음 진행 대기
+                kr.ddingmate.expert.OceanOrder.debugReset();
+                kr.ddingmate.expert.OceanOrder.debugMessage("오션오더를 성공하여 골든티켓 11장을 획득하였습니다.", now);
+                kr.ddingmate.expert.OceanOrder.debugMessage("오션오더 정보", now);
+                kr.ddingmate.expert.OceanOrder.debugMessage("├ 일일 시도 횟수 : 5회", now);
+                kr.ddingmate.expert.OceanOrder.debugMessage("└ 일일 제한 횟수 : 10회", now);
+                kr.ddingmate.expert.OceanOrder.debugMessage("다음 진행 대기 : 4분 55초", now);
+                check(kr.ddingmate.expert.OceanOrder.todayCount() == 5 && kr.ddingmate.expert.OceanOrder.limit() == 10
+                        && kr.ddingmate.expert.OceanOrder.showIdle(now + 1000)
+                        && kr.ddingmate.expert.OceanOrder.idleStatus(now + 1000).equals("진행 대기 4분 54초"),
+                        "오션오더 정보를 못 읽음: " + kr.ddingmate.expert.OceanOrder.todayCount() + " " + kr.ddingmate.expert.OceanOrder.idleStatus(now + 1000));
+                check(kr.ddingmate.expert.OceanOrder.idleStatus(now + 296_000).equals("다음 주문 기다리는 중"), "대기가 끝났는데 계속 대기로 보임");
+                // 안내 몇 초 뒤의 다른 " : " 줄(사람 채팅)은 오션오더로 읽지 않는다
+                kr.ddingmate.expert.OceanOrder.debugMessage("누군가 : 다음 진행 대기 : 1시간", now + 10_000);
+                check(kr.ddingmate.expert.OceanOrder.idleStatus(now + 2000).startsWith("진행 대기 4분"), "안내가 지난 뒤의 채팅을 대기로 읽음");
+                kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now + 20_000);
+                check(kr.ddingmate.expert.OceanOrder.nextAt() == 0, "새 주문이 왔는데 대기가 남음");
                 kr.ddingmate.expert.OceanOrder.debugReset();
                 kr.ddingmate.expert.OceanOrder.debugHudReset();
                 kr.ddingmate.expert.OceanOrder.debugHandle("오션오더가 도착했습니다!", now);

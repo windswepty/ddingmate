@@ -34,8 +34,10 @@ export const CATEGORIES = {
 export const LIMITS = {
   minText: 5,
   maxText: 1500,
-  maxFiles: 3,
+  maxFiles: 5,
   maxFileBytes: 8 * 1024 * 1024,
+  // 디스코드 기본 업로드 한도(요청 하나에 10MiB)보다 조금 작게: 넘치면 나머지 이미지는 이어지는 메시지로
+  maxMessageBytes: 9 * 1024 * 1024,
   maxReply: 1000,
   // 같은 주소에서: 60초에 1번, 하루 20번. 전체: 하루 300번(채널 도배·무료 한도 지키기)
   perIpCooldownSec: 60,
@@ -122,11 +124,23 @@ async function inquiry(request, env) {
   const id = randomId();
 
   const names = files.map((f, k) => `image${k + 1}.${ext(f.name)}`);
-  const message = inquiryMessage(env, id, payload, names);
-  const posted = await discord(env, 'POST', `/channels/${env.CHANNEL_ID}/messages`, message, files, names);
+  const groups = packFiles(files.map((f) => f.size));
+  const first = groups[0] || [];
+  const message = inquiryMessage(env, id, payload, first.map((k) => names[k]));
+  const posted = await discord(env, 'POST', `/channels/${env.CHANNEL_ID}/messages`, message,
+    first.map((k) => files[k]), first.map((k) => names[k]));
   if (!posted.ok) {
     console.error('discord post failed', posted.status, posted.body);
     return json({ error: 'discord' }, 502);
+  }
+  // 한 메시지에 다 못 실은 이미지: 문의 메시지에 답장으로 이어서 올린다(실패해도 문의는 이미 들어감)
+  for (const g of groups.slice(1)) {
+    const more = await discord(env, 'POST', `/channels/${env.CHANNEL_ID}/messages`, {
+      content: `문의 번호 ${id} · 이미지 ${g.map((k) => k + 1).join(', ')}`,
+      allowed_mentions: { parse: [] },
+      message_reference: { message_id: posted.body.id, fail_if_not_exists: false },
+    }, g.map((k) => files[k]), g.map((k) => names[k]));
+    if (!more.ok) console.error('discord image post failed', more.status, more.body);
   }
 
   const bump = (key, until) => env.DB.prepare('INSERT INTO limits (key, count, until) VALUES (?1, 1, ?2) '
@@ -139,6 +153,24 @@ async function inquiry(request, env) {
     bump(`day:${day}`, nextDay),
   ]);
   return json({ id });
+}
+
+/** 이미지 크기 목록 → 메시지마다 실을 이미지 번호 묶음(순서 유지, 한 묶음은 maxMessageBytes 이하) */
+export function packFiles(sizes) {
+  const groups = [];
+  let cur = [];
+  let bytes = 0;
+  sizes.forEach((s, k) => {
+    if (cur.length && bytes + s > LIMITS.maxMessageBytes) {
+      groups.push(cur);
+      cur = [];
+      bytes = 0;
+    }
+    cur.push(k);
+    bytes += s;
+  });
+  if (cur.length) groups.push(cur);
+  return groups;
 }
 
 export function validateInquiry(p, files = []) {

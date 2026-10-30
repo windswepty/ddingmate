@@ -3,7 +3,7 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import worker, { validateInquiry, realAccount, sha256, verifyDiscord, cleanup, LIMITS, NOTICE_COMMAND, UPDATE_COMMAND, listItems } from '../src/index.js';
+import worker, { validateInquiry, packFiles, realAccount, sha256, verifyDiscord, cleanup, LIMITS, NOTICE_COMMAND, UPDATE_COMMAND, listItems } from '../src/index.js';
 
 const DEV = '726781498606354452';
 const CHANNEL = '111111111111111111';
@@ -149,6 +149,29 @@ test('문의: 이미지 첨부는 image1.png 로 바꿔 올리고 첫 장을 임
   assert.equal(r.status, 200);
   assert.deepEqual(sent[0].files, ['image1.png', 'image2.jpg']);
   assert.equal(sent[0].body.embeds[0].image.url, 'attachment://image1.png');
+});
+
+test('문의: 이미지 5장까지, 10MiB 를 넘으면 나머지는 문의 메시지에 답장으로', async () => {
+  const form = new FormData();
+  form.append('payload_json', JSON.stringify(inquiryBody()));
+  const big = 4 * 1024 * 1024;
+  for (let k = 0; k < 5; k++) form.append(`files[${k}]`, new File([new Uint8Array(big)], `s${k}.png`, { type: 'image/png' }));
+  const r = await post('/inquiry', form);
+  assert.equal(r.status, 200);
+  assert.deepEqual(sent.map((s) => s.files), [['image1.png', 'image2.png'], ['image3.png', 'image4.png'], ['image5.png']]);
+  assert.equal(sent[0].body.embeds[0].image.url, 'attachment://image1.png');
+  assert.equal(sent[1].body.message_reference.message_id, '1000');
+  assert.deepEqual(sent[1].body.allowed_mentions, { parse: [] });
+  assert.deepEqual(packFiles([1, 2, 3]), [[0, 1, 2]]);
+  assert.deepEqual(packFiles([]), []);
+});
+
+test('문의: 이미지 6장은 막는다', async () => {
+  const form = new FormData();
+  form.append('payload_json', JSON.stringify(inquiryBody()));
+  for (let k = 0; k < 6; k++) form.append(`files[${k}]`, new File([new Uint8Array([1])], `s${k}.png`, { type: 'image/png' }));
+  assert.equal((await post('/inquiry', form)).status, 400);
+  assert.equal(sent.length, 0);
 });
 
 test('문의: 잘못된 내용·도배는 막는다', async () => {

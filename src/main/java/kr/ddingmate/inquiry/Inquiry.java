@@ -132,7 +132,9 @@ public final class Inquiry {
 
     // ---------------------------------------------------------------- 이미지 첨부
 
-    public static final int MAX_FILES = 3;
+    public static final int MAX_FILES = 5;
+    /** 개발자 디스코드 프로필(relay/wrangler.toml DEV_USER_ID 와 같은 사람) */
+    public static final String DEV_DISCORD = "https://discord.com/users/726781498606354452";
     /** 디스코드 첨부 한도(서버 부스트 없는 기본 8MB)에 맞춘 한 장 크기 */
     public static final long MAX_FILE_BYTES = 8L * 1024 * 1024;
     private static final java.util.Set<String> IMAGE_EXT = java.util.Set.of("png", "jpg", "jpeg", "gif", "webp");

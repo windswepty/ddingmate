@@ -439,6 +439,12 @@ public class DdingMateScreen extends Screen {
         });
         copy.setTooltip(Tooltip.of(Text.literal("전체 진단 정보(다른 모드 목록·제작 줄·최근 경고 10개)를 클립보드에 복사해요")));
         list.pair(diag, copy);
+        // 영상이나 대화가 필요한 문의: 개발자 디스코드 프로필을 열어 DM 으로(열기 전에 마인크래프트 링크 확인 창)
+        Widgets.Button dm = new Widgets.Button(rowWidth(), 20, Text.literal("개발자에게 디스코드 DM 보내기"), false,
+                b -> net.minecraft.client.gui.screen.ConfirmLinkScreen.open(this, kr.ddingmate.inquiry.Inquiry.DEV_DISCORD));
+        dm.setTooltip(Tooltip.of(Text.literal("디스코드에서 개발자 프로필을 열어요. 거기서 메시지를 보내면 돼요(영상 같은 큰 파일은 DM 으로).\n"
+                + "같은 디스코드 서버에 있거나 친구여야 DM 이 열려요")));
+        list.row(dm);
     }
 
     /** 첨부할 이미지(창을 닫았다 열어도 남게) */
@@ -463,7 +469,7 @@ public class DdingMateScreen extends Screen {
                 + to)));
         inquirySend.active = kr.ddingmate.inquiry.Inquiry.available() && client != null && client.player != null;
         addDrawableChild(inquirySend);
-        // 이미지 첨부: 윈도우 파일 고르기 창(스크린샷 폴더부터), 3장까지. 첨부한 게 있으면 [✕]로 비운다
+        // 이미지 첨부: 윈도우 파일 고르기 창(스크린샷 폴더부터), MAX_FILES(5)장까지. 첨부한 게 있으면 [✕]로 비운다
         int ax = cx + 4 + 120 + 4;
         Widgets.Button attach = new Widgets.Button(104, 20,
                 Text.literal("이미지 첨부 " + inquiryImages.size() + "/" + kr.ddingmate.inquiry.Inquiry.MAX_FILES), false, b -> pickInquiryImages());

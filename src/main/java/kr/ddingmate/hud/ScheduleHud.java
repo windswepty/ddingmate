@@ -221,7 +221,7 @@ public final class ScheduleHud {
         }
         // 오션오더 카운터: 진행 중이 아니어도 오늘 받은 적이 있으면 "오늘 n/10"(2026-10-24 "오션오더 카운터 HUD 가 안 보여")
         else if (cfg.expert.oceanOrder && kr.ddingmate.expert.OceanOrder.showIdle(nowMs0)) {
-            out.add(new Entry(tag(cfg, "해양", kr.ddingmate.expert.OceanOrder.idleLabel()), kr.ddingmate.expert.OceanOrder.idleStatus(),
+            out.add(new Entry(tag(cfg, "해양", kr.ddingmate.expert.OceanOrder.idleLabel()), kr.ddingmate.expert.OceanOrder.idleStatus(nowMs0),
                     Long.MAX_VALUE - 4, Theme.TEXT_SOFT));
         }
         // 바닥 아이템 청소(10분마다, 서버 [청소] 안내로 맞춤)
