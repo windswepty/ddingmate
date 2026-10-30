@@ -93,6 +93,10 @@ public final class DdingMateConfig {
         public boolean lastPercent = false;
         /** 마지막 내구도를 본 시각(ms). 치장 아래 값 옆에 "3시간 전"으로 */
         public long lastAt;
+        /** 마지막 값을 본 뒤로 맞은 적이 있나(투구는 맞아야만 닳는다: 안 맞았으면 마지막 값이 지금도 정확) */
+        public boolean hitSince;
+        /** 마지막 값을 본 뒤로 맞은 횟수(투구를 벗었다 끼면 실제로 줄어든 양과 맞춰 한 대당 닳는 양을 배운다) */
+        public int hitsSince;
 
         public TrackedItem() {}
 
@@ -108,6 +112,9 @@ public final class DdingMateConfig {
         /** 남은 내구도가 이 % 이하로 떨어지면 한 번 알림 (0 = 알리지 않음) */
         public int warnPercent = 10;
         public List<TrackedItem> tracked = new ArrayList<>();
+        /** 치장 아래 투구 추정용: 지금까지 맞은 횟수와 그동안 실제로 줄어든 내구도 합(벗었다 낄 때마다 더한다) */
+        public int learnedHits;
+        public int learnedLoss;
     }
 
     /** 쉬프트 우클릭 전문가 스킬의 지속·재사용 대기 시간 HUD */

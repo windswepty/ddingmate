@@ -29,6 +29,13 @@ public abstract class InventoryPacketMixin {
         DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance(), "칸 " + packet.getSlot());
     }
 
+    /** 몸에 걸친 장비 패킷: 치장 플러그인이 인벤토리 칸만 바꾸고 여기로는 진짜 투구를 보낼 수도 있다 */
+    @Inject(method = "onEntityEquipmentUpdate", at = @At("TAIL"))
+    private void ddingmate$onEquipment(net.minecraft.network.packet.s2c.play.EntityEquipmentUpdateS2CPacket packet, CallbackInfo ci) {
+        MinecraftClient c = MinecraftClient.getInstance();
+        if (c.player != null && packet.getEntityId() == c.player.getId()) DurabilityTracker.onInventoryPacket(c, "장비 패킷");
+    }
+
     @Inject(method = "onSetPlayerInventory", at = @At("TAIL"))
     private void ddingmate$onPlayerSlot(SetPlayerInventoryS2CPacket packet, CallbackInfo ci) {
         DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance(), "내 칸 " + packet.slot());

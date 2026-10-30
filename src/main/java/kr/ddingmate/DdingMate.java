@@ -290,6 +290,7 @@ public final class DdingMate implements ClientModInitializer {
             if (ServerHud.inGame()) client.setScreen(new DdingMateScreen(client.currentScreen));
         }
         BagTracker.tick(client);
+        DurabilityTracker.watchHits(client); // 맞은 횟수(치장 아래 투구 추정)는 매 틱
         PlaytimeTracker.tick(client);
         kr.ddingmate.skill.SkillSignals.tick(client); // 스킬 효과가 남은 틱으로 지속 시간 맞추기
         kr.ddingmate.expert.CropTimer.tick(client); // 아일랜드 작물 15분 타이머 단축키(눌리는 순간만)

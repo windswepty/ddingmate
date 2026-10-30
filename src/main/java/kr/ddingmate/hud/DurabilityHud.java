@@ -71,7 +71,8 @@ public final class DurabilityHud {
             ItemStack icon = r.stack() != null ? DurabilityTracker.iconOf(r.stack()) : kr.ddingmate.counter.IconCache.forKey(r.item().key);
             if (icon != null) Theme.item(ctx, icon, rx, cy, ICON);
             else Theme.unknownIcon(ctx, tr, rx, cy, ICON);
-            int color = r.durability() == null ? soft : colorOf(r.durability().ratio(), dark);
+            // 맞은 뒤라 줄었을 수 있는 치장 아래 값은 흐리게
+            int color = r.durability() == null || !r.exact() ? soft : colorOf(r.durability().ratio(), dark);
             Theme.textShadow(ctx, tr, r.item().name, rx + ICON + 4, cy + 1, r.durability() == null ? soft : text, dark);
             String v = value(r);
             Theme.boldText(ctx, tr, v, x + boxW - 6 - Theme.boldWidth(tr, v), cy + 1, color, false);

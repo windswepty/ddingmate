@@ -915,7 +915,7 @@ public class DdingMateScreen extends Screen {
             ItemStack seen = r.stack() != null ? DurabilityTracker.iconOf(r.stack()) : kr.ddingmate.counter.IconCache.forKey(r.item().key);
             list.single(new InfoRow(seen == null ? new ItemStack(Items.ANVIL) : seen, r.item().name,
                     DurabilityTracker.valueText(r),
-                    d == null ? Theme.TEXT_SOFT : d.ratio() > 0.5 ? Theme.GREEN : d.ratio() > 0.2 ? Theme.GOLD : Theme.RED, Tab.GEAR));
+                    d == null || !r.exact() ? Theme.TEXT_SOFT : d.ratio() > 0.5 ? Theme.GREEN : d.ratio() > 0.2 ? Theme.GOLD : Theme.RED, Tab.GEAR));
         }
 
         List<kr.ddingmate.craft.CraftTimers.Group> crafting = cfg.craft.enabled ? kr.ddingmate.craft.CraftTimers.groups() : List.of();
@@ -1179,9 +1179,9 @@ public class DdingMateScreen extends Screen {
                 nearestOf(dc.warnPercent, 0, 5, 10, 15, 20, 30),
                 v -> v == 0 ? "끔" : v + "% 이하", v -> dc.warnPercent = v), null);
         list.note("같은 장비가 여러 개면 손에 든 것 → 왼손 → 입은 것 → 단축바 → 나머지 칸 순서로 먼저 찾은 것을 보여 줘요.");
-        list.note("머리 치장을 쓰면 서버가 투구 내구도를 보내지 않아요. 접속·채널 이동 때 서버가 진짜 투구를 잠깐 보내는 순간의 값을 "
-                + "\"치장 · 405/407\"처럼 보여 줘요. 아직 못 봤으면 \"치장에 가려짐\"이고, 치장을 벗거나 투구를 잠깐 빼도 맞춰져요. "
-                + "갑옷 가리기(버튼 모양)는 정확한 숫자로 보여요.");
+        list.note("머리 치장을 쓰면 서버가 투구 내구도를 보내지 않아요. 투구를 한 번 벗었다 끼면 그 값을 기억하고, 그 뒤로 안 맞았으면 "
+                + "투구는 닳지 않으니 \"치장 · 405/407\"이 지금도 정확해요. 맞은 뒤에는 \"405/407 이하\"로 흐리게 보이니 벗었다 끼면 맞춰져요. "
+                + "갑옷 가리기(버튼 모양)는 늘 정확한 숫자로 보여요.");
 
         list.note("쉬프트 우클릭 전문가 스킬 타이머는 [전문가] 탭으로 옮겼어요.");
     }

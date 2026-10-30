@@ -58,9 +58,56 @@ public final class DurabilityTracker {
 
     /**
      * HUD 한 줄. stack 이 null 이면 지금 인벤토리에 없음.
-     * hidden: 치장 아래에 있어 지금 값을 모르고, durability 는 마지막으로 본 값
+     * hidden: 치장 아래에 있어 durability 는 마지막으로 본 값. live: 치장 아이템에 서버가 내구도를 실어 보내 지금 값
      */
-    public record Row(DdingMateConfig.TrackedItem item, ItemStack stack, Durability durability, boolean hidden) {}
+    public record Row(DdingMateConfig.TrackedItem item, ItemStack stack, Durability durability, boolean hidden, boolean live) {
+        public Row(DdingMateConfig.TrackedItem item, ItemStack stack, Durability durability, boolean hidden) {
+            this(item, stack, durability, hidden, false);
+        }
+
+        /** 지금 값이 정확한가: 보이는 장비, 치장에 실려 온 값, 마지막으로 본 뒤로 안 맞은 치장 아래 투구 */
+        public boolean exact() {
+            return durability != null && (!hidden || live || !item.hitSince);
+        }
+    }
+
+    /** 지난 틱의 피격 흔들림·체력: 흔들림이 새로 시작되거나 체력이 줄면 한 대 맞은 것 */
+    private static int lastHurtTime;
+    private static float lastHealth = -1;
+
+    /**
+     * 매 틱: 맞았으면 치장 아래 투구마다 맞은 횟수를 하나 올린다(투구는 맞아야만 닳는다). 0.5초마다 보면 회복이 빨라
+     * 맞은 흔적이 사라져서(시험: 2 피해 뒤 15틱 만에 체력 20) 매 틱 본다. 낙하처럼 갑옷이 안 닳는 피해도 센다(넉넉하게)
+     */
+    public static void watchHits(MinecraftClient client) {
+        if (client.player == null) {
+            lastHurtTime = 0;
+            lastHealth = -1;
+            return;
+        }
+        int hurt = client.player.hurtTime;
+        float health = client.player.getHealth();
+        boolean hit = (hurt > 0 && hurt > lastHurtTime) || (lastHealth >= 0 && health < lastHealth - 0.01f && hurt == 0);
+        lastHurtTime = hurt;
+        lastHealth = health;
+        if (!hit) return;
+        DdingMateConfig.Durability cfg = DdingMate.config().durability;
+        PlayerInventory inv = client.player.getInventory();
+        boolean changed = false;
+        for (DdingMateConfig.TrackedItem t : cfg.tracked) {
+            if (t.lastMax <= 0 || cosmeticOver(t, inv) == null) continue;
+            t.hitsSince++;
+            t.hitSince = true;
+            changed = true;
+        }
+        if (changed) DdingMate.config().save();
+    }
+
+    /** 배운 한 대당 닳는 양(맞은 횟수 5번 이상 배웠을 때). 모르면 -1 */
+    public static double lossPerHit() {
+        DdingMateConfig.Durability cfg = DdingMate.config().durability;
+        return cfg.learnedHits >= 5 ? (double) cfg.learnedLoss / cfg.learnedHits : -1;
+    }
 
     private static List<Row> rows = List.of();
     private static final Set<String> WARNED = new HashSet<>();
@@ -176,6 +223,7 @@ public final class DurabilityTracker {
         PlayerInventory inv = client.player.getInventory();
         List<ItemStack> order = searchOrder(inv);
         List<Row> out = new ArrayList<>();
+
         for (DdingMateConfig.TrackedItem t : cfg.tracked) {
             ItemStack found = null;
             Durability d = null;
@@ -187,7 +235,7 @@ public final class DurabilityTracker {
                     break;
                 }
             }
-            boolean hidden = false;
+            boolean hidden = false, live = false;
             if (found != null) {
                 remember(t, inv, found, d);
             } else {
@@ -195,14 +243,25 @@ public final class DurabilityTracker {
                 // (2026-10-29 사용자 화면: 투구를 썼는데 머리 칸이 "렛서판다 모자"). 입은 칸에서 같은 종류 → 같은 칸 순서로 찾는다
                 found = worn(t, inv);
                 d = found == null ? null : read(found);
-                if (found == null && underCosmetic(t, inv)) {
-                    // 치장 아래 투구: 서버가 진짜 투구를 보낸 마지막 순간(접속·이동 때 잠깐)의 값. 아직 못 봤으면 값 없이 "치장에 가려짐"
-                    d = t.lastMax > 0 ? new Durability(t.lastLeft, t.lastMax, t.lastPercent) : null;
+                ItemStack cos = found == null ? cosmeticOver(t, inv) : null;
+                if (cos != null) {
+                    // 치장 아래 투구: 서버는 치장 쓴 동안 진짜 투구를 한 번도 안 보낸다(2026-10-30 패킷 기록, 접속·채널 이동 5번).
+                    // 1) 치장 아이템에 내구도가 실려 오면(갑옷 가리기 버튼처럼) 그 값이 지금 값
+                    // 2) 아니면 투구를 벗었다 낄 때 본 마지막 값. 그 뒤로 안 맞았으면 지금도 정확하다(투구는 맞아야만 닳음)
                     hidden = true;
+                    Durability carried = carried(cos, t);
+                    if (carried != null) {
+                        d = carried;
+                        live = true;
+                        rememberHidden(t, d);
+                    } else {
+                        d = t.lastMax > 0 ? new Durability(t.lastLeft, t.lastMax, t.lastPercent) : null;
+                    }
                 }
             }
-            out.add(new Row(t, found, d, hidden));
-            if (d != null && !hidden) checkWarn(cfg, t, found, d);
+            Row row = new Row(t, found, d, hidden, live);
+            out.add(row);
+            if (row.exact()) checkWarn(cfg, t, found, d);
         }
         rows = out;
     }
@@ -216,7 +275,21 @@ public final class DurabilityTracker {
         for (int i = 36; i <= 39; i++) if (inv.getStack(i) == s) slot = i;
         boolean armor = armorSlot(item) >= 0;
         if (armor) t.lastAt = kr.ddingmate.util.Clock.now(); // 저장은 값이 바뀔 때만(시각만 바뀐 것은 다음 저장 때 함께)
-        boolean same = id.equals(t.itemId) && slot == t.wornSlot;
+        boolean same = id.equals(t.itemId) && slot == t.wornSlot && !(armor && t.hitSince);
+        if (armor && t.hitsSince > 0 && t.lastMax > 0 && !t.lastPercent && !d.percent() && d.max() == t.lastMax) {
+            int loss = t.lastLeft - d.left();
+            // 줄어든 만큼만 배운다(늘었으면 그사이 수리·수선이라 맞은 횟수와 상관없다)
+            if (loss >= 0) {
+                DdingMateConfig.Durability cfg = DdingMate.config().durability;
+                cfg.learnedHits += t.hitsSince;
+                cfg.learnedLoss += loss;
+                DdingMate.LOG.info("치장 투구 추정 배움: 맞은 {}번에 {} 줄어듦 (누적 {}번 {})", t.hitsSince, loss, cfg.learnedHits, cfg.learnedLoss);
+            }
+        }
+        if (armor) {
+            t.hitSince = false; // 진짜 값을 봤다
+            t.hitsSince = 0;
+        }
         if (armor) same &= d.left() == t.lastLeft && d.max() == t.lastMax && d.percent() == t.lastPercent;
         if (same) return;
         t.itemId = id;
@@ -226,6 +299,30 @@ public final class DurabilityTracker {
             t.lastMax = d.max();
             t.lastPercent = d.percent();
         }
+        DdingMate.config().save();
+    }
+
+    /** 치장 아이템에 실려 온 진짜 투구 내구도: 닳은 양(minecraft:damage)이나 설명의 "Durability: N%"(갑옷 가리기 버튼과 같은 방식). 없으면 null */
+    static Durability carried(ItemStack cos, DdingMateConfig.TrackedItem t) {
+        Identifier id = Identifier.tryParse(t.itemId);
+        int max = id == null || !Registries.ITEM.containsId(id) ? 0 : new ItemStack(Registries.ITEM.get(id)).getMaxDamage();
+        if (max > 0 && cos.contains(DataComponentTypes.DAMAGE)) {
+            return new Durability(Math.max(0, max - cos.getOrDefault(DataComponentTypes.DAMAGE, 0)), max);
+        }
+        Durability lore = read(cos);
+        if (lore != null && lore.percent() && max > 0 && lore.ratio() >= 1) return new Durability(max, max);
+        return lore;
+    }
+
+    /** 치장에 실려 온 값을 마지막 값으로 기억(바뀐 때만 저장) */
+    private static void rememberHidden(DdingMateConfig.TrackedItem t, Durability d) {
+        t.lastAt = kr.ddingmate.util.Clock.now();
+        if (d.left() == t.lastLeft && d.max() == t.lastMax && d.percent() == t.lastPercent && !t.hitSince) return;
+        t.lastLeft = d.left();
+        t.lastMax = d.max();
+        t.lastPercent = d.percent();
+        t.hitSince = false;
+        t.hitsSince = 0;
         DdingMate.config().save();
     }
 
@@ -239,12 +336,26 @@ public final class DurabilityTracker {
         return (min / (24 * 60)) + "일 전";
     }
 
-    /** HUD·장비 탭 값: 치장 아래면 "치장 · 405/407 · 3시간 전" */
+    /**
+     * HUD·장비 탭 값. 치장 아래: 지금 값이거나 그 뒤로 안 맞았으면 "치장 · 405/407"(정확),
+     * 맞은 적이 있으면 "치장 · 405/407 이하 · 3시간 전"(그 뒤로 줄었을 수 있음 → 투구를 벗었다 끼면 맞춰짐)
+     */
     public static String valueText(Row r) {
         if (r.durability() == null) return r.hidden() ? "치장에 가려짐" : "인벤토리에 없음";
         if (!r.hidden()) return r.durability().text();
+        if (r.exact()) return "치장 · " + r.durability().text();
+        Durability est = estimate(r);
+        if (est != null) return "치장 · 약 " + est.text();
         String when = ago(r.item().lastAt, kr.ddingmate.util.Clock.now());
-        return "치장 · " + r.durability().text() + (when.isEmpty() ? "" : " · " + when);
+        return "치장 · " + r.durability().text() + " 이하" + (when.isEmpty() ? "" : " · " + when);
+    }
+
+    /** 맞은 뒤의 치장 아래 투구 어림값: 마지막 값 − 맞은 횟수 × 배운 한 대당 닳는 양. 아직 덜 배웠으면 null */
+    public static Durability estimate(Row r) {
+        Durability d = r.durability();
+        double per = lossPerHit();
+        if (d == null || d.percent() || per < 0 || r.item().hitsSince <= 0) return null;
+        return new Durability(Math.max(0, d.left() - (int) Math.round(per * r.item().hitsSince)), d.max());
     }
 
     /** 갑옷이 들어가는 인벤토리 칸(신발 36 ~ 투구 39), 갑옷이 아니면 -1 */
@@ -265,10 +376,16 @@ public final class DurabilityTracker {
 
     /** 이 장비가 들어갈 갑옷 칸이 치장으로 가려져 있나 */
     static boolean underCosmetic(DdingMateConfig.TrackedItem t, PlayerInventory inv) {
+        return cosmeticOver(t, inv) != null;
+    }
+
+    /** 이 장비가 들어갈 갑옷 칸의 치장 아이템(치장이 아니면 null) */
+    static ItemStack cosmeticOver(DdingMateConfig.TrackedItem t, PlayerInventory inv) {
         Identifier id = Identifier.tryParse(t.itemId);
-        if (id == null || !Registries.ITEM.containsId(id)) return false;
+        if (id == null || !Registries.ITEM.containsId(id)) return null;
         int slot = armorSlot(Registries.ITEM.get(id));
-        return slot >= 0 && cosmetic(inv.getStack(slot));
+        ItemStack s = slot >= 0 ? inv.getStack(slot) : ItemStack.EMPTY;
+        return cosmetic(s) ? s : null;
     }
 
     /** 이름이 바뀐 채 입고 있는 장비: 같은 종류를 입은 칸, 없으면 예전에 입던 칸(내구도가 있을 때만) */
@@ -313,7 +430,7 @@ public final class DurabilityTracker {
         if (cfg.warnPercent <= 0) return;
         double pct = d.ratio() * 100;
         if (pct <= cfg.warnPercent) {
-            if (WARNED.add(t.key)) Notifier.durabilityLow(t.name, d.text(), iconOf(s));
+            if (WARNED.add(t.key)) Notifier.durabilityLow(t.name, d.text(), s != null ? iconOf(s) : kr.ddingmate.counter.IconCache.forKey(t.key));
         } else if (pct > cfg.warnPercent + 5) {
             WARNED.remove(t.key);
         }

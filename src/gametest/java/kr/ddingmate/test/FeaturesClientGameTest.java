@@ -110,7 +110,58 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
                 check(helm.hidden() && helm.durability() != null && helm.durability().left() == 405 && helm.durability().max() == 407,
                         "치장 아래 투구가 마지막 값으로 안 보임: " + helm);
+                // 그 뒤로 안 맞았으면 정확한 값(흐리지 않게)
+                check(helm.exact() && DurabilityTracker.valueText(helm).equals("치장 · 405/407"), "안 맞았는데 정확한 값으로 안 보임: " + DurabilityTracker.valueText(helm));
+            });
+            // 맞으면 "이하"로(투구는 맞아야만 닳는다). 맞음은 매 틱 피격 흔들림이 새로 시작될 때 센다(여기선 흔들림을 직접 줘서)
+            ctx.runOnClient(c -> {
+                DdingMate.config().durability.learnedHits = 0;
+                DdingMate.config().durability.learnedLoss = 0;
+                for (int i = 0; i < 5; i++) {
+                    c.player.hurtTime = 0;
+                    DurabilityTracker.watchHits(c);
+                    c.player.hurtTime = 10;
+                    DurabilityTracker.watchHits(c);
+                }
+                DurabilityTracker.tick(c);
+                DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
+                check(helm.item().hitsSince == 5 && !helm.exact() && DurabilityTracker.valueText(helm).startsWith("치장 · 405/407 이하"),
+                        "맞은 뒤인데 정확한 값처럼 보임: " + DurabilityTracker.valueText(helm) + " (맞은 " + helm.item().hitsSince + "번)");
+            });
+            // 투구를 벗었다 끼면(진짜 투구가 보이면) 5번 맞는 동안 5 줄었다 → 한 대에 1 을 배운다
+            sp.getServer().runCommand("item replace entity @a armor.head with minecraft:netherite_helmet[minecraft:damage=7]");
+            ctx.waitTicks(10);
+            ctx.runOnClient(c -> check(DurabilityTracker.lossPerHit() == 1.0, "한 대당 닳는 양을 못 배움: " + DurabilityTracker.lossPerHit()));
+            sp.getServer().runCommand("item replace entity @a armor.head with minecraft:leather_horse_armor"
+                    + "[minecraft:custom_data={PublicBukkitValues:{\"hmccosmetics:cosmetic\":\"red_panda_hat\"}}]");
+            ctx.waitTicks(10);
+            ctx.runOnClient(c -> {
+                for (int i = 0; i < 2; i++) {
+                    c.player.hurtTime = 0;
+                    DurabilityTracker.watchHits(c);
+                    c.player.hurtTime = 10;
+                    DurabilityTracker.watchHits(c);
+                }
+                DurabilityTracker.tick(c);
+                DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
+                check(DurabilityTracker.valueText(helm).equals("치장 · 약 398/407"), "배운 값으로 어림하지 않음: " + DurabilityTracker.valueText(helm));
+                c.player.hurtTime = 0;
+            });
+            // 서버가 치장 아이템에 닳은 양을 실어 보내면(갑옷 가리기 버튼처럼) 그 값이 지금 값
+            sp.getServer().runCommand("item replace entity @a armor.head with minecraft:leather_horse_armor"
+                    + "[minecraft:custom_data={PublicBukkitValues:{\"hmccosmetics:cosmetic\":\"red_panda_hat\"}},minecraft:damage=7]");
+            ctx.waitTicks(15);
+            ctx.runOnClient(c -> {
+                DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
+                check(helm.live() && helm.exact() && helm.durability().left() == 400 && helm.durability().max() == 407,
+                        "치장 아이템에 실린 닳은 양을 안 읽음: " + helm);
                 // 업데이트 전 설정처럼 마지막 값이 없으면 "인벤토리에 없음" 대신 가려짐
+            });
+            sp.getServer().runCommand("item replace entity @a armor.head with minecraft:leather_horse_armor"
+                    + "[minecraft:custom_data={PublicBukkitValues:{\"hmccosmetics:cosmetic\":\"red_panda_hat\"}}]");
+            ctx.waitTicks(10);
+            ctx.runOnClient(c -> {
+                DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
                 helm.item().lastMax = 0;
                 DurabilityTracker.tick(c);
                 DurabilityTracker.Row unknown = DurabilityTracker.rows().get(2);
