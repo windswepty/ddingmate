@@ -1166,7 +1166,21 @@ public class DdingMateScreen extends Screen {
                     v -> DurabilityTracker.setTracked(e.getKey(), name, v))
                     .icon(DurabilityTracker.iconOf(s)).detail(d.text()));
         }
-        List<DdingMateConfig.TrackedItem> missing = dc.tracked.stream().filter(t -> !found.containsKey(t.key)).toList();
+        // 머리 치장에 가려진 투구는 인벤토리 목록엔 없지만 쓰고 있다: HUD 와 같은 값("치장 · 402/407")으로 따로 보인다
+        Map<DdingMateConfig.TrackedItem, DurabilityTracker.Row> hiddenRows = new java.util.HashMap<>();
+        for (DurabilityTracker.Row r : DurabilityTracker.rows()) if (r.hidden()) hiddenRows.put(r.item(), r);
+        List<DdingMateConfig.TrackedItem> covered = dc.tracked.stream().filter(t -> !found.containsKey(t.key) && hiddenRows.containsKey(t)).toList();
+        if (!covered.isEmpty()) {
+            list.header("치장에 가려진 장비 · 투구를 벗었다 끼면 정확해져요", "치장 장비");
+            for (DdingMateConfig.TrackedItem t : covered) {
+                DurabilityTracker.Row r = hiddenRows.get(t);
+                ItemStack icon = kr.ddingmate.counter.IconCache.forKey(t.key);
+                Widgets.Toggle row = new Widgets.Toggle(rowWidth(), t.name, true, v -> DurabilityTracker.setTracked(t.key, t.name, v))
+                        .detail(DurabilityTracker.valueText(r));
+                list.single(icon == null ? row : row.icon(icon));
+            }
+        }
+        List<DdingMateConfig.TrackedItem> missing = dc.tracked.stream().filter(t -> !found.containsKey(t.key) && !hiddenRows.containsKey(t)).toList();
         if (!missing.isEmpty()) {
             list.header("추적 중이지만 지금 인벤토리에 없는 장비", "없는 장비");
             for (DdingMateConfig.TrackedItem t : missing) {
