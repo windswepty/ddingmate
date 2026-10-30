@@ -1092,6 +1092,11 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         "탐사선 남은 재료 오류: " + kr.ddingmate.expert.Exploration.preps());
                 check(kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(new String[]{"C", "110907"}, new String[]{"C", "110907"}), now) == 1,
                         "같은 탐사선을 두 줄로 셈");
+                // 같은 등급 두 척이 다른 시각에 돌아오면 일정 줄도 둘(먼저 온 배를 늦게 온 배까지 기다리게 묶지 않음)
+                check(kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(new String[]{"C", "90000"}, new String[]{"C", "126000"}), now) == 2,
+                        "같은 등급 탐사선 두 척을 못 셈");
+                check(kr.ddingmate.craft.CraftTimers.groups().stream().filter(g -> g.name().endsWith("급 탐사선")).count() == 2,
+                        "같은 등급 탐사선 두 척이 한 줄로 묶임");
                 check(kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(), now) == 0, "탐사 창에 출항 중인 배가 없는데 줄이 남음");
                 kr.ddingmate.expert.Exploration.debugReset();
                 // 분류별로 묶기(2026-10-29 사용자 화면 순서): 분류 없는 줄은 제자리, [채광] 둘이 모이고 묶음은 빨리 끝나는 순

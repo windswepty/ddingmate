@@ -189,9 +189,10 @@ public final class PetFish {
             if (l.contains("성장") && (l.contains("남은") || l.contains("남음"))) growLeft = duration(l);
         }
         if (h < 0 && m < 0 && v < 0) return;
-        // 밥을 줘서 스탯이 올랐으면 알림을 다시 할 수 있게(지금쯤 줄어 있을 예상값보다 높으면 밥을 준 것)
-        double expected = f.statsAt == 0 ? -1 : snapshot(f, now).avg();
-        if (f.statsAt == 0 || avgOf(h, m, v) > expected + 1) {
+        // 밥을 줘서 스탯이 올랐으면 알림을 다시 할 수 있게: 지난번에 읽은 값보다 올랐거나 지금 평균이 충분할 때.
+        // (예전엔 25%씩 깎은 예상값과 비교해서, 실제로 20%씩 줄면 어항을 열기만 해도 '밥을 줬다'고 보고 알림이 다시 울렸다)
+        double read = avgOf(h, m, v);
+        if (f.statsAt == 0 || read > avgOf(f.hunger, f.mood, f.vigor) + 1 || read >= SLOW_AVG) {
             f.warnedFeed = false;
             f.warnedDanger = false;
         }
@@ -339,6 +340,13 @@ public final class PetFish {
         if (f == null || f.statsAt == 0) return;
         Forecast fc = forecast(f, now);
         if (!fc.alive() || fc.grownSafe()) {
+            if (!fc.alive() && !fc.grownSafe() && !f.warnedDanger) {
+                // 접속하지 않은 사이 예상상 스탯이 0% 가 됐다: 알림 없이 HUD 만 바뀌지 않게 한 번 알린다
+                f.warnedDanger = true;
+                f.warnedFeed = true;
+                save();
+                Notifier.petFish("반려어 " + f.name + " 어항을 확인해 주세요", "예상으로는 스탯이 0% 가 됐을 수 있어요 · 어항을 열면 실제 값으로 맞춰요");
+            }
             if (fc.grownSafe() && !f.notifiedGrown) {
                 f.notifiedGrown = true;
                 save();

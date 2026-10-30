@@ -61,6 +61,8 @@ public final class CraftTimers {
         public long startedAt;
         /** 완료 예정 시각(ms). 0 이면 아직 모름 */
         public long endsAt;
+        /** 모드가 모르는 앞 제작 뒤로 미뤄 둔 제작(그 앞 칸이 "완료"로 바뀌어도 이 제작의 완료가 아니다) */
+        public transient boolean behindUnknown;
         /** 시설 창에 보인 남은 시간이나 서버가 알려 준 시간으로 맞춘 값이면 true(아니면 계산한 어림값) */
         public boolean synced;
         /**
@@ -375,6 +377,23 @@ public final class CraftTimers {
      * 제작을 넣은 직후(5초 안) 맨 앞 제작의 남은 시간을 창에서 봤다 → 그 제작 1건의 실제 시간을 배운다.
      * 레시피 1개 시간과 견줘 한 번에 몇 개가 만들어지는지도 배워 다른 개수에도 쓴다
      */
+    /**
+     * 맨 앞 칸이 방금(2분 안) 넣은 이 제작일 수 없는가: 벌써 "완료"이거나, 창의 남은 시간이 예상 남은 시간의 3분의 1도 안 된다.
+     * 예상이 시작 버튼·레시피 칸에서 읽은 실제 값일 때만 판단한다(레시피 계산은 크게 틀릴 수 있다: 조약돌 뭉치 7개는 계산 98초, 실제 14초)
+     */
+    static boolean notThisJob(Job job, Reading r, long now) {
+        if (r.done) return job.behindUnknown && now < job.endsAt - 5_000;
+        if (job.startedAt <= 0 || !r.own) return false;
+        String key = ItemKeys.normalize(job.name);
+        if (!store.observedMs.containsKey(key + "*" + Math.max(1, job.count)) && multiRecipeSec(job.name, job.count) <= 0) return false;
+        long elapsed = now - job.startedAt;
+        if (elapsed < 0 || elapsed > 120_000) return false;
+        long dur = durationMs(job.name, job.count);
+        if (dur <= 0) return false;
+        long expectLeft = dur - elapsed;
+        return r.remainingSec * 1000L + 3_000 < expectLeft / 3;
+    }
+
     private static boolean learn(Job job, long ms) {
         if (ms <= 0) return false;
         String name = ItemKeys.normalize(job.name);
@@ -471,6 +490,11 @@ public final class CraftTimers {
      * 이 아이템·개수의 제작 시간을 확실히 아는가: 서버가 보여 준 실제 시간을 배웠거나(같은 개수),
      * 한 번에 만들어지는 개수를 배워 개수에 따른 시간을 확실히 계산할 수 있을 때
      */
+    /** 시험용: 시작 버튼에서 읽은 실제 시간처럼 기억 */
+    public static void debugObserve(String name, int count, long ms) {
+        store.observedMs.put(ItemKeys.normalize(name) + "*" + Math.max(1, count), ms);
+    }
+
     static boolean confident(String name, int count) {
         String key = ItemKeys.normalize(name);
         return store.observedMs.containsKey(key + "*" + Math.max(1, count)) || store.batch.containsKey(key);
@@ -629,6 +653,7 @@ public final class CraftTimers {
         // 제작 없이 자리만 차지하는 칸으로 둔다 → 그 뒤 제작은 이 칸이 끝난 뒤부터 센다
         record Pair(QueueSlot slot, Job job) {}
         List<Pair> pairs = new ArrayList<>();
+        Map<Job, Long> afterUnknown = new LinkedHashMap<>();
         for (int qi = 0; qi < queue.size(); qi++) {
             QueueSlot q = queue.get(qi);
             List<QueueSlot> later = queue.subList(qi + 1, queue.size());
@@ -639,6 +664,16 @@ public final class CraftTimers {
             Job job = same.stream().filter(x -> x.count == q.count()).findFirst()
                     .orElse(same.stream().filter(x -> later.stream().noneMatch(l -> l.key().equals(q.key()) && l.count() == x.count))
                             .findFirst().orElse(null));
+            if (job != null && notThisJob(job, q.r(), now)) {
+                // 모드가 모르는 제작(모드를 깔기 전에 넣었거나 시작 메시지를 놓침, 2026-10-18 로그: 시작 채팅 없이 회수된 코룸 주괴 5건)이
+                // 맨 앞에서 돌거나 끝나 있는데, 방금 넣은 같은 이름 제작과 짝지으면 일찍 '완료'로 알리고 배운 시간까지 틀어진다.
+                // 이 칸은 모르는 제작으로 두고, 방금 넣은 제작은 그 칸이 끝난 뒤부터 센다
+                if (!q.r().done && q.r().own) {
+                    pairs.add(new Pair(q, null));
+                    afterUnknown.putIfAbsent(job, now + q.r().remainingSec * 1000L);
+                }
+                continue;
+            }
             if (job == null) {
                 if (q.r().done || q.r().remainingSec <= 0) continue;
                 if (q.r().own) {
@@ -694,6 +729,20 @@ public final class CraftTimers {
                 changed = true;
             }
             cursor = Math.max(cursor, job.endsAt);
+        }
+        // 모르는 제작 뒤에서 기다리는 방금 넣은 제작: 그 칸이 끝난 뒤 + 제 시간
+        for (Map.Entry<Job, Long> e : afterUnknown.entrySet()) {
+            Job job = e.getKey();
+            if (matched.contains(job)) continue;
+            long dur = durationMs(job.name, job.count);
+            if (dur <= 0) continue;
+            long ends = Math.max(e.getValue(), job.startedAt) + dur;
+            job.behindUnknown = true;
+            if (Math.abs(job.endsAt - ends) > 1500) {
+                job.endsAt = ends;
+                job.derived = true;
+                changed = true;
+            }
         }
         // 실제 시간을 새로 배웠으면, 창에 안 보이는 뒤 제작들의 어림값도 그 시간으로 다시 계산한다
         if (relearned) {
@@ -1230,6 +1279,8 @@ public final class CraftTimers {
                 Notifier.mineDone(j.queue);
             } else if (DdingMate.config().craft.notify && j.name.endsWith(VOYAGE)) {
                 Notifier.voyageDone(j.name.substring(0, j.name.length() - VOYAGE.length()).trim());
+            } else if (DdingMate.config().craft.notify && j.name.endsWith(EXPLORE)) {
+                Notifier.exploreDone(j.name);
             } else if (DdingMate.config().craft.notify) {
                 if (same) Notifier.craftDone(j.name, j.count, all.size());
                 else Notifier.craftDone(j.name, sum, 1);
@@ -1242,6 +1293,8 @@ public final class CraftTimers {
     }
 
     private static String groupKey(Job j) {
+        // 탐사선은 같은 등급이 여러 척이어도 돌아오는 시각이 제각각(C급 24~36시간 무작위): 배마다 따로 보이고 따로 알린다
+        if (j.separate && j.name.endsWith(EXPLORE)) return "s:" + ItemKeys.normalize(j.name) + "@" + System.identityHashCode(j);
         return (j.separate ? "s:" : "q:") + ItemKeys.normalize(j.name);
     }
 

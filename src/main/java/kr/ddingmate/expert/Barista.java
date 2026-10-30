@@ -176,6 +176,8 @@ public final class Barista {
             String name = coffeeName(s);
             for (String l : lore(s)) {
                 if (l.contains("레시피") || l.contains("제작 시작") || l.contains("제작 시간")) facility = true;
+                // 유저상점·내 등록 물품 칸("- 판매자 :", "- 거래 상태 : 판매 중")의 '판매'는 손님 주문이 아니다
+                if (l.contains("유저상점") || l.contains("판매자") || l.contains("거래 상태") || l.contains("등록 가격") || l.contains("평균가")) facility = true;
                 if (ORDER_HINT.matcher(l).find()) hint = true;
             }
             if (name != null) want.merge(name, s.getCount(), Integer::sum);

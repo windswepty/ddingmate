@@ -83,6 +83,12 @@ public final class Notifier {
                 SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);
     }
 
+    /** 해양 탐사선이 돌아왔을 때("C급 탐사선") */
+    public static void exploreDone(String ship) {
+        notify("제작", "탐사선 귀환: " + ship, "해양 탐사 창에서 보상을 받으세요",
+                SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), new ItemStack(Items.OAK_BOAT), Theme.GREEN, false);
+    }
+
     public static void craftDone(String name, int count, int times) {
         ItemStack icon = kr.ddingmate.counter.IconCache.forMaterial(name);
         notify("제작", "제작 완료: " + Theme.compactGrade(name) + (count > 1 ? " ×" + count : "") + (times > 1 ? " [" + times + "]" : ""),

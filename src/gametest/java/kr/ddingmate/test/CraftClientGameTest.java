@@ -1796,6 +1796,27 @@ public class CraftClientGameTest implements FabricClientGameTest {
                 DdingMate.LOG.info("재료 그림 {}/{}", shown, all.size());
                 check(shown * 100 / all.size() >= 95, "재료 그림이 95% 미만: " + shown + "/" + all.size());
             });
+            // 21-34) 모드가 모르는 코룸 주괴 ×24 가 맨 앞에서 30초 남았는데 같은 것을 하나 더 넣음(2026-10-18 로그: 시작 채팅 없이 회수 5건):
+            //        새 제작을 30초 뒤 완료로 맞추지 않고, 그 칸이 끝난 뒤 + 제 시간으로 센다
+            long[] unknownDur = new long[1];
+            ctx.runOnClient(c -> {
+                CraftTimers.debugClear();
+                CraftTimers.debugObserve("코룸 주괴", 24, 336_000); // 시작 버튼 "- 제작 시간 : 5분 36초"(10-22 실제, 채광 30%)
+                unknownDur[0] = CraftTimers.durationMs("코룸 주괴", 24);
+                check(unknownDur[0] > 120_000, "시험 준비: 코룸 주괴 ×24 예상 시간이 너무 짧음 " + unknownDur[0]);
+                CraftTimers.onChat(G + "코룸 주괴 아이템 24개 제작을 시작했습니다.");
+                c.setScreen(facility(c, queueItem("코룸 주괴", 24, "", "  제작 시간 : 30초", "")));
+            });
+            ctx.waitTicks(12);
+            ctx.runOnClient(c -> {
+                c.setScreen(null);
+                CraftTimers.Job b = CraftTimers.jobs().stream().filter(j -> j.name.equals("코룸 주괴")).findFirst().orElseThrow();
+                long left = b.endsAt - now();
+                check(left > 30_000 + unknownDur[0] - 5_000 && left < 30_000 + unknownDur[0] + 5_000,
+                        "모르는 앞 제작의 30초를 방금 넣은 제작 시간으로 씀: 남은 " + left + "ms, 예상 " + (30_000 + unknownDur[0]));
+                CraftTimers.debugClear();
+            });
+
             // 21-35) 서버가 스킬과 함께 상태 효과·아이템 쿨타임을 보내면 그 정확한 값으로 맞춘다.
             //        길이가 스킬 창 값과 동떨어진 효과(예: 10분짜리 속도)는 짝짓지 않고, 효과가 사라지면 그 순간 끝
             ctx.runOnClient(c -> {

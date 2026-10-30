@@ -248,6 +248,12 @@ public final class Cooking {
         return s == null ? -1 : s.price;
     }
 
+    /** 이 요리의 가격을 마지막 시세 변동 뒤에 읽었나 */
+    public static boolean priceFresh(String dish) {
+        Seen s = store().prices.get(dish);
+        return s != null && fresh(s.at);
+    }
+
     /** 이름이 다른 요리 수 */
     public static int dishCount() {
         Set<String> n = new HashSet<>();

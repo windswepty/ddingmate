@@ -128,20 +128,24 @@ public final class CookingPanel {
         // 가진 요리를 지금 팔면
         Map<String, Integer> mine = Cooking.inventoryDishes(client);
         long total = 0;
+        boolean stale = false;
         List<Item> mineRows = new ArrayList<>();
         for (var e : mine.entrySet()) {
             int each = Cooking.priceOf(e.getKey());
             if (each <= 0) continue;
             total += (long) each * e.getValue();
+            boolean fresh = Cooking.priceFresh(e.getKey());
+            stale |= !fresh;
             ItemStack ic = IconCache.forMaterial(e.getKey());
             mineRows.add(new Item(ic == null ? new ItemStack(Items.BOWL) : ic, null, e.getKey() + " ×" + e.getValue(),
-                    String.format("%,dG", (long) each * e.getValue()), p.ink(), p.accent(), false, false));
+                    String.format("%,dG", (long) each * e.getValue()), p.ink(), fresh ? p.accent() : p.soft(), false, false));
         }
         out.add(Item.line());
         if (mineRows.isEmpty()) {
             out.add(new Item(null, null, "인벤토리에 팔 요리가 없어요", "", p.soft(), 0, false, false));
         } else {
-            out.add(new Item(null, null, "보유 요리 팔면", String.format("%,dG", total), p.ink(), p.good(), true, false));
+            out.add(new Item(null, null, stale ? "보유 요리 팔면(일부 지난 시세)" : "보유 요리 팔면", String.format("%,dG", total), p.ink(),
+                    stale ? p.soft() : p.good(), true, false));
             mineRows.sort((a, b) -> Long.compare(parse(b.right()), parse(a.right())));
             out.addAll(mineRows.subList(0, Math.min(4, mineRows.size())));
             if (mineRows.size() > 4) out.add(new Item(null, null, "그 밖에 " + (mineRows.size() - 4) + "종", "", p.soft(), 0, false, false));
