@@ -930,9 +930,8 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(UiSmokeClientGameTest.widgets(s).stream().anyMatch(w -> w.getMessage().getString().contains("디스코드 DM")), "문의 탭에 디스코드 DM 단추가 없음");
                 // 위 목록(안내·분류·[진단 복사|디스코드 DM])은 굴리지 않아도 다 보인다(2026-10-31 사용자 화면에서 잘림)
                 s.children().stream().filter(e -> e instanceof net.minecraft.client.gui.widget.EntryListWidget<?>).findFirst()
-                        // 시험 창(높이 240)처럼 낮으면 입력 칸을 남기려고 목록을 예전 높이(두 줄, 56)로 줄인다
-                        .ifPresent(l -> check(((net.minecraft.client.gui.widget.EntryListWidget<?>) l).getMaxScrollY() == 0
-                                        || (c.getWindow().getScaledHeight() < 360 && ((net.minecraft.client.gui.widget.EntryListWidget<?>) l).getHeight() == 56),
+                        // 시험 창(높이 240)처럼 낮은 창에서도(사용자 GUI 크기가 크면 이 정도)
+                        .ifPresent(l -> check(((net.minecraft.client.gui.widget.EntryListWidget<?>) l).getMaxScrollY() == 0,
                                 "문의 탭 위 목록을 굴려야 다 보임: " + ((net.minecraft.client.gui.widget.EntryListWidget<?>) l).getMaxScrollY()
                                         + " (목록 높이 " + ((net.minecraft.client.gui.widget.EntryListWidget<?>) l).getHeight() + ", 창 " + c.getWindow().getScaledHeight() + ")"));
                 s.debugInquiry(kr.ddingmate.inquiry.Inquiry.Category.BUG, "짧음");

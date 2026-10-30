@@ -156,15 +156,15 @@ public class DdingMateScreen extends Screen {
         }
         if (tab == Tab.LOG) AlertLog.markRead();
 
-        // 문의 탭: 위에 안내·분류·[진단 정보 복사|디스코드 DM] 줄을 목록으로(굴리지 않게 줄 수만큼 높이), 그 아래는 여러 줄 입력 칸과 [문의 보내기].
-        // 창이 낮으면 입력 칸(3줄 이상)을 남기고 목록을 줄인다(그때만 목록을 굴려서 봄)
+        // 문의 탭: 위에 분류·[진단 정보 복사|디스코드 DM] 줄을 목록으로(굴리지 않게 줄 수만큼 높이), 그 아래는 여러 줄 입력 칸과 [문의 보내기].
+        // 단추는 늘 다 보이게 하고 입력 칸이 남는 자리를 쓴다(아주 낮은 창에서만 목록을 굴려서 봄)
         int listH = ch - 4;
         list = addDrawableChild(new ConfigList(client, cw - 4 - side, listH, cy + 2, ITEM_H));
         list.setX(cx + 2);
         buildRows();
         if (tab == Tab.INQUIRY) {
             int need = list.contentHeight();
-            listH = Math.max(2 * ITEM_H + 8, Math.min(need, ch - 4 - (4 + 48 + 4 + 20 + 4)));
+            listH = Math.max(ITEM_H + 8, Math.min(need, ch - 4 - (4 + 24 + 4 + 20 + 4)));
             list.setHeight(listH);
         }
         list.setScrollY(savedScroll);
@@ -419,7 +419,7 @@ public class DdingMateScreen extends Screen {
 
     private void buildInquiry() {
         if (client != null) kr.ddingmate.inquiry.Replies.onInquiryTabOpened(client);
-        list.guide("버그·건의를 개발자에게 보내요. 닉네임·UUID·버전·접속한 서버와 지역이 함께 가고(게임 서버로는 안 보내요), 답변은 내 채팅으로 와요.");
+        // 안내 글은 [문의 보내기] 툴팁으로(위 목록을 분류·단추 두 줄로 줄여 굴리지 않게, 2026-10-31)
         // 분류는 한 줄에 다 보이게 단추로 고른다(고른 것은 파랗게)
         kr.ddingmate.inquiry.Inquiry.Category[] cats = kr.ddingmate.inquiry.Inquiry.Category.values();
         int bw = (rowWidth() - GAP * (cats.length - 1)) / cats.length;
@@ -465,7 +465,7 @@ public class DdingMateScreen extends Screen {
         inquirySend.setX(cx + 4);
         inquirySend.setY(sendY);
         String to = kr.ddingmate.inquiry.Inquiry.available() ? "" : "\n(문의 받을 곳이 아직 정해지지 않아 보낼 수 없어요)";
-        inquirySend.setTooltip(Tooltip.of(Text.literal("함께 보내는 정보: "
+        inquirySend.setTooltip(Tooltip.of(Text.literal("버그·건의를 개발자에게 보내요. 답변은 내 채팅으로 와요(게임 서버로는 안 보내요).\n함께 보내는 정보: "
                 + (client != null && client.player != null ? kr.ddingmate.inquiry.Inquiry.infoLine(kr.ddingmate.inquiry.Inquiry.info(client)) : "게임에 들어가 있을 때 보여요")
                 + to)));
         inquirySend.active = kr.ddingmate.inquiry.Inquiry.available() && client != null && client.player != null;
