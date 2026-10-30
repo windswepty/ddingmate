@@ -54,7 +54,7 @@ public final class ScheduleHud {
             HudLayout.placeholder(ctx, HudLayout.SCHEDULE, cfg.hudCorner, CLOCK, "꺼져 있어요");
             return;
         }
-        long nowMs = System.currentTimeMillis();
+        long nowMs = kr.ddingmate.util.Clock.now();
         // 남은 초가 1초 간격으로 고르게 줄어들도록(갱신 간격이 1초면 숫자가 두 번 보이거나 건너뛴다) 자주 다시 만든다
         if (nowMs - lastBuildMs >= 200) {
             cached = build(cfg);
@@ -189,7 +189,7 @@ public final class ScheduleHud {
     }
 
     private static List<Entry> build(DdingMateConfig cfg) {
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         List<Entry> out = new ArrayList<>();
         long played = cfg.playtime.showInHud ? PlaytimeTracker.seconds() : -1;
         if (played >= 0) {
@@ -208,13 +208,13 @@ public final class ScheduleHud {
         // 서버가 예고한 지금 채널 재부팅: 가장 급하니 맨 위에
         long reboot = kr.ddingmate.game.ServerHud.rebootAt();
         if (reboot > 0) {
-            long sec = Math.max(0, (reboot - System.currentTimeMillis()) / 1000);
+            long sec = Math.max(0, (reboot - kr.ddingmate.util.Clock.now()) / 1000);
             kr.ddingmate.game.ServerHud.Area a = kr.ddingmate.game.ServerHud.area();
             String where = a == null ? "지금 채널" : a.label + " " + kr.ddingmate.game.ServerHud.channel() + "채널";
             out.add(0, new Entry(where + " 재시작", sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초", sec / 60, 0));
         }
         // 오션오더: 5분 안에 끝나야 해서 맨 위에
-        long nowMs0 = System.currentTimeMillis();
+        long nowMs0 = kr.ddingmate.util.Clock.now();
         if (cfg.expert.oceanOrder && kr.ddingmate.expert.OceanOrder.active(nowMs0)) {
             out.add(0, new Entry(tag(cfg, "해양", kr.ddingmate.expert.OceanOrder.label()), kr.ddingmate.expert.OceanOrder.remainingText(nowMs0),
                     0, Theme.GOLD));
@@ -275,7 +275,7 @@ public final class ScheduleHud {
         }
         // 제작 중인 아이템: 완료가 가까운 순서로
         if (cfg.craft.enabled && cfg.craft.showInHud) {
-            long nowMs = System.currentTimeMillis();
+            long nowMs = kr.ddingmate.util.Clock.now();
             // 같은 아이템·개수를 여러 번 넣었으면 한 줄로: "조약돌 뭉치 ×7 [3]" · 마지막 것이 끝날 때까지
             // 너무 많으면 HUD 가 화면을 덮으므로 위에서 몇 줄만, 나머지는 개수로 알려 준다(전체는 /띵메이트 홈)
             List<kr.ddingmate.craft.CraftTimers.Group> groups = kr.ddingmate.craft.CraftTimers.groups();

@@ -124,7 +124,7 @@ public final class SkillTimers {
         if (t == null) return;
         t = ItemKeys.stripGlyphs(t).trim();
         if (kr.ddingmate.game.ServerText.fromPlayer(t)) return; // 사람이 쓴 채팅·귓속말은 무시
-        onChat(t, System.currentTimeMillis());
+        onChat(t, kr.ddingmate.util.Clock.now());
     }
 
     static void onChat(String t, long now) {
@@ -175,7 +175,7 @@ public final class SkillTimers {
     static List<Skill> activeSkills() {
         Map<String, Skill> map = skills(false);
         if (map == null) return List.of();
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         List<Skill> out = new ArrayList<>();
         for (Skill s : map.values()) {
             if (s.activatedAt > 0 && (s.activeUntil > now || now - s.activatedAt <= SkillSignals.WATCH_MS)) out.add(s);

@@ -99,7 +99,7 @@ public final class OceanOrder {
             lastLogged = t;
             DdingMate.LOG.info("오션오더 문구: {}", t);
         }
-        handle(t, System.currentTimeMillis());
+        handle(t, kr.ddingmate.util.Clock.now());
     }
 
     static void handle(String t, long now) {
@@ -368,7 +368,7 @@ public final class OceanOrder {
             }
             if (line.contains("남은") || line.contains("제한")) {
                 long left = remainingIn(line);
-                long now = System.currentTimeMillis();
+                long now = kr.ddingmate.util.Clock.now();
                 if (left > 0 && left <= LIMIT_MS) {
                     if (!active(now)) {
                         startedAt = now;
@@ -493,7 +493,7 @@ public final class OceanOrder {
         if (days == null) load();
         String key = kr.ddingmate.craft.CraftTimers.accountKey();
         Day d = days.computeIfAbsent(key == null ? "?" : key, k -> new Day());
-        String day = gameDay(ZonedDateTime.now(ScheduleEngine.KST));
+        String day = gameDay(kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST));
         if (!day.equals(d.day)) {
             d.day = day;
             d.count = 0;

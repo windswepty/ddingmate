@@ -55,6 +55,9 @@ public class ReplayClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 backup.putAll(backupConfig());
                 freshInstall();
+                // 실제 프로필이 배운 제작 시간표(실제 시간 39개 등): 시작 메시지만으로 완료 시각을 세서 회수 문구와 맞춰 볼 수 있게
+                Path learned = data.resolve("ddingmate-crafts-learned.json");
+                if (Files.exists(learned)) kr.ddingmate.craft.CraftTimers.debugLearnFrom(learned);
             });
 
             // 1) 채팅 전부
@@ -86,6 +89,9 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                 c.inGameHud.getChatHud().clear(false);
                 var replayObj = c.world.getScoreboard().getNullableObjective("ddm_replay");
                 if (replayObj != null) c.world.getScoreboard().removeObjective(replayObj);
+                report.append("\n== 회수할 때 아직 안 끝났다고 보던 제작 ").append(CRAFT_LATE.size()).append("건 (대조한 회수 ").append(CHECKED[0]).append("줄)\n");
+                for (String f : CRAFT_LATE.subList(0, Math.min(60, CRAFT_LATE.size()))) report.append("  ").append(f).append('\n');
+                for (String f : CRAFT_LATE) FAILURES.add("제작 예상이 회수보다 늦음 · " + f);
                 report.append("\n== 서버 문구 대조 실패 ").append(FAILURES.size()).append("건\n");
                 for (String f : FAILURES.subList(0, Math.min(40, FAILURES.size()))) report.append("  ").append(f).append('\n');
                 restoreConfig(backup);
@@ -119,7 +125,7 @@ public class ReplayClientGameTest implements FabricClientGameTest {
      */
     private static void verify(String raw, String time, String file) {
         String t = kr.ddingmate.counter.ItemKeys.stripGlyphs(raw).replaceAll("\\s+", " ").trim();
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         String where = file + " " + time + " | " + t;
         java.util.regex.Matcher m = TIP.matcher(t);
         if (m.find() && file.length() >= 10) {
@@ -210,6 +216,10 @@ public class ReplayClientGameTest implements FabricClientGameTest {
         int lines = 0;
         long t0 = System.currentTimeMillis();
         AlertLog.Entry top = AlertLog.entries().isEmpty() ? null : AlertLog.entries().get(0);
+        // 가상 시계: 줄마다 기록 시각(파일 날짜 + 줄 시각)으로 맞추고, 그 사이 1초 처리(제작 완료·초기화·쿨타임)를 시간 순서대로 돌린다
+        long[] vnow = {0};
+        kr.ddingmate.util.Clock.debugSet(() -> vnow[0] > 0 ? vnow[0] : System.currentTimeMillis());
+        try {
         for (Path f : files) {
             try (BufferedReader r = Files.newBufferedReader(f, StandardCharsets.UTF_8)) {
                 String line;
@@ -218,9 +228,18 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                     if (parts.length < 3) continue;
                     String msg = parts[2].replace("\\\\", "\\");
                     lines++;
+                    long at = lineTime(parts[1], parts[0]);
+                    if (at > 0) {
+                        advance(c, vnow, at);
+                        // 시간이 흐르며 생긴 알림(제작 완료·초기화 등)은 이 줄이 아니라 '시간 흐름'으로 센다
+                        top = collect(top, byTitle, examples, "(시간 흐름) ", parts[1] + " " + parts[0] + " 직전");
+                    }
                     try {
+                        checkCollect(msg, parts[0], parts[1]);
                         ClientReceiveMessageEvents.GAME.invoker().onReceiveGameMessage(Text.literal(msg), false);
                         verify(msg, parts[0], parts[1]);
+                    } catch (AssertionError e) {
+                        throw e;
                     } catch (Throwable e) {
                         throw new AssertionError("채팅 재생 중 오류: " + parts[1] + " " + parts[0] + " " + msg, e);
                     }
@@ -236,23 +255,15 @@ public class ReplayClientGameTest implements FabricClientGameTest {
                                 + kr.ddingmate.counter.ItemKeys.stripGlyphs(msg));
                     }
                     state = after;
-                    List<AlertLog.Entry> es = AlertLog.entries();
-                    AlertLog.Entry now = es.isEmpty() ? null : es.get(0);
-                    if (now != top) {
-                        // 이 줄 하나로 생긴 알림들(맨 앞부터 이전 맨 앞 전까지)
-                        for (AlertLog.Entry e : es) {
-                            if (e == top) break;
-                            String key = e.kind + " · " + e.title;
-                            byTitle.merge(key, 1, Integer::sum);
-                            List<String> ex = examples.computeIfAbsent(key, k -> new ArrayList<>());
-                            if (ex.size() < 4) ex.add(parts[1] + " " + parts[0] + " | " + kr.ddingmate.counter.ItemKeys.stripGlyphs(msg));
-                        }
-                        top = now;
-                    }
+                    // 이 줄 하나로 생긴 알림들
+                    top = collect(top, byTitle, examples, "", parts[1] + " " + parts[0] + " | " + kr.ddingmate.counter.ItemKeys.stripGlyphs(msg));
                 }
             } catch (java.io.IOException e) {
                 throw new AssertionError(e);
             }
+        }
+        } finally {
+            kr.ddingmate.util.Clock.debugSet(null);
         }
         report.append("== 채팅 ").append(lines).append("줄 재생 (").append(System.currentTimeMillis() - t0).append("ms)\n");
         report.append("알림이 생긴 줄(종류 · 제목 = 횟수, 예시):\n");
@@ -269,12 +280,101 @@ public class ReplayClientGameTest implements FabricClientGameTest {
         if (lines == 0) throw new AssertionError("재생할 채팅이 없음: " + data);
     }
 
+    /** 맨 앞 알림이 top 이후로 새로 생겼으면 종류·제목별로 센다. 새 맨 앞을 돌려준다 */
+    private static AlertLog.Entry collect(AlertLog.Entry top, Map<String, Integer> byTitle, Map<String, List<String>> examples,
+                                          String prefix, String where) {
+        List<AlertLog.Entry> es = AlertLog.entries();
+        AlertLog.Entry now = es.isEmpty() ? null : es.get(0);
+        if (now == top) return top;
+        for (AlertLog.Entry e : es) {
+            if (e == top) break;
+            String key = prefix + e.kind + " · " + e.title;
+            byTitle.merge(key, 1, Integer::sum);
+            List<String> ex = examples.computeIfAbsent(key, k -> new ArrayList<>());
+            if (ex.size() < 4) ex.add(where);
+        }
+        return now;
+    }
+
+    /** 줄의 기록 시각: 파일 이름 "2026-10-18-1.log.gz" 의 날짜 + 줄 시각 "16:57:49". 모르면 -1(latest.log 등) */
+    private static long lineTime(String file, String time) {
+        if (file.length() < 10 || time.length() < 8 || !Character.isDigit(file.charAt(0))) return -1;
+        try {
+            return java.time.LocalDate.parse(file.substring(0, 10)).atTime(java.time.LocalTime.parse(time.substring(0, 8)))
+                    .atZone(kr.ddingmate.schedule.ScheduleEngine.KST).toInstant().toEpochMilli();
+        } catch (RuntimeException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * 가상 시계를 at 까지 흘린다: 처음 5초는 1초마다 1초 처리, 그 뒤는 at 으로 건너뛰어 한 번 더(긴 공백·다음 날 접속도
+     * 초기화·완료 판정이 한 번은 돈다). 시각이 거꾸로 가면(파일 경계) 그 시각으로 맞추기만 한다
+     */
+    private static void advance(MinecraftClient c, long[] vnow, long at) {
+        long cur = vnow[0];
+        if (cur == 0 || at <= cur) {
+            vnow[0] = at;
+            return;
+        }
+        long next = cur + 1000;
+        for (int i = 0; i < 5 && next <= at; i++, next += 1000) {
+            vnow[0] = next;
+            tickAt(c);
+        }
+        if (vnow[0] < at) {
+            vnow[0] = at;
+            tickAt(c);
+        }
+    }
+
+    private static void tickAt(MinecraftClient c) {
+        kr.ddingmate.craft.CraftTimers.tick();
+        DdingMate.timeTick();
+    }
+
+    private static final java.util.regex.Pattern COLLECT = java.util.regex.Pattern.compile("^(.+?) 아이템 ([\\d,]+)개를 제작대에서 회수했습니다");
+
+    /**
+     * 회수 문구는 서버에서 제작이 끝났다는 뜻이다: 시작 메시지로 센 그 제작(시각을 아는 것)이 아직 30초 넘게 남았다고
+     * 보고 있으면 띵메이트 예상이 실제보다 길다(완료 알림이 회수보다 늦게 울림)
+     */
+    private static void checkCollect(String raw, String time, String file) {
+        String t = kr.ddingmate.counter.ItemKeys.stripGlyphs(raw).replaceAll("\\s+", " ").trim();
+        java.util.regex.Matcher m = COLLECT.matcher(t);
+        if (!m.find()) return;
+        String key = kr.ddingmate.counter.ItemKeys.normalize(m.group(1));
+        int count = Integer.parseInt(m.group(2).replace(",", ""));
+        long now = kr.ddingmate.util.Clock.now();
+        long soonest = Long.MAX_VALUE;
+        // 실제 시간(시작 버튼·대기열)을 아는 제작만: 레시피 시간 × 스킬 공식은 재생 설정의 스킬 레벨(0)로 길게 나온다.
+        // 배운 시간표는 10-09 부터의 프로필 값이라 그 전 기록에는 맞지 않는다(8월엔 스킬이 달라 키론 오르골이 32초가 아니라 27초)
+        if (file.compareTo(LEARNED_FROM) < 0) return;
+        if (!kr.ddingmate.craft.CraftTimers.debugObserved(m.group(1), count)) return;
+        CHECKED[0]++;
+        for (kr.ddingmate.craft.CraftTimers.Job j : kr.ddingmate.craft.CraftTimers.jobs()) {
+            if (j.separate || j.count != count || j.endsAt <= 0 || !(j.synced || j.derived)) continue;
+            if (!kr.ddingmate.counter.ItemKeys.normalize(j.name).equals(key)) continue;
+            soonest = Math.min(soonest, j.endsAt);
+        }
+        if (soonest != Long.MAX_VALUE && soonest - now > 30_000) {
+            CRAFT_LATE.add(file + " " + time + " | " + t + " · 띵메이트는 " + (soonest - now) / 1000 + "초 남았다고 봄");
+        }
+    }
+
+    /** 회수할 때 띵메이트가 아직 안 끝났다고 보던 제작 */
+    private static final List<String> CRAFT_LATE = new ArrayList<>();
+    /** 배운 제작 시간표(ddingmate-crafts-learned.json)가 맞는 기록의 첫 날(테스트 프로필 첫 로그) */
+    private static final String LEARNED_FROM = "2026-10-09";
+    /** 회수 대조를 한 줄 수 */
+    private static final int[] CHECKED = {0};
+
     /** 줄마다 비교할 상태 */
     private static Map<String, String> snapshot() {
         Map<String, String> m = new java.util.TreeMap<>();
-        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(kr.ddingmate.schedule.ScheduleEngine.KST);
+        java.time.ZonedDateTime now = kr.ddingmate.util.Clock.zoned(kr.ddingmate.schedule.ScheduleEngine.KST);
         for (var t : DdingMate.config().todo.items) m.put("할 일 " + t.name, String.valueOf(kr.ddingmate.todo.TodoList.progress(t, now)));
-        long ms = System.currentTimeMillis();
+        long ms = kr.ddingmate.util.Clock.now();
         m.put("광석 골렘 쿨타임", kr.ddingmate.expert.OreGolem.remaining(ms) > 0 ? "켜짐" : "꺼짐");
         m.put("오션오더", kr.ddingmate.expert.OceanOrder.active(ms) + " 오늘 " + kr.ddingmate.expert.OceanOrder.todayCount());
         m.put("제작 줄", String.valueOf(kr.ddingmate.craft.CraftTimers.groups().size()));

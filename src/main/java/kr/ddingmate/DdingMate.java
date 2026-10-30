@@ -320,17 +320,27 @@ public final class DdingMate implements ClientModInitializer {
         }
         // 알림 판정은 1초에 한 번. 월드(서버)에 들어가 있을 때만 울린다.
         if (tickCounter % 20 != 0 || client.world == null || client.player == null) return;
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        secondTick(client);
+    }
+
+    /** 1초마다: 시간이 지나야 일어나는 알림 판정(일정·할 일 초기화·반려어·요리 시세·작물·오션오더). 재생 시험은 기록 시각대로 부른다 */
+    public static void secondTick(MinecraftClient client) {
+        timeTick();
+        kr.ddingmate.expert.IslandCrops.tick(client); // 마을 경작지 아일랜드 작물 단계(주변 블록만 읽음)
+    }
+
+    /** 1초 처리 중 시각만 보는 것(블록·화면을 읽지 않음). 재생 시험은 기록 시각마다 이것을 부른다 */
+    public static void timeTick() {
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         for (ScheduleEngine.Alert a : ScheduleEngine.dueAlerts(rules, config::isEnabled, config::leadsOf, now, FIRED)) {
             // 그 마을 채널 안에 있으면 서버가 재부팅을 직접 예고하므로 같은 알림을 또 내지 않는다(HUD 에는 남은 시간이 보인다)
             if (a.rule().id().equals("village_reboot") && ServerHud.inVillageChannel(config.villageChannel)) continue;
             Notifier.schedule(a);
         }
         TodoList.tick(now);
-        long ms = System.currentTimeMillis();
+        long ms = kr.ddingmate.util.Clock.now();
         kr.ddingmate.expert.PetFish.tick(ms);
         kr.ddingmate.expert.Cooking.tickChange(ms); // 요리 시세 변동 채팅(1·3·6…일 03시)
-        kr.ddingmate.expert.IslandCrops.tick(client); // 마을 경작지 아일랜드 작물 단계(주변 블록만 읽음)
         kr.ddingmate.expert.OceanOrder.tick(ms);
     }
 

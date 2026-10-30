@@ -61,14 +61,14 @@ public final class TodoList {
     /** 체크(목표만큼 채우기) / 체크 해제(0으로) */
     public static void setDone(DdingMateConfig.TodoItem item, boolean done) {
         item.progress = done ? Math.max(1, item.target) : 0;
-        item.doneAt = System.currentTimeMillis();
+        item.doneAt = kr.ddingmate.util.Clock.now();
     }
 
     /** delta 만큼 세기(+1·−1). 0 ~ 목표 사이로 맞춘다 */
     public static void add(DdingMateConfig.TodoItem item, int delta) {
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         item.progress = Math.max(0, Math.min(Math.max(1, item.target), progress(item, now) + delta));
-        item.doneAt = System.currentTimeMillis();
+        item.doneAt = kr.ddingmate.util.Clock.now();
     }
 
     /** 목록에 보일 글: "접속 시간 보상 받기 [2/6]", 목표가 1이면 이름만 */
@@ -273,7 +273,7 @@ public final class TodoList {
         lastStamina = value;
         if (before < 0 || value >= before) return;
         int used = before - value;
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         for (DdingMateConfig.TodoItem item : DdingMate.config().todo.items) {
             if (!TodoPreset.STAMINA.id.equals(item.preset)) continue;
             sync(TodoPreset.STAMINA, progress(item, now) + used);
@@ -299,7 +299,7 @@ public final class TodoList {
 
     /** 목록에 있는 그 할 일을 +1 */
     public static void count(TodoPreset preset) {
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         for (DdingMateConfig.TodoItem item : DdingMate.config().todo.items) {
             if (!preset.id.equals(item.preset) || isDone(item, now)) continue;
             add(item, 1);
@@ -320,15 +320,15 @@ public final class TodoList {
     }
 
     private static void set(TodoPreset preset, int done, boolean exact) {
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         for (DdingMateConfig.TodoItem item : DdingMate.config().todo.items) {
             if (!preset.id.equals(item.preset)) continue;
             int target = Math.min(item.target, Math.max(0, done));
             int before = progress(item, now);
-            if (exact) item.windowSeenAt = System.currentTimeMillis();
+            if (exact) item.windowSeenAt = kr.ddingmate.util.Clock.now();
             if (target > before || (exact && target != before)) {
                 item.progress = target;
-                item.doneAt = System.currentTimeMillis();
+                item.doneAt = kr.ddingmate.util.Clock.now();
                 DdingMate.config().save();
                 boolean quiet = TodoPreset.STAMINA.id.equals(item.preset) && target < item.target; // 스태미나는 자주 바뀌어 다 채웠을 때만
                 if (target > before && !quiet) Notifier.todoProgress(item.name, target, item.target);
@@ -387,7 +387,7 @@ public final class TodoList {
             open = !daily.isEmpty() || !weeklySet.isEmpty();
             if (!open) return;
             weekly = !weeklySet.isEmpty() && daily.isEmpty();
-            seenAt = System.currentTimeMillis();
+            seenAt = kr.ddingmate.util.Clock.now();
             if (!daily.isEmpty()) report(TodoPreset.DAILY_QUEST, daily, dailyDone);
             if (!weeklySet.isEmpty()) report(TodoPreset.WEEKLY_QUEST, weeklySet, weeklyDone);
         }
@@ -416,13 +416,13 @@ public final class TodoList {
         }
 
         static boolean weekly() {
-            return weekly && System.currentTimeMillis() - seenAt < 30_000;
+            return weekly && kr.ddingmate.util.Clock.now() - seenAt < 30_000;
         }
 
         /** 시험용 */
         public static void debugSet(boolean isWeekly) {
             weekly = isWeekly;
-            seenAt = isWeekly ? System.currentTimeMillis() : 0;
+            seenAt = isWeekly ? kr.ddingmate.util.Clock.now() : 0;
         }
     }
 

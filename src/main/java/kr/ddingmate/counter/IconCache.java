@@ -110,7 +110,7 @@ public final class IconCache {
                 }
             }
         }
-        if (dirty && System.currentTimeMillis() - lastSave > 30_000) save();
+        if (dirty && kr.ddingmate.util.Clock.now() - lastSave > 30_000) save();
     }
 
     /** 아이템 키(n:이름 / v:아이템 id)로 아이콘 찾기. 모르면 null */
@@ -366,7 +366,7 @@ public final class IconCache {
         ensureLoaded(); // 파일에만 있던 기억을 덮어쓰지 않게 먼저 합친다
         RegistryWrapper.WrapperLookup reg = registries();
         if (reg == null) return;
-        lastSave = System.currentTimeMillis();
+        lastSave = kr.ddingmate.util.Clock.now();
         dirty = false;
         var ops = reg.getOps(JsonOps.INSTANCE);
         JsonObject root = new JsonObject();

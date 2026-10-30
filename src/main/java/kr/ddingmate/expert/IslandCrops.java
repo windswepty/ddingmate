@@ -135,7 +135,7 @@ public final class IslandCrops {
     /** 1초마다: 주변 청크의 트립와이어 중 작물 단계를 읽는다 */
     public static void tick(MinecraftClient client) {
         if (!DdingMate.config().expert.islandCrops || client.world == null || client.player == null) return;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         if (client.world != world) {
             world = client.world;
             PLANTS.clear();

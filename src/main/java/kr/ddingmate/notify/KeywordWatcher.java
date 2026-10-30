@@ -98,7 +98,7 @@ public final class KeywordWatcher {
             DEBUG_FIRE.accept(word);
             return;
         }
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         Long last = LAST_FIRED.get(word);
         if (last != null && now - last < cooldownSeconds * 1000L) return;
         LAST_FIRED.put(word, now);

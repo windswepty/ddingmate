@@ -29,7 +29,7 @@ public final class CropTimer {
     /** 매 틱: 단축키(눌리는 순간만), 마을 밖 멈춤, 끝 알림 */
     public static void tick(MinecraftClient client) {
         DdingMateConfig.Expert ex = DdingMate.config().expert;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         boolean down = client.currentScreen == null && client.player != null && comboDown(client, ex.cropHotkey);
         if (down && !comboWasDown) toggle(now);
         comboWasDown = down;

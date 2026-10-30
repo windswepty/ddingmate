@@ -44,7 +44,7 @@ public final class TodoHud {
             return;
         }
         TextRenderer tr = client.textRenderer;
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         List<DdingMateConfig.TodoItem> items = cfg.items;
         int total = items.size();
         int done = total - TodoList.remaining(now).size();

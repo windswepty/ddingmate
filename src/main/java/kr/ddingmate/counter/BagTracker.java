@@ -109,7 +109,7 @@ public final class BagTracker {
         int n = parseBagNumber(text, DdingMate.config().counter.bagAliases);
         if (n > 0) {
             pendingBag = n;
-            pendingAt = System.currentTimeMillis();
+            pendingAt = kr.ddingmate.util.Clock.now();
         }
     }
 
@@ -234,7 +234,7 @@ public final class BagTracker {
     private static void decide(GenericContainerScreen screen) {
         Account acc = account();
         if (acc == null) return;
-        boolean pending = pendingBag > 0 && System.currentTimeMillis() - pendingAt < PENDING_MS;
+        boolean pending = pendingBag > 0 && kr.ddingmate.util.Clock.now() - pendingAt < PENDING_MS;
         // 1) 서버 창 제목의 가방 글리프로 판단 (가장 확실)
         TitleSignal sig = readTitle(screen.getTitle());
         List<String> slots = slotsOf(screen);
@@ -291,7 +291,7 @@ public final class BagTracker {
         Account acc = account();
         if (acc == null) return;
         Bag bag = new Bag();
-        bag.seenAt = System.currentTimeMillis();
+        bag.seenAt = kr.ddingmate.util.Clock.now();
         bag.slots = slotsOf(screen);
         Inventory inv = screen.getScreenHandler().getInventory();
         int size = containerSize(screen);
@@ -309,7 +309,7 @@ public final class BagTracker {
         Account acc = account();
         if (acc == null) return;
         Bag bag = new Bag();
-        bag.seenAt = System.currentTimeMillis();
+        bag.seenAt = kr.ddingmate.util.Clock.now();
         bag.slots = slotsOf(screen);
         Inventory inv = screen.getScreenHandler().getInventory();
         int size = containerSize(screen);
@@ -460,7 +460,7 @@ public final class BagTracker {
             if (key == null) key = ItemKeys.nameKey(name);
         }
         acc.storage.counts.put(key, total);
-        acc.storage.seenAt = System.currentTimeMillis();
+        acc.storage.seenAt = kr.ddingmate.util.Clock.now();
         dirty = true;
     }
 

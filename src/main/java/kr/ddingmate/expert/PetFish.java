@@ -111,7 +111,7 @@ public final class PetFish {
                 lastLore = line;
                 DdingMate.LOG.info("어항 칸 읽음: {}", line);
             }
-            read(name, lore, System.currentTimeMillis());
+            read(name, lore, kr.ddingmate.util.Clock.now());
             Fish f = current();
             if (f != null && !rawTitle.equals(f.screen)) {
                 f.screen = rawTitle;
@@ -120,7 +120,7 @@ public final class PetFish {
             found = true;
             break;
         }
-        afterScan(rawTitle, title, found, anyItem, System.currentTimeMillis());
+        afterScan(rawTitle, title, found, anyItem, kr.ddingmate.util.Clock.now());
     }
 
     /**

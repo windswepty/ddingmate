@@ -481,7 +481,7 @@ public final class CounterHud {
     }
 
     public static String ago(long ms) {
-        long min = Math.max(0, (System.currentTimeMillis() - ms) / 60000);
+        long min = Math.max(0, (kr.ddingmate.util.Clock.now() - ms) / 60000);
         if (min < 1) return "방금";
         if (min < 60) return min + "분 전";
         if (min < 60 * 24) return (min / 60) + "시간 전";

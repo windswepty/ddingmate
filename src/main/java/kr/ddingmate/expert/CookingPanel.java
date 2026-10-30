@@ -150,7 +150,7 @@ public final class CookingPanel {
             out.addAll(mineRows.subList(0, Math.min(4, mineRows.size())));
             if (mineRows.size() > 4) out.add(new Item(null, null, "그 밖에 " + (mineRows.size() - 4) + "종", "", p.soft(), 0, false, false));
         }
-        ZonedDateTime next = Cooking.nextChange(ZonedDateTime.now(ScheduleEngine.KST));
+        ZonedDateTime next = Cooking.nextChange(kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST));
         out.add(new Item(null, null, "다음 가격 변동 " + next.getMonthValue() + "/" + next.getDayOfMonth() + " 03시", "", p.soft(), 0, false, false));
         return out;
     }

@@ -58,7 +58,7 @@ public final class OreGolem {
         // /광석골렘 답은 " : " 가 들어 있어 사람 채팅 거르기에 걸린다: 줄 머리가 정확히 맞으면 먼저 받는다(사람 채팅은 "[칭호] 닉 : " 로 시작)
         boolean reply = NEXT.matcher(t).find() || DAILY.matcher(t).find();
         if (!reply && ServerText.fromPlayer(t)) return;
-        handle(t, System.currentTimeMillis());
+        handle(t, kr.ddingmate.util.Clock.now());
     }
 
     /** /광석골렘 답(2026-10-20~29 실제): "다음 등장 대기 : 4분 42초", "다음 등장 대기 : 5초" */

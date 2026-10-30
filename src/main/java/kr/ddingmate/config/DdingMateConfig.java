@@ -374,7 +374,7 @@ public final class DdingMateConfig {
                 DdingMate.LOG.warn("설정 파일을 읽지 못해 기본값을 씁니다: {}", p, e);
                 // 기본값으로 덮어쓰기 전에 원본을 남겨 둔다(설정이 통째로 사라지지 않게)
                 try {
-                    Files.copy(p, p.resolveSibling("ddingmate.json.broken-" + System.currentTimeMillis()));
+                    Files.copy(p, p.resolveSibling("ddingmate.json.broken-" + kr.ddingmate.util.Clock.now()));
                 } catch (IOException copy) {
                     DdingMate.LOG.warn("읽지 못한 설정 파일을 남기지 못했어요", copy);
                 }

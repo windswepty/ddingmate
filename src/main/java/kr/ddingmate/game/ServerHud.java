@@ -60,7 +60,7 @@ public final class ServerHud {
             String rest = bar.getName().getString();
             if (oceanHud != null) {
                 ocean = true;
-                kr.ddingmate.expert.OceanOrder.onHud(oceanHud, System.currentTimeMillis());
+                kr.ddingmate.expert.OceanOrder.onHud(oceanHud, kr.ddingmate.util.Clock.now());
                 rest = kr.ddingmate.expert.OceanOrder.withoutHud(bar.getName());
             }
             kr.ddingmate.expert.OceanOrder.onMessage(rest); // 오션오더 남은 시간·오늘 횟수가 보스바로 올 수도
@@ -82,7 +82,7 @@ public final class ServerHud {
             area = a;
             channel = ch;
             seen = true;
-            barSeenAt = System.currentTimeMillis();
+            barSeenAt = kr.ddingmate.util.Clock.now();
             afk = false; // 채널 표시가 다시 보이면 잠수 채널에서 나온 것
             if (changed) {
                 DdingMate.LOG.info("채널 인식: {} {}채널", a.label, ch);
@@ -90,7 +90,7 @@ public final class ServerHud {
             }
             channelSeen = true;
         }
-        kr.ddingmate.expert.OceanOrder.hudPresent(ocean, System.currentTimeMillis());
+        kr.ddingmate.expert.OceanOrder.hudPresent(ocean, kr.ddingmate.util.Clock.now());
     }
 
     /** 자동 인식이 켜져 있으면 그 지역의 "내 채널"을 지금 채널로 바꿔 재시작 알림이 따라오게 한다 */
@@ -159,7 +159,7 @@ public final class ServerHud {
         if (!onDdingtycoon(c)) return true;
         // 채널 표시가 지금 보일 때만 게임 중이다. 채널이 재시작되면 대기 서버(로비)로 옮겨져 채널 표시가 사라지는데,
         // 예전에는 한 번 본 뒤로 계속 게임 중으로 봐서 로비에서도 HUD 가 떴다
-        if (seen) return System.currentTimeMillis() - barSeenAt <= BAR_GONE_MS;
+        if (seen) return kr.ddingmate.util.Clock.now() - barSeenAt <= BAR_GONE_MS;
         // 채널 표시를 아직 못 읽었어도, 업적이 잔뜩 온 서버(대기 서버는 2개)는 게임 서버로 본다
         var net = c.getNetworkHandler();
         return net != null && net.getAdvancementHandler().getManager().getAdvancements().size() >= 20;
@@ -180,13 +180,13 @@ public final class ServerHud {
     private static long rebootAt;
 
     public static void onChat(String message) {
-        if (message != null && message.contains("[청소]")) onCleanChat(ItemKeys.stripGlyphs(message).trim(), System.currentTimeMillis());
-        if (message != null && message.contains("[초기화]")) onPetResetChat(ItemKeys.stripGlyphs(message).trim(), System.currentTimeMillis());
+        if (message != null && message.contains("[청소]")) onCleanChat(ItemKeys.stripGlyphs(message).trim(), kr.ddingmate.util.Clock.now());
+        if (message != null && message.contains("[초기화]")) onPetResetChat(ItemKeys.stripGlyphs(message).trim(), kr.ddingmate.util.Clock.now());
         if (message == null || !message.contains("리붓")) return;
         Matcher m = REBOOT.matcher(ItemKeys.stripGlyphs(message));
         if (!m.find()) return;
         long n = Long.parseLong(m.group(1));
-        rebootAt = System.currentTimeMillis() + (m.group(2).equals("분") ? n * 60_000 : n * 1000);
+        rebootAt = kr.ddingmate.util.Clock.now() + (m.group(2).equals("분") ? n * 60_000 : n * 1000);
     }
 
     /**
@@ -237,7 +237,7 @@ public final class ServerHud {
     /** 다음 바닥 아이템 청소 시각(모르면 0). 지난 시각이면 10분씩 넘겨 본다 */
     public static long cleanAt() {
         if (cleanAt == 0) return 0;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         long at = cleanAt;
         while (at <= now) at += CLEAN_EVERY_MS;
         return at;
@@ -274,7 +274,7 @@ public final class ServerHud {
 
     /** 펫 전부 소환 해제 시각(안내가 없었거나 지났으면 0) */
     public static long petResetAt() {
-        return petResetAt > System.currentTimeMillis() ? petResetAt : 0;
+        return petResetAt > kr.ddingmate.util.Clock.now() ? petResetAt : 0;
     }
 
     /** 시험용 */
@@ -283,7 +283,7 @@ public final class ServerHud {
     }
 
     public static long rebootAt() {
-        return rebootAt > System.currentTimeMillis() ? rebootAt : 0;
+        return rebootAt > kr.ddingmate.util.Clock.now() ? rebootAt : 0;
     }
 
     /** 접속이 끊기면 처음부터 다시 */

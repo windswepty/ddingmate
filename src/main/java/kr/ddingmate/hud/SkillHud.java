@@ -39,7 +39,7 @@ public final class SkillHud {
         MinecraftClient client = MinecraftClient.getInstance();
         DdingMateConfig all = DdingMate.config();
         DdingMateConfig.Skills cfg = all.skills;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         List<SkillTimers.Row> rows = cfg.enabled ? SkillTimers.rows(now) : List.of();
         if (rows.isEmpty()) {
             HudLayout.placeholder(ctx, HudLayout.SKILL, cfg.corner, BOTTLE,

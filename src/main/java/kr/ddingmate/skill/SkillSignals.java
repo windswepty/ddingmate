@@ -76,7 +76,7 @@ public final class SkillSignals {
 
     /** 내 도구에 아이템 쿨타임이 걸렸다(서버가 보낸 길이, 틱) */
     public static void onCooldownSet(Identifier group, int ticks) {
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         String g = String.valueOf(group);
         if (watching != null && now - watchFrom <= WATCH_MS) note("아이템 쿨타임 " + g + " " + ticks + "틱(" + ticks / 20.0 + "초)");
         SkillTimers.Skill s = watching;
@@ -106,7 +106,7 @@ public final class SkillSignals {
 
     /** 액션바·제목에 뜬 글자(켠 직후만 기록) */
     public static void onOverlay(String text) {
-        if (watching == null || text == null || System.currentTimeMillis() - watchFrom > 8_000) return;
+        if (watching == null || text == null || kr.ddingmate.util.Clock.now() - watchFrom > 8_000) return;
         String t = ItemKeys.stripGlyphs(text).trim();
         if (!t.isEmpty() && OVERLAYS.size() < 8) OVERLAYS.add(t.length() > 80 ? t.substring(0, 80) : t);
     }
@@ -115,7 +115,7 @@ public final class SkillSignals {
 
     public static void tick(MinecraftClient c) {
         if (c.player == null) return;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         Map<String, StatusEffectInstance> effects = new HashMap<>();
         for (StatusEffectInstance e : c.player.getStatusEffects()) effects.put(effectId(e), e);
         // 1) 방금 켠 스킬: 새로 생긴 효과 중 길이가 맞는 것을 짝짓는다

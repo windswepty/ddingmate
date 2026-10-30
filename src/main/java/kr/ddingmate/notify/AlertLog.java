@@ -46,7 +46,7 @@ public final class AlertLog {
     private AlertLog() {}
 
     public static synchronized void add(String kind, String title, String body) {
-        entries.add(0, new Entry(System.currentTimeMillis(), kind, title, body));
+        entries.add(0, new Entry(kr.ddingmate.util.Clock.now(), kind, title, body));
         while (entries.size() > MAX) entries.remove(entries.size() - 1);
         unread++;
         save();

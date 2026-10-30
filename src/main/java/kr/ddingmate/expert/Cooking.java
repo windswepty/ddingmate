@@ -113,7 +113,7 @@ public final class Cooking {
             if (old == null || old.price != price || !fresh(old.at)) {
                 Seen n = new Seen();
                 n.price = price;
-                n.at = System.currentTimeMillis();
+                n.at = kr.ddingmate.util.Clock.now();
                 store().prices.put(dish, n);
                 changed = true;
             }
@@ -145,7 +145,7 @@ public final class Cooking {
 
     /** 이 시각에 읽은 가격이 아직 지금 가격인가(그 뒤로 가격이 안 바뀜) */
     public static boolean fresh(long at) {
-        return at > 0 && at >= lastChange(ZonedDateTime.now(ScheduleEngine.KST)).toInstant().toEpochMilli();
+        return at > 0 && at >= lastChange(kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST)).toInstant().toEpochMilli();
     }
 
     /**

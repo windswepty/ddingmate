@@ -186,7 +186,7 @@ public final class CraftTimers {
         if (t == null) return;
         t = ItemKeys.stripGlyphs(t).trim();
         if (kr.ddingmate.game.ServerText.fromPlayer(t)) return; // 사람이 쓴 채팅·귓속말은 무시
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         Matcher m = START.matcher(t);
         if (m.find()) {
             start(m.group(1).trim(), parseInt(m.group(2)), now);
@@ -272,7 +272,7 @@ public final class CraftTimers {
         List<Job> jobs = jobsForWrite();
         if (jobs == null) return;
         String key = ItemKeys.normalize(name);
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         List<Job> same = queueOrder(jobs).stream()
                 .filter(j -> j.separate == separate && ItemKeys.normalize(j.name).equals(key)).toList();
         // 다 된 것 중 개수가 같은 것 → 개수가 같은 것 → 이름만 같은 것
@@ -419,7 +419,7 @@ public final class CraftTimers {
     public static void recalculate() {
         List<Job> jobs = jobsForWrite();
         if (jobs == null) return;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         for (List<Job> q : queues(jobs)) recalculateQueue(q, now);
         changed();
     }
@@ -490,6 +490,24 @@ public final class CraftTimers {
      * 이 아이템·개수의 제작 시간을 확실히 아는가: 서버가 보여 준 실제 시간을 배웠거나(같은 개수),
      * 한 번에 만들어지는 개수를 배워 개수에 따른 시간을 확실히 계산할 수 있을 때
      */
+    /** 시험용: 다른 기록 파일에서 배운 제작 시간표(레시피 시간·실제 시간·한 번에 만드는 개수)만 가져온다(제작 목록은 그대로) */
+    public static void debugLearnFrom(Path p) {
+        try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
+            Store s = GSON.fromJson(r, Store.class);
+            if (s == null) return;
+            if (s.secondsPerJob != null) s.secondsPerJob.forEach((k, v) -> store.secondsPerJob.put(ItemKeys.normalize(k), v));
+            if (s.observedMs != null) store.observedMs.putAll(s.observedMs);
+            if (s.batch != null) store.batch.putAll(s.batch);
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalStateException("배운 제작 시간표를 못 읽음: " + p, e);
+        }
+    }
+
+    /** 시험용: 이 이름·개수의 실제 시간(시작 버튼·대기열에서 본 값)을 아는가 */
+    public static boolean debugObserved(String name, int count) {
+        return store.observedMs.containsKey(ItemKeys.normalize(name) + "*" + Math.max(1, count));
+    }
+
     /** 시험용: 시작 버튼에서 읽은 실제 시간처럼 기억 */
     public static void debugObserve(String name, int count, long ms) {
         store.observedMs.put(ItemKeys.normalize(name) + "*" + Math.max(1, count), ms);
@@ -541,7 +559,7 @@ public final class CraftTimers {
         if (!(client.currentScreen instanceof HandledScreen<?> screen)) return;
         List<Job> jobs = jobsForWrite();
         if (jobs == null) return;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         Set<Job> matched = Collections.newSetFromMap(new IdentityHashMap<>());
         boolean changed = false;
         // 대기열 칸: 레시피 칸이 아닌데 시간이 보이는 칸. 실제 창은 "제작 시간 : 1시간 29분 33초" 처럼
@@ -1225,7 +1243,7 @@ public final class CraftTimers {
     public static void debugButton(String name, long ms) {
         buttonKey = ItemKeys.normalize(name);
         buttonMs = ms;
-        buttonAt = System.currentTimeMillis();
+        buttonAt = kr.ddingmate.util.Clock.now();
     }
 
     /** 시험용 */
@@ -1236,11 +1254,11 @@ public final class CraftTimers {
     /** 시험용 */
     public static boolean debugVoyage(ItemStack stack, List<Text> lines) {
         List<Job> jobs = jobsForWrite();
-        return jobs != null && voyage(jobs, stack, lines, System.currentTimeMillis());
+        return jobs != null && voyage(jobs, stack, lines, kr.ddingmate.util.Clock.now());
     }
 
     public static boolean debugMine(ItemStack stack, List<Text> lines) {
-        return debugMine(stack, lines, System.currentTimeMillis());
+        return debugMine(stack, lines, kr.ddingmate.util.Clock.now());
     }
 
     public static boolean debugMine(ItemStack stack, List<Text> lines, long now) {
@@ -1255,7 +1273,7 @@ public final class CraftTimers {
         if (!DdingMate.config().craft.enabled) return;
         List<Job> jobs = jobsForWrite();
         if (jobs == null) return;
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         // 예전 판이 남긴 바로 만들어지는 아이템(커피 등) 제작 줄은 지운다
         boolean changed = jobs.removeIf(j -> !j.separate && kr.ddingmate.counter.RecipeBook.isInstant(j.name));
         Map<String, Job> finished = new LinkedHashMap<>();
@@ -1309,7 +1327,7 @@ public final class CraftTimers {
 
     /** 화면에 보일 묶음: 같은 아이템·개수·완료 여부끼리 한 줄. 완료가 가까운 순(시간 모르는 것은 뒤로) */
     public static List<Group> groups() {
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         Map<String, List<Job>> by = new LinkedHashMap<>();
         // "전부 끝나면 한 번에" 켜짐: 끝난 것과 남은 것을 한 줄로(끝난 시각은 마지막 것). 꺼짐: 끝난 것은 따로 "[1] 완료"
         boolean merge = DdingMate.config().craft.mergeDone;
@@ -1492,7 +1510,7 @@ public final class CraftTimers {
 
     public static void save() {
         if (!dirty) return;
-        lastSave = System.currentTimeMillis();
+        lastSave = kr.ddingmate.util.Clock.now();
         try {
             Files.createDirectories(path().getParent());
             try (Writer w = Files.newBufferedWriter(path(), StandardCharsets.UTF_8)) {

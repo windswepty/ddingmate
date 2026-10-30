@@ -332,7 +332,7 @@ public final class FacilityPanel {
             now.put(slotNode(slot), slot.id);
         }
         // 누른 지 3초 안에 새로 나타난 것들은 그 칸을 눌러서 나온 것
-        if (clickedNode != null && System.currentTimeMillis() - clickedAt < 3000 && !visible.isEmpty()) {
+        if (clickedNode != null && kr.ddingmate.util.Clock.now() - clickedAt < 3000 && !visible.isEmpty()) {
             Map<String, String> map = parents().computeIfAbsent(facility, k -> new java.util.HashMap<>());
             boolean changed = false;
             for (String n : now.keySet()) {
@@ -345,7 +345,7 @@ public final class FacilityPanel {
             }
             if (changed) saveParents();
         }
-        if (!now.keySet().equals(visible.keySet()) && clickedNode != null && System.currentTimeMillis() - clickedAt < 3000) {
+        if (!now.keySet().equals(visible.keySet()) && clickedNode != null && kr.ddingmate.util.Clock.now() - clickedAt < 3000) {
             clickedNode = null; // 한 번 누른 것은 한 번만 배운다
         }
         visible = now;
@@ -362,7 +362,7 @@ public final class FacilityPanel {
             int sx = ox + slot.x, sy = oy + slot.y;
             if (mouseX >= sx && mouseX < sx + 16 && mouseY >= sy && mouseY < sy + 16) {
                 clickedNode = recipeSlots.containsValue(slot.id) ? null : slotNode(slot);
-                clickedAt = System.currentTimeMillis();
+                clickedAt = kr.ddingmate.util.Clock.now();
                 if (clickedNode != null) DdingMate.LOG.info("시설 창 누름: {} · {}", lastFacility, clickedNode);
                 return;
             }
@@ -542,7 +542,7 @@ public final class FacilityPanel {
     /** 시험용: 이 칸을 누른 것처럼(경로 배우기) */
     public static void debugClickSlot(Slot slot) {
         clickedNode = slotNode(slot);
-        clickedAt = System.currentTimeMillis();
+        clickedAt = kr.ddingmate.util.Clock.now();
     }
 
     public static String debugFullPath(String recipeId) {
@@ -796,7 +796,7 @@ public final class FacilityPanel {
 
     /** 같은 안내를 연달아 누르면 채팅이 쌓이지 않게 2초에 한 번만 */
     private static void say(String msg) {
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         if (msg.equals(lastSaid) && now - lastSaidAt < 2000) return;
         lastSaid = msg;
         lastSaidAt = now;

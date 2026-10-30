@@ -75,7 +75,7 @@ public final class MaterialCounter {
             views = List.of();
             return;
         }
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         if (client.player != lastPlayer) {
             // 2026-10-18 로그: 채널 인식과 같은 초에 '재료 준비 완료'가 다시 울렸다(빈 인벤토리 → 동기화로 다 모임)
             lastPlayer = client.player;

@@ -214,7 +214,7 @@ public final class Barista {
         Order o = new Order();
         o.grade = t.group(1).toUpperCase(java.util.Locale.ROOT);
         o.customer = t.group(2).trim();
-        o.at = System.currentTimeMillis();
+        o.at = kr.ddingmate.util.Clock.now();
         List<String> lore = lore(s);
         List<long[]> raw = new ArrayList<>(); // sold, want, linePrice
         boolean remainSeen = false;
@@ -280,7 +280,7 @@ public final class Barista {
 
     /** 이번 일일 초기화(03시) 뒤에 읽은 주문인가 */
     public static boolean fresh(Order o) {
-        ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
         return o.at >= TodoList.lastReset(DdingMateConfig.Reset.DAILY, now).toInstant().toEpochMilli();
     }
 

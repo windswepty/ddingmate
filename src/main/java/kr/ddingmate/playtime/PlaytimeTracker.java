@@ -94,7 +94,7 @@ public final class PlaytimeTracker {
 
     /** 매 틱. 월드에 들어가 있는 동안만 시간을 더한다. */
     public static void tick(MinecraftClient client) {
-        long now = System.currentTimeMillis();
+        long now = kr.ddingmate.util.Clock.now();
         // 띵타이쿤 대기 서버에 있는 동안은 서버도 접속 시간을 세지 않는다. 잠수 채널은 센다(서버 [답변] 2026-10-16·10-24,
         // 10-23 실제: 잠수 8시간 20분이 서버 접속 시간에 들어감). 잠수 채널엔 채널 표시가 없어서 inGame() 이 거짓이다
         boolean counting = kr.ddingmate.game.ServerHud.inGame() || kr.ddingmate.game.ServerHud.afk();
@@ -129,7 +129,7 @@ public final class PlaytimeTracker {
             }
         }
         if (cfg.midnightReminder && !d.reminded && d.seconds >= 3600) {
-            ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+            ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
             if (!now.toLocalTime().isBefore(MIDNIGHT_REMIND)) {
                 d.reminded = true;
                 // 받은 보상을 알고 있으면 안 받은 것만, 모르면 채운 시간만 알린다. 다 받았으면 알리지 않는다.
@@ -163,8 +163,8 @@ public final class PlaytimeTracker {
         Matcher m = CHAT_TODAY.matcher(t);
         if (m.lookingAt() && (m.group(1) != null || m.group(2) != null || m.group(3) != null)) {
             d.seconds = num(m.group(1)) * 3600L + num(m.group(2)) * 60L + num(m.group(3));
-            d.chatSyncedAt = System.currentTimeMillis();
-            lastMs = System.currentTimeMillis();
+            d.chatSyncedAt = kr.ddingmate.util.Clock.now();
+            lastMs = kr.ddingmate.util.Clock.now();
             // 이미 넘긴 구간은 접속하자마자 한꺼번에 울리지 않게 알린 것으로 친다
             for (int h : REWARDS.keySet()) if (d.seconds >= h * 3600L && !d.notified.contains(h)) d.notified.add(h);
             save();
@@ -208,14 +208,14 @@ public final class PlaytimeTracker {
         if (d == null) return;
         if (serverSeconds >= 0) {
             d.seconds = serverSeconds;
-            lastMs = System.currentTimeMillis();
+            lastMs = kr.ddingmate.util.Clock.now();
         }
-        d.syncedAt = System.currentTimeMillis();
+        d.syncedAt = kr.ddingmate.util.Clock.now();
         d.claimed = claimed;
         kr.ddingmate.todo.TodoList.sync(kr.ddingmate.todo.TodoPreset.PLAYTIME, claimed.size()); // 할 일 "접속 시간 보상 받기"
         // 이미 넘긴 구간은 알림이 한꺼번에 울리지 않게 알린 것으로 친다(창을 보고 있으니 따로 알릴 필요 없음).
         for (int h : REWARDS.keySet()) if (d.seconds >= h * 3600L && !d.notified.contains(h)) d.notified.add(h);
-        if (System.currentTimeMillis() - lastSaveMs > 5000) save();
+        if (kr.ddingmate.util.Clock.now() - lastSaveMs > 5000) save();
     }
 
     private static String plain(Text t) {
@@ -260,7 +260,7 @@ public final class PlaytimeTracker {
     private static Day today() {
         String key = accountKey();
         if (key == null) return null;
-        String date = ZonedDateTime.now(ScheduleEngine.KST).toLocalDate().toString();
+        String date = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST).toLocalDate().toString();
         Day d = store.accounts.get(key);
         if (d == null || !date.equals(d.date)) {
             d = new Day();
@@ -323,7 +323,7 @@ public final class PlaytimeTracker {
     }
 
     public static void save() {
-        lastSaveMs = System.currentTimeMillis();
+        lastSaveMs = kr.ddingmate.util.Clock.now();
         try {
             Files.createDirectories(path().getParent());
             try (Writer w = Files.newBufferedWriter(path(), StandardCharsets.UTF_8)) {

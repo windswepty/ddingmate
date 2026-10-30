@@ -45,7 +45,7 @@ public final class Nickname {
     public static void onSent(String message) {
         if (message == null || message.startsWith("/")) return;
         lastSent = message.trim();
-        lastSentAt = System.currentTimeMillis();
+        lastSentAt = kr.ddingmate.util.Clock.now();
     }
 
     public static void onChat(String raw) {
@@ -56,7 +56,7 @@ public final class Nickname {
             learn(w.group(3).equals("보냄") ? w.group(1) : w.group(2));
             return;
         }
-        if (lastSent == null || System.currentTimeMillis() - lastSentAt > 5_000) return;
+        if (lastSent == null || kr.ddingmate.util.Clock.now() - lastSentAt > 5_000) return;
         Matcher c = CHAT.matcher(t);
         if (c.find() && c.group(2).trim().equals(lastSent)) {
             lastSent = null;
