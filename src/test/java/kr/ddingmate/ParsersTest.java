@@ -58,6 +58,9 @@ class ParsersTest {
         assertNotNull(ship);
         assertEquals("C", ship[0]);
         assertEquals("출항 중", ship[1]);
+        // 보상을 받은 뒤 탐사 버튼(2026-10-30 실제): 등급 없이 "해양 탐사선 정비 중"
+        assertTrue(kr.ddingmate.expert.Exploration.maintenance("[ 해양 탐사선 정비 중 ]"));
+        assertNull(kr.ddingmate.expert.Exploration.parse("[ 해양 탐사선 정비 중 ]"));
     }
 
     @Test

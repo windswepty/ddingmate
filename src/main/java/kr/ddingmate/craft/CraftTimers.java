@@ -611,7 +611,19 @@ public final class CraftTimers {
                 mineSlot(s, lore.lines(), slot.id, mineSecs, mineInfo);
                 continue;
             }
-            String[] ship = kr.ddingmate.expert.Exploration.parse(ItemKeys.stripGlyphs(s.getName().getString()));
+            String shipName = ItemKeys.stripGlyphs(s.getName().getString());
+            if (kr.ddingmate.expert.Exploration.maintenance(shipName)) {
+                // 보상을 받은 뒤 정비 1시간(2026-10-30 실제 "[ 해양 탐사선 정비 중 ]"): 끝나면 새 탐사선에 납품할 수 있다
+                exploreSeen = true;
+                long sec = -1;
+                for (Text l : lore.lines()) {
+                    String t = ItemKeys.stripGlyphs(l.getString()).trim();
+                    if (REMAIN_HINT.matcher(t).find() && seconds(t) >= 0) sec = seconds(t);
+                }
+                if (sec >= 0) exploreRuns.add(new String[]{MAINT_GRADE, String.valueOf(sec)});
+                continue;
+            }
+            String[] ship = kr.ddingmate.expert.Exploration.parse(shipName);
             if (ship != null) {
                 // 해양 탐사 창: 출항 중이면 남은 시간, 출항 준비 칸이면 남은 납품 재료
                 exploreSeen = true;
@@ -982,6 +994,10 @@ public final class CraftTimers {
 
     /** 해양 탐사 타이머 이름 끝: "C급 탐사선" */
     public static final String EXPLORE = "급 탐사선";
+    /** 보상을 받은 뒤 정비 타이머 이름(등급 없음) */
+    public static final String EXPLORE_MAINT = "탐사선 정비";
+    /** exploreRuns 에서 정비를 나타내는 등급 자리 값 */
+    static final String MAINT_GRADE = "정비";
     private static List<String> lastExplore = List.of();
     private static long lastExploreAt;
 
@@ -1005,11 +1021,11 @@ public final class CraftTimers {
         lastExploreAt = now;
         if (same) return false;
         lastExplore = List.copyOf(sig);
-        jobs.removeIf(j -> j.separate && j.name.endsWith(EXPLORE));
+        jobs.removeIf(j -> j.separate && (j.name.endsWith(EXPLORE) || j.name.equals(EXPLORE_MAINT)));
         for (String[] r : keep) {
             long s = Long.parseLong(r[1]);
             Job job = new Job();
-            job.name = r[0] + EXPLORE;
+            job.name = r[0].equals(MAINT_GRADE) ? EXPLORE_MAINT : r[0] + EXPLORE;
             job.separate = true;
             job.startedAt = now;
             job.endsAt = now + s * 1000;
@@ -1027,6 +1043,15 @@ public final class CraftTimers {
         lastExploreAt = 0;
         syncExplore(jobs, runs, now);
         return (int) jobs.stream().filter(j -> j.separate && j.name.endsWith(EXPLORE)).count();
+    }
+
+    /** 시험용: 정비 중 칸("[ 해양 탐사선 정비 중 ]" + "- 남은 시간 : …")만 보인 탐사 창 → 정비 줄의 끝 시각(없으면 0) */
+    public static long debugSyncMaintenance(long sec, long now) {
+        List<Job> jobs = jobsForWrite();
+        if (jobs == null) return -1;
+        lastExploreAt = 0;
+        syncExplore(jobs, List.<String[]>of(new String[]{MAINT_GRADE, String.valueOf(sec)}), now);
+        return jobs.stream().filter(j -> j.separate && j.name.equals(EXPLORE_MAINT)).mapToLong(j -> j.endsAt).findFirst().orElse(0);
     }
 
     static boolean isMine(List<Text> lines) {
@@ -1312,6 +1337,8 @@ public final class CraftTimers {
                 Notifier.voyageDone(j.name.substring(0, j.name.length() - VOYAGE.length()).trim());
             } else if (DdingMate.config().craft.notify && j.name.endsWith(EXPLORE)) {
                 Notifier.exploreDone(j.name);
+            } else if (DdingMate.config().craft.notify && j.name.equals(EXPLORE_MAINT)) {
+                Notifier.exploreMaintDone();
             } else if (DdingMate.config().craft.notify) {
                 if (same) Notifier.craftDone(j.name, j.count, all.size());
                 else Notifier.craftDone(j.name, sum, 1);
@@ -1391,7 +1418,7 @@ public final class CraftTimers {
         if (name == null || name.isEmpty()) return "";
         if (name.endsWith(VOYAGE) || name.equals(VOYAGE_RESET_NAME)) return "해양";
         if (name.equals(MINE)) return "채광";
-        if (name.endsWith(EXPLORE)) return "해양";
+        if (name.endsWith(EXPLORE) || name.equals(EXPLORE_MAINT)) return "해양";
         if (name.equals(PERFUME)) return "꽃";
         return facilityCategory(kr.ddingmate.counter.RecipeBook.facilityOf(name));
     }

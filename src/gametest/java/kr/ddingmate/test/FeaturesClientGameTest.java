@@ -1160,6 +1160,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(kr.ddingmate.craft.CraftTimers.groups().stream().filter(g -> g.name().endsWith("급 탐사선")).count() == 2,
                         "같은 등급 탐사선 두 척이 한 줄로 묶임");
                 check(kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(), now) == 0, "탐사 창에 출항 중인 배가 없는데 줄이 남음");
+                // 보상을 받은 뒤 정비(2026-10-30 실제 "[ 해양 탐사선 정비 중 ]" "- 남은 시간 : 1시간 0분 0초") → 해양 일정 줄 1시간
+                check(kr.ddingmate.expert.Exploration.maintenance("[ 해양 탐사선 정비 중 ]"), "정비 중 칸을 못 알아봄");
+                long maintEnds = kr.ddingmate.craft.CraftTimers.debugSyncMaintenance(3600, now);
+                check(maintEnds == now + 3_600_000 && kr.ddingmate.craft.CraftTimers.category(kr.ddingmate.craft.CraftTimers.EXPLORE_MAINT).equals("해양"),
+                        "탐사선 정비 1시간 줄이 없음: " + (maintEnds - now));
+                kr.ddingmate.craft.CraftTimers.debugSyncExplore(java.util.List.of(), now);
                 kr.ddingmate.expert.Exploration.debugReset();
                 // 분류별로 묶기(2026-10-29 사용자 화면 순서): 분류 없는 줄은 제자리, [채광] 둘이 모이고 묶음은 빨리 끝나는 순
                 java.util.List<String> grouped = kr.ddingmate.hud.ScheduleHud.debugGrouped(

@@ -39,6 +39,14 @@ public final class Exploration {
         }
     }
 
+    /** 보상을 받은 뒤 탐사 버튼(2026-10-30 실제): "[ 해양 탐사선 정비 중 ]" · "- 남은 시간 : 1시간 0분 0초" — 등급이 없다 */
+    private static final Pattern MAINTENANCE = Pattern.compile("^\\[?\\s*해양\\s*탐사선\\s*정비\\s*중\\s*]?$");
+
+    /** 정비 중 탐사 버튼인가 */
+    public static boolean maintenance(String name) {
+        return MAINTENANCE.matcher(name.trim()).matches();
+    }
+
     /** 칸 이름에서 등급("C")과 상태("출항 중"). 탐사선 칸이 아니면 null */
     public static String[] parse(String name) {
         Matcher m = SLOT.matcher(name.trim());
