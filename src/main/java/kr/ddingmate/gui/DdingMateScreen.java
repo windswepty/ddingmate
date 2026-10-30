@@ -156,8 +156,9 @@ public class DdingMateScreen extends Screen {
         }
         if (tab == Tab.LOG) AlertLog.markRead();
 
-        // 문의 탭: 위에 안내·분류 두 줄만 목록으로, 그 아래는 여러 줄 입력 칸과 [문의 보내기]
-        int listH = tab == Tab.INQUIRY ? 2 * ITEM_H + 8 : ch - 4;
+        // 문의 탭: 위에 안내·분류·진단·디스코드 네 줄을 목록으로, 그 아래는 여러 줄 입력 칸과 [문의 보내기].
+        // 창이 낮으면 입력 칸(3줄 이상)을 남기고 목록을 줄인다(그때는 목록을 굴려서 봄)
+        int listH = tab == Tab.INQUIRY ? Math.max(2 * ITEM_H + 8, Math.min(4 * ITEM_H + 8, ch - 4 - (4 + 48 + 4 + 20 + 4))) : ch - 4;
         list = addDrawableChild(new ConfigList(client, cw - 4 - side, listH, cy + 2, ITEM_H));
         list.setX(cx + 2);
         buildRows();
