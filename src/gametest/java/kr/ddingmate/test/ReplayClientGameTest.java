@@ -252,6 +252,8 @@ public class ReplayClientGameTest implements FabricClientGameTest {
             else if (in && l.matches(".*\\(\\s*[\\d,]+\\s*/\\s*[\\d,]+\\s*\\)$")) want.add(l);
             else if (in && !l.isBlank()) in = false;
         }
+        // 트래커가 아닌 사이드바면 띵메이트는 마지막으로 본 의뢰를 그대로 둔다(트래커를 꺼도 보이게) → 대조하지 않는다
+        if (clean.stream().noneMatch(l -> l.matches("^(일일|일간|주간)\\s*의뢰.*"))) return;
         List<String> got = kr.ddingmate.todo.TodoList.debugQuests().get(0);
         if (!got.equals(want)) FAILURES.add("의뢰 트래커 일일 의뢰 " + got + " ≠ 사이드바 " + want);
     }

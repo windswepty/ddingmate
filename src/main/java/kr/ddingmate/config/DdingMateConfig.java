@@ -155,6 +155,10 @@ public final class DdingMateConfig {
         public int remindMinutes = 60;
         /** 일일·주간 의뢰 줄 밑에 의뢰 내용(오른쪽 의뢰 트래커의 "레드스톤 채광하기 (0/8)")을 펼쳐 보기(문의 43c24382) */
         public boolean questDetails = true;
+        /** 마지막으로 본 의뢰 트래커 줄(트래커를 꺼도·다시 접속해도 보이게). 본 시각이 초기화 전이면 안 쓴다 */
+        public List<String> dailyQuestLines = new ArrayList<>();
+        public List<String> weeklyQuestLines = new ArrayList<>();
+        public long questLinesAt;
         public List<TodoItem> items = new ArrayList<>(defaults());
         /** 3 = 할 일은 모드가 알아서 셀 수 있는 것(TodoPreset)만. 예전 설정 파일에는 없어서 0 으로 읽히고, 한 번 정리한다 */
         public int version = 0;

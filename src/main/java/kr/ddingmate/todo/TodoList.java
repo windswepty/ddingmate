@@ -155,11 +155,7 @@ public final class TodoList {
         if (client.world == null) return;
         net.minecraft.scoreboard.Scoreboard sb = client.world.getScoreboard();
         net.minecraft.scoreboard.ScoreboardObjective obj = sb.getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.SIDEBAR);
-        if (obj == null) {
-            dailyQuests = List.of();
-            weeklyQuests = List.of();
-            return;
-        }
+        if (obj == null) return; // 사이드바가 없어도(트래커를 끔) 마지막으로 본 의뢰는 그대로 보인다
         // 사이드바는 점수 높은 줄이 위
         List<net.minecraft.scoreboard.ScoreboardEntry> entries = new ArrayList<>(sb.getScoreboardEntries(obj));
         entries.sort((p, q) -> Integer.compare(q.value(), p.value()));
@@ -180,8 +176,24 @@ public final class TodoList {
 
     /** 의뢰 트래커 한 줄: "레드스톤 채광하기 (0/8)" (2026-10 실제 화면) */
     private static final java.util.regex.Pattern TRACKER_QUEST = java.util.regex.Pattern.compile("^(.+?)\\s*\\(\\s*([\\d,]+)\\s*/\\s*([\\d,]+)\\s*\\)$");
-    /** 마지막으로 읽은 의뢰 트래커의 일일·주간 의뢰 줄 */
-    private static List<String> dailyQuests = List.of(), weeklyQuests = List.of();
+    /** 마지막으로 읽은 의뢰 트래커의 일일·주간 의뢰 줄(설정에 저장해 트래커를 끄거나 다시 접속해도 보인다) */
+    private static List<String> dailyQuests, weeklyQuests;
+    private static long questsAt;
+    private static boolean questsDirty;
+    private static long questsSavedAt;
+
+    private static void loadQuests() {
+        if (dailyQuests != null) return;
+        if (DdingMate.config() == null) { // 게임 없이 도는 단위 시험
+            dailyQuests = List.of();
+            weeklyQuests = List.of();
+            return;
+        }
+        DdingMateConfig.Todo cfg = DdingMate.config().todo;
+        dailyQuests = cfg.dailyQuestLines == null ? List.of() : List.copyOf(cfg.dailyQuestLines);
+        weeklyQuests = cfg.weeklyQuestLines == null ? List.of() : List.copyOf(cfg.weeklyQuestLines);
+        questsAt = cfg.questLinesAt;
+    }
 
     /** 의뢰 트래커 줄들: "일일 의뢰" 머리 밑은 일일, "주간 의뢰" 머리 밑은 주간 */
     static void readTracker(List<String> lines) {
@@ -199,16 +211,39 @@ public final class TodoList {
             else if (into != null && TRACKER_QUEST.matcher(l).matches()) into.add(l);
             else if (!l.isBlank() && into != null && !TRACKER_QUEST.matcher(l).matches()) into = null;
         }
-        // 트래커가 보이면 그대로("의뢰 활성화 필요"면 빈 목록), 다른 사이드바거나 트래커를 끄면 지난 의뢰를 지운다
-        dailyQuests = tracker ? List.copyOf(daily) : List.of();
-        weeklyQuests = tracker ? List.copyOf(weekly) : List.of();
+        // 트래커가 보이면 그대로("의뢰 활성화 필요"면 빈 목록). 트래커를 끄거나 다른 사이드바면 마지막으로 본 의뢰를 그대로 둔다
+        // (2026-10-30 사용자 요청: 트래커를 꺼도 할 일 HUD 에 의뢰 내용이 보이게). 지난 의뢰는 초기화 시각이 지나면 안 보인다
+        loadQuests();
+        if (!tracker) return;
+        questsAt = kr.ddingmate.util.Clock.now();
+        if (daily.equals(dailyQuests) && weekly.equals(weeklyQuests)) return;
+        dailyQuests = List.copyOf(daily);
+        weeklyQuests = List.copyOf(weekly);
+        questsDirty = true;
+    }
+
+    /** 바뀐 의뢰 줄을 설정에 저장(1초 처리에서, 30초에 한 번까지: 채광 중엔 진행 숫자가 계속 바뀐다) */
+    private static void saveQuests(long now) {
+        if (!questsDirty || now - questsSavedAt < 30_000) return;
+        DdingMateConfig.Todo cfg = DdingMate.config().todo;
+        cfg.dailyQuestLines = new ArrayList<>(dailyQuests);
+        cfg.weeklyQuestLines = new ArrayList<>(weeklyQuests);
+        cfg.questLinesAt = questsAt;
+        DdingMate.config().save();
+        questsDirty = false;
+        questsSavedAt = now;
     }
 
     /** 할 일 HUD 에 펼칠 의뢰 내용(일일·주간 의뢰 줄만, 설정이 켜져 있을 때) */
     public static List<String> questLines(DdingMateConfig.TodoItem item) {
         if (!DdingMate.config().todo.questDetails || item == null) return List.of();
-        if (TodoPreset.DAILY_QUEST.id.equals(item.preset)) return dailyQuests;
-        if (TodoPreset.WEEKLY_QUEST.id.equals(item.preset)) return weeklyQuests;
+        loadQuests();
+        // 마지막으로 본 때가 그 의뢰의 초기화(일일 오전 3시·주간) 전이면 지난 의뢰라 보이지 않는다
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
+        if (TodoPreset.DAILY_QUEST.id.equals(item.preset))
+            return questsAt >= lastReset(item.reset, now).toInstant().toEpochMilli() ? dailyQuests : List.of();
+        if (TodoPreset.WEEKLY_QUEST.id.equals(item.preset))
+            return questsAt >= lastReset(item.reset, now).toInstant().toEpochMilli() ? weeklyQuests : List.of();
         return List.of();
     }
 
@@ -226,6 +261,7 @@ public final class TodoList {
 
     /** 시험용: 지금 기억한 [일일, 주간] 의뢰 줄 */
     public static List<List<String>> debugQuests() {
+        loadQuests();
         return List.of(dailyQuests, weeklyQuests);
     }
 
@@ -440,6 +476,7 @@ public final class TodoList {
 
     /** 1초에 한 번. 일일 초기화 remindMinutes 분 전에 남은 '매일 03시' 할 일이 있으면 하루에 한 번 알린다. */
     public static void tick(ZonedDateTime now) {
+        saveQuests(now.toInstant().toEpochMilli());
         DdingMateConfig.Todo cfg = DdingMate.config().todo;
         if (cfg.remindMinutes <= 0) return;
         ZonedDateTime next = nextReset(DdingMateConfig.Reset.DAILY, now);

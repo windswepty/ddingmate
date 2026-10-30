@@ -1085,7 +1085,10 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(quests.get(0).equals(java.util.List.of("판매로 골드 획득하기 (27,550/10,000)", "미역 채집하기 (0/30)"))
                                 && quests.get(1).equals(java.util.List.of("레드스톤 채광하기 (11/96)")),
                         "실제 사이드바 의뢰 읽기 오류: " + quests);
-                // 활성화 전("일일 의뢰 활성화 필요")·트래커 끔(다른 사이드바)이면 지난 의뢰를 지운다
+                // 트래커를 끄면(다른 사이드바·사이드바 없음) 마지막으로 본 의뢰를 그대로 보인다(2026-10-30 사용자 요청)
+                quests = kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of("§a", " 다른 사이드바§b"));
+                check(quests.get(0).size() == 2 && quests.get(1).size() == 1, "트래커를 끄니 의뢰 내용이 사라짐: " + quests);
+                // 활성화 전("일일 의뢰 활성화 필요")이면 지난 의뢰를 지운다
                 quests = kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of(" 일일 의뢰§0", " 일일 의뢰 활성화 필요§1"));
                 check(quests.get(0).isEmpty() && quests.get(1).isEmpty(), "활성화 전 의뢰가 남음: " + quests);
                 quests = kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of("  판매로 골드 획득하기 (1/10)§b"));
