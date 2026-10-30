@@ -288,8 +288,24 @@ public final class DurabilityTracker {
     }
 
     /** 서버가 인벤토리 칸을 보낸 순간(치장으로 바뀌기 전 진짜 장비가 잠깐 온다) */
-    public static void onInventoryPacket(MinecraftClient client) {
+    public static void onInventoryPacket(MinecraftClient client, String kind) {
+        if (client.player != null && kr.ddingmate.debug.DevRecord.enabled()) logHead(client, kind);
         if (client.player != null && !DdingMate.config().durability.tracked.isEmpty()) tick(client);
+    }
+
+    private static String lastHeadLog = "";
+
+    /**
+     * 개발용 기록이 켜져 있으면 머리 칸이 바뀔 때마다 무슨 패킷으로 무엇이 왔는지 남긴다(2026-10-30: 첫 접속 땐 진짜 투구가 잠깐 오는데
+     * 채널 이동 땐 못 잡았다 → 이동 때 서버가 보내는 순서를 보려고)
+     */
+    private static void logHead(MinecraftClient client, String kind) {
+        ItemStack h = client.player.getInventory().getStack(39);
+        String sig = h.isEmpty() ? "빈칸" : Registries.ITEM.getId(h.getItem()) + " " + h.getName().getString() + (cosmetic(h) ? " (치장)" : "")
+                + (h.isDamageable() ? " " + (h.getMaxDamage() - h.getDamage()) + "/" + h.getMaxDamage() : "");
+        if (sig.equals(lastHeadLog)) return;
+        lastHeadLog = sig;
+        DdingMate.LOG.info("[원본 기록] 머리 칸({}): {}", kind, sig);
     }
 
     /** 경고선 아래로 처음 내려갈 때 한 번 알리고, 수리해서 5%p 이상 회복하면 다시 알릴 수 있게 한다. */

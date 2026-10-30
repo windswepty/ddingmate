@@ -1547,6 +1547,12 @@ public final class CraftTimers {
         dirty = true;
     }
 
+    /** 시험용: 제작 목록만 비운다(배운 제작 시간표는 그대로) */
+    public static void debugClearJobs() {
+        store.accounts.clear();
+        dirty = true;
+    }
+
     /** 시험용: 시설 창에서 맞춘 것처럼 제작 하나를 넣는다 */
     public static void debugAddJob(String name, int count, long startedAt, long endsAt, String queue) {
         String key = accountKey();

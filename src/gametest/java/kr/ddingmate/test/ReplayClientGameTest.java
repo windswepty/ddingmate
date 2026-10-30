@@ -63,6 +63,8 @@ public class ReplayClientGameTest implements FabricClientGameTest {
 
             // 1) 채팅 전부
             ctx.runOnClient(c -> replayChat(c, data, report));
+            // 채팅 재생에서 남은 제작 줄은 비운다: 지금 시각 기준으로 정리돼서 시험한 시각마다 창 보고의 "제작 줄 N" 이 달랐다
+            ctx.runOnClient(c -> kr.ddingmate.craft.CraftTimers.debugClearJobs());
             // 2) 예전 창 기록(글만)
             List<Window> windows = readScreens(data.resolve("ddingmate-screens.txt"));
             report.append("\n== 창 기록 ").append(windows.size()).append("개 다시 열기\n");

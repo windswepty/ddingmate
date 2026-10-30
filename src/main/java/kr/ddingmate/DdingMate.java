@@ -136,6 +136,7 @@ public final class DdingMate implements ClientModInitializer {
             // 채널 이동은 연결을 끊지 않고 JOIN 만 다시 온다: 팝업 대기·답변·공지 확인은 진짜 첫 접속 때만
             boolean first = !connected;
             connected = true;
+            if (kr.ddingmate.debug.DevRecord.enabled()) LOG.info("[원본 기록] {}", first ? "접속" : "채널 이동(다시 JOIN)");
             if (!first) return;
             Notifier.onJoin();
             kr.ddingmate.inquiry.Replies.onJoin(); // 보낸 문의에 답변이 왔는지(접속 직후·10분마다)

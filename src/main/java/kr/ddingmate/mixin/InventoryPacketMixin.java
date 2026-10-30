@@ -21,16 +21,16 @@ public abstract class InventoryPacketMixin {
 
     @Inject(method = "onInventory", at = @At("TAIL"))
     private void ddingmate$onInventory(InventoryS2CPacket packet, CallbackInfo ci) {
-        DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance());
+        DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance(), "창 전체");
     }
 
     @Inject(method = "onScreenHandlerSlotUpdate", at = @At("TAIL"))
     private void ddingmate$onSlot(ScreenHandlerSlotUpdateS2CPacket packet, CallbackInfo ci) {
-        DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance());
+        DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance(), "칸 " + packet.getSlot());
     }
 
     @Inject(method = "onSetPlayerInventory", at = @At("TAIL"))
     private void ddingmate$onPlayerSlot(SetPlayerInventoryS2CPacket packet, CallbackInfo ci) {
-        DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance());
+        DurabilityTracker.onInventoryPacket(MinecraftClient.getInstance(), "내 칸 " + packet.slot());
     }
 }
