@@ -30,7 +30,9 @@ import java.util.regex.Pattern;
 /**
  * 반려어(수족관) 밥 타이머. 위키 수족관 문서(2026-10-18)대로 계산한다.
  * <ul>
- * <li>허기·기분·활력은 10분마다 20~25%씩 줄고, 가장 높은 스탯부터 준다. 하나라도 0% 면 폐사</li>
+ * <li>허기·기분·활력은 10분마다(해양 스킬 "수질 유지 기술" Lv1~4: 11·14·17·20분) 한 가지가 20~25%씩 줄고, 위키는 가장 높은 스탯부터라고 한다
+ * (플레이어 말로는 무작위 — 평균은 어느 쪽이든 같아서 밥 알림은 같다). 하나라도 0% 면 폐사</li>
+ * <li>회복: 빵 허기 1%, 덩굴 기분 2%, 뼈 블록 활력 2%(위키·2026-10-31 확인)</li>
  * <li>어항에 넣은 때부터 2시간 동안만 자라고(성장도 최대 100), 세 스탯 평균이 80% 이상이면 100%, 50~79% 70%, 1~49% 30% 속도</li>
  * <li>2시간이 지났을 때 성장도가 90 이상이면 스탯이 더 줄지 않는다</li>
  * </ul>
@@ -240,7 +242,7 @@ public final class PetFish {
         long anchor = f.insertedAt > 0 ? f.insertedAt : f.statsAt;
         long growEnd = f.insertedAt > 0 ? f.insertedAt + GROW_MS : Long.MAX_VALUE;
         long t = f.statsAt;
-        long nextDrop = anchor + ((Math.max(0, t - anchor) / TICK_MS) + 1) * TICK_MS;
+        long nextDrop = anchor + ((Math.max(0, t - anchor) / tickMs()) + 1) * tickMs();
         long slowAt = avg(s) < SLOW_AVG ? t : 0, dangerAt = min(s) <= DROP ? t : 0;
         boolean alive = min(s) > 0;
         long horizon = Math.max(at, t) + 6 * 3600_000L;
@@ -259,9 +261,9 @@ public final class PetFish {
                 if (min(s) <= 0) alive = false;
                 if (slowAt == 0 && avg(s) < SLOW_AVG) slowAt = t;
                 if (dangerAt == 0 && min(s) <= DROP) dangerAt = t;
-                nextDrop += TICK_MS;
+                nextDrop += tickMs();
             } else if (t == nextDrop) {
-                nextDrop += TICK_MS;
+                nextDrop += tickMs();
             }
             if (t >= at && slowAt != 0 && dangerAt != 0 && firstNext != 0) break;
         }
@@ -281,7 +283,7 @@ public final class PetFish {
         long anchor = f.insertedAt > 0 ? f.insertedAt : f.statsAt;
         long growEnd = f.insertedAt > 0 ? f.insertedAt + GROW_MS : Long.MAX_VALUE;
         long t = f.statsAt;
-        long nextDrop = anchor + ((Math.max(0, t - anchor) / TICK_MS) + 1) * TICK_MS;
+        long nextDrop = anchor + ((Math.max(0, t - anchor) / tickMs()) + 1) * tickMs();
         boolean alive = min(s) > 0;
         while (t < at && alive) {
             long step = Math.min(nextDrop, Math.min(growEnd > t ? growEnd : Long.MAX_VALUE, at));
@@ -295,7 +297,7 @@ public final class PetFish {
                     s[hi] = Math.max(0, s[hi] - DROP);
                     if (min(s) <= 0) alive = false;
                 }
-                nextDrop += TICK_MS;
+                nextDrop += tickMs();
             }
         }
         return new Snapshot(avg(s), min(s), g, alive);
@@ -370,7 +372,7 @@ public final class PetFish {
         if (!f.warnedFeed && feedAt != 0 && now >= feedAt) {
             f.warnedFeed = true;
             save();
-            Notifier.petFish("반려어 " + f.name + " 밥 줄 때예요", "스탯 평균이 80% 아래라 성장이 느려져요 · 허기 빵, 기분 덩굴, 활력 뼈 블록");
+            Notifier.petFish("반려어 " + f.name + " 밥 줄 때예요", "스탯 평균이 80% 아래라 성장이 느려져요 · 빵 1개 허기 1%, 덩굴 1개 기분 2%, 뼈 블록 1개 활력 2%");
         }
     }
 
@@ -427,7 +429,64 @@ public final class PetFish {
             long end = f.insertedAt + GROW_MS - now;
             sb.append(end > 0 ? " · 성장 " + hm(end) + " 남음" : " · 성장 시간 끝");
         }
+        String fill = fillText(f);
+        if (!fill.isEmpty()) sb.append(" · 어항을 연 때 기준 다 채우려면 ").append(fill);
         return sb.toString();
+    }
+
+    /** 회복 아이템 하나가 채우는 양(2026-10-31 사용자 확인): 빵 = 허기 1%, 덩굴 = 기분 2%, 뼈 블록 = 활력 2% */
+    static final double BREAD = 1, VINE = 2, BONE = 2;
+
+    /** 마지막으로 읽은 값을 100% 로 채우는 데 드는 아이템: "빵 25개 · 뼈 블록 3개"(다 차 있으면 빈 글) */
+    public static String fillText(Fish f) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        int bread = need(f.hunger, BREAD), vine = need(f.mood, VINE), bone = need(f.vigor, BONE);
+        if (bread > 0) parts.add("빵 " + bread + "개");
+        if (vine > 0) parts.add("덩굴 " + vine + "개");
+        if (bone > 0) parts.add("뼈 블록 " + bone + "개");
+        return String.join(" · ", parts);
+    }
+
+    private static int need(double stat, double per) {
+        return stat < 0 ? 0 : (int) Math.ceil(Math.max(0, 100 - stat) / per - 1e-9);
+    }
+
+    /** 스탯이 줄어드는 주기(ms): 기본 10분, "수질 유지 기술"을 배웠으면 11·14·17·20분 */
+    public static long tickMs() {
+        int m = DdingMate.config() == null ? 10 : DdingMate.config().expert.petFishTickMin;
+        return (m >= 10 && m <= 30 ? m : 10) * 60_000L;
+    }
+
+    /** 해양 스킬 "[세레니티] 수질 유지 기술 (+N)": 설명 "반려 물고기의 스탯 하락 주기가 20분으로 증가합니다." */
+    private static final Pattern SKILL_TICK = Pattern.compile("하락\\s*주기가\\s*(\\d+)\\s*분");
+    private static final Pattern SKILL_PREVIEW = Pattern.compile("─{3,}|강화\\s*시|습득\\s*시|배울\\s*시|다음\\s*레벨");
+    private static boolean skillConfirmed;
+
+    /** /전문가 스킬 창의 "수질 유지 기술" 칸(지금 레벨 설명만, 다음 레벨 미리보기는 건너뜀). 안 배웠으면 10분 */
+    public static void readSkill(String name, java.util.List<String> lore) {
+        int min = 10;
+        for (String line : lore) {
+            if (SKILL_PREVIEW.matcher(line).find()) break;
+            Matcher m = SKILL_TICK.matcher(line);
+            if (m.find()) {
+                min = Integer.parseInt(m.group(1));
+                break;
+            }
+        }
+        if (name.matches(".*\\(\\s*\\+?\\s*0\\s*\\).*") || name.contains("잠김")) min = 10;
+        min = Math.max(10, Math.min(30, min));
+        int old = DdingMate.config().expert.petFishTickMin;
+        boolean changed = old != min;
+        if (changed) {
+            DdingMate.config().expert.petFishTickMin = min;
+            DdingMate.config().save();
+            DdingMate.LOG.info("반려어 스탯 감소 주기(스킬): {}분 → {}분", old, min);
+        }
+        if (!skillConfirmed || changed) {
+            skillConfirmed = true;
+            kr.ddingmate.skill.SkillReport.add("반려어", "해양", "수질 유지 기술",
+                    min > 10 ? "수질 유지 기술(" + min + "분마다)" : "수질 유지 기술 안 배움", changed);
+        }
     }
 
     public static String hm(long ms) {

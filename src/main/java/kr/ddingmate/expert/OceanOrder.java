@@ -411,6 +411,12 @@ public final class OceanOrder {
             if (!slot.hasStack()) continue;
             net.minecraft.item.ItemStack s = slot.getStack();
             String name = ItemKeys.stripGlyphs(s.getName().getString()).trim();
+            if (name.replace(" ", "").contains("수질유지기술")) {
+                net.minecraft.component.type.LoreComponent pl = s.get(net.minecraft.component.DataComponentTypes.LORE);
+                PetFish.readSkill(name, pl == null ? java.util.List.of()
+                        : pl.lines().stream().map(l -> ItemKeys.stripGlyphs(l.getString())).toList());
+                continue;
+            }
             if (name.replace(" ", "").contains("오션오더더더")) {
                 readSkill(name, s.get(net.minecraft.component.DataComponentTypes.LORE));
                 continue;

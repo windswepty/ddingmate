@@ -1119,6 +1119,12 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 // 창 전체로 맞추기(2026-10-25 실제): 골렘 칸마다 누적 남은 시간 "9초"·"10분 9초"·"20분 9초"(상태 칸이 같은 값을 한 번 더)
                 // → 골렘 3마리. 남은 시간이 하나도 없으면(다 받음) 줄이 모두 빠진다
                 check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of(9L, 609L, 1209L, 1209L), now) == 3, "형광 광산 창 골렘 수가 3이 아님");
+                // 골렘 여럿: 줄 시간은 마지막 골렘까지("전부"), 이름 옆에 다음 골렘(문의 9a952f29: 창 23분 38초인데 HUD 38분 38초)
+                kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of(1418L, 1718L, 2318L), now);
+                kr.ddingmate.craft.CraftTimers.groups().stream().filter(g -> g.name().equals(kr.ddingmate.craft.CraftTimers.MINE)).findFirst().ifPresentOrElse(g -> {
+                    String label = kr.ddingmate.craft.CraftTimers.displayLabel(g, now), left = kr.ddingmate.craft.CraftTimers.remainingText(g, now);
+                    check(label.equals("형광 광산 채광 [3] · 다음 23분 38초") && left.equals("전부 38분 38초"), "형광 광산 다음 골렘 표시: " + label + " / " + left);
+                }, () -> check(false, "형광 광산 줄이 없음"));
                 check(kr.ddingmate.craft.CraftTimers.debugSyncMine(java.util.List.of(), now) == 0, "다 받은 형광 광산 줄이 안 빠짐");
                 // 키워드 제외어(문의 6d1b50b0): 키워드 "찬", 제외 "이찬"
                 check(!kr.ddingmate.notify.KeywordWatcher.debugWithoutExcludes("이찬 : 안녕", java.util.List.of("이찬")).contains("찬")
@@ -1207,6 +1213,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
 
                 // 반려어: 위키대로 10분마다 가장 높은 스탯이 25%씩(안전하게 큰 값) → 30분 뒤 평균 75%(성장 느려짐), 70분 뒤 25%(폐사 위험)
                 kr.ddingmate.expert.PetFish.debugReset();
+                DdingMate.config().expert.petFishTickMin = 10;
                 long t0 = now - 1000;
                 kr.ddingmate.expert.PetFish.debugRead("아기 먹", List.of("허기 : 100%", "기분 : 100%", "활력 : 100%", "성장도 : 0"), t0);
                 kr.ddingmate.expert.PetFish.Fish f = kr.ddingmate.expert.PetFish.current();
@@ -1234,6 +1241,22 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.PetFish.debugRead("먹", List.of("허기 60%", "기분 70%", "활력 80%", "성장도 95", "남은 성장 시간 : 0분"), now);
                 check(kr.ddingmate.expert.PetFish.status(kr.ddingmate.expert.PetFish.current(), now + 3 * 3600_000L).equals("다 컸어요"),
                         "다 컸는데 밥을 재촉함: " + kr.ddingmate.expert.PetFish.status(kr.ddingmate.expert.PetFish.current(), now + 3 * 3600_000L));
+                // 다 채우는 데 드는 회복 아이템(빵 허기 1%, 덩굴 기분 2%, 뼈 블록 활력 2%) — 2026-10-31 실제 "아기 길드" 허기 75%
+                kr.ddingmate.expert.PetFish.debugRead("아기 길드", List.of("- 성장도 : 17", "- 허기 : 75%", "- 기분 : 100%", "- 활력 : 100%"), now);
+                check(kr.ddingmate.expert.PetFish.fillText(kr.ddingmate.expert.PetFish.current()).equals("빵 25개"),
+                        "채울 아이템 수가 다름: " + kr.ddingmate.expert.PetFish.fillText(kr.ddingmate.expert.PetFish.current()));
+                kr.ddingmate.expert.PetFish.debugRead("아기 길드", List.of("- 성장도 : 17", "- 허기 : 100%", "- 기분 : 95%", "- 활력 : 91%"), now);
+                check(kr.ddingmate.expert.PetFish.fillText(kr.ddingmate.expert.PetFish.current()).equals("덩굴 3개 · 뼈 블록 5개")
+                                && kr.ddingmate.expert.PetFish.detail(kr.ddingmate.expert.PetFish.current(), now).contains("덩굴 3개"),
+                        "채울 아이템 수가 다름: " + kr.ddingmate.expert.PetFish.fillText(kr.ddingmate.expert.PetFish.current()));
+                // 해양 스킬 "수질 유지 기술"(위키: Lv1~4 하락 주기 11·14·17·20분): 4레벨이면 20분마다 → 평균 80% 아래는 60분 뒤
+                kr.ddingmate.expert.PetFish.readSkill("[세레니티] 수질 유지 기술 (+4)", List.of("반려 물고기의 스탯 하락 주기가 20분으로 증가합니다."));
+                check(DdingMate.config().expert.petFishTickMin == 20, "수질 유지 기술을 못 읽음: " + DdingMate.config().expert.petFishTickMin);
+                kr.ddingmate.expert.PetFish.debugRead("아기 길드", List.of("- 성장도 : 0", "- 허기 : 100%", "- 기분 : 100%", "- 활력 : 100%"), t0);
+                check(kr.ddingmate.expert.PetFish.forecast(kr.ddingmate.expert.PetFish.current(), t0 + 60_000).slowAt() == t0 + 60 * 60_000,
+                        "수질 유지 기술 20분 주기가 반영 안 됨: " + (kr.ddingmate.expert.PetFish.forecast(kr.ddingmate.expert.PetFish.current(), t0 + 60_000).slowAt() - t0) / 60000 + "분");
+                kr.ddingmate.expert.PetFish.readSkill("[세레니티] 수질 유지 기술 (잠김)", List.of("반려 물고기의 스탯 하락 주기가 11분으로 증가합니다."));
+                check(DdingMate.config().expert.petFishTickMin == 10, "안 배운 수질 유지 기술을 반영함");
                 // HUD 에 보일 상태로 다시(30분 남음)
                 kr.ddingmate.expert.PetFish.debugReset();
                 // 반려어가 아닌 아이템(실제 로그: 신나는 풍선 뭉치)은 "기분"·"활력" 낱말만 있고 숫자가 없다 → 일정에 안 생겨야

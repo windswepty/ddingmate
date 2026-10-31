@@ -1443,15 +1443,28 @@ public final class CraftTimers {
         };
     }
 
-    /** 화면에 쓸 이름: 기다리는 중이면 " [대기중..]" */
+    /** 화면에 쓸 이름: 기다리는 중이면 " [대기중..]", 골렘이 여럿인 형광 광산은 다음 골렘이 끝나는 때도 " · 다음 23분 38초" */
     public static String displayLabel(Group g, long now) {
+        long next = nextMine(g, now);
+        if (next > 0) return g.label() + " · 다음 " + text(next, false, now);
         return waiting(g, now) ? g.label() + " [대기중..]" : g.label();
+    }
+
+    /**
+     * 골렘이 여럿인 형광 광산 줄에서 다음 골렘이 끝나는 시각(아니면 0). 줄 시간은 마지막 골렘까지라 창에서 본 앞 골렘 시간보다 길어
+     * "채광 시간이 더 걸리게 보인다"는 문의가 왔다(9a952f29: 창 23분 38초, HUD [3] 38분 38초)
+     */
+    static long nextMine(Group g, long now) {
+        if (!MINE.equals(g.name()) || g.times() < 2 || g.done() || g.unknown() || g.estimated()) return 0;
+        long next = g.jobs().stream().mapToLong(j -> j.endsAt).filter(e -> e > now).min().orElse(0);
+        return next > 0 && next < g.endsAt() - 1000 ? next : 0;
     }
 
     public static String remainingText(Group g, long now) {
         // 확실하지 않은 시각(서버에서 확인 전)은 어림 숫자 대신 확인 방법을 보여 준다
         if (g.unknown() || g.estimated()) return unknownText(g.name());
         if (g.times() > 1 && DdingMate.config().craft.mergeDone && now >= g.endsAt()) return "전부 완료!";
+        if (nextMine(g, now) > 0) return "전부 " + text(g.endsAt(), false, now);
         return text(g.endsAt(), g.estimated(), now);
     }
 
