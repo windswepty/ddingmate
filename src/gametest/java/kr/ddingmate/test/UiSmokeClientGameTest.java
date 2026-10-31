@@ -50,6 +50,8 @@ public class UiSmokeClientGameTest implements FabricClientGameTest {
                 cfg.hudEnabled = true;
                 cfg.hudLines = 4;
                 cfg.todo.hudEnabled = true;
+                // 앞 시험(제작·기록 재생)의 의뢰 창에서 읽은 의뢰 줄로 할 일 HUD 가 길어지지 않게 비운다
+                kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of(" 일일 의뢰§0", " 일일 의뢰 활성화 필요§1"));
                 cfg.counter.enabled = true;
                 cfg.counter.pins.get(0).recipe = "강화 제작 시설/하급 라이프스톤";
                 cfg.counter.pins.get(1).recipe = "";

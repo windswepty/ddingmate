@@ -1151,6 +1151,15 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 check(quests.get(0).isEmpty() && quests.get(1).isEmpty(), "활성화 전 의뢰가 남음: " + quests);
                 quests = kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of("  판매로 골드 획득하기 (1/10)§b"));
                 check(quests.get(0).isEmpty(), "트래커가 아닌 사이드바에서 의뢰를 읽음: " + quests);
+                // 트래커를 안 켜도 의뢰 창(/의뢰)의 칸 설명 "- 의뢰 진행도 : 0 / 1"로 의뢰 내용을 안다(2026-10-31 사용자 "의뢰 내용이 안 보여")
+                check("0/1".equals(kr.ddingmate.todo.TodoList.QuestContext.debugProgress("- 의뢰 진행도 : 0 / 1"))
+                        && "1,200/3,000".equals(kr.ddingmate.todo.TodoList.QuestContext.debugProgress("- 의뢰 진행도 : 1,200 / 3,000")), "의뢰 창 진행도를 못 읽음");
+                kr.ddingmate.todo.TodoList.debugTracker(java.util.List.of("일일 의뢰", "레드스톤 채광하기 (0/8)", "주간 의뢰", "청어 낚기 (0/30)"));
+                quests = kr.ddingmate.todo.TodoList.QuestContext.debugWindow(false, java.util.List.of("오션오더 성공하기 (0/1)", "감자 심기 (3/30)"));
+                check(quests.get(0).equals(java.util.List.of("오션오더 성공하기 (0/1)", "감자 심기 (3/30)")) && quests.get(1).equals(java.util.List.of("청어 낚기 (0/30)")),
+                        "의뢰 창에서 읽은 일일 의뢰가 다름(주간은 그대로여야): " + quests);
+                // 뒤 시험(HUD 배치)에 의뢰 줄이 남지 않게 비운다
+                kr.ddingmate.todo.TodoList.debugTrackerRaw(java.util.List.of(" 일일 의뢰§0", " 일일 의뢰 활성화 필요§1"));
                 // 해양 탐사(2026-10-29 실제 툴팁): 납품 칸 "요구 수량 : 1 / 3" → 2개 남음, 출항 중 "남은 시간 : 30시간 48분 27초"(버튼·모래시계 칸 같은 글)
                 String[] shipSlot = kr.ddingmate.expert.Exploration.parse("[ C급 탐사선 출항 준비하기 ]");
                 check(shipSlot != null && shipSlot[0].equals("C") && shipSlot[1].equals("출항 준비하기"), "탐사선 칸 이름을 못 읽음");

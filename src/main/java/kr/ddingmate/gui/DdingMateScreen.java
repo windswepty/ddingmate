@@ -1178,7 +1178,7 @@ public class DdingMateScreen extends Screen {
         for (DurabilityTracker.Row r : DurabilityTracker.rows()) if (r.hidden()) hiddenRows.put(r.item(), r);
         List<DdingMateConfig.TrackedItem> covered = dc.tracked.stream().filter(t -> !found.containsKey(t.key) && hiddenRows.containsKey(t)).toList();
         if (!covered.isEmpty()) {
-            list.header("치장에 가려진 장비 · 투구를 벗었다 끼면 정확해져요", "치장 장비");
+            list.header("치장에 가려진 장비 · 치장을 바꾸거나 투구를 벗었다 끼면 정확해져요", "치장 장비");
             for (DdingMateConfig.TrackedItem t : covered) {
                 DurabilityTracker.Row r = hiddenRows.get(t);
                 ItemStack icon = kr.ddingmate.counter.IconCache.forKey(t.key);

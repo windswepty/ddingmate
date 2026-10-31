@@ -222,6 +222,32 @@ public final class TodoList {
         questsDirty = true;
     }
 
+    /** 의뢰 창(/의뢰)에서 읽은 한쪽(일일 또는 주간) 의뢰 줄: 보상을 아직 안 받은 의뢰만 "이름 (a/b)" */
+    static void readWindow(boolean weekly, List<String> lines) {
+        loadQuests();
+        List<String> other = weekly ? dailyQuests : weeklyQuests;
+        long now = kr.ddingmate.util.Clock.now();
+        // 다른 쪽 줄은 그대로 두되, 그쪽이 초기화 전에 본 것이면 함께 '지금 본 것'이 되지 않게 비운다
+        if (questsAt < now - 60_000 && !other.isEmpty()) {
+            ZonedDateTime z = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
+            TodoPreset op = weekly ? TodoPreset.DAILY_QUEST : TodoPreset.WEEKLY_QUEST;
+            DdingMateConfig.TodoItem it = DdingMate.config() == null ? null
+                    : DdingMate.config().todo.items.stream().filter(i -> op.id.equals(i.preset)).findFirst().orElse(null);
+            if (it != null && questsAt < lastReset(it.reset, z).toInstant().toEpochMilli()) other = List.of();
+        }
+        List<String> mine = weekly ? weeklyQuests : dailyQuests;
+        questsAt = now;
+        if (lines.equals(mine) && other == (weekly ? dailyQuests : weeklyQuests)) return;
+        if (weekly) {
+            weeklyQuests = List.copyOf(lines);
+            dailyQuests = List.copyOf(other);
+        } else {
+            dailyQuests = List.copyOf(lines);
+            weeklyQuests = List.copyOf(other);
+        }
+        questsDirty = true;
+    }
+
     /** 바뀐 의뢰 줄을 설정에 저장(1초 처리에서, 30초에 한 번까지: 채광 중엔 진행 숫자가 계속 바뀐다) */
     private static void saveQuests(long now) {
         if (!questsDirty || now - questsSavedAt < 30_000) return;
@@ -402,6 +428,8 @@ public final class TodoList {
             // 의뢰 이름으로 센다: 같은 의뢰가 다른 칸에 한 번 더 보여도(장식·숨은 칸) 하나로 친다
             java.util.Set<String> daily = new java.util.LinkedHashSet<>(), weeklySet = new java.util.LinkedHashSet<>();
             java.util.Set<String> dailyDone = new java.util.LinkedHashSet<>(), weeklyDone = new java.util.LinkedHashSet<>();
+            // 아직 보상을 안 받은 의뢰의 진행 줄 "오션오더 성공하기 (0/1)": 트래커를 한 번도 안 켜도 할 일 HUD 에 의뢰 내용이 보이게
+            java.util.Map<String, String> dailyLines = new java.util.LinkedHashMap<>(), weeklyLines = new java.util.LinkedHashMap<>();
             for (net.minecraft.screen.slot.Slot slot : screen.getScreenHandler().slots) {
                 if (slot.inventory instanceof net.minecraft.entity.player.PlayerInventory || !slot.hasStack()) continue;
                 net.minecraft.item.ItemStack st = slot.getStack();
@@ -411,14 +439,19 @@ public final class TodoList {
                 String quest = m.group(1).replaceAll("\\s+", " ");
                 boolean isWeekly = m.group(2).equals("주간");
                 boolean done = false;
+                String progress = null;
                 var lore = st.get(net.minecraft.component.DataComponentTypes.LORE);
                 if (lore != null) {
                     for (net.minecraft.text.Text l : lore.lines()) {
-                        if (CLAIMED.matcher(kr.ddingmate.counter.ItemKeys.stripGlyphs(l.getString())).find()) done = true;
+                        String t = kr.ddingmate.counter.ItemKeys.stripGlyphs(l.getString());
+                        if (CLAIMED.matcher(t).find()) done = true;
+                        java.util.regex.Matcher p = WINDOW_PROGRESS.matcher(t);
+                        if (p.find()) progress = p.group(1) + "/" + p.group(2);
                     }
                 }
                 (isWeekly ? weeklySet : daily).add(quest);
                 if (done) (isWeekly ? weeklyDone : dailyDone).add(quest);
+                else if (progress != null) (isWeekly ? weeklyLines : dailyLines).put(quest, quest + " (" + progress + ")");
             }
             open = !daily.isEmpty() || !weeklySet.isEmpty();
             if (!open) return;
@@ -426,7 +459,14 @@ public final class TodoList {
             seenAt = kr.ddingmate.util.Clock.now();
             if (!daily.isEmpty()) report(TodoPreset.DAILY_QUEST, daily, dailyDone);
             if (!weeklySet.isEmpty()) report(TodoPreset.WEEKLY_QUEST, weeklySet, weeklyDone);
+            // 의뢰 칸마다 진행도나 '완료'가 있어 창 하나로 그쪽 의뢰를 다 알 때만 바꾼다(설명이 아직 안 온 칸이 있으면 다음 번에)
+            if (!daily.isEmpty() && dailyLines.size() + dailyDone.size() == daily.size()) readWindow(false, List.copyOf(dailyLines.values()));
+            if (!weeklySet.isEmpty() && weeklyLines.size() + weeklyDone.size() == weeklySet.size()) readWindow(true, List.copyOf(weeklyLines.values()));
         }
+
+        /** 의뢰 칸 설명 "- 의뢰 진행도 : 0 / 1"(2026-10-31 실제 일일 의뢰 창) */
+        private static final java.util.regex.Pattern WINDOW_PROGRESS =
+                java.util.regex.Pattern.compile("의뢰\\s*진행도\\s*:\\s*([\\d,]+)\\s*/\\s*([\\d,]+)");
 
         /**
          * 괄호를 뗀 의뢰 칸 이름 "감자 심기 일일 의뢰". 앞에 할 일 내용이 있어야 한다 —
@@ -453,6 +493,18 @@ public final class TodoList {
 
         static boolean weekly() {
             return weekly && kr.ddingmate.util.Clock.now() - seenAt < 30_000;
+        }
+
+        /** 시험용: 의뢰 칸 설명 한 줄의 진행도 "0/1"(없으면 null) */
+        public static String debugProgress(String loreLine) {
+            java.util.regex.Matcher p = WINDOW_PROGRESS.matcher(loreLine);
+            return p.find() ? p.group(1) + "/" + p.group(2) : null;
+        }
+
+        /** 시험용: 의뢰 창에서 한쪽 의뢰 줄을 읽은 것처럼 → [일일, 주간] */
+        public static List<List<String>> debugWindow(boolean weekly, List<String> lines) {
+            readWindow(weekly, lines);
+            return debugQuests();
         }
 
         /** 시험용 */
