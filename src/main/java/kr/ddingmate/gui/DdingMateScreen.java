@@ -448,6 +448,20 @@ public class DdingMateScreen extends Screen {
         list.pair(copy, dm);
     }
 
+    /** 수동 할 일 입력 칸(탭을 다시 그려도 남게) */
+    private static String todoDraft = "";
+    private static DdingMateConfig.Reset todoDraftReset = DdingMateConfig.Reset.DAILY;
+    private static int todoDraftEvery = 1;
+    private static int todoDraftTarget = 1;
+
+    private static int parseIntOr(String s, int fallback) {
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
     /** 첨부할 이미지(창을 닫았다 열어도 남게) */
     private static final List<java.nio.file.Path> inquiryImages = new ArrayList<>();
 
@@ -891,9 +905,9 @@ public class DdingMateScreen extends Screen {
             list.single(new InfoRow(new ItemStack(Items.NETHER_STAR), label, state,
                     unclaimed != null && !unclaimed.isEmpty() ? Theme.GOLD : Theme.TEXT_SOFT, Tab.TODO));
         }
-        long done = cfg.todo.items.stream().filter(t -> TodoList.isDone(t, now)).count();
+        long done = TodoList.all().stream().filter(t -> TodoList.isDone(t, now)).count();
         list.single(new InfoRow(new ItemStack(Items.WRITABLE_BOOK), "오늘 할 일",
-                done + "/" + cfg.todo.items.size() + " 완료", done == cfg.todo.items.size() ? Theme.GREEN : Theme.TEXT_SOFT, Tab.TODO));
+                done + "/" + TodoList.all().size() + " 완료", done == TodoList.all().size() ? Theme.GREEN : Theme.TEXT_SOFT, Tab.TODO));
         int unread = AlertLog.unread();
         list.single(new InfoRow(new ItemStack(Items.BOOK), "알림 기록",
                 unread > 0 ? "새 알림 " + unread + "개" : "최근 " + AlertLog.entries().size() + "개",
@@ -1222,8 +1236,8 @@ public class DdingMateScreen extends Screen {
     private void buildTodo() {
         DdingMateConfig.Todo tc = cfg.todo;
         ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
-        list.guide("할 일은 서버가 보내는 메시지를 보고 알아서 세요(직접 체크하지 않아요). 초기화 시각이 지나면 0 으로 돌아가요.");
-        list.header("오늘 할 일 · 알아서 세요", "오늘 할 일");
+        list.guide("자동 할 일은 서버 메시지를 보고 알아서 세고, 수동 할 일은 직접 만들어 눌러서 체크해요. 초기화 시각이 지나면 0 으로 돌아가요.");
+        list.header("자동 · 알아서 세는 할 일", "오늘 할 일");
         if (tc.items.isEmpty()) list.note("목록이 비었어요. 아래에서 넣을 할 일을 골라 주세요.");
         for (DdingMateConfig.TodoItem item : tc.items) {
             TodoRow main = new TodoRow(item);
@@ -1248,6 +1262,65 @@ public class DdingMateScreen extends Screen {
             list.single(add);
         }
         if (!any) list.note("알아서 셀 수 있는 할 일을 모두 넣었어요.");
+
+        // 수동 할 일(문의 9578ce8c: "15강 트라이 1번"처럼 직접 적고 체크)
+        list.header("수동 · 직접 체크하는 할 일", "수동 할 일");
+        if (tc.manual.isEmpty()) list.note("아래 칸에 할 일을 적고 [＋ 추가]를 눌러요. 목록에서 줄을 누르면 체크돼요.");
+        for (DdingMateConfig.TodoItem item : List.copyOf(tc.manual)) {
+            TodoRow row = new TodoRow(item);
+            Widgets.Button remove = new Widgets.Button(44, 20, Text.literal("빼기"), false, b -> {
+                tc.manual.remove(item);
+                rebuild();
+            });
+            remove.setTooltip(Tooltip.of(Text.literal("이 할 일을 지워요")));
+            list.withButton(row, remove);
+        }
+        Widgets.Field name = new Widgets.Field(rowWidth(), Text.literal("할 일"));
+        name.setMaxLength(40);
+        name.setText(todoDraft);
+        name.setChangedListener(s -> todoDraft = s);
+        name.setTooltip(Tooltip.of(Text.literal("예: 15강 트라이, 펫 먹이 주기, 길드 출석")));
+        list.labeled("할 일", name);
+        List<DdingMateConfig.Reset> resets = List.of(DdingMateConfig.Reset.DAILY, DdingMateConfig.Reset.WEEKLY,
+                DdingMateConfig.Reset.DAYS, DdingMateConfig.Reset.HOURS, DdingMateConfig.Reset.MIDNIGHT);
+        Widgets.Cycle<DdingMateConfig.Reset> reset = new Widgets.Cycle<>(rowWidth(), "초기화", resets, todoDraftReset,
+                r -> switch (r) {
+                    case DAYS -> "n일마다(03시)";
+                    case HOURS -> "n시간마다";
+                    default -> TodoList.resetName(r);
+                }, r -> {
+                    todoDraftReset = r;
+                    rebuild();
+                });
+        Widgets.Field every = new Widgets.Field(FIELD_W, Text.literal("n"));
+        every.setMaxLength(3);
+        every.setText(String.valueOf(todoDraftEvery));
+        every.setChangedListener(s -> todoDraftEvery = parseIntOr(s, todoDraftEvery));
+        boolean interval = todoDraftReset == DdingMateConfig.Reset.DAYS || todoDraftReset == DdingMateConfig.Reset.HOURS;
+        every.setEditable(interval);
+        every.setTooltip(Tooltip.of(Text.literal(interval ? (todoDraftReset == DdingMateConfig.Reset.DAYS
+                ? "며칠마다 초기화할지(1~365). 만든 날 03시부터 세요" : "몇 시간마다 초기화할지(1~168). 만든 때부터 세요")
+                : "n일마다·n시간마다를 고르면 적을 수 있어요")));
+        list.withUnit(reset, every, todoDraftReset == DdingMateConfig.Reset.HOURS ? "시간" : "일");
+        Widgets.Field count = new Widgets.Field(FIELD_W, Text.literal("횟수"));
+        count.setMaxLength(3);
+        count.setText(String.valueOf(todoDraftTarget));
+        count.setChangedListener(s -> todoDraftTarget = parseIntOr(s, todoDraftTarget));
+        count.setTooltip(Tooltip.of(Text.literal("몇 번 해야 끝나는지(1~999). 1 이면 체크 하나, 여러 번이면 누를 때마다 +1")));
+        Widgets.Button add = new Widgets.Button(rowWidth(), 20, Text.literal("＋ 추가"), true, b -> {
+            String n = todoDraft.trim();
+            if (n.isEmpty()) {
+                b.setMessage(Text.literal("할 일 이름을 먼저 적어 주세요"));
+                return;
+            }
+            DdingMateConfig.TodoItem item = new DdingMateConfig.TodoItem(n, todoDraftReset, Math.max(1, Math.min(999, todoDraftTarget)));
+            item.every = Math.max(1, Math.min(todoDraftReset == DdingMateConfig.Reset.HOURS ? 168 : 365, todoDraftEvery));
+            item.since = System.currentTimeMillis();
+            tc.manual.add(item);
+            todoDraft = "";
+            rebuild();
+        });
+        list.withUnit(add, count, "번");
 
         list.header("알림", "알림");
         list.pair(new Widgets.Cycle<>(half(), "남은 할 일 알림", List.of(0, 30, 60, 120),
@@ -1994,13 +2067,14 @@ public class DdingMateScreen extends Screen {
             super(0, 0, 150, 20, Text.literal(item.name));
             this.item = item;
             kr.ddingmate.todo.TodoPreset p = kr.ddingmate.todo.TodoPreset.of(item);
-            setTooltip(Tooltip.of(Text.literal(item.name + " · " + TodoList.resetName(item.reset) + " 초기화"
-                    + (p == null ? "" : "\n" + p.how))));
+            setTooltip(Tooltip.of(Text.literal(item.name + " · " + TodoList.resetName(item) + " 초기화"
+                    + (p != null ? "\n" + p.how : item.target > 1 ? "\n누를 때마다 +1, 다 채운 뒤 누르면 0" : "\n눌러서 체크·해제"))));
         }
 
         @Override
         public void onPress() {
-            // 직접 체크하지 않는다(알아서 셈)
+            // 자동 할 일은 알아서 센다. 수동 할 일만 눌러서 체크
+            if (TodoList.manual(item)) TodoList.press(item);
         }
 
         @Override
@@ -2030,7 +2104,7 @@ public class DdingMateScreen extends Screen {
                 Theme.onOff(ctx, textRenderer, getX() + width - 39, getY() + 3, done, isSelected());
                 right = getX() + width - 44;
             }
-            String reset = TodoList.resetName(item.reset);
+            String reset = TodoList.resetName(item);
             int rw = Theme.width(textRenderer, reset);
             Theme.text(ctx, textRenderer, reset, right - rw, getY() + 5, Theme.TEXT_SOFT);
             String name = Theme.ellipsize(textRenderer, item.name, right - rw - 8 - (getX() + 7));

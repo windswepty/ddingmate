@@ -329,7 +329,10 @@ public final class Inquiry {
         }
         if (err != null) DdingMate.LOG.warn("문의를 보내지 못했어요", err);
         else DdingMate.LOG.warn("문의를 보내지 못했어요: HTTP {} {}", status, res == null ? "" : res.body());
-        done.accept(new Result(false, status == 429 ? "잠시 뒤에 다시 보내 주세요(보낸 문의가 많아요)"
+        // 중계가 아직 예전 판(이미지 3장까지)이면 'too many files' — 몇 장까지 되는지 알려 준다
+        boolean tooMany = status == 400 && res != null && res.body() != null && res.body().contains("too many files");
+        done.accept(new Result(false, tooMany ? "지금은 이미지를 3장까지만 보낼 수 있어요. 3장 이하로 줄여 다시 보내 주세요"
+                : status == 429 ? "잠시 뒤에 다시 보내 주세요(보낸 문의가 많아요)"
                 : err != null ? "보내지 못했어요. 인터넷 연결을 확인해 주세요"
                 : status >= 500 ? "문의 받는 곳이 잠시 안 돼요. 조금 뒤에 다시 보내 주세요"
                 : "보내지 못했어요(오류 " + status + ")"));

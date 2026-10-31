@@ -61,7 +61,8 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
             // 2) 업데이트 소식: 버전 비교와 창
             ctx.runOnClient(c -> {
                 List<UpdateNotes.Release> all = UpdateNotes.all();
-                check(!all.isEmpty() && "0.3.2".equals(all.get(0).version()), "소식 첫 버전이 0.3.2 가 아님");
+                check(!all.isEmpty() && "0.3.3".equals(all.get(0).version()) && "0.3.2".equals(all.get(1).version()), "소식 첫 버전이 0.3.3 가 아님");
+                check(UpdateNotes.since("0.3.2", "0.3.3").size() == 1 && UpdateNotes.since("0.3.1", "0.3.3").size() == 2, "0.3.2 → 0.3.3 소식이 다름");
                 check(UpdateNotes.since("0.3.1", "0.3.2-pre.27").size() == 1, "0.3.1 → 0.3.2 소식이 하나가 아님");
                 check(UpdateNotes.since("", "0.3.2-pre.27").size() == 1, "예전 버전에서 올라온 사람에게 이번 소식만이 아님");
                 check(UpdateNotes.since("0.3.2-pre.5", "0.3.2-pre.27").isEmpty(), "같은 버전 미리보기끼리 소식이 뜸");
@@ -71,7 +72,7 @@ public class NewsFontsClientGameTest implements FabricClientGameTest {
                 String keep = cfg.notesSeenVersion;
                 cfg.notesSeenVersion = "0.3.1";
                 cfg.updateNotes = true;
-                check(UpdateNotes.pending(cfg).size() == 1, "0.3.1 에서 올라왔는데 소식이 없음");
+                check(!UpdateNotes.pending(cfg).isEmpty(), "0.3.1 에서 올라왔는데 소식이 없음");
                 cfg.font = DdingMateConfig.FontStyle.MONGTORI; // 사용자 글꼴(손글씨는 글자가 높아 맨 위 줄이 잘렸었다)
                 c.setScreen(new kr.ddingmate.gui.UpdateNotesScreen(null, UpdateNotes.pending(cfg)));
                 UpdateNotes.markSeen(cfg);

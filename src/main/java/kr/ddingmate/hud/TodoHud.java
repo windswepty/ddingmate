@@ -19,7 +19,7 @@ import java.util.List;
 public final class TodoHud {
 
     private static final int ROW_H = 11;
-    private static final int MAX_ROWS = 8;
+    private static final int MAX_ROWS = 12;
     private static final ItemStack BOOK = new ItemStack(Items.WRITABLE_BOOK);
 
     private TodoHud() {}
@@ -39,13 +39,13 @@ public final class TodoHud {
         DdingMateConfig all = DdingMate.config();
         DdingMateConfig.Todo cfg = all.todo;
         if (ScheduleHud.hidden(client)) return;
-        if (!cfg.hudEnabled || cfg.items.isEmpty()) {
+        List<DdingMateConfig.TodoItem> items = TodoList.all();
+        if (!cfg.hudEnabled || items.isEmpty()) {
             HudLayout.placeholder(ctx, HudLayout.TODO, cfg.corner, BOOK, cfg.hudEnabled ? "할 일이 없어요" : "꺼져 있어요");
             return;
         }
         TextRenderer tr = client.textRenderer;
         ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
-        List<DdingMateConfig.TodoItem> items = cfg.items;
         int total = items.size();
         int done = total - TodoList.remaining(now).size();
         boolean dark = all.hudStyle != DdingMateConfig.HudStyle.LIGHT;

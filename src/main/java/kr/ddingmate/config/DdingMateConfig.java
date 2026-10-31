@@ -126,7 +126,8 @@ public final class DdingMateConfig {
     }
 
     /** 할 일 초기화 시점: 매일 03시, 매주 수요일 03시, 매일 자정 */
-    public enum Reset { DAILY, WEEKLY, MIDNIGHT }
+    /** 할 일 초기화: 매일 03시 · 매주 수 03시 · 매일 자정 · n일마다 03시 · n시간마다(직접 만든 할 일만, TodoItem.every) */
+    public enum Reset { DAILY, WEEKLY, MIDNIGHT, DAYS, HOURS }
 
     public static final class TodoItem {
         public String name = "";
@@ -143,6 +144,10 @@ public final class DdingMateConfig {
         public String preset = "";
         /** 의뢰: 마지막으로 의뢰 창을 보고 맞춘 시각(ms). 이번 초기화 뒤로 안 봤으면 개수를 모른다 */
         public long windowSeenAt;
+        /** 직접 만든 할 일: n일마다·n시간마다의 n */
+        public int every = 1;
+        /** 직접 만든 할 일: 만든 시각(ms). n일마다·n시간마다는 여기서부터 센다 */
+        public long since;
 
         public TodoItem() {}
 
@@ -169,6 +174,8 @@ public final class DdingMateConfig {
         public List<String> weeklyQuestLines = new ArrayList<>();
         public long questLinesAt;
         public List<TodoItem> items = new ArrayList<>(defaults());
+        /** 직접 만든 할 일(문의 9578ce8c "15강 트라이 1번"): 이름·초기화·횟수를 사용자가 정하고 직접 체크한다 */
+        public List<TodoItem> manual = new ArrayList<>();
         /** 3 = 할 일은 모드가 알아서 셀 수 있는 것(TodoPreset)만. 예전 설정 파일에는 없어서 0 으로 읽히고, 한 번 정리한다 */
         public int version = 0;
 
@@ -551,6 +558,18 @@ public final class DdingMateConfig {
             t.progress = Math.max(0, Math.min(t.target, t.progress));
         }
         todo.remindMinutes = Math.max(0, Math.min(600, todo.remindMinutes));
+        if (todo.manual == null) todo.manual = new ArrayList<>();
+        todo.manual.removeIf(t -> t == null || t.name == null || t.name.isBlank());
+        for (TodoItem t : todo.manual) {
+            t.name = t.name.trim().length() > 40 ? t.name.trim().substring(0, 40) : t.name.trim();
+            t.preset = "";
+            t.autoPhrase = "";
+            if (t.reset == null) t.reset = Reset.DAILY;
+            t.target = Math.max(1, Math.min(999, t.target));
+            t.every = Math.max(1, Math.min(t.reset == Reset.HOURS ? 168 : 365, t.every));
+            if (t.since <= 0) t.since = System.currentTimeMillis();
+            t.progress = Math.max(0, Math.min(t.target, t.progress));
+        }
         if (playtime == null) playtime = new Playtime();
         if (craft == null) craft = new Craft();
         craft.mining = Math.max(0, Math.min(5, craft.mining));

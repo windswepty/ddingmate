@@ -24,12 +24,12 @@ public final class TodoList {
 
     private TodoList() {}
 
-    /** now 이전의 가장 최근 초기화 시각 */
+    /** now 이전의 가장 최근 초기화 시각(n일마다·n시간마다는 할 일마다 달라서 lastReset(item, now)) */
     public static ZonedDateTime lastReset(DdingMateConfig.Reset reset, ZonedDateTime now) {
         ZonedDateTime n = now.withZoneSameInstant(ScheduleEngine.KST);
         return switch (reset) {
             case MIDNIGHT -> n.toLocalDate().atStartOfDay(ScheduleEngine.KST);
-            case DAILY -> {
+            case DAILY, DAYS, HOURS -> {
                 ZonedDateTime today = n.with(RESET_TIME).withSecond(0).withNano(0);
                 yield n.isBefore(today) ? today.minusDays(1) : today;
             }
@@ -48,9 +48,57 @@ public final class TodoList {
         return reset == DdingMateConfig.Reset.WEEKLY ? last.plusWeeks(1) : last.plusDays(1);
     }
 
+    /**
+     * 이 할 일의 가장 최근 초기화 시각. n일마다: 만든 날(03시 기준 하루)의 03시부터 n일씩, n시간마다: 만든 시각(분 단위)부터 n시간씩
+     */
+    public static ZonedDateTime lastReset(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        if (item.reset != DdingMateConfig.Reset.DAYS && item.reset != DdingMateConfig.Reset.HOURS) return lastReset(item.reset, now);
+        long nowMs = now.toInstant().toEpochMilli();
+        long since = item.since > 0 ? item.since : nowMs;
+        long anchor, period;
+        if (item.reset == DdingMateConfig.Reset.DAYS) {
+            anchor = lastReset(DdingMateConfig.Reset.DAILY, java.time.Instant.ofEpochMilli(since).atZone(ScheduleEngine.KST)).toInstant().toEpochMilli();
+            period = Math.max(1, item.every) * 86_400_000L;
+        } else {
+            anchor = since - since % 60_000;
+            period = Math.max(1, item.every) * 3_600_000L;
+        }
+        long last = nowMs < anchor ? anchor - period : anchor + (nowMs - anchor) / period * period;
+        return java.time.Instant.ofEpochMilli(last).atZone(ScheduleEngine.KST);
+    }
+
+    /** 이 할 일의 다음 초기화 시각 */
+    public static ZonedDateTime nextReset(DdingMateConfig.TodoItem item, ZonedDateTime now) {
+        return switch (item.reset) {
+            case DAYS -> lastReset(item, now).plusDays(Math.max(1, item.every));
+            case HOURS -> lastReset(item, now).plusHours(Math.max(1, item.every));
+            default -> nextReset(item.reset, now);
+        };
+    }
+
+    /** 직접 만든 할 일인가(사용자가 체크) */
+    public static boolean manual(DdingMateConfig.TodoItem item) {
+        return item.preset == null || item.preset.isEmpty();
+    }
+
+    /** 할 일 전부: 알아서 세는 것 다음에 직접 만든 것 */
+    public static List<DdingMateConfig.TodoItem> all() {
+        DdingMateConfig.Todo t = DdingMate.config().todo;
+        List<DdingMateConfig.TodoItem> out = new ArrayList<>(t.items);
+        if (t.manual != null) out.addAll(t.manual);
+        return out;
+    }
+
+    /** 직접 만든 할 일 체크: 횟수가 1이면 켜고 끄기, 여러 번이면 한 번 누를 때마다 +1(다 채운 뒤 누르면 0 으로) */
+    public static void press(DdingMateConfig.TodoItem item) {
+        ZonedDateTime now = kr.ddingmate.util.Clock.zoned(ScheduleEngine.KST);
+        if (item.target <= 1 || isDone(item, now)) setDone(item, !isDone(item, now) && item.target <= 1);
+        else add(item, 1);
+    }
+
     /** 지금까지 한 횟수. 마지막 초기화 이전에 센 것이면 0 */
     public static int progress(DdingMateConfig.TodoItem item, ZonedDateTime now) {
-        if (item.doneAt <= 0 || item.doneAt < lastReset(item.reset, now).toInstant().toEpochMilli()) return 0;
+        if (item.doneAt <= 0 || item.doneAt < lastReset(item, now).toInstant().toEpochMilli()) return 0;
         return Math.max(0, Math.min(item.target, item.progress));
     }
 
@@ -515,7 +563,7 @@ public final class TodoList {
     }
 
     public static List<DdingMateConfig.TodoItem> remaining(ZonedDateTime now) {
-        return DdingMate.config().todo.items.stream().filter(t -> !isDone(t, now)).toList();
+        return all().stream().filter(t -> !isDone(t, now)).toList();
     }
 
     public static String resetName(DdingMateConfig.Reset r) {
@@ -523,6 +571,17 @@ public final class TodoList {
             case DAILY -> "매일 03시";
             case WEEKLY -> "매주 수 03시";
             case MIDNIGHT -> "매일 자정";
+            case DAYS -> "n일마다 03시";
+            case HOURS -> "n시간마다";
+        };
+    }
+
+    /** 이 할 일의 초기화 이름: "3일마다 03시" · "4시간마다" */
+    public static String resetName(DdingMateConfig.TodoItem item) {
+        return switch (item.reset) {
+            case DAYS -> item.every <= 1 ? "매일 03시" : item.every + "일마다 03시";
+            case HOURS -> Math.max(1, item.every) + "시간마다";
+            default -> resetName(item.reset);
         };
     }
 

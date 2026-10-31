@@ -46,7 +46,7 @@ public final class Diagnostics {
         List<kr.ddingmate.craft.CraftTimers.Group> groups = kr.ddingmate.craft.CraftTimers.groups();
         long unknown = groups.stream().filter(g -> g.unknown() || g.estimated()).count();
         sb.append("제작 줄 ").append(groups.size()).append("(시간 어림·모름 ").append(unknown).append(")")
-                .append(" · 할 일 ").append(cfg.todo.items.size())
+                .append(" · 할 일 ").append(cfg.todo.items.size()).append("+직접 ").append(cfg.todo.manual == null ? 0 : cfg.todo.manual.size())
                 .append(" · 추적 장비 ").append(cfg.durability.tracked.size())
                 .append(" · 지역 ").append(kr.ddingmate.game.ServerHud.area() == null ? "모름" : kr.ddingmate.game.ServerHud.area().label)
                 .append(kr.ddingmate.game.ServerHud.afk() ? "(잠수)" : "").append('\n');

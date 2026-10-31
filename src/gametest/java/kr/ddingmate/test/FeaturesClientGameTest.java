@@ -282,6 +282,54 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         .filter(w -> w instanceof Widgets.Button b && b.getMessage().getString().startsWith("＋ "))
                         .findFirst().orElseThrow().onClick(10, 10);
                 check(DdingMate.config().todo.items.size() == n + 1, "넣을 수 있는 할 일에서 넣어지지 않음");
+                // 수동 할 일(문의 9578ce8c): 입력 칸에 적고 [＋ 추가] → 목록에 생기고, 줄을 누르면 체크
+                DdingMate.config().todo.manual.clear();
+                var ws = UiSmokeClientGameTest.widgets(c.currentScreen);
+                ws.stream().filter(w -> w instanceof Widgets.Field f && f.getMessage().getString().equals("할 일")).map(w -> (Widgets.Field) w)
+                        .findFirst().orElseThrow().setText("15강 트라이");
+                ws.stream().filter(w -> w instanceof Widgets.Button b && b.getMessage().getString().equals("＋ 추가"))
+                        .findFirst().orElseThrow().onClick(10, 10);
+                check(DdingMate.config().todo.manual.size() == 1 && DdingMate.config().todo.manual.get(0).name.equals("15강 트라이")
+                        && TodoList.manual(DdingMate.config().todo.manual.get(0)), "수동 할 일이 안 생김: " + DdingMate.config().todo.manual.size());
+            });
+            ctx.waitTicks(2);
+            ctx.runOnClient(c -> {
+                ZonedDateTime now = ZonedDateTime.now(ScheduleEngine.KST);
+                DdingMateConfig.TodoItem mine = DdingMate.config().todo.manual.get(0);
+                UiSmokeClientGameTest.widgets(c.currentScreen).stream().filter(w -> w.getMessage().getString().equals("15강 트라이"))
+                        .findFirst().orElseThrow().onClick(10, 10);
+                check(TodoList.isDone(mine, now) && TodoList.all().contains(mine), "수동 할 일 줄을 눌러도 체크 안 됨");
+                TodoList.press(mine);
+                check(!TodoList.isDone(mine, now), "수동 할 일 체크가 안 풀림");
+                // 여러 번짜리: 누를 때마다 +1, 다 채운 뒤 누르면 0
+                DdingMateConfig.TodoItem three = new DdingMateConfig.TodoItem("길드 출석", DdingMateConfig.Reset.DAILY, 3);
+                for (int i = 0; i < 3; i++) TodoList.press(three);
+                check(TodoList.isDone(three, now) && TodoList.label(three, now).equals("길드 출석 [3/3]"), "여러 번짜리 수동 할 일: " + TodoList.label(three, now));
+                TodoList.press(three);
+                check(TodoList.progress(three, now) == 0, "다 채운 뒤 눌렀는데 0 이 안 됨");
+                // n시간마다: 만든 때(10:00)부터 4시간씩 → 15:30 이면 14:00 에 초기화, 다음 18:00
+                ZonedDateTime base = ZonedDateTime.of(2026, 10, 31, 10, 0, 0, 0, ScheduleEngine.KST);
+                DdingMateConfig.TodoItem hours = new DdingMateConfig.TodoItem("펫 먹이", DdingMateConfig.Reset.HOURS, 1);
+                hours.every = 4;
+                hours.since = base.toInstant().toEpochMilli();
+                ZonedDateTime at = base.plusHours(5).plusMinutes(30);
+                check(TodoList.lastReset(hours, at).equals(base.plusHours(4)) && TodoList.nextReset(hours, at).equals(base.plusHours(8))
+                                && TodoList.resetName(hours).equals("4시간마다"),
+                        "n시간마다 초기화: " + TodoList.lastReset(hours, at) + " / " + TodoList.nextReset(hours, at));
+                hours.progress = 1;
+                hours.doneAt = base.plusHours(4).plusMinutes(30).toInstant().toEpochMilli();
+                check(TodoList.isDone(hours, at) && !TodoList.isDone(hours, base.plusHours(8).plusMinutes(1)), "n시간마다 체크가 초기화 뒤에도 남음");
+                // n일마다: 만든 날 03시부터 3일씩(만든 때가 02시면 전날 03시부터)
+                DdingMateConfig.TodoItem days = new DdingMateConfig.TodoItem("주문서 사기", DdingMateConfig.Reset.DAYS, 1);
+                days.every = 3;
+                days.since = base.toInstant().toEpochMilli();
+                ZonedDateTime d3 = base.withHour(3);
+                check(TodoList.lastReset(days, base.plusDays(2)).equals(d3) && TodoList.lastReset(days, base.plusDays(2).plusHours(17)).equals(d3.plusDays(3))
+                                && TodoList.resetName(days).equals("3일마다 03시"),
+                        "n일마다 초기화: " + TodoList.lastReset(days, base.plusDays(2)) + " / " + TodoList.lastReset(days, base.plusDays(2).plusHours(17)));
+                days.since = base.withHour(2).toInstant().toEpochMilli();
+                check(TodoList.lastReset(days, base).equals(d3.minusDays(1)), "새벽 3시 전에 만든 n일마다: " + TodoList.lastReset(days, base));
+                DdingMate.config().todo.manual.clear();
                 c.setScreen(null);
             });
             ctx.waitTicks(2);
