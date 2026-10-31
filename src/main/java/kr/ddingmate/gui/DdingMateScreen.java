@@ -1352,27 +1352,32 @@ public class DdingMateScreen extends Screen {
             }
         }
         long now = System.currentTimeMillis();
-        kr.ddingmate.expert.PetFish.Fish f = kr.ddingmate.expert.PetFish.current();
-        if (f != null) {
+        // 어항의 반려어마다 한 줄(2026-10-31: 다섯 마리를 키워도 첫 칸 하나만 읽었다)
+        List<kr.ddingmate.expert.PetFish.Fish> fishes = kr.ddingmate.expert.PetFish.fishes();
+        for (kr.ddingmate.expert.PetFish.Fish f : fishes) {
             int lv = kr.ddingmate.expert.PetFish.level(f, now);
-            InfoRow row = new InfoRow(new ItemStack(Items.TROPICAL_FISH), kr.ddingmate.expert.PetFish.label(f),
+            InfoRow row = new InfoRow(new ItemStack(Items.TROPICAL_FISH), "반려어 " + kr.ddingmate.expert.PetFish.displayName(f),
                     kr.ddingmate.expert.PetFish.status(f, now),
                     lv >= 3 ? Theme.RED : lv == 2 ? Theme.GOLD : lv == 1 ? Theme.GREEN : Theme.BLUE, null)
                     .sub(kr.ddingmate.expert.PetFish.detail(f, now));
             Widgets.Button del = new Widgets.Button(44, 20, Text.literal("지우기"), false, b -> {
-                kr.ddingmate.expert.PetFish.forget();
+                kr.ddingmate.expert.PetFish.forget(f);
                 rebuild();
             });
             del.setTooltip(Tooltip.of(Text.literal("어항에서 꺼냈거나 방생한 반려어의 기록을 지워요")));
             list.withButton(row, del);
-        } else {
+            String keep = kr.ddingmate.expert.PetFish.keepNote(f);
+            if (!keep.isEmpty()) list.note(keep);
+        }
+        if (fishes.isEmpty()) {
             list.note("어항 창을 한 번 열면 반려어를 읽어 일정 HUD 에 'N분 뒤 밥 주기'로 보여 줘요.");
         }
-        list.note("'N분 뒤 밥 주기' = 허기·기분·활력 평균이 80% 아래로 떨어질 때까지 남은 시간이에요. 그때까지 밥을 주면 성장 속도가 "
-                + "줄지 않아요(성장도 100이 되는 시간이 아니에요). 어항에서 꺼내면 일정에서 빠지고, 안 빠지면 아래 [지우기]를 눌러요.");
-        list.note("위키 기준: 허기·기분·활력은 10분마다 가장 높은 것부터 20~25% 줄고, 하나라도 0% 면 폐사해요. 평균이 80% 아래면 성장이 "
-                + "느려지고, 넣은 뒤 2시간이 지났을 때 성장도가 90 이상이면 더 줄지 않아요. 밥: 허기 빵 · 기분 덩굴 · 활력 뼈 블록"
-                + "(들고 쉬프트+좌클릭하면 100%). 안전하게 한 번에 25%씩 준다고 보고 계산해요.");
+        list.note("'N분 뒤 밥 주기' = 평균이 80% 아래로 떨어질 감소의 3분 전까지 남은 시간이에요. 그때 위 줄의 밥을 주면 성장 속도가 "
+                + "끊기지 않아요(성장도 100이 되는 시간이 아니에요). 어항을 자주 열수록 감소 시각이 정확해져요. 어항에서 꺼내면 다음에 어항을 열 때 빠지고, "
+                + "바로 빼려면 [지우기]를 눌러요.");
+        list.note("규칙(위키·실제 관찰): 감소 주기(10분, 해양 스킬 '수질 유지 기술' 11·14·17·20분)마다 가장 높은 스탯 하나가 20~25% 줄고, "
+                + "하나라도 0% 면 폐사해요. 평균이 80% 아래면 성장이 느려지고, 넣은 뒤 2시간이 지났을 때 성장도가 90 이상이면 더 줄지 않아요. "
+                + "밥: 빵 허기 1% · 덩굴 기분 2% · 뼈 블록 활력 2%. 줄어드는 양이 매번 달라서 가장 많이 주는 25%로 계산해요.");
         list.note("오션오더: 오늘 " + kr.ddingmate.expert.OceanOrder.todayCount() + "/" + kr.ddingmate.expert.OceanOrder.limit()
                 + "번 받음(03시 초기화). 받은 뒤 다른 채널로 옮기면 실패해요.");
     }

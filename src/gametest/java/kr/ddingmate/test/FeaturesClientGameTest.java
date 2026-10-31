@@ -1221,7 +1221,8 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 kr.ddingmate.expert.PetFish.Forecast fc = kr.ddingmate.expert.PetFish.forecast(f, t0 + 60_000);
                 check(fc.slowAt() == t0 + 30 * 60_000 && fc.dangerAt() == t0 + 70 * 60_000,
                         "반려어 예상 시각이 다름: 느려짐 " + (fc.slowAt() - t0) / 60000 + "분, 위험 " + (fc.dangerAt() - t0) / 60000 + "분");
-                check(kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000).equals("25분 뒤 밥 주기"), "밥 시간 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000));
+                // 밥 알림은 평균이 80% 아래로 떨어질 감소(30분)보다 3분 먼저 → 5분에 "22분 뒤"
+                check(kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000).equals("22분 뒤 밥 주기"), "밥 시간 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 5 * 60_000));
                 check(kr.ddingmate.expert.PetFish.status(f, t0 + 31 * 60_000).equals("밥 줄 때!"), "밥 줄 때 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 31 * 60_000));
                 check(kr.ddingmate.expert.PetFish.status(f, t0 + 71 * 60_000).equals("폐사 위험!"), "폐사 위험 안내: " + kr.ddingmate.expert.PetFish.status(f, t0 + 71 * 60_000));
                 // 알림: 밥 줄 때 한 번, 폐사 위험 한 번(같은 것을 또 울리지 않음)
@@ -1257,6 +1258,45 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                         "수질 유지 기술 20분 주기가 반영 안 됨: " + (kr.ddingmate.expert.PetFish.forecast(kr.ddingmate.expert.PetFish.current(), t0 + 60_000).slowAt() - t0) / 60000 + "분");
                 kr.ddingmate.expert.PetFish.readSkill("[세레니티] 수질 유지 기술 (잠김)", List.of("반려 물고기의 스탯 하락 주기가 11분으로 증가합니다."));
                 check(DdingMate.config().expert.petFishTickMin == 10, "안 배운 수질 유지 기술을 반영함");
+                // 어항에 여러 마리(2026-10-31 실제: 아기 클라이 5마리, 수질 만렙 20분) — 칸마다 따로, HUD 는 가장 급한 것 + "외 n마리"
+                kr.ddingmate.expert.PetFish.debugReset();
+                DdingMate.config().expert.petFishTickMin = 20;
+                long fishT0 = now - 60_000;
+                kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이", List.of("- 성장도 : 17", "- 허기 : 100%", "- 기분 : 100%", "- 활력 : 100%"), fishT0, 10);
+                kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이", List.of("- 성장도 : 17", "- 허기 : 100%", "- 기분 : 100%", "- 활력 : 100%"), fishT0, 11);
+                kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이", List.of("- 성장도 : 17", "- 허기 : 60%", "- 기분 : 60%", "- 활력 : 60%"), fishT0, 12);
+                check(kr.ddingmate.expert.PetFish.fishes().size() == 3 && kr.ddingmate.expert.PetFish.current().slot == 12
+                                && kr.ddingmate.expert.PetFish.label(kr.ddingmate.expert.PetFish.current()).equals("반려어 아기 클라이 3 외 2마리"),
+                        "여러 마리 반려어: " + kr.ddingmate.expert.PetFish.fishes().size() + " " + kr.ddingmate.expert.PetFish.label(kr.ddingmate.expert.PetFish.current()));
+                // 두 번 읽는 사이에 한 번 줄면(합 20~25 감소, 오른 스탯 없음) 그 사이가 감소 시각 → 다음에 또 보면 겹치는 곳만
+                kr.ddingmate.expert.PetFish.Fish pf = kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이",
+                        List.of("- 성장도 : 21", "- 허기 : 100%", "- 기분 : 80%", "- 활력 : 100%"), fishT0 + 5 * 60_000, 10);
+                check(pf.dropLo == fishT0 && pf.dropHi == fishT0 + 5 * 60_000, "감소 구간을 못 배움: " + (pf.dropLo - fishT0) + "~" + (pf.dropHi - fishT0));
+                kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이", List.of("- 성장도 : 33", "- 허기 : 100%", "- 기분 : 80%", "- 활력 : 100%"), fishT0 + 21 * 60_000, 10);
+                kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이", List.of("- 성장도 : 38", "- 허기 : 100%", "- 기분 : 80%", "- 활력 : 79%"), fishT0 + 27 * 60_000, 10);
+                check(pf.dropLo == fishT0 + 60_000 && pf.dropHi == fishT0 + 5 * 60_000 && kr.ddingmate.expert.PetFish.forecast(pf, fishT0 + 27 * 60_000).nextDropAt() == fishT0 + 41 * 60_000,
+                        "감소 구간을 못 좁힘: " + (pf.dropLo - fishT0) / 60000 + "~" + (pf.dropHi - fishT0) / 60000 + "분");
+                // 다음 감소(최대 25%) 뒤에도 평균 80%: 합 265% 까지, 2% 짜리(덩굴·뼈 블록) 먼저 — 실제 3차 75/80/79 → 덩굴 10개 · 뼈 블록 6개
+                kr.ddingmate.expert.PetFish.Fish kf = kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이",
+                        List.of("- 성장도 : 50", "- 허기 : 75%", "- 기분 : 80%", "- 활력 : 79%"), now, 13);
+                check(kr.ddingmate.expert.PetFish.keepText(kf).equals("덩굴 10개 · 뼈 블록 6개") && kr.ddingmate.expert.PetFish.keepNote(kf).contains("덩굴 10개"),
+                        "성장 100% 유지 밥: " + kr.ddingmate.expert.PetFish.keepText(kf));
+                kr.ddingmate.expert.PetFish.Fish okf = kr.ddingmate.expert.PetFish.debugReadSlot("아기 클라이",
+                        List.of("- 성장도 : 50", "- 허기 : 100%", "- 기분 : 90%", "- 활력 : 80%"), now, 14);
+                check(kr.ddingmate.expert.PetFish.keepText(okf).isEmpty(), "넉넉한데 밥을 권함: " + kr.ddingmate.expert.PetFish.keepText(okf));
+                // 여러 마리가 같은 때 밥 줄 때면 알림은 한 번("반려어 n마리")
+                int pfAlerts = AlertLog.entries().size();
+                kr.ddingmate.expert.PetFish.tick(now + 1000);
+                check(AlertLog.entries().size() == pfAlerts + 1 && AlertLog.entries().get(0).title.contains("마리"),
+                        "여러 마리 알림을 묶지 않음: " + (AlertLog.entries().size() - pfAlerts) + " " + AlertLog.entries().get(0).title);
+                // 어항을 다시 열었는데 그 칸이 비면(꺼냄) 그 반려어만 지운다 — 인벤토리에 같은 종을 들고 있어도 지우지 않는다
+                kr.ddingmate.expert.PetFish.debugSetScreen("\uE001\uE003");
+                int fishBefore = kr.ddingmate.expert.PetFish.fishes().size();
+                kr.ddingmate.expert.PetFish.debugAfterScanSlots("\uE001\uE003", java.util.Set.of(10, 11, 12, 13), now);
+                kr.ddingmate.expert.PetFish.debugAfterScanSlots("\uE001\uE003", java.util.Set.of(10, 11, 12, 13), now + 1500);
+                check(kr.ddingmate.expert.PetFish.fishes().size() == fishBefore - 1 && kr.ddingmate.expert.PetFish.fishes().stream().noneMatch(x -> x.slot == 14),
+                        "꺼낸 칸만 지우지 않음: " + kr.ddingmate.expert.PetFish.fishes().size());
+                DdingMate.config().expert.petFishTickMin = 10;
                 // HUD 에 보일 상태로 다시(30분 남음)
                 kr.ddingmate.expert.PetFish.debugReset();
                 // 반려어가 아닌 아이템(실제 로그: 신나는 풍선 뭉치)은 "기분"·"활력" 낱말만 있고 숫자가 없다 → 일정에 안 생겨야
