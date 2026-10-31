@@ -44,9 +44,13 @@
 - 새 버전: 디스코드에서 **/업데이트공지** → 버전(예: 0.3.3) · 추가 · 수정 · 삭제(한 줄에 하나) · 다운로드 주소(https, 비우면
   `wrangler.toml` 의 `DOWNLOAD_URL`). 그 버전보다 **예전 버전을 쓰는 띵메이트(0.3.2 부터)** 에만 "새 버전이 나왔어요"가
   팝업·채팅([바뀐 점 보기]·[다운로드])으로 뜨고, 받기 전까지 접속할 때마다 채팅으로 다시 알린다. 0.3.1 이하는 공지를 받는 기능이 없다.
+- 업데이트 파일 보관(Modrinth 승인 전까지): **/업데이트공지** 의 `파일` 칸에 jar 를 붙이면 중계가 Workers KV(`FILES`)에 보관하고,
+  다운로드 주소 칸을 비우면 `https://…/download/0.3.3` 이 된다 → 띵메이트 [다운로드]를 누르면 브라우저가 jar 를 바로 받는다(25MB 까지).
+  처음 한 번: `npx wrangler kv namespace create FILES` → 나온 id 를 `wrangler.toml` 의 `[[kv_namespaces]]` 에 넣고 `#` 를 지운 뒤,
+  아래 표 만들기·배포·명령 등록(파일 칸이 생긴 새 명령 모양)을 한다.
 - 처음 한 번(또는 명령 모양을 바꿨을 때) `/공지` · `/업데이트공지` 명령 등록:
   ```
-  npx wrangler d1 migrations apply ddingmate-relay --remote   # notices 표
+  npx wrangler d1 migrations apply ddingmate-relay --remote   # notices·업데이트 파일 표
   npx wrangler deploy
   curl -X POST https://ddingmate-relay.<이름>.workers.dev/admin/commands -H "x-admin-key: $(cat .admin-key)"
   ```

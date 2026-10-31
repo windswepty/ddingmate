@@ -36,6 +36,8 @@ export const LIMITS = {
   maxText: 1500,
   maxFiles: 5,
   maxFileBytes: 8 * 1024 * 1024,
+  // /업데이트공지에 붙이는 jar(Workers KV 값 하나의 한도 25MiB)
+  maxJarBytes: 25 * 1024 * 1024,
   // 디스코드 기본 업로드 한도(요청 하나에 10MiB)보다 조금 작게: 넘치면 나머지 이미지는 이어지는 메시지로
   maxMessageBytes: 9 * 1024 * 1024,
   maxReply: 1000,
@@ -66,6 +68,7 @@ export default {
       if (request.method === 'POST' && url.pathname === '/interactions') return await interactions(request, env, ctx);
       if (request.method === 'POST' && url.pathname === '/replies') return await replies(request, env, ctx);
       if (request.method === 'GET' && url.pathname === '/notices') return await notices(env);
+      if (request.method === 'GET' && url.pathname.startsWith('/download/')) return await download(url.pathname.slice('/download/'.length), env);
       if (request.method === 'POST' && url.pathname === '/admin/commands') return await registerCommands(request, env);
       if (request.method === 'GET' && url.pathname === '/') return text('ddingmate relay ok');
       return json({ error: 'not found' }, 404);
@@ -87,6 +90,7 @@ export async function cleanup(env, now) {
     env.DB.prepare('DELETE FROM tickets WHERE created < ?').bind(old),
     env.DB.prepare('DELETE FROM limits WHERE until < ?').bind(now),
     env.DB.prepare('DELETE FROM notices WHERE at < ?').bind(old),
+    env.DB.prepare('DELETE FROM pending_files WHERE at < ?').bind(now - 24 * 3600 * 1000),
   ]);
 }
 
@@ -246,9 +250,9 @@ async function interactions(request, env, ctx) {
 
   // 공지: /공지 → 입력창 → 저장하고 채널에 기록([공지 내리기] 단추)
   if (it.type === 2 && it.data && it.data.name === NOTICE_COMMAND.name) return json(noticeModal());
-  if (it.type === 2 && it.data && it.data.name === UPDATE_COMMAND.name) return json(updateModal());
+  if (it.type === 2 && it.data && it.data.name === UPDATE_COMMAND.name) return await startUpdate(it, env);
   if (it.type === 5 && customId === 'notice:new') return await saveNotice(it, env, ctx);
-  if (it.type === 5 && customId === 'update:new') return await saveUpdate(it, env, ctx);
+  if (it.type === 5 && (customId === 'update:new' || customId.startsWith('update:new:'))) return await saveUpdate(it, env, ctx, new URL(request.url).origin);
   if (it.type === 3 && customId.startsWith('unnotice:')) return await takeDownNotice(customId.slice(9), env);
 
   if (it.type === 3 && customId.startsWith('reply:')) {
@@ -355,24 +359,90 @@ export const UPDATE_COMMAND = {
   description: '새 버전 출시를 띵메이트 사용자 모두에게 알려요(개발자만)',
   type: 1,
   default_member_permissions: '0',
+  // jar 를 붙이면 중계가 보관하고, 띵메이트 [다운로드]가 그 파일을 바로 받게 한다(Modrinth 승인 전까지)
+  options: [{ type: 11, name: '파일', description: '띵메이트 jar 파일(붙이면 띵메이트 [다운로드]로 바로 받아요)', required: false }],
 };
 
-export function updateModal() {
+/** 업데이트 공지 입력창. 파일을 붙였으면 그 기록 번호를 창 번호에 싣는다 */
+export function updateModal(fileId = '', filename = '') {
   const para = (id, label) => ({ type: 1, components: [{ type: 4, custom_id: id, label, style: 2, max_length: LIMITS.maxNoticeText, required: false }] });
   return {
     type: 9,
     data: {
-      custom_id: 'update:new',
-      title: '띵메이트 업데이트 공지',
+      custom_id: fileId ? `update:new:${fileId}` : 'update:new',
+      title: fileId ? cut(`업데이트 공지 · ${filename}`, 45) : '띵메이트 업데이트 공지',
       components: [
         { type: 1, components: [{ type: 4, custom_id: 'version', label: '새 버전 (예: 0.3.3)', style: 1, min_length: 3, max_length: LIMITS.maxVersion, required: true }] },
         para('added', '추가된 것 (한 줄에 하나)'),
         para('changed', '수정된 것 (한 줄에 하나)'),
         para('removed', '삭제된 것 (한 줄에 하나)'),
-        { type: 1, components: [{ type: 4, custom_id: 'url', label: '다운로드 주소 (https://…, 비우면 기본 주소)', style: 1, max_length: LIMITS.maxUrl, required: false }] },
+        { type: 1, components: [{ type: 4, custom_id: 'url', label: fileId ? '다운로드 주소 (비우면 붙인 파일로 받아요)' : '다운로드 주소 (https://…, 비우면 기본 주소)',
+          style: 1, max_length: LIMITS.maxUrl, required: false }] },
       ],
     },
   };
+}
+
+/** /업데이트공지: 파일을 붙였으면 jar 인지·크기를 보고 첨부 주소를 잠깐 기억한 뒤 입력창 */
+async function startUpdate(it, env) {
+  const opt = ((it.data && it.data.options) || []).find((o) => o.type === 11);
+  if (!opt) return json(updateModal());
+  const a = it.data.resolved && it.data.resolved.attachments && it.data.resolved.attachments[opt.value];
+  if (!a || !/\.jar$/i.test(a.filename || '')) return ephemeral('jar 파일만 붙일 수 있어요.');
+  if (!env.FILES) return ephemeral('파일 보관함(FILES)이 아직 없어요. relay/README.md 의 "업데이트 파일 보관" 순서대로 만들고 다시 배포해 주세요.');
+  if (!(a.size > 0) || a.size > LIMITS.maxJarBytes) return ephemeral(`파일이 너무 커요(${Math.round((a.size || 0) / 1048576)}MB, 25MB 까지).`);
+  const id = randomId();
+  await env.DB.prepare('INSERT INTO pending_files (id, url, filename, size, at) VALUES (?, ?, ?, ?, ?)')
+    .bind(id, String(a.url), cut(String(a.filename), 100), a.size, Date.now()).run();
+  return json(updateModal(id, a.filename));
+}
+
+/** 내려받을 파일 이름: 영문·숫자·.-_ 만(아니면 ddingmate-버전.jar) */
+export function jarName(filename, version) {
+  return /^[A-Za-z0-9._-]{1,100}\.jar$/.test(filename || '') ? filename : `ddingmate-${version}.jar`;
+}
+
+/** GET /download/0.3.3 → 보관한 jar(브라우저가 바로 받는다) */
+async function download(version, env) {
+  if (!/^\d+(\.\d+){1,3}$/.test(version) || !env.FILES) return json({ error: 'not found' }, 404);
+  const got = await env.FILES.getWithMetadata(`jar:${version}`, { type: 'stream' });
+  if (!got || !got.value) return json({ error: 'not found' }, 404);
+  const name = jarName(got.metadata && got.metadata.filename, version);
+  return new Response(got.value, {
+    headers: {
+      'content-type': 'application/java-archive',
+      'content-disposition': `attachment; filename="${name}"`,
+      'cache-control': 'public, max-age=300',
+    },
+  });
+}
+
+/** 붙인 jar 를 받아 보관하고 공지를 올린다(3초 넘게 걸릴 수 있어 '생각 중' 답 뒤에), 끝나면 그 답을 고친다 */
+async function storeAndPublish(it, env, u, fileId, origin) {
+  let message;
+  try {
+    const p = await env.DB.prepare('SELECT url, filename, size FROM pending_files WHERE id = ?').bind(fileId).first();
+    if (!p) throw new Error('붙인 파일 기록이 없어요(하루가 지났거나 이미 썼어요). /업데이트공지 를 파일과 함께 다시 써 주세요');
+    const res = await fetch(p.url);
+    if (!res.ok) throw new Error(`디스코드에서 파일을 받지 못했어요(HTTP ${res.status})`);
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength === 0 || buf.byteLength > LIMITS.maxJarBytes) throw new Error('파일 크기가 맞지 않아요(25MB 까지)');
+    const name = jarName(p.filename, u.version);
+    await env.FILES.put(`jar:${u.version}`, buf, { metadata: { filename: name, size: buf.byteLength } });
+    await env.DB.batch([
+      env.DB.prepare('INSERT INTO downloads (version, filename, size, at) VALUES (?, ?, ?, ?) '
+        + 'ON CONFLICT(version) DO UPDATE SET filename = excluded.filename, size = excluded.size, at = excluded.at')
+        .bind(u.version, name, buf.byteLength, Date.now()),
+      env.DB.prepare('DELETE FROM pending_files WHERE id = ?').bind(fileId),
+    ]);
+    u.url = `${origin}/download/${u.version}`;
+    message = await publishUpdate(it, env, u, null);
+    message += `\n파일: ${name} (${(buf.byteLength / 1048576).toFixed(1)}MB) · ${u.url}`;
+  } catch (e) {
+    console.error('update file failed', e && e.stack || e);
+    message = `업데이트 공지를 올리지 못했어요: ${e && e.message || e}`;
+  }
+  await discord(env, 'PATCH', `/webhooks/${it.application_id}/${it.token}/messages/@original`, { content: cut(message, 2000) });
 }
 
 /** 여러 줄 입력 → 항목 목록(앞의 - · • * 와 빈 줄은 뺀다) */
@@ -386,22 +456,39 @@ export function updateText(u) {
   return [part('추가', u.added), part('수정', u.changed), part('삭제', u.removed)].filter((x) => x).join('\n') || '새 버전이 나왔어요';
 }
 
-async function saveUpdate(it, env, ctx) {
+async function saveUpdate(it, env, ctx, origin) {
+  const customId = (it.data && it.data.custom_id) || '';
+  const fileId = customId.startsWith('update:new:') ? customId.slice('update:new:'.length) : '';
   const version = modalValue(it.data, 'version').trim();
   if (!/^\d+(\.\d+){1,3}$/.test(version)) return ephemeral('버전은 0.3.3 처럼 숫자와 점으로 적어 주세요.');
-  let url = modalValue(it.data, 'url').trim() || env.DOWNLOAD_URL || '';
+  const typed = modalValue(it.data, 'url').trim();
+  let url = typed || (fileId ? '' : env.DOWNLOAD_URL || '');
   if (url && !/^https:\/\/[^\s]+$/.test(url)) return ephemeral('다운로드 주소는 https:// 로 시작해야 해요.');
   const u = { version, url: cut(url, LIMITS.maxUrl), added: listItems(modalValue(it.data, 'added')),
     changed: listItems(modalValue(it.data, 'changed')), removed: listItems(modalValue(it.data, 'removed')) };
+  if (fileId && !typed) {
+    if (!/^[0-9a-f]{8}$/.test(fileId) || !env.FILES) return ephemeral('붙인 파일을 찾을 수 없어요. /업데이트공지 를 다시 써 주세요.');
+    // 파일 받기·보관은 3초를 넘길 수 있다: '생각 중'으로 먼저 답하고 끝나면 그 답을 고친다
+    ctx.waitUntil(storeAndPublish(it, env, u, fileId, origin));
+    return json({ type: 5, data: { flags: 64 } });
+  }
+  const msg = await publishUpdate(it, env, u, ctx);
+  return ephemeral(msg);
+}
+
+/** 업데이트 공지 저장 + 채널 기록. 돌려주는 글은 개발자에게만 보이는 답 */
+async function publishUpdate(it, env, u, ctx) {
   const id = randomId();
-  const title = `띵메이트 ${version} 출시`;
+  const title = `띵메이트 ${u.version} 출시`;
   const body = updateText(u);
   const saved = await env.DB.prepare('INSERT INTO notices (id, title, text, at, interaction_id, kind, data) VALUES (?, ?, ?, ?, ?, ?, ?) '
     + 'ON CONFLICT DO NOTHING RETURNING id').bind(id, title, cut(body, 2000), Date.now(), String(it.id || ''), 'update', JSON.stringify(u)).first('id');
-  if (!saved) return ephemeral('이미 올린 업데이트 공지예요.');
-  ctx.waitUntil(postNoticeNote(env, id, title, body + (u.url ? `\n다운로드: ${u.url}` : '')));
-  return ephemeral(`업데이트 공지를 올렸어요. ${version} 보다 예전 버전을 쓰는 띵메이트에 "새 버전을 받아 주세요"로 떠요(0.3.2 부터).\n`
-    + '채널에 남은 기록의 [공지 내리기]로 내릴 수 있어요.');
+  if (!saved) return '이미 올린 업데이트 공지예요.';
+  const note = postNoticeNote(env, id, title, body + (u.url ? `\n다운로드: ${u.url}` : ''));
+  if (ctx) ctx.waitUntil(note);
+  else await note;
+  return `업데이트 공지를 올렸어요. ${u.version} 보다 예전 버전을 쓰는 띵메이트에 "새 버전을 받아 주세요"로 떠요(0.3.2 부터).\n`
+    + '채널에 남은 기록의 [공지 내리기]로 내릴 수 있어요.';
 }
 
 export function noticeModal() {

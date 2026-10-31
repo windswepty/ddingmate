@@ -12,7 +12,7 @@ const CHANNEL = '111111111111111111';
 class FakeD1 {
   constructor() {
     this.db = new DatabaseSync(':memory:');
-    for (const m of ['0001_init.sql', '0002_notices.sql', '0003_update_notices.sql']) this.db.exec(readFileSync(new URL('../migrations/' + m, import.meta.url), 'utf-8'));
+    for (const m of ['0001_init.sql', '0002_notices.sql', '0003_update_notices.sql', '0004_update_files.sql']) this.db.exec(readFileSync(new URL('../migrations/' + m, import.meta.url), 'utf-8'));
     this.writes = 0;
   }
   prepare(sql) {
@@ -429,4 +429,48 @@ test('업데이트 공지: /업데이트공지 → 버전·추가·수정·삭�
   assert.deepEqual(u.changed, ['글꼴 크기']);
   assert.deepEqual(u.removed, []);
   assert.deepEqual(listItems('\n - 하나\n\n* 둘 \n'), ['하나', '둘']);
+});
+
+test('업데이트 공지 + jar 파일: 붙인 jar 를 보관하고 띵메이트 [다운로드]가 /download/버전 으로 바로 받는다', async () => {
+  const store = new Map();
+  env.FILES = {
+    async put(k, v, o) { store.set(k, { v: new Uint8Array(v), m: o && o.metadata }); },
+    async getWithMetadata(k) { const x = store.get(k); return x ? { value: x.v, metadata: x.m } : { value: null, metadata: null }; },
+  };
+  const jar = new Uint8Array([0x50, 0x4b, 3, 4, 9, 9]);
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url, init) => (String(url).startsWith('https://cdn.test/') ? new Response(jar) : base(url, init));
+  try {
+    const cmd = (file) => signed({ type: 2, member: { user: { id: DEV } }, data: { name: '업데이트공지',
+      options: [{ type: 11, name: '파일', value: 'a1' }], resolved: { attachments: { a1: file } } } });
+    const notJar = await cmd({ url: 'https://cdn.test/x.zip', filename: 'x.zip', size: 6 });
+    assert.match(notJar.body.data.content, /jar/);
+    const big = await cmd({ url: 'https://cdn.test/a.jar', filename: 'a.jar', size: 26 * 1024 * 1024 });
+    assert.match(big.body.data.content, /25MB/);
+    const modal = await cmd({ url: 'https://cdn.test/ddingmate-0.3.3.jar', filename: 'ddingmate-0.3.3.jar', size: 6 });
+    assert.match(modal.body.data.custom_id, /^update:new:[0-9a-f]{8}$/);
+    assert.match(modal.body.data.components[4].components[0].label, /붙인 파일/);
+    const fields = { version: '0.3.3', added: '수동 할 일', changed: '', removed: '', url: '' };
+    const r = await signed({ id: 'f1', type: 5, application_id: 'APP', token: 'TOK', member: { user: { id: DEV } },
+      data: { custom_id: modal.body.data.custom_id, components: Object.entries(fields).map(([k, v]) => ({ type: 1, components: [{ custom_id: k, value: v }] })) } });
+    assert.equal(r.body.type, 5); // '생각 중'으로 먼저 답하고
+    await settle();
+    const u = (await getNotices()).body.notices[0];
+    assert.equal(u.version, '0.3.3');
+    assert.equal(u.url, 'https://relay.test/download/0.3.3');
+    const patch = sent.find((s) => s.method === 'PATCH');
+    assert.match(patch.url, /\/webhooks\/APP\/TOK\/messages\/@original$/);
+    assert.match(patch.body.content, /ddingmate-0\.3\.3\.jar/);
+    assert.ok(sent.some((s) => s.method === 'POST' && /download\/0\.3\.3/.test(s.body.content || '')), '채널 기록에 다운로드 주소');
+    const dl = await worker.fetch(new Request('https://relay.test/download/0.3.3'), env, ctx());
+    assert.equal(dl.status, 200);
+    assert.equal(dl.headers.get('content-type'), 'application/java-archive');
+    assert.match(dl.headers.get('content-disposition'), /attachment; filename="ddingmate-0\.3\.3\.jar"/);
+    assert.deepEqual(new Uint8Array(await dl.arrayBuffer()), jar);
+    assert.equal((await worker.fetch(new Request('https://relay.test/download/9.9.9'), env, ctx())).status, 404);
+    assert.equal((await worker.fetch(new Request('https://relay.test/download/..%2Fx'), env, ctx())).status, 404);
+    assert.equal(env.DB.rows('SELECT * FROM pending_files').length, 0);
+  } finally {
+    globalThis.fetch = base;
+  }
 });

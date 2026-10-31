@@ -27,6 +27,12 @@ database_name = "ddingmate-relay"
 database_id = "dc5228ea-1ea1-400b-a6f4-85c5b9068af0"
 migrations_dir = "migrations"
 
+# /업데이트공지에 붙인 jar 보관(값 하나 25MiB 까지). 처음 한 번 만들고 나온 id 를 아래에 넣은 뒤 # 를 지운다:
+#   npx wrangler kv namespace create FILES
+# [[kv_namespaces]]
+# binding = "FILES"
+# id = "여기에_나온_id"
+
 # 하루 한 번(한국 시간 새벽 4시) 90일 지난 기록 지우기
 [triggers]
 crons = ["0 19 * * *"]
