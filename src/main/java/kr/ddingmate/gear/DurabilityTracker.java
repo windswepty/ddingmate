@@ -100,6 +100,11 @@ public final class DurabilityTracker {
             t.hitSince = true;
             changed = true;
         }
+        if (changed && !cfg.cosmeticTipShown) {
+            // 2026-10-31 기록: 치장 메뉴를 닫을 때마다 서버가 진짜 투구를 다시 보낸다(창 전체 402/407) → 정확한 값으로 맞출 방법을 한 번 알린다
+            cfg.cosmeticTipShown = true;
+            kr.ddingmate.notify.Notifier.chat("치장에 가려진 투구는 맞으면 어림값(약)으로 보여요. 치장 메뉴를 한 번 열었다 닫거나 투구를 벗었다 끼면 정확한 내구도로 맞춰져요");
+        }
         if (changed) DdingMate.config().save();
     }
 

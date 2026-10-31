@@ -117,6 +117,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
             ctx.runOnClient(c -> {
                 DdingMate.config().durability.learnedHits = 0;
                 DdingMate.config().durability.learnedLoss = 0;
+                DdingMate.config().durability.cosmeticTipShown = false;
                 for (int i = 0; i < 5; i++) {
                     c.player.hurtTime = 0;
                     DurabilityTracker.watchHits(c);
@@ -127,6 +128,7 @@ public class FeaturesClientGameTest implements FabricClientGameTest {
                 DurabilityTracker.Row helm = DurabilityTracker.rows().get(2);
                 check(helm.item().hitsSince == 5 && !helm.exact() && DurabilityTracker.valueText(helm).startsWith("치장 · 405/407 이하"),
                         "맞은 뒤인데 정확한 값처럼 보임: " + DurabilityTracker.valueText(helm) + " (맞은 " + helm.item().hitsSince + "번)");
+                check(DdingMate.config().durability.cosmeticTipShown, "치장 아래 투구를 맞춰 보는 방법(치장 메뉴 열었다 닫기)을 안내하지 않음");
             });
             // 투구를 벗었다 끼면(진짜 투구가 보이면) 5번 맞는 동안 5 줄었다 → 한 대에 1 을 배운다
             sp.getServer().runCommand("item replace entity @a armor.head with minecraft:netherite_helmet[minecraft:damage=7]");

@@ -115,6 +115,8 @@ public final class DdingMateConfig {
         /** 치장 아래 투구 추정용: 지금까지 맞은 횟수와 그동안 실제로 줄어든 내구도 합(벗었다 낄 때마다 더한다) */
         public int learnedHits;
         public int learnedLoss;
+        /** 치장 아래 투구를 정확히 맞추는 방법(치장 메뉴 열었다 닫기)을 한 번 알렸는지 */
+        public boolean cosmeticTipShown;
     }
 
     /** 쉬프트 우클릭 전문가 스킬의 지속·재사용 대기 시간 HUD */
