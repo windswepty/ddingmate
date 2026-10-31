@@ -101,9 +101,9 @@ public final class DurabilityTracker {
             changed = true;
         }
         if (changed && !cfg.cosmeticTipShown) {
-            // 2026-10-31 기록: 치장 메뉴를 닫을 때마다 서버가 진짜 투구를 다시 보낸다(창 전체 402/407) → 정확한 값으로 맞출 방법을 한 번 알린다
+            // 진짜 투구가 오는 때: 벗었다 낄 때(어디서나), 치장 메뉴를 닫을 때(2026-10-31 기록 창 전체 402/407, 메뉴는 정해진 곳에서만) → 한 번 알린다
             cfg.cosmeticTipShown = true;
-            kr.ddingmate.notify.Notifier.chat("치장에 가려진 투구는 맞으면 어림값(약)으로 보여요. 치장 메뉴를 한 번 열었다 닫거나 투구를 벗었다 끼면 정확한 내구도로 맞춰져요");
+            kr.ddingmate.notify.Notifier.chat("치장에 가려진 투구는 맞으면 어림값(약)으로 보여요. 투구를 인벤토리로 벗었다 다시 끼면 정확한 내구도로 맞춰져요(치장 메뉴를 열었다 닫아도 돼요)");
         }
         if (changed) DdingMate.config().save();
     }
